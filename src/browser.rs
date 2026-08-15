@@ -170,6 +170,13 @@ pub fn elle_giris(
              (ya da o tarayici penceresini kapat), sonra `--giris` ile yeniden dene."
         );
     }
+    // BU YOLDA WEBDRIVER YOK, dolayisiyla yeteneklerle verdigimiz ayarlar da yok.
+    // Ilk-acilis sihirbazini kapatan ayarlarin profile DOSYA olarak yazilmasi
+    // gerekiyor; tam bu eksik oldugu icin hesap kurarken sihirbaz her seferinde
+    // cikiyordu. geckodriver'in user.js'i ezmesi yalniz WebDriver yolunda olur,
+    // burada yazdigimiz kalir.
+    profil_tohumla(&dir)?;
+
     Command::new(&browser.0)
         .arg("-no-remote")
         .arg("-profile")
@@ -178,6 +185,36 @@ pub fn elle_giris(
         .spawn()
         .with_context(|| format!("tarayici baslatilamadi: {}", browser.0.display()))
 }
+
+/// Ilk-acilis ekranlarini kapatan ayarlari profile yazar.
+///
+/// Firefox `user.js`'i her acilista prefs.js'in uzerine uygular; tarayiciyi kendimiz
+/// baslattigimizda ayarlari gecirmenin yolu bu. Var olani EZER: buradaki dosya ya
+/// bizimdir ya da geckodriver'dan kalmadir, ikisi de korunmayi gerektirmez.
+pub fn profil_tohumla(dir: &Path) -> Result<()> {
+    let yol = dir.join("user.js");
+    std::fs::write(&yol, VARSAYILAN_USER_JS)
+        .with_context(|| format!("profil ayarlari yazilamadi: {}", yol.display()))
+}
+
+/// Ayni ayarlar iki yoldan da gitmeli: WebDriver yolunda yeteneklerle, elle giris
+/// yolunda bu dosyayla. Tek kaynak olsun diye liste asagida bir kez duruyor ve
+/// `yetenekler()` ile birlikte sinaniyor.
+const VARSAYILAN_USER_JS: &str = r#"// Kervan olusturdu. Otomasyon profilinde insan mudahalesi bekleyen
+// ilk-acilis ekranlarini kapatir. Silinirse yeniden yazilir.
+user_pref("zen.welcome-screen.seen", true);
+user_pref("browser.aboutwelcome.enabled", false);
+user_pref("browser.startup.homepage_override.mstone", "ignore");
+user_pref("startup.homepage_welcome_url", "about:blank");
+user_pref("startup.homepage_welcome_url.additional", "");
+user_pref("browser.laterrun.enabled", false);
+user_pref("browser.messaging-system.whatsNewPanel.enabled", false);
+user_pref("browser.uitour.enabled", false);
+user_pref("browser.shell.checkDefaultBrowser", false);
+user_pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
+user_pref("toolkit.telemetry.reportingpolicy.firstRun", false);
+user_pref("browser.sessionstore.resume_from_crash", false);
+"#;
 
 /// WebDriver yetenekleri: tarayici ikilisi, profil bagimsizligi ve ilk-acilis
 /// ekranlarini kapatan ayarlar.
@@ -526,8 +563,43 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
-    /// Karsilama ekranini kapatan ayarlar YETENEKLERDEN gitmeli. Profile user.js
-    /// yazmak ise yaramiyor: geckodriver kendi user.js'ini yazip uzerine biniyor.
+    /// ASIL HATA BUYDU: ayarlar yalnizca WebDriver yolunda uygulaniyordu. Hesap
+    /// kurarken kullanilan elle giris yolu tarayiciyi dogrudan baslattigi icin hicbir
+    /// ayar gitmiyor ve kurulum sihirbazi her seferinde cikiyordu. Iki yol ayni
+    /// listeyi tasimali; biri degisip oteki degismezse bu test dusmeli.
+    #[test]
+    fn iki_yol_ayni_ayarlari_tasir() {
+        let caps = yetenekler(Path::new("z"), vec![]);
+        let yetenek: std::collections::BTreeSet<String> = caps["moz:firefoxOptions"]["prefs"]
+            .as_object()
+            .expect("prefs nesnesi")
+            .keys()
+            .cloned()
+            .collect();
+        let dosya: std::collections::BTreeSet<String> = VARSAYILAN_USER_JS
+            .lines()
+            .filter_map(|l| l.strip_prefix("user_pref(\""))
+            .filter_map(|l| l.split('"').next())
+            .map(String::from)
+            .collect();
+        assert_eq!(dosya, yetenek, "elle giris ve WebDriver yollari ayni ayarlari vermeli");
+        assert!(dosya.contains("zen.welcome-screen.seen"));
+    }
+
+    /// Elle giris yolunda ayarlar profile DOSYA olarak yazilmali; WebDriver orada yok.
+    #[test]
+    fn tohumlama_profile_dosya_yazar() {
+        let dir = std::env::temp_dir().join(format!("kervan-tohum2-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        // Onceki kosudan kalmis yabanci icerik EZILMELI, yoksa ayarlar gitmez.
+        std::fs::write(dir.join("user.js"), "user_pref(\"baska.sey\", 1);\n").unwrap();
+        profil_tohumla(&dir).unwrap();
+        let icerik = std::fs::read_to_string(dir.join("user.js")).unwrap();
+        assert!(icerik.contains("zen.welcome-screen.seen"));
+        assert!(!icerik.contains("baska.sey"));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
     #[test]
     fn yetenekler_karsilama_ayarlarini_tasir() {
         let caps = yetenekler(Path::new("C:\\zen.exe"), vec!["-profile".into(), "d".into()]);
