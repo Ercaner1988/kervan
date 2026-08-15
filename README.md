@@ -31,7 +31,38 @@ insan kapısı.
 | Havuz | `GET /accounts`, `POST /accounts/{i}/devam` |
 | Bağlanma | yalnız `127.0.0.1` |
 
-Sırada: kota öğrenici (SQLite), TUI, ek sağlayıcılar.
+Sırada: TUI, ek sağlayıcılar.
+
+## Kota öğrenici
+
+Web sağlayıcıları kalan kotayı söylemiyor. "Tam kullanım hakkım ne?" sorusu ancak
+ölçülerek cevaplanır: Kervan her isteğin sonucunu `%LOCALAPPDATA%\kervan\kota.jsonl`
+dosyasına yazar, limite çarpma anlarını işaretler ve iki sayıyı gözlemden çıkarır —
+pencere başına kaç istek, pencere kaç dakika.
+
+```
+curl http://127.0.0.1:20129/kota
+```
+
+- **Uydurma yok.** Gözlenmiş bir limit çarpması olmadan tahmin üretmez; `kanit: 0`
+  ise iki alan da `null` döner. "Henüz bilmiyorum" geçerli bir cevaptır.
+- Limit mesajı **yanıt olarak dönmez** — istemci 502 alır. Yoksa Hermes "limitine
+  ulaştınız" cümlesini modelin cevabı sanardı ve öğrenici olayı hiç görmezdi.
+- Limite çarpan hesap duraklatılmaz (insan çözecek bir şey yok), öğrenilen pencere
+  kadar bekletilir. Pencere henüz bilinmiyorsa `kota.bilinmeyen_pencere_dk`.
+- Defter **ekleme-yalnızca JSONL**: yarım yazılmış son satır atlanır, dosya kendini
+  onarır. SQLite'ın C bağımlılığı ve bozulma riski bu hacim için gereksiz.
+- Başarılı yanıtların içeriği **asla** yazılmaz. Yalnız limit mesajından 200 karakterlik
+  kesit saklanır — sağlayıcının gerçek ifadesini öğrenmek için.
+
+Limit ifadeleri yapılandırmadan gelir, çünkü Gemini'nin gerçek metnini henüz
+gözlemlemedik. Gördüğünde ekle, kod değişmesin:
+
+```toml
+[kota]
+isaretler = ["reached your limit", "sınırına ulaştınız"]
+bilinmeyen_pencere_dk = 60
+```
 
 ### Havuz nasıl davranır
 
@@ -47,6 +78,11 @@ Sırada: kota öğrenici (SQLite), TUI, ek sağlayıcılar.
   için ikinci tur başka hesaba düşerse o hesabın dizisinde birinci tur yoktur.
 - Üst üste 5 hata, sebebi ne olursa olsun insan kapısını açar. Ölü bir oturuma
   sonsuza kadar istek atmak hesabı boşuna yıpratır.
+- Aynı profili iki süreç açamaz. Geçit bir hesabı tutarken o hesapla ikinci bir
+  Kervan başlatırsan tarayıcının modal "zaten çalışıyor" penceresi yerine terminalde
+  açık bir hata alırsın.
+- Kervan ölünce tarayıcılar da ölür — zorla öldürülse bile (Windows job object).
+  Sızan tarayıcı profili kilitli bırakıp bir sonraki koşuyu o modal pencerede asardı.
 
 ## Gereksinimler
 

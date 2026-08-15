@@ -69,6 +69,13 @@ impl Session {
         let profile_dir = profiles_root.join(hesap);
         std::fs::create_dir_all(&profile_dir)
             .with_context(|| format!("profil dizini olusturulamadi: {}", profile_dir.display()))?;
+        if profil_kilitli(&profile_dir) {
+            bail!(
+                "'{hesap}' profili baska bir surecte acik. Genelde ya Kervan gecidi \
+                 calisiyordur ya da onceki kosudan artan bir tarayici penceresi vardir. \
+                 Onu kapat, sonra yeniden dene."
+            );
+        }
 
         let port = bos_port()?;
         let driver = Command::new(geckodriver)
@@ -116,6 +123,23 @@ impl Drop for Session {
     }
 }
 
+/// Profil su an baska bir surecte acik mi?
+///
+/// Firefox profil dizininde `parent.lock` tutar ve calistigi surece acik birakir.
+/// Dosyanin VARLIGI kanit degil — cokme sonrasi geride kalabiliyor. Yazmaya acmayi
+/// denemek canliyi olulden ayiriyor; olculdu: tutan surec varken acilmiyor, o surec
+/// olunce ayni dosya sorunsuz aciliyor.
+fn profil_kilitli(dir: &Path) -> bool {
+    // Windows'ta parent.lock, Unix'te .parentlock.
+    for ad in ["parent.lock", ".parentlock"] {
+        let yol = dir.join(ad);
+        if yol.exists() && std::fs::OpenOptions::new().write(true).open(&yol).is_err() {
+            return true;
+        }
+    }
+    false
+}
+
 /// Hesabin profiliyle **otomasyon disinda**, sira bir tarayici penceresi acar.
 ///
 /// NEDEN GEREKLI: Google, WebDriver ile surulen tarayicida oturum acmayi engelliyor
@@ -138,6 +162,14 @@ pub fn elle_giris(
     let dir = profiles_root.join(hesap);
     std::fs::create_dir_all(&dir)
         .with_context(|| format!("profil dizini olusturulamadi: {}", dir.display()))?;
+    // Kilitliyken acmak tarayicinin "zaten calisiyor" modal penceresini cikarir ve
+    // surec orada asili kalir. Acik hata vermek her zaman iyidir.
+    if profil_kilitli(&dir) {
+        bail!(
+            "'{hesap}' profili baska bir surecte acik. Gecit calisiyorsa durdur \
+             (ya da o tarayici penceresini kapat), sonra `--giris` ile yeniden dene."
+        );
+    }
     Command::new(&browser.0)
         .arg("-no-remote")
         .arg("-profile")
@@ -423,6 +455,26 @@ mod tests {
         assert_ne!(root.join("hesap-a"), root.join("hesap-b"));
         // ayni ad ayni dizini vermeli, yoksa oturum kalici olmaz
         assert_eq!(root.join("hesap-a"), root.join("hesap-a"));
+    }
+
+    /// Kilit tespiti dosyanin VARLIGINA degil, tutulup tutulmadigina bakmali:
+    /// cokme sonrasi kalan parent.lock yuzunden saglam bir profili "kilitli" sayip
+    /// hesabi kullanilamaz hale getirirdik.
+    #[test]
+    fn kilit_dosya_varligina_degil_tutuluyor_olmasina_bakar() {
+        let dir = std::env::temp_dir().join(format!("kervan-kilit-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let lock = dir.join("parent.lock");
+
+        // Kilit dosyasi yok
+        std::fs::remove_file(&lock).ok();
+        assert!(!profil_kilitli(&dir));
+
+        // Dosya var ama tutan yok (cokmeden kalmis) — kilitli SAYILMAMALI
+        std::fs::write(&lock, b"").unwrap();
+        assert!(!profil_kilitli(&dir), "artik kilit dosyasi profili olu birakmamali");
+
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     /// Karsilama ekranini kapatan ayarlar YETENEKLERDEN gitmeli. Profile user.js

@@ -647,6 +647,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "toml",
+ "windows-sys",
 ]
 
 [[package]]

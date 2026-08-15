@@ -354,6 +354,16 @@ impl Pool {
         }
     }
 
+    /// Saglayici kotayi bildirdi: hesabi pencere kadar beklet.
+    ///
+    /// Duraklatma DEGIL — insan cozecek bir sey yok, sure gecince kendi acilir.
+    /// Hata sayaci da artirilmaz: kota bir ariza degil, beklenen bir durum.
+    pub async fn kota_doldu(&self, i: usize, bekleme: Duration) {
+        let mut st = self.slots[i].state.lock().await;
+        st.consecutive_errors = 0;
+        st.not_before = Some(Instant::now() + bekleme);
+    }
+
     /// Insan kapisini ac: hesabi tekrar kullanima sok.
     pub async fn devam_ettir(&self, i: usize) {
         let mut st = self.slots[i].state.lock().await;

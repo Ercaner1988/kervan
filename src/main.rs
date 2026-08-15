@@ -8,8 +8,10 @@
 
 mod browser;
 mod config;
+mod kota;
 mod pool;
 mod server;
+mod surec;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -40,6 +42,10 @@ const MODEL_ID: &str = "kervan/gemini-3.1-pro";
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Ilk is: tarayicilar bu surecle birlikte olsun. Sizan tarayici profili kilitli
+    // birakiyor ve sonraki kosuyu modal bir pencerede asiyor.
+    surec::agaci_bagla();
+
     let args: Vec<String> = std::env::args().collect();
     let hesap = args
         .iter()
@@ -89,8 +95,13 @@ async fn main() -> Result<()> {
             geckodriver,
             headless,
         );
+        let defter = kota::Defter::ac(kota::varsayilan_yol())?;
+        println!("kota defteri : {}", kota::yol_goster(&defter).display());
+
         let state = Arc::new(server::AppState {
             pool: havuz,
+            defter,
+            kota_ayar: cfg.kota,
             model_id: MODEL_ID,
             timeout: YANIT_ZAMAN_ASIMI,
         });

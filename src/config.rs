@@ -14,6 +14,39 @@ pub struct Config {
     pub accounts: Vec<Account>,
     #[serde(default)]
     pub pacing: Pacing,
+    #[serde(default)]
+    pub kota: Kota,
+}
+
+/// Kota ogrenicinin ayarlari.
+#[derive(Debug, Deserialize, Clone)]
+pub struct Kota {
+    /// Saglayicinin limit mesajinda gecen ifadeler. Varsayilanlar makul TAHMIN;
+    /// gercek metni gorunce buraya eklenir — kod degistirmeden, yeniden derlemeden.
+    #[serde(default = "varsayilan_isaretler")]
+    pub isaretler: Vec<String>,
+    /// Limit gorulunce, pencere daha ogrenilmemisken ne kadar beklenir (dakika).
+    #[serde(default = "varsayilan_kota_bekleme")]
+    pub bilinmeyen_pencere_dk: u64,
+}
+
+fn varsayilan_isaretler() -> Vec<String> {
+    vec![
+        "reached your limit".into(),
+        "sınırına ulaştınız".into(),
+        "limitine ulaştınız".into(),
+        "kotanız doldu".into(),
+    ]
+}
+
+fn varsayilan_kota_bekleme() -> u64 {
+    60
+}
+
+impl Default for Kota {
+    fn default() -> Self {
+        Self { isaretler: varsayilan_isaretler(), bilinmeyen_pencere_dk: varsayilan_kota_bekleme() }
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -69,6 +102,7 @@ impl Config {
         Self {
             accounts: vec![Account { name: "ercan-gemini-1".into(), provider: varsayilan_saglayici() }],
             pacing: Pacing::default(),
+            kota: Kota::default(),
         }
     }
 }

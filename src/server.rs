@@ -13,7 +13,7 @@
 //! Bu bir ADR konusu — plandaki "hesap / profil / oturum" terim ayrimi tam da bunun icin.
 
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
 use axum::extract::{Path, State};
@@ -23,10 +23,13 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use crate::browser::ask;
+use crate::kota::{self, Defter, Sonuc};
 use crate::pool::Pool;
 
 pub struct AppState {
     pub pool: Pool,
+    pub defter: Defter,
+    pub kota_ayar: crate::config::Kota,
     pub model_id: &'static str,
     pub timeout: std::time::Duration,
 }
@@ -42,7 +45,22 @@ pub fn router(state: Arc<AppState>) -> Router {
         // Insan kapisi cozuldukten sonra hesabi geri al. Bu uc olmadan duraklatilan
         // hesap surec omru boyunca olu kalirdi.
         .route("/accounts/{i}/devam", post(devam))
+        // Kota ogrenicinin gordugu: gercek kullanim ve gozlemden cikan limit.
+        .route("/kota", get(kota_ozeti))
         .with_state(state)
+}
+
+async fn kota_ozeti(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let mut liste = Vec::new();
+    for slot in st.pool.slots.iter() {
+        let o = st.defter.ozet(&slot.account.name).await;
+        liste.push(serde_json::json!({ "hesap": slot.account.name, "kullanim": o }));
+    }
+    Json(serde_json::json!({
+        "defter": kota::yol_goster(&st.defter).display().to_string(),
+        "hesaplar": liste,
+        "not": "tahmin yalnizca gozlenmis kota carpmalarindan cikar; kanit 0 ise tahmin yok",
+    }))
 }
 
 async fn accounts(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
@@ -160,16 +178,48 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
         Err(e) => return hata(StatusCode::SERVICE_UNAVAILABLE, &format!("{e:#}")),
     };
     println!("[{}] istek ({} karakter)", lease.name, istem.len());
-    let sonuc = ask(lease.client(), &st.pool.provider.selectors, &istem, st.timeout).await;
+    let mut sonuc = ask(lease.client(), &st.pool.provider.selectors, &istem, st.timeout).await;
+
+    // Saglayici "limite ulastin" dediyse bu bir YANIT DEGIL. Oldugu gibi dondurmek
+    // istemciye modelin cevabi diye limit mesajini vermek olurdu; ustelik kota
+    // ogrenici de olayi hic gormezdi.
+    let kota_carpmasi = match &sonuc {
+        Ok(m) if kota::kota_sinyali(m, &st.kota_ayar.isaretler) => Some(m.clone()),
+        _ => None,
+    };
+    if let Some(m) = &kota_carpmasi {
+        sonuc = Err(anyhow::anyhow!("saglayici kota bildirdi: {m}"));
+    }
     if let Err(e) = &sonuc {
         println!("[{}] HATA: {e:#}", lease.name);
     }
 
     // Sonucu havuza bildir: basari sayaci sifirlar, hata ustel geri cekilme uygular
     // ve dogrulama duvariysa hesabi insan kapisinda duraklatir.
-    match &sonuc {
-        Ok(_) => st.pool.basarili(lease.index).await,
-        Err(e) => st.pool.basarisiz(lease.index, &format!("{e:#}")).await,
+    match (&kota_carpmasi, &sonuc) {
+        (Some(metin), _) => {
+            st.defter.yaz(&lease.name, Sonuc::Kota, Some(kirp(metin))).await;
+            // Pencere ogrenildiyse onu, ogrenilmediyse muhafazakar varsayilani bekle.
+            let ozet = st.defter.ozet(&lease.name).await;
+            // Ogrenilmis pencere varsa onu bekle; yoksa muhafazakar varsayilan.
+            // `max(1)`: ogrenilen pencere sifir dakika cikarsa beklemeden yeniden
+            // denemek limite carpip durmak olurdu.
+            let dk = ozet
+                .tahmin
+                .pencere_dk
+                .map(|d| d.max(1))
+                .unwrap_or(st.kota_ayar.bilinmeyen_pencere_dk);
+            println!("[{}] KOTA doldu, {dk} dk bekletiliyor", lease.name);
+            st.pool.kota_doldu(lease.index, Duration::from_secs(dk * 60)).await;
+        }
+        (None, Ok(_)) => {
+            st.defter.yaz(&lease.name, Sonuc::Basari, None).await;
+            st.pool.basarili(lease.index).await;
+        }
+        (None, Err(e)) => {
+            st.defter.yaz(&lease.name, Sonuc::Hata, None).await;
+            st.pool.basarisiz(lease.index, &format!("{e:#}")).await;
+        }
     }
 
     let model_adi = if req.model.is_empty() { st.model_id.to_string() } else { req.model.clone() };
@@ -199,6 +249,12 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
         // gemini-web'de yaptigi ve teshisi imkansizlastiran seydi.
         Err(e) => hata(StatusCode::BAD_GATEWAY, &format!("{e:#}")),
     }
+}
+
+/// Kota mesajindan deftere yazilacak kisa kesit. Amac gercek ifadeyi ogrenmek,
+/// sohbet biriktirmek degil.
+fn kirp(m: &str) -> String {
+    m.chars().take(200).collect()
 }
 
 fn hata(kod: StatusCode, mesaj: &str) -> Response {
