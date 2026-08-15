@@ -284,6 +284,33 @@ pub struct Selectors {
 pub struct Provider {
     pub url: &'static str,
     pub selectors: Selectors,
+    /// Eposta ON-DOLDURULMUS giris adresi; `{eposta}` yerine hesap konur.
+    ///
+    /// Olculdu: Google'in AccountChooser adresi kimlik sayfasina eposta alani dolu
+    /// olarak dusuyor. Toplu kurulumda kullaniciya kalan tek is sifre — N hesapta
+    /// N kere eposta yazmak degil.
+    pub giris_kalibi: &'static str,
+}
+
+impl Provider {
+    pub fn giris_url(&self, eposta: &str) -> String {
+        self.giris_kalibi.replace("{eposta}", &url_kodla(eposta))
+    }
+}
+
+/// Sorgu dizesi icin en dar kodlama. Ozellikle `+`: Gmail takma adlarinda yaygin ve
+/// kodlanmazsa sunucu tarafinda BOSLUGA donusur, yani yanlis hesap acilir.
+fn url_kodla(s: &str) -> String {
+    let mut o = String::new();
+    for b in s.as_bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' | b'@' => {
+                o.push(*b as char)
+            }
+            _ => o.push_str(&format!("%{b:02X}")),
+        }
+    }
+    o
 }
 
 /// WebDriver Enter tusu (U+E007).
@@ -404,6 +431,16 @@ async fn son_balon(c: &Client, sel: &Selectors) -> (usize, String) {
 /// degil olcumle cevaplamanin yolu.
 pub async fn dom_ozeti(c: &Client, sel: &Selectors) -> Result<String> {
     let mut s = String::new();
+    // Giris alanlarinin DEGERI: "adresle eposta on-doldurulabiliyor mu" sorusu
+    // ancak buradan cevaplanir.
+    s.push_str("giris alanlari :\n");
+    for secici in ["input[type='email']", "input[name='identifier']", "input[type='text']"] {
+        for e in c.find_all(Locator::Css(secici)).await.unwrap_or_default() {
+            let deger = e.prop("value").await.ok().flatten().unwrap_or_default();
+            s.push_str(&format!("  {secici:<28} deger: {deger:?}\n"));
+        }
+    }
+
     for (ad, secici) in [
         ("prompt_input", sel.prompt_input),
         ("login_hint", sel.login_hint),
@@ -455,6 +492,18 @@ mod tests {
         assert_ne!(root.join("hesap-a"), root.join("hesap-b"));
         // ayni ad ayni dizini vermeli, yoksa oturum kalici olmaz
         assert_eq!(root.join("hesap-a"), root.join("hesap-a"));
+    }
+
+    /// Gmail takma adlarindaki `+` kodlanmazsa sunucuda BOSLUGA donusur ve yanlis
+    /// hesabin giris ekrani acilir.
+    #[test]
+    fn arti_isareti_kodlanir() {
+        let p = Provider {
+            url: "x",
+            selectors: Selectors { prompt_input: "a", login_hint: "b", response: "c" },
+            giris_kalibi: "https://o/?Email={eposta}",
+        };
+        assert_eq!(p.giris_url("ad+etiket@gmail.com"), "https://o/?Email=ad%2Betiket@gmail.com");
     }
 
     /// Kilit tespiti dosyanin VARLIGINA degil, tutulup tutulmadigina bakmali:

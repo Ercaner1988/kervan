@@ -9,6 +9,7 @@
 mod browser;
 mod config;
 mod kota;
+mod kurulum;
 mod pool;
 mod server;
 mod surec;
@@ -32,7 +33,14 @@ const GEMINI: Provider = Provider {
         login_hint: "a[href*='ServiceLogin']",
         response: "model-response, message-content",
     },
+    // Olculdu: bu adres kimlik sayfasina eposta alani DOLU olarak dusuyor
+    // (input[name='identifier'] degeri geliyor). Toplu kurulumda kalan tek is sifre.
+    giris_kalibi: "https://accounts.google.com/AccountChooser?Email={eposta}\
+                   &continue=https://gemini.google.com/app",
 };
+
+/// `kervan.toml`'daki saglayici adi.
+const SAGLAYICI: &str = "gemini";
 
 /// Bir yanit icin ust sinir. Uzun istemlerde Gemini dakikalar surebiliyor.
 const YANIT_ZAMAN_ASIMI: std::time::Duration = std::time::Duration::from_secs(120);
@@ -108,6 +116,38 @@ async fn main() -> Result<()> {
         return server::serve(state, port).await;
     }
 
+    // --kur: birden cok hesabi sirayla kur.
+    if args.iter().any(|a| a == "--kur") {
+        let epostalar = match args.iter().position(|a| a == "--eposta") {
+            Some(i) => args
+                .get(i + 1)
+                .context("--eposta icin virgulle ayrilmis liste gerekli")?
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect(),
+            None => kurulum::epostalari_oku()?,
+        };
+        if epostalar.is_empty() {
+            anyhow::bail!("eposta listesi bos");
+        }
+        println!("\n{} hesap kurulacak. Sifreler Kervan'a GIRILMEZ; her hesabin", epostalar.len());
+        println!("giris ekrani sirayla acilir, sifreyi tarayiciya sen yazarsin.");
+
+        let sonuclar = kurulum::calistir(
+            &epostalar,
+            SAGLAYICI,
+            &GEMINI,
+            &profiles_root,
+            &browser,
+            &geckodriver,
+            &config::varsayilan_yol(),
+        )
+        .await?;
+        kurulum::ozet_bas(&sonuclar);
+        return Ok(());
+    }
+
     println!("hesap        : {hesap}");
 
     // --giris: bir kerelik elle giris. Gerekcesi browser::elle_giris uzerinde.
@@ -156,7 +196,15 @@ async fn main() -> Result<()> {
     let oturum = Session::open(&profiles_root, hesap, &browser, &geckodriver, headless).await?;
     println!("profil       : {}", oturum.profile_dir.display());
 
-    oturum.goto(GEMINI.url).await?;
+    // --url ile baska bir adres denenebilir (teshis icin; ornegin giris adreslerinin
+    // eposta on-doldurmayi destekleyip desteklemedigini olcmek).
+    let adres = args
+        .iter()
+        .position(|a| a == "--url")
+        .and_then(|i| args.get(i + 1))
+        .map(String::as_str)
+        .unwrap_or(GEMINI.url);
+    oturum.goto(adres).await?;
     println!("acilan sayfa : {}", oturum.client.current_url().await?);
 
     match detect_login(&oturum.client, &GEMINI.selectors).await? {

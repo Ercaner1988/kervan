@@ -112,9 +112,29 @@ Tek soru sorup çıkmak için:
 cargo run -- ercan-gemini-1 --headless --sor "Mimar Sinan kimdir?"
 ```
 
-### Hesap ekleme
+### Toplu hesap kurulumu
 
-Bir kerelik girişi `--giris` ile yap:
+Birden çok hesabı sırayla kurmak için:
+
+```
+cargo run -- --kur
+```
+
+E-postaları alt alta yazarsın, boş satır listeyi bitirir (ya da
+`--kur --eposta a@x.com,b@y.com`). Kervan her hesap için sırayla:
+
+1. Profil adını e-postadan türetir (`gemini-ad-alan-com`),
+2. Zaten girişliyse **atlar** — yarım kalan kurulum baştan çalıştırılabilir,
+3. Tarayıcıyı, o hesabın giriş ekranında **e-posta önceden doldurulmuş** olarak açar,
+4. Sen şifreyi girip pencereyi kapatınca girişi doğrular,
+5. Başarılı olanları `kervan.toml`'a ekler.
+
+Sana kalan tek iş şifre ve iki adımlı doğrulama. **Kervan şifre saklamaz, yazmaz,
+görmez** — bu bir eksiklik değil karar: giriş anı insan denetiminden geçer.
+
+Doğrulanamayan hesap yapılandırmaya **yazılmaz**; özet hangisinin neden düştüğünü söyler.
+
+### Tek hesap ekleme
 
 ```
 cargo run -- ercan-gemini-2 --giris

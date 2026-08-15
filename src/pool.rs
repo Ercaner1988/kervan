@@ -468,6 +468,7 @@ mod tests {
                     login_hint: "#l",
                     response: "#r",
                 },
+                giris_kalibi: "http://ornek/giris?e={eposta}",
             },
             PathBuf::from("."),
             BrowserBinary(PathBuf::from(".")),
