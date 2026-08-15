@@ -50,6 +50,10 @@ pub struct ChatRequest {
     #[serde(default)]
     pub model: String,
     pub messages: Vec<Message>,
+    /// Hermes ve cogu ajan istemcisi VARSAYILAN OLARAK akis ister. Bunu desteklemeyen
+    /// bir uc, istemci tarafinda "empty stream" olarak gorunur ve sessizce yedege duser.
+    #[serde(default)]
+    pub stream: bool,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -119,12 +123,22 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
     };
 
     let oturum = st.session.lock().await;
-    match ask(&oturum.client, &st.selectors, &istem, st.timeout).await {
+    let sonuc = ask(&oturum.client, &st.selectors, &istem, st.timeout).await;
+    let model_adi = if req.model.is_empty() { st.model_id.to_string() } else { req.model.clone() };
+
+    if req.stream {
+        return match sonuc {
+            Ok(metin) => sse_yanit(&metin, &model_adi),
+            Err(e) => hata(StatusCode::BAD_GATEWAY, &format!("{e:#}")),
+        };
+    }
+
+    match sonuc {
         Ok(metin) => Json(ChatResponse {
             id: format!("chatcmpl-kervan-{}", simdi()),
             object: "chat.completion",
             created: simdi(),
-            model: if req.model.is_empty() { st.model_id.to_string() } else { req.model },
+            model: model_adi,
             choices: vec![Choice {
                 index: 0,
                 message: Message { role: "assistant".into(), content: metin },
@@ -141,6 +155,37 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
 
 fn hata(kod: StatusCode, mesaj: &str) -> Response {
     (kod, Json(serde_json::json!({ "error": { "message": mesaj } }))).into_response()
+}
+
+/// OpenAI uyumlu SSE akisi.
+///
+/// ponytail: tarayici bize metni parca parca degil, tamamlandiginda veriyor
+/// (bitisi kararlilikla algiliyoruz), o yuzden tek parca + [DONE] gonderiyoruz.
+/// Protokol acisindan gecerli; istemci akis bekledigi icin bu sart.
+/// Yukseltme yolu: `ask` icindeki yoklama dongusu zaten metnin BUYUDUGUNU goruyor —
+/// oradan bir kanal acilirsa gercek artimli akis neredeyse bedava gelir. Ihtiyac
+/// olunca yap; su an tek parca yeterli ve yanlis degil.
+fn sse_yanit(metin: &str, model: &str) -> Response {
+    let id = format!("chatcmpl-kervan-{}", simdi());
+    let olustu = simdi();
+    let parca = serde_json::json!({
+        "id": id, "object": "chat.completion.chunk", "created": olustu, "model": model,
+        "choices": [{ "index": 0, "delta": { "role": "assistant", "content": metin } }]
+    });
+    let bitis = serde_json::json!({
+        "id": id, "object": "chat.completion.chunk", "created": olustu, "model": model,
+        "choices": [{ "index": 0, "delta": {}, "finish_reason": "stop" }]
+    });
+    let govde = format!("data: {parca}\n\ndata: {bitis}\n\ndata: [DONE]\n\n");
+    (
+        StatusCode::OK,
+        [
+            ("content-type", "text/event-stream"),
+            ("cache-control", "no-cache"),
+        ],
+        govde,
+    )
+        .into_response()
 }
 
 /// Yalnizca son `user` mesaji — gerekcesi dosya basindaki durum gerilimi notunda.
