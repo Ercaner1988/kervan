@@ -16,21 +16,17 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
+use crate::browser::ask;
+use crate::pool::Pool;
 
-use crate::browser::{ask, Selectors, Session};
-
-/// Tarayici tek sekmede tek konusma yurutur; istekler siraya girmeli.
-/// Mutex burada darbogaz degil, dogruluk sarti.
 pub struct AppState {
-    pub session: Mutex<Session>,
-    pub selectors: Selectors,
+    pub pool: Pool,
     pub model_id: &'static str,
     pub timeout: std::time::Duration,
 }
@@ -40,7 +36,39 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/models", get(models))
         .route("/v1/chat/completions", post(chat))
         .route("/health", get(|| async { "ok" }))
+        // Hesap durumu — TUI gelene kadarki gorunurluk penceresi. Insan kapisinda
+        // bekleyen hesap buradan gorulur.
+        .route("/accounts", get(accounts))
+        // Insan kapisi cozuldukten sonra hesabi geri al. Bu uc olmadan duraklatilan
+        // hesap surec omru boyunca olu kalirdi.
+        .route("/accounts/{i}/devam", post(devam))
         .with_state(state)
+}
+
+async fn accounts(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let mut liste = Vec::new();
+    for (i, slot) in st.pool.slots.iter().enumerate() {
+        let s = slot.state.lock().await;
+        liste.push(serde_json::json!({
+            "index": i,
+            "name": slot.account.name,
+            "provider": slot.account.provider,
+            "istek_sayisi": s.total,
+            "son_saatte": s.recent.len(),
+            "saatlik_tavan": st.pool.pacing.hourly_cap,
+            "ust_uste_hata": s.consecutive_errors,
+            "duraklatildi": s.paused_reason,
+        }));
+    }
+    Json(serde_json::json!({ "accounts": liste }))
+}
+
+async fn devam(State(st): State<Arc<AppState>>, Path(i): Path<usize>) -> Response {
+    if i >= st.pool.slots.len() {
+        return hata(StatusCode::NOT_FOUND, &format!("{i} numarali hesap yok"));
+    }
+    st.pool.devam_ettir(i).await;
+    Json(serde_json::json!({ "ok": true, "name": st.pool.slots[i].account.name })).into_response()
 }
 
 // ─── OpenAI bicimleri ────────────────────────────────────────────────────────
@@ -122,8 +150,24 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
         return hata(StatusCode::BAD_REQUEST, "messages icinde user rolu yok");
     };
 
-    let oturum = st.session.lock().await;
-    let sonuc = ask(&oturum.client, &st.selectors, &istem, st.timeout).await;
+    // Havuzdan hesap kirala: hiz butcesi burada uygulanir, gerekirse beklenir.
+    let lease = match st.pool.acquire().await {
+        Ok(l) => l,
+        Err(e) => return hata(StatusCode::SERVICE_UNAVAILABLE, &format!("{e:#}")),
+    };
+    println!("[{}] istek ({} karakter)", lease.name, istem.len());
+    let sonuc = ask(lease.client(), &st.pool.provider.selectors, &istem, st.timeout).await;
+    if let Err(e) = &sonuc {
+        println!("[{}] HATA: {e:#}", lease.name);
+    }
+
+    // Sonucu havuza bildir: basari sayaci sifirlar, hata ustel geri cekilme uygular
+    // ve dogrulama duvariysa hesabi insan kapisinda duraklatir.
+    match &sonuc {
+        Ok(_) => st.pool.basarili(lease.index).await,
+        Err(e) => st.pool.basarisiz(lease.index, &format!("{e:#}")).await,
+    }
+
     let model_adi = if req.model.is_empty() { st.model_id.to_string() } else { req.model.clone() };
 
     if req.stream {

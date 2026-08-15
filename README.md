@@ -21,15 +21,30 @@ Var olan çözümlerden farkı üç noktada:
 
 ## Durum
 
-Aşama 2 tamam: tek sağlayıcı (Gemini web), tek hesap, uçtan uca çalışıyor.
+Aşama 3 (havuz kısmı) çalışıyor: tek sağlayıcı (Gemini web), **çok hesap**, hız bütçesi,
+insan kapısı.
 
 | | |
 |---|---|
 | Tarayıcı | Firefox tabanlı (Zen ya da Firefox), geckodriver ile |
 | Uç | `POST /v1/chat/completions`, `GET /v1/models`, `GET /health` |
+| Havuz | `GET /accounts`, `POST /accounts/{i}/devam` |
 | Bağlanma | yalnız `127.0.0.1` |
 
-Sırada: çok hesap havuzu, kota öğrenici, TUI, ek sağlayıcılar.
+Sırada: kota öğrenici (SQLite), TUI, ek sağlayıcılar.
+
+### Havuz nasıl davranır
+
+- Oturumlar **tembel** açılır — 5 hesap tanımlamak 5 tarayıcı başlatmak değil.
+  Bir hesap ilk kez seçildiğinde açılır, sonra açık kalır.
+- Yönlendirme **en az kullanılanı** seçer, ama önce hız bütçesine bakar: boşta olsa
+  bile penceresi dolmuş hesap seçilmez.
+- Hız bütçesi istek **bittiğinde** başlar, başladığında değil. İnsan da cevabı okuyup
+  sonra yazar.
+- Hesap açılırken oturum durumu ölçülür. Giriş yapılmamışsa hesap duraklatılır,
+  istek başka hesaba düşer — havuzun kalanı bundan etkilenmez.
+- Üst üste 5 hata, sebebi ne olursa olsun insan kapısını açar. Ölü bir oturuma
+  sonsuza kadar istek atmak hesabı boşuna yıpratır.
 
 ## Gereksinimler
 
@@ -46,10 +61,11 @@ Sırada: çok hesap havuzu, kota öğrenici, TUI, ek sağlayıcılar.
 cargo run -- ercan-gemini-1
 ```
 
-Sonra ağ geçidi olarak koştur:
+Sonra ağ geçidi olarak koştur — hesaplar `kervan.toml`'dan gelir, komut satırındaki
+hesap adı sunucu kipinde kullanılmaz:
 
 ```
-cargo run -- ercan-gemini-1 --headless --serve
+cargo run -- --headless --serve
 ```
 
 Tek soru sorup çıkmak için:
@@ -58,6 +74,37 @@ Tek soru sorup çıkmak için:
 cargo run -- ercan-gemini-1 --headless --sor "Mimar Sinan kimdir?"
 ```
 
+### Hesap ekleme
+
+`kervan.toml`'a bir blok ekle, sonra o hesap için bir kez görünür kipte giriş yap:
+
+```
+cargo run -- ercan-gemini-2
+```
+
+Girişi yapılmamış bir hesap havuzu bozmaz: ilk seçilişinde duraklatılır, istek başka
+hesaba düşer. Girişi elle yaptıktan sonra:
+
+```
+curl -X POST http://127.0.0.1:20129/accounts/1/devam
+```
+
+### Yapılandırma (`kervan.toml`)
+
+```toml
+[[accounts]]
+name = "ercan-gemini-1"   # profil dizini adı; aynı ad = aynı oturum
+provider = "gemini"
+
+[pacing]
+min_delay_ms = 3000       # aynı hesaba iki istek arası en az süre (bitişten sayılır)
+jitter_ms = 2000          # üzerine rastgele sapma; sabit aralık en belirgin bot izidir
+hourly_cap = 30           # hesap başına saatlik tavan; 0 = sınırsız (önerilmez)
+```
+
+Dosya yoksa tek hesaplı muhafazakâr bir varsayılanla çalışır. `pacing` bloğu eksikse
+"sınırsız" değil, güvenli varsayılan uygulanır.
+
 ### Ortam değişkenleri
 
 | Değişken | Varsayılan |
@@ -65,12 +112,21 @@ cargo run -- ercan-gemini-1 --headless --sor "Mimar Sinan kimdir?"
 | `KERVAN_BROWSER` | Zen → Firefox sırasıyla aranır |
 | `KERVAN_GECKODRIVER` | `%LOCALAPPDATA%\kervan\bin\geckodriver.exe`, sonra PATH |
 | `KERVAN_PROFILES` | `%LOCALAPPDATA%\kervan\profiles` |
+| `KERVAN_CONFIG` | `kervan.toml` (çalışma dizininde) |
 
 ## Bilinen sınırlama
 
 OpenAI API durumsuz, tarayıcı sohbeti durumlu. v1 yalnızca **son kullanıcı mesajını**
-gönderir; süreklilik tarayıcının kendi konuşma dizisinden gelir. Farklı konuşmalar aynı
-diziye karışır — çok hesap havuzu geldiğinde her istemci oturumuna ayrı sekme verilecek.
+gönderir; süreklilik tarayıcının kendi konuşma dizisinden gelir. İki sonucu var:
+
+- Farklı konuşmalar aynı tarayıcı dizisine karışır (istemci oturumu başına ayrı sekme
+  henüz yok).
+- Havuz isteği başka bir hesaba yönlendirdiğinde o hesabın konuşma geçmişi farklıdır.
+  Yani çok hesap, tek bir uzun konuşmanın sürekliliğini garanti etmez — çok sayıda
+  bağımsız istek için doğru, tek bir derin sohbet için değil.
+
+`usage` alanı bilerek sıfır döner: tarayıcı arayüzü token saymıyor, uydurma sayı kota
+hesabını bozar.
 
 ## Güvenlik
 

@@ -7,23 +7,26 @@
 //! Kullanim:  kervan <hesap-adi> [--headless]
 
 mod browser;
+mod config;
+mod pool;
 mod server;
 
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use browser::{detect_login, BrowserBinary, LoginState, Selectors, Session};
+use browser::{detect_login, BrowserBinary, LoginState, Provider, Selectors, Session};
 
-const GEMINI_URL: &str = "https://gemini.google.com/app";
-
-/// gemini.google.com secicileri. Asama 3'te yapilandirmaya tasinacak.
-const GEMINI: Selectors = Selectors {
-    // `rich-textarea` sarmalayici oge; WebDriver ona yazamaz ("not interactable").
-    // Yazilabilir olan icindeki contenteditable div — dogrudan onu hedefle.
-    prompt_input: "div[contenteditable='true']",
-    login_hint: "a[href*='accounts.google.com'], a[href*='ServiceLogin']",
-    response: "model-response, message-content",
+/// gemini.google.com. Asama 3'te yapilandirmaya tasinacak.
+const GEMINI: Provider = Provider {
+    url: "https://gemini.google.com/app",
+    selectors: Selectors {
+        // `rich-textarea` sarmalayici oge; WebDriver ona yazamaz ("not interactable").
+        // Yazilabilir olan icindeki contenteditable div — dogrudan onu hedefle.
+        prompt_input: "div[contenteditable='true']",
+        login_hint: "a[href*='accounts.google.com'], a[href*='ServiceLogin']",
+        response: "model-response, message-content",
+    },
 };
 
 /// Bir yanit icin ust sinir. Uzun istemlerde Gemini dakikalar surebiliyor.
@@ -48,18 +51,57 @@ async fn main() -> Result<()> {
     let browser = BrowserBinary::discover()?;
     let geckodriver = geckodriver_yolu()?;
 
-    println!("hesap        : {hesap}");
     println!("tarayici     : {}", browser.0.display());
     println!("surucu       : {}", geckodriver.display());
     println!("kip          : {}", if headless { "headless" } else { "gorunur" });
 
+    // Sunucu kipinde tekil oturum HIC acilmaz: hesaplar havuzdan tembel acilir.
+    // Once acip hemen kapatmak bir tarayici baslatma bedelini bosuna oderdi.
+    if args.iter().any(|a| a == "--serve") {
+        let port: u16 = args
+            .iter()
+            .position(|a| a == "--port")
+            .and_then(|i| args.get(i + 1))
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(20129);
+
+        let yol = config::varsayilan_yol();
+        let cfg = config::Config::load(&yol)?;
+        println!("yapilandirma : {}", yol.display());
+        println!("hesap havuzu ({} hesap):", cfg.accounts.len());
+        for a in &cfg.accounts {
+            println!("  - {} ({})", a.name, a.provider);
+        }
+        println!(
+            "hiz butcesi  : {} ms + 0-{} ms sapma, saatlik tavan {}",
+            cfg.pacing.min_delay_ms, cfg.pacing.jitter_ms, cfg.pacing.hourly_cap
+        );
+
+        let havuz = pool::Pool::new(
+            cfg.accounts,
+            cfg.pacing,
+            GEMINI,
+            profiles_root,
+            browser,
+            geckodriver,
+            headless,
+        );
+        let state = Arc::new(server::AppState {
+            pool: havuz,
+            model_id: MODEL_ID,
+            timeout: YANIT_ZAMAN_ASIMI,
+        });
+        return server::serve(state, port).await;
+    }
+
+    println!("hesap        : {hesap}");
     let oturum = Session::open(&profiles_root, hesap, &browser, &geckodriver, headless).await?;
     println!("profil       : {}", oturum.profile_dir.display());
 
-    oturum.goto(GEMINI_URL).await?;
+    oturum.goto(GEMINI.url).await?;
     println!("acilan sayfa : {}", oturum.client.current_url().await?);
 
-    match detect_login(&oturum.client, &GEMINI).await? {
+    match detect_login(&oturum.client, &GEMINI.selectors).await? {
         LoginState::Ready => println!("durum        : GIRISLI — istem kutusu bulundu"),
         LoginState::NeedsLogin => println!(
             "durum        : GIRIS GEREKLI — pencerede elle giris yap. Profil kalici, \
@@ -76,7 +118,7 @@ async fn main() -> Result<()> {
         let istem = args.get(i + 1).context("--sor icin istem metni gerekli")?;
         println!("\nistem        : {istem}");
         let t = std::time::Instant::now();
-        match browser::ask(&oturum.client, &GEMINI, istem, YANIT_ZAMAN_ASIMI).await {
+        match browser::ask(&oturum.client, &GEMINI.selectors, istem, YANIT_ZAMAN_ASIMI).await {
             Ok(yanit) => {
                 println!("sure         : {:.1} sn", t.elapsed().as_secs_f32());
                 println!("--- yanit ---\n{yanit}");
@@ -85,23 +127,6 @@ async fn main() -> Result<()> {
             // gemini-web'de yaptigi ve bize saatler kaybettiren seydi.
             Err(e) => println!("HATA         : {e:#}"),
         }
-    }
-
-    // --serve verildiyse ag gecidi olarak kal; oturum surekli acik tutulur.
-    if args.iter().any(|a| a == "--serve") {
-        let port: u16 = args
-            .iter()
-            .position(|a| a == "--port")
-            .and_then(|i| args.get(i + 1))
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(20129);
-        let state = Arc::new(server::AppState {
-            session: tokio::sync::Mutex::new(oturum),
-            selectors: GEMINI,
-            model_id: MODEL_ID,
-            timeout: YANIT_ZAMAN_ASIMI,
-        });
-        return server::serve(state, port).await;
     }
 
     if !headless {

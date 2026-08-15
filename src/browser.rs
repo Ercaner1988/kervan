@@ -173,6 +173,14 @@ pub struct Selectors {
     pub response: &'static str,
 }
 
+/// Bir web saglayicisi: adresi ve secicileri hep birlikte gezer, birlikte tasinirlar.
+/// Asama 4'te her yeni saglayici bunun bir ornegi olacak.
+#[derive(Debug, Clone)]
+pub struct Provider {
+    pub url: &'static str,
+    pub selectors: Selectors,
+}
+
 /// WebDriver Enter tusu (U+E007).
 const ENTER: &str = "\u{E007}";
 

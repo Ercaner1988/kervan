@@ -1,0 +1,379 @@
+//! Hesap havuzu ve yonlendirici.
+//!
+//! TASARIM: her hesap kendi tarayici oturumuna sahip ve oturumlar **tembel** acilir —
+//! N hesap tanimlamak N tarayici baslatmak demek degil. Bir hesap ilk kez secildiginde
+//! acilir, sonra acik kalir.
+//!
+//! Yonlendirme, kotayi degil **kota + hiz butcesini birlikte** gozetir: bir hesap
+//! bosta olsa bile hiz penceresi dolmussa secilmez. Plandaki "7/24 calis ama insan gibi
+//! gorun" gerilimi tek hesabi hizlandirarak degil, havuzu genisletip her hesabi hafif
+//! kullanarak cozulur — burasi o cozumun yeri.
+
+use std::path::PathBuf;
+use std::time::{Duration, Instant};
+
+use anyhow::{bail, Result};
+use tokio::sync::Mutex;
+
+use crate::browser::{detect_login, BrowserBinary, LoginState, Provider, Session};
+use crate::config::{Account, Pacing};
+
+/// Bir hesabin calisma durumu. Oturumdan ayri tutuluyor ki durum sorgulamak icin
+/// tarayici kilidini beklemek gerekmesin.
+#[derive(Debug, Default)]
+pub struct AccountState {
+    /// Bu ana kadar yapilan istek sayisi (surec omru boyunca).
+    pub total: u32,
+    /// Son bir saatteki istek zamanlari — saatlik tavan icin.
+    pub recent: Vec<Instant>,
+    /// En erken ne zaman tekrar kullanilabilir (hiz butcesi + geri cekilme).
+    pub not_before: Option<Instant>,
+    /// Insan kapisi: dogrulama duvarina carpildi, insan cozene kadar kullanilmaz.
+    pub paused_reason: Option<String>,
+    /// Ust uste hata sayisi — ustel geri cekilme icin.
+    pub consecutive_errors: u32,
+}
+
+impl AccountState {
+    /// Saatlik pencereden dusenleri at.
+    fn buda(&mut self, simdi: Instant) {
+        self.recent.retain(|t| simdi.duration_since(*t) < Duration::from_secs(3600));
+    }
+
+    fn hazir_mi(&mut self, simdi: Instant, pacing: &Pacing) -> bool {
+        if self.paused_reason.is_some() {
+            return false;
+        }
+        if let Some(nb) = self.not_before
+            && simdi < nb
+        {
+            return false;
+        }
+        self.buda(simdi);
+        if pacing.hourly_cap > 0 && self.recent.len() as u32 >= pacing.hourly_cap {
+            return false;
+        }
+        true
+    }
+}
+
+pub struct Slot {
+    pub account: Account,
+    /// Tembel acilir; None = tarayici henuz baslatilmadi.
+    session: Mutex<Option<Session>>,
+    pub state: Mutex<AccountState>,
+}
+
+pub struct Pool {
+    pub slots: Vec<Slot>,
+    pub pacing: Pacing,
+    /// ponytail: tek saglayici. Hesap basina saglayici gerekince `Slot`'a tasinir.
+    pub provider: Provider,
+    profiles_root: PathBuf,
+    browser: BrowserBinary,
+    geckodriver: PathBuf,
+    headless: bool,
+}
+
+/// Secilen hesabin oturumunu tutan kilit. Dusunce hesap serbest kalir.
+pub struct Lease<'a> {
+    pub index: usize,
+    pub name: String,
+    guard: tokio::sync::MutexGuard<'a, Option<Session>>,
+}
+
+impl Lease<'_> {
+    pub fn client(&self) -> &fantoccini::Client {
+        // Kiralama ancak oturum acildiktan sonra verilir; burada None olamaz.
+        &self.guard.as_ref().expect("oturum acik olmali").client
+    }
+}
+
+impl Pool {
+    pub fn new(
+        accounts: Vec<Account>,
+        pacing: Pacing,
+        provider: Provider,
+        profiles_root: PathBuf,
+        browser: BrowserBinary,
+        geckodriver: PathBuf,
+        headless: bool,
+    ) -> Self {
+        let slots = accounts
+            .into_iter()
+            .map(|a| Slot {
+                account: a,
+                session: Mutex::new(None),
+                state: Mutex::new(AccountState::default()),
+            })
+            .collect();
+        Self { slots, pacing, provider, profiles_root, browser, geckodriver, headless }
+    }
+
+    /// Kullanilabilir hesaplardan **en az kullanilani** sec, oturumunu (gerekirse acarak)
+    /// kilitle ve hiz gecikmesini uygula.
+    ///
+    /// Hicbiri hazir degilse en erken hazir olacagi bekler. Sessizce hata dondurmek
+    /// yerine beklemek dogru: hiz butcesi bir arıza degil, tasarim geregi.
+    pub async fn acquire(&self) -> Result<Lease<'_>> {
+        loop {
+            let simdi = Instant::now();
+            let mut aday: Option<(usize, u32)> = None;
+            let mut en_erken: Option<Instant> = None;
+
+            for (i, slot) in self.slots.iter().enumerate() {
+                let mut st = slot.state.lock().await;
+                if st.hazir_mi(simdi, &self.pacing) {
+                    // en az kullanilan kazanir
+                    if aday.is_none_or(|(_, t)| st.total < t) {
+                        aday = Some((i, st.total));
+                    }
+                } else if st.paused_reason.is_none()
+                    && let Some(nb) = st.not_before
+                    && en_erken.is_none_or(|e| nb < e)
+                {
+                    en_erken = Some(nb);
+                }
+            }
+
+            if let Some((i, _)) = aday {
+                match self.kilitle(i).await {
+                    Ok(l) => return Ok(l),
+                    // Hesap acilamadi (tarayici baslamadi, oturum dusmus...). Durumu
+                    // `basarisiz` isliyor: geri cekilme uygular, dogrulama duvariysa
+                    // insan kapisinda duraklatir. Boylece dongu ya baska hesaba gecer
+                    // ya da hepsi elenince asagida acik hatayla biter — sonsuz donmez.
+                    Err(e) => {
+                        let mesaj = format!("{e:#}");
+                        eprintln!("[{}] hesap acilamadi: {mesaj}", self.slots[i].account.name);
+                        self.basarisiz(i, &mesaj).await;
+                        continue;
+                    }
+                }
+            }
+
+            let Some(nb) = en_erken else {
+                bail!(
+                    "kullanilabilir hesap yok: hepsi duraklatilmis ya da saatlik tavani dolmus. \
+                     Insan kapisinda bekleyen var mi diye bak."
+                );
+            };
+            tokio::time::sleep(nb.saturating_duration_since(Instant::now()) + Duration::from_millis(50)).await;
+        }
+    }
+
+    async fn kilitle(&self, i: usize) -> Result<Lease<'_>> {
+        let slot = &self.slots[i];
+        let mut guard = slot.session.lock().await;
+        if guard.is_none() {
+            let s = Session::open(
+                &self.profiles_root,
+                &slot.account.name,
+                &self.browser,
+                &self.geckodriver,
+                self.headless,
+            )
+            .await?;
+            // Tarayici bos sayfayla acilir; saglayiciya gitmeden istem kutusu yoktur.
+            s.goto(self.provider.url).await?;
+            let durum = detect_login(&s.client, &self.provider.selectors).await?;
+            // Pencereyi KAPATMIYORUZ: gorunur kipte insan tam bu pencerede giris yapar,
+            // sonra `POST /accounts/{i}/devam` ile hesap kaldigi yerden devam eder.
+            *guard = Some(s);
+            // Burada TAHMIN yok, olcum var: giris durumunu dogrudan gorduk. O yuzden
+            // metin sezgisine birakmadan hesabi kendimiz duraklatiyoruz.
+            let neden = match durum {
+                LoginState::Ready => None,
+                LoginState::NeedsLogin => {
+                    Some("oturum kapali: acilan pencerede elle giris gerekiyor".to_string())
+                }
+                LoginState::Unknown => Some(
+                    "ne istem kutusu ne giris baglantisi bulundu — dogrulama duvari ya da \
+                     kirilmis secici. Pencereye bak."
+                        .to_string(),
+                ),
+            };
+            if let Some(neden) = neden {
+                slot.state.lock().await.paused_reason = Some(neden.clone());
+                bail!("'{}': {neden} Cozunce: POST /accounts/{i}/devam", slot.account.name);
+            }
+        }
+        {
+            let mut st = slot.state.lock().await;
+            let simdi = Instant::now();
+            st.total += 1;
+            st.recent.push(simdi);
+            // Taban: istek hic raporlanmadan dusse bile hesap paceless kalmasin.
+            // Asil bekleme `basarili`/`basarisiz` icinde, istek BITTIGINDE kurulur.
+            st.not_before = Some(simdi + self.gecikme());
+        }
+        Ok(Lease { index: i, name: slot.account.name.clone(), guard })
+    }
+
+    fn gecikme(&self) -> Duration {
+        let j = if self.pacing.jitter_ms == 0 {
+            0
+        } else {
+            rand::random_range(0..self.pacing.jitter_ms)
+        };
+        Duration::from_millis(self.pacing.min_delay_ms + j)
+    }
+
+    /// Basarili istek: hata sayaci sifirlanir ve **bitisten itibaren** hiz butcesi kurulur.
+    ///
+    /// Bekleme neden bitiste? Istek BASINDA kurulunca 14 saniyelik bir yanit 3 saniyelik
+    /// butceyi zaten yiyor, sonraki istek sifir arayla gidiyordu — olculdu. Insan da
+    /// cevabi okuyup sonra yaziyor; aradaki bosluk bitiste baslar.
+    pub async fn basarili(&self, i: usize) {
+        let bekle = self.gecikme();
+        let mut st = self.slots[i].state.lock().await;
+        st.consecutive_errors = 0;
+        st.not_before = Some(Instant::now() + bekle);
+    }
+
+    /// Basarisiz istek: ustel geri cekilme. Dogrulama duvari suphesi varsa hesabi
+    /// duraklatir — insan kapisi. Sessizce yeniden denemek hesabi yakar.
+    pub async fn basarisiz(&self, i: usize, hata: &str) {
+        let mut st = self.slots[i].state.lock().await;
+        st.consecutive_errors += 1;
+        let ust = 6u32.min(st.consecutive_errors);
+        let bekle = Duration::from_secs(2u64.pow(ust)); // 2,4,8,...,64 sn
+        st.not_before = Some(Instant::now() + bekle);
+
+        // Insan kapisi iki yoldan acilir:
+        // (a) hata metni acik bir dogrulama duvari,
+        // (b) sebep ne olursa olsun ust uste N basarisizlik. 7/24 kosuda bu ikincisi
+        //     sart: olu bir oturuma 64 saniyede bir sonsuza kadar istek atmak hesabi
+        //     bosuna yipratir, kimse de fark etmez.
+        if insan_kapisi_gerekir(hata) || st.consecutive_errors >= UST_USTE_SINIR {
+            st.paused_reason = Some(hata.chars().take(200).collect());
+        }
+    }
+
+    /// Insan kapisini ac: hesabi tekrar kullanima sok.
+    pub async fn devam_ettir(&self, i: usize) {
+        let mut st = self.slots[i].state.lock().await;
+        st.paused_reason = None;
+        st.consecutive_errors = 0;
+        st.not_before = None;
+    }
+}
+
+/// Kac ust uste hatadan sonra insan cagrilir.
+const UST_USTE_SINIR: u32 = 5;
+
+/// Dogrulama duvari mi, gecici ariza mi? Duvarsa insan cozmeli; otomatik yeniden deneme
+/// hem ise yaramaz hem hesabi riske atar.
+///
+/// Liste bilerek DAR: yalniz sitenin kendi soyledigi kesin ifadeler. "dogrulama" gibi
+/// genis bir sozcuk, bizim kendi *tahmin* iceren hata metinlerimize de uyuyordu
+/// ("dogrulama duvari cikmis olabilir") — bir yavas yanit saglam bir hesabi
+/// duraklatirdi. Belirsiz haller `UST_USTE_SINIR` ile zaten yakalaniyor.
+pub fn insan_kapisi_gerekir(hata: &str) -> bool {
+    let h = hata.to_lowercase();
+    ["captcha", "unusual traffic", "sign in", "are you a robot", "verify it's you"]
+        .iter()
+        .any(|k| h.contains(k))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn pacing(cap: u32) -> Pacing {
+        Pacing { min_delay_ms: 0, jitter_ms: 0, hourly_cap: cap }
+    }
+
+    #[test]
+    fn saatlik_tavan_dolunca_hesap_secilmez() {
+        let mut st = AccountState::default();
+        let p = pacing(2);
+        let simdi = Instant::now();
+        assert!(st.hazir_mi(simdi, &p));
+        st.recent.push(simdi);
+        st.recent.push(simdi);
+        assert!(!st.hazir_mi(simdi, &p), "tavan dolmusken hazir gorunmemeli");
+    }
+
+    #[test]
+    fn duraklatilmis_hesap_secilmez() {
+        let mut st = AccountState { paused_reason: Some("captcha".into()), ..Default::default() };
+        assert!(!st.hazir_mi(Instant::now(), &pacing(0)));
+    }
+
+    /// Hiz penceresi dolmadan ayni hesap tekrar secilmemeli.
+    #[test]
+    fn hiz_penceresi_beklenir() {
+        let mut st = AccountState {
+            not_before: Some(Instant::now() + Duration::from_secs(30)),
+            ..Default::default()
+        };
+        assert!(!st.hazir_mi(Instant::now(), &pacing(0)));
+    }
+
+    /// Dogrulama duvari ile gecici ag hatasi ayrilmali; ilkinde insan cagrilir,
+    /// ikincisinde otomatik yeniden denenir.
+    #[test]
+    fn insan_kapisi_yalniz_dogrulama_icin() {
+        assert!(insan_kapisi_gerekir("Please complete the CAPTCHA"));
+        assert!(insan_kapisi_gerekir("Sign in to continue"));
+        assert!(!insan_kapisi_gerekir("connection reset by peer"));
+        assert!(!insan_kapisi_gerekir("yanit 120 sn icinde tamamlanmadi"));
+    }
+
+    fn havuz(pacing: Pacing) -> Pool {
+        // Tarayici baslatilmiyor: bu testler yalniz durum mantigina dokunuyor.
+        Pool::new(
+            vec![Account { name: "a".into(), provider: "gemini".into() }],
+            pacing,
+            Provider {
+                url: "http://ornek",
+                selectors: crate::browser::Selectors {
+                    prompt_input: "#p",
+                    login_hint: "#l",
+                    response: "#r",
+                },
+            },
+            PathBuf::from("."),
+            BrowserBinary(PathBuf::from(".")),
+            PathBuf::from("."),
+            true,
+        )
+    }
+
+    /// Hiz butcesi istek BITTIGINDE kurulmali. Bastan kurulunca uzun suren bir yanit
+    /// butceyi yiyip sonraki istegi sifir arayla gecirtiyordu — canli olcumde gorulmustu.
+    #[tokio::test]
+    async fn hiz_butcesi_bitisten_itibaren_sayilir() {
+        let p = havuz(Pacing { min_delay_ms: 3000, jitter_ms: 0, hourly_cap: 0 });
+        p.basarili(0).await;
+        let mut st = p.slots[0].state.lock().await;
+        assert!(!st.hazir_mi(Instant::now(), &p.pacing), "bitisten hemen sonra hazir olmamali");
+        let nb = st.not_before.expect("bitiste not_before kurulmali");
+        assert!(nb.duration_since(Instant::now()) > Duration::from_millis(2500));
+    }
+
+    /// Sebebi ne olursa olsun ust uste N hata insan kapisini acmali; olu bir oturuma
+    /// sonsuza kadar 64 saniyede bir istek atmak hesabi bosuna yipratir.
+    #[tokio::test]
+    async fn ust_uste_hata_insan_kapisini_acar() {
+        let p = havuz(Pacing { min_delay_ms: 0, jitter_ms: 0, hourly_cap: 0 });
+        for _ in 0..UST_USTE_SINIR - 1 {
+            p.basarisiz(0, "connection reset by peer").await;
+        }
+        assert!(p.slots[0].state.lock().await.paused_reason.is_none(), "sinira gelmeden duraklamamali");
+        p.basarisiz(0, "connection reset by peer").await;
+        assert!(p.slots[0].state.lock().await.paused_reason.is_some(), "sinirda insan cagrilmali");
+    }
+
+    /// Kendi TAHMIN iceren hata metnimiz hesabi duraklatmamali; yoksa tek bir yavas
+    /// yanit saglam bir hesabi insan kapisinda kilitler.
+    #[test]
+    fn kendi_tahminimiz_hesabi_duraklatmaz() {
+        let m = "yanit gelmedi (120 sn). Dogrulama duvari cikmis olabilir — \
+                 gorunur kipte calistirip bak.";
+        assert!(!insan_kapisi_gerekir(m));
+        let m2 = "istem kutusu bulunamadi — oturum dusmus ya da secici kirilmis olabilir";
+        assert!(!insan_kapisi_gerekir(m2));
+    }
+}
