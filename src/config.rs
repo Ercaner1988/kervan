@@ -16,6 +16,20 @@ pub struct Config {
     pub pacing: Pacing,
     #[serde(default)]
     pub kota: Kota,
+    /// Saglayici basina secici/adres ezmeleri. Site arayuzu degisince kod degil
+    /// bu bolum degisir.
+    #[serde(default)]
+    pub providers: std::collections::HashMap<String, SaglayiciAyar>,
+}
+
+/// Yerlesik saglayici tanimini kismen ezer; verilmeyen alan varsayilanda kalir.
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct SaglayiciAyar {
+    pub url: Option<String>,
+    pub giris_kalibi: Option<String>,
+    pub prompt_input: Option<String>,
+    pub login_hint: Option<String>,
+    pub response: Option<String>,
 }
 
 /// Kota ogrenicinin ayarlari.
@@ -103,6 +117,7 @@ impl Config {
             accounts: vec![Account { name: "ercan-gemini-1".into(), provider: varsayilan_saglayici() }],
             pacing: Pacing::default(),
             kota: Kota::default(),
+            providers: Default::default(),
         }
     }
 }

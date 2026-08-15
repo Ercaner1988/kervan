@@ -307,26 +307,25 @@ pub enum LoginState {
 /// v1'de varsayilanlar main.rs'te; yapilandirma okuma Asama 3'te.
 #[derive(Debug, Clone)]
 pub struct Selectors {
-    /// Istem yazilan alan. Varsa oturum aciktir.
-    pub prompt_input: &'static str,
+    /// Istem yazilan alan.
+    pub prompt_input: String,
     /// Giris baglantisi/dugmesi. Varsa oturum kapalidir.
-    pub login_hint: &'static str,
+    pub login_hint: String,
     /// Modelin yanit balonlari. Sonuncusu okunur.
-    pub response: &'static str,
+    pub response: String,
 }
 
 /// Bir web saglayicisi: adresi ve secicileri hep birlikte gezer, birlikte tasinirlar.
 /// Asama 4'te her yeni saglayici bunun bir ornegi olacak.
 #[derive(Debug, Clone)]
 pub struct Provider {
-    pub url: &'static str,
+    /// `kervan.toml`'daki ad; model kimliginde de bu gecer (`kervan/claude`).
+    pub ad: String,
+    pub url: String,
     pub selectors: Selectors,
     /// Eposta ON-DOLDURULMUS giris adresi; `{eposta}` yerine hesap konur.
-    ///
-    /// Olculdu: Google'in AccountChooser adresi kimlik sayfasina eposta alani dolu
-    /// olarak dusuyor. Toplu kurulumda kullaniciya kalan tek is sifre — N hesapta
-    /// N kere eposta yazmak degil.
-    pub giris_kalibi: &'static str,
+    /// Saglayici on-doldurmayi desteklemiyorsa duz giris adresi yazilir.
+    pub giris_kalibi: String,
 }
 
 impl Provider {
@@ -371,7 +370,7 @@ pub async fn ask(
     let taban = son_balon(c, sel).await.0;
 
     let kutu = c
-        .find(Locator::Css(sel.prompt_input))
+        .find(Locator::Css(&sel.prompt_input))
         .await
         .context("istem kutusu bulunamadi — oturum dusmus ya da secici kirilmis olabilir")?;
     kutu.click().await.context("istem kutusuna tiklanamadi")?;
@@ -453,7 +452,7 @@ impl BitisDedektoru {
 
 /// (balon sayisi, son balonun metni). Sayfa okunamazsa (0, "") — gozlem atlanir.
 async fn son_balon(c: &Client, sel: &Selectors) -> (usize, String) {
-    let Ok(hepsi) = c.find_all(Locator::Css(sel.response)).await else {
+    let Ok(hepsi) = c.find_all(Locator::Css(&sel.response)).await else {
         return (0, String::new());
     };
     let metin = match hepsi.last() {
@@ -478,10 +477,50 @@ pub async fn dom_ozeti(c: &Client, sel: &Selectors) -> Result<String> {
         }
     }
 
+    // Yeni bir saglayicinin secicilerini TAHMIN etmek yerine olcmenin yolu: sik
+    // kullanilan kaliplari sayip son ornegin metnini gostermek. Yapilandirmaya hangi
+    // seciciyi yazacagimiz buradan belli olur.
+    s.push_str("secici adaylari:\n");
+    for aday in [
+        "div[contenteditable='true']",
+        "textarea",
+        "[data-testid]",
+        "article",
+        ".prose",
+        "main p",
+    ] {
+        let ogeler = c.find_all(Locator::Css(aday)).await.unwrap_or_default();
+        if ogeler.is_empty() {
+            continue;
+        }
+        let son = match ogeler.last() {
+            Some(e) => e.text().await.unwrap_or_default(),
+            None => String::new(),
+        };
+        let kirp: String = son.chars().take(50).collect();
+        s.push_str(&format!("  {aday:<30} {} adet   son: {kirp:?}\n", ogeler.len()));
+    }
+
+    // data-testid DEGERLERI: claude ve perplexity gibi siteler yapiyi bunlarla
+    // isaretliyor ve sinif adlarindan cok daha kararlilar. Dogru seciciyi bulmanin
+    // en kisa yolu bu listeye bakmak.
+    let mut kimlikler: Vec<String> = Vec::new();
+    for e in c.find_all(Locator::Css("[data-testid]")).await.unwrap_or_default() {
+        if let Ok(Some(v)) = e.attr("data-testid").await
+            && !kimlikler.contains(&v)
+        {
+            kimlikler.push(v);
+        }
+    }
+    if !kimlikler.is_empty() {
+        kimlikler.sort();
+        s.push_str(&format!("data-testid    : {}\n", kimlikler.join(", ")));
+    }
+
     for (ad, secici) in [
-        ("prompt_input", sel.prompt_input),
-        ("login_hint", sel.login_hint),
-        ("response", sel.response),
+        ("prompt_input", sel.prompt_input.as_str()),
+        ("login_hint", sel.login_hint.as_str()),
+        ("response", sel.response.as_str()),
     ] {
         s.push_str(&format!("{ad:14}: {secici}\n"));
         // Virgullu seciciyi parcalarina ayirip her birini ayri sayiyoruz: birlesik
@@ -507,10 +546,10 @@ pub async fn dom_ozeti(c: &Client, sel: &Selectors) -> Result<String> {
 /// dedirtiyordu — yani havuzun insan kapisi hic acilmazdi. Ayirt eden isaret
 /// giris baglantisi; o varsa oturum kapalidir, istem kutusu ne derse desin.
 pub async fn detect_login(c: &Client, sel: &Selectors) -> Result<LoginState> {
-    if c.find(Locator::Css(sel.login_hint)).await.is_ok() {
+    if c.find(Locator::Css(&sel.login_hint)).await.is_ok() {
         return Ok(LoginState::NeedsLogin);
     }
-    if c.find(Locator::Css(sel.prompt_input)).await.is_ok() {
+    if c.find(Locator::Css(&sel.prompt_input)).await.is_ok() {
         return Ok(LoginState::Ready);
     }
     Ok(LoginState::Unknown)
@@ -536,9 +575,14 @@ mod tests {
     #[test]
     fn arti_isareti_kodlanir() {
         let p = Provider {
-            url: "x",
-            selectors: Selectors { prompt_input: "a", login_hint: "b", response: "c" },
-            giris_kalibi: "https://o/?Email={eposta}",
+            ad: "deneme".into(),
+            url: "x".into(),
+            selectors: Selectors {
+                prompt_input: "a".into(),
+                login_hint: "b".into(),
+                response: "c".into(),
+            },
+            giris_kalibi: "https://o/?Email={eposta}".into(),
         };
         assert_eq!(p.giris_url("ad+etiket@gmail.com"), "https://o/?Email=ad%2Betiket@gmail.com");
     }

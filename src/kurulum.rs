@@ -144,7 +144,7 @@ async fn girisli_mi(
     saglayici: &Provider,
 ) -> Result<bool> {
     let oturum = Session::open(profiles_root, profil, browser, geckodriver, true).await?;
-    oturum.goto(saglayici.url).await?;
+    oturum.goto(&saglayici.url).await?;
     let durum = detect_login(&oturum.client, &saglayici.selectors).await?;
     oturum.close().await.ok();
     Ok(durum == LoginState::Ready)

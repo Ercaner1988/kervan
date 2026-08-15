@@ -33,6 +33,49 @@ insan kapısı.
 
 Sırada: TUI, ek sağlayıcılar.
 
+## Sağlayıcılar
+
+`gemini`, `claude`, `perplexity`. Her hesap `kervan.toml`'da bir sağlayıcıya bağlıdır;
+havuzda hepsi yan yana durabilir. Model kimliği `kervan/<sağlayıcı>`:
+
+```
+curl http://127.0.0.1:20129/v1/models
+```
+
+Yalnızca **hesabı olan** sağlayıcılar listelenir — çalışmayan bir modeli katalogda
+tutmak istemciye var olmayan bir yol göstermek olurdu. İstenen model tanınmazsa istek
+sessizce başka bir modele düşmez, 400 alır.
+
+Model kimliği sürüm eki taşıyabilir: `kervan/gemini-3.1-pro` de `gemini`'ye gider,
+böylece var olan Hermes yapılandırması kırılmaz.
+
+### Seçicilerin durumu — dürüst tablo
+
+| Sağlayıcı | Durum |
+|---|---|
+| `gemini` | Ölçüldü, uçtan uca çalışıyor |
+| `claude` | **Doğrulanmadı** — giriş işareti ve yanıt seçicisi ölçülmedi |
+| `perplexity` | **Kısmen** — istem kutusu ölçüldü, giriş işareti ve yanıt seçicisi ölçülmedi |
+
+Seçiciler koda gömülü değil. Bir sağlayıcıda hesap açtıktan sonra ölç:
+
+```
+cargo run -- <hesap> --saglayici claude --headless --dom
+```
+
+Çıktı, sayfadaki aday seçicileri ve `data-testid` değerlerini sayar. Doğru olanı
+`kervan.toml`'a yaz, yeniden derleme gerekmez:
+
+```toml
+[providers.claude]
+response = "[data-testid='assistant-turn']"
+login_hint = "a[href*='/login']"
+```
+
+Bilinen tuzak: `login_hint` yanlışsa `detect_login` istem kutusuna bakıp giriş
+yapılmamış hesaba "girişli" der. Gemini'de bu ölçülüp düzeltildi; diğer ikisinde
+`login_hint`'i doğrulamadan güvenme.
+
 ## Kota öğrenici
 
 Web sağlayıcıları kalan kotayı söylemiyor. "Tam kullanım hakkım ne?" sorusu ancak

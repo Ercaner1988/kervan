@@ -11,9 +11,10 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use tokio::sync::Mutex;
 
 use crate::browser::{detect_login, BrowserBinary, LoginState, Provider, Session};
@@ -72,6 +73,9 @@ impl AccountState {
 
 pub struct Slot {
     pub account: Account,
+    /// Hesabin bagli oldugu saglayici. Havuz artik tek saglayiciya bagli degil:
+    /// ayni havuzda gemini, claude ve perplexity hesaplari yan yana durabilir.
+    pub provider: Arc<Provider>,
     /// Tembel acilir; None = tarayici henuz baslatilmadi.
     session: Mutex<Option<Session>>,
     pub state: Mutex<AccountState>,
@@ -80,8 +84,6 @@ pub struct Slot {
 pub struct Pool {
     pub slots: Vec<Slot>,
     pub pacing: Pacing,
-    /// ponytail: tek saglayici. Hesap basina saglayici gerekince `Slot`'a tasinir.
-    pub provider: Provider,
     /// Konusma parmak izi -> hesap. Tarayici sohbeti durumlu oldugu icin bir konusmanin
     /// tum turlari AYNI hesaba gitmeli; baska hesabin gecmisi bos olur.
     /// Bellekte tutulur: yeniden baslatinca sabitler dusur, tarayici dizileri kalir.
@@ -112,6 +114,7 @@ enum Sabit {
 pub struct Lease<'a> {
     pub index: usize,
     pub name: String,
+    pub provider: Arc<Provider>,
     guard: tokio::sync::MutexGuard<'a, Option<Session>>,
 }
 
@@ -123,33 +126,37 @@ impl Lease<'_> {
 }
 
 impl Pool {
+    /// `defter` hesabin `provider` adini cozmek icin. Bilinmeyen ad SESSIZCE
+    /// varsayilana dusmez — yanlis hesabi yanlis siteye baglamak en kotu hata olurdu.
     pub fn new(
         accounts: Vec<Account>,
         pacing: Pacing,
-        provider: Provider,
+        defter: &std::collections::HashMap<String, Arc<Provider>>,
         profiles_root: PathBuf,
         browser: BrowserBinary,
         geckodriver: PathBuf,
         headless: bool,
-    ) -> Self {
-        let slots = accounts
-            .into_iter()
-            .map(|a| Slot {
+    ) -> Result<Self> {
+        let mut slots = Vec::new();
+        for a in accounts {
+            let provider = crate::saglayicilar::bul(defter, &a.provider)
+                .with_context(|| format!("'{}' hesabi icin", a.name))?;
+            slots.push(Slot {
                 account: a,
+                provider,
                 session: Mutex::new(None),
                 state: Mutex::new(AccountState::default()),
-            })
-            .collect();
-        Self {
+            });
+        }
+        Ok(Self {
             slots,
             pacing,
-            provider,
             sabitler: Mutex::new(HashMap::new()),
             profiles_root,
             browser,
             geckodriver,
             headless,
-        }
+        })
     }
 
     /// Kac konusma sabitlenmis (gorunurluk icin).
@@ -170,13 +177,29 @@ impl Pool {
     /// Sabit, havuzun yuk dagitmasiyla sohbetin surekliligi arasindaki gerilimi
     /// surekliligi ustun tutarak cozer; ama hesap insan kapisindaysa ya da tavani
     /// dolmussa yanit vermeyi sureklilige tercih eder ve bunu gunluge yazar.
-    pub async fn acquire_for(&self, oturum: Option<u64>) -> Result<Lease<'_>> {
+    ///
+    /// `saglayici` verilirse yalniz o saglayicinin hesaplari degerlendirilir: bir
+    /// claude istegi gemini hesabina DUSMEMELI, dusseydi baska bir modelin cevabini
+    /// istenen modelin cevabi diye dondururduk.
+    pub async fn acquire_for(&self, oturum: Option<u64>, saglayici: &str) -> Result<Lease<'_>> {
+        let uygun: Vec<usize> = self
+            .slots
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.provider.ad == saglayici)
+            .map(|(i, _)| i)
+            .collect();
+        if uygun.is_empty() {
+            bail!("'{saglayici}' saglayicisi icin tanimli hesap yok (kervan.toml)");
+        }
+
         loop {
             let simdi = Instant::now();
 
-            // 1) Sabitlenmis hesap varsa onceligi onun.
+            // 1) Sabitlenmis hesap varsa onceligi onun — ama yalniz ayni saglayiciysa.
             if let Some(anahtar) = oturum
                 && let Some(i) = self.sabitler.lock().await.get(&anahtar).copied()
+                && uygun.contains(&i)
             {
                 let karar = sabit_karari(
                     &mut *self.slots[i].state.lock().await,
@@ -210,7 +233,8 @@ impl Pool {
             let mut aday: Option<(usize, u32)> = None;
             let mut en_erken: Option<Instant> = None;
 
-            for (i, slot) in self.slots.iter().enumerate() {
+            for &i in &uygun {
+                let slot = &self.slots[i];
                 let mut st = slot.state.lock().await;
                 match st.hazir_zamani(simdi, &self.pacing) {
                     // en az kullanilan kazanir
@@ -249,8 +273,8 @@ impl Pool {
 
             let Some(nb) = en_erken else {
                 bail!(
-                    "kullanilabilir hesap yok: hepsi duraklatilmis ya da saatlik tavani dolmus. \
-                     Insan kapisinda bekleyen var mi diye bak."
+                    "'{saglayici}' icin kullanilabilir hesap yok: hepsi duraklatilmis ya da \
+                     saatlik tavani dolmus. Insan kapisinda bekleyen var mi diye bak."
                 );
             };
             tokio::time::sleep(nb.saturating_duration_since(Instant::now()) + Duration::from_millis(50)).await;
@@ -279,8 +303,8 @@ impl Pool {
             )
             .await?;
             // Tarayici bos sayfayla acilir; saglayiciya gitmeden istem kutusu yoktur.
-            s.goto(self.provider.url).await?;
-            let durum = detect_login(&s.client, &self.provider.selectors).await?;
+            s.goto(&slot.provider.url).await?;
+            let durum = detect_login(&s.client, &slot.provider.selectors).await?;
             // Pencereyi KAPATMIYORUZ: gorunur kipte insan tam bu pencerede giris yapar,
             // sonra `POST /accounts/{i}/devam` ile hesap kaldigi yerden devam eder.
             *guard = Some(s);
@@ -311,7 +335,12 @@ impl Pool {
             // Asil bekleme `basarili`/`basarisiz` icinde, istek BITTIGINDE kurulur.
             st.not_before = Some(simdi + self.gecikme());
         }
-        Ok(Lease { index: i, name: slot.account.name.clone(), guard })
+        Ok(Lease {
+            index: i,
+            name: slot.account.name.clone(),
+            provider: slot.provider.clone(),
+            guard,
+        })
     }
 
     fn gecikme(&self) -> Duration {
@@ -458,23 +487,34 @@ mod tests {
 
     fn havuz(pacing: Pacing) -> Pool {
         // Tarayici baslatilmiyor: bu testler yalniz durum mantigina dokunuyor.
+        let defter = crate::saglayicilar::kayit_defteri(&HashMap::new());
         Pool::new(
             vec![Account { name: "a".into(), provider: "gemini".into() }],
             pacing,
-            Provider {
-                url: "http://ornek",
-                selectors: crate::browser::Selectors {
-                    prompt_input: "#p",
-                    login_hint: "#l",
-                    response: "#r",
-                },
-                giris_kalibi: "http://ornek/giris?e={eposta}",
-            },
+            &defter,
             PathBuf::from("."),
             BrowserBinary(PathBuf::from(".")),
             PathBuf::from("."),
             true,
         )
+        .expect("gemini taninmali")
+    }
+
+    /// Bilinmeyen saglayici adi havuz kurulurken PATLAMALI: sessizce varsayilana
+    /// dusmek, hesabi yanlis siteye baglamak demek olurdu.
+    #[test]
+    fn bilinmeyen_saglayicili_hesap_havuzu_kurmaz() {
+        let defter = crate::saglayicilar::kayit_defteri(&HashMap::new());
+        let r = Pool::new(
+            vec![Account { name: "a".into(), provider: "yokboyle".into() }],
+            pacing(0),
+            &defter,
+            PathBuf::from("."),
+            BrowserBinary(PathBuf::from(".")),
+            PathBuf::from("."),
+            true,
+        );
+        assert!(r.is_err());
     }
 
     /// Hiz butcesi istek BITTIGINDE kurulmali. Bastan kurulunca uzun suren bir yanit

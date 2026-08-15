@@ -30,8 +30,15 @@ pub struct AppState {
     pub pool: Pool,
     pub defter: Defter,
     pub kota_ayar: crate::config::Kota,
-    pub model_id: &'static str,
+    pub saglayicilar: std::collections::HashMap<String, std::sync::Arc<crate::browser::Provider>>,
+    /// Model istenmediginde kullanilacak saglayici (yapilandirmadaki ilk hesabinki).
+    pub varsayilan_saglayici: String,
     pub timeout: std::time::Duration,
+}
+
+/// `kervan/<saglayici>` — `/v1/models` bunu listeler, istemci bunu ister.
+fn model_kimligi(saglayici: &str) -> String {
+    format!("kervan/{saglayici}")
 }
 
 pub fn router(state: Arc<AppState>) -> Router {
@@ -70,7 +77,8 @@ async fn accounts(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
         liste.push(serde_json::json!({
             "index": i,
             "name": slot.account.name,
-            "provider": slot.account.provider,
+            "provider": slot.provider.ad,
+            "model": model_kimligi(&slot.provider.ad),
             "istek_sayisi": s.total,
             "son_saatte": s.recent.len(),
             "saatlik_tavan": st.pool.pacing.hourly_cap,
@@ -155,14 +163,23 @@ struct ModelInfo {
 // ─── Uclar ───────────────────────────────────────────────────────────────────
 
 async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
+    // Yalniz HESABI OLAN saglayicilar listelenir. Hesapsiz bir modeli listelemek,
+    // istemciye var olmayan bir yol gostermek olurdu — OmniRoute'un katalogunda
+    // gercekte calismayan modellerin durmasi tam olarak bu hataydi.
+    let mut adlar: Vec<String> =
+        st.pool.slots.iter().map(|s| s.provider.ad.clone()).collect::<std::collections::BTreeSet<_>>().into_iter().collect();
+    adlar.sort();
     Json(ModelList {
         object: "list",
-        data: vec![ModelInfo {
-            id: st.model_id.to_string(),
-            object: "model",
-            created: simdi(),
-            owned_by: "kervan",
-        }],
+        data: adlar
+            .into_iter()
+            .map(|ad| ModelInfo {
+                id: model_kimligi(&ad),
+                object: "model",
+                created: simdi(),
+                owned_by: "kervan",
+            })
+            .collect(),
     })
 }
 
@@ -171,14 +188,43 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
         return hata(StatusCode::BAD_REQUEST, "messages icinde user rolu yok");
     };
 
+    // Model kimliginden saglayiciyi sec. Taninmayan bir model SESSIZCE varsayilana
+    // dusmemeli: istemci claude isteyip gemini cevabi alirsa bunu fark edemez.
+    let saglayici = if req.model.trim().is_empty() {
+        st.varsayilan_saglayici.clone()
+    } else {
+        match crate::saglayicilar::model_saglayicisi(&req.model, &st.saglayicilar) {
+            Some(s) => s,
+            None => {
+                let mevcut: Vec<String> = st
+                    .pool
+                    .slots
+                    .iter()
+                    .map(|s| model_kimligi(&s.provider.ad))
+                    .collect::<std::collections::BTreeSet<_>>()
+                    .into_iter()
+                    .collect();
+                return hata(
+                    StatusCode::BAD_REQUEST,
+                    &format!(
+                        "'{}' hangi saglayiciya ait bilinmiyor. Kullanilabilir: {}",
+                        req.model,
+                        mevcut.join(", ")
+                    ),
+                );
+            }
+        }
+    };
+
     // Havuzdan hesap kirala: konusma kendi hesabina sabitlenir, hiz butcesi burada
     // uygulanir, gerekirse beklenir.
-    let lease = match st.pool.acquire_for(konusma_izi(&req.messages)).await {
+    let lease = match st.pool.acquire_for(konusma_izi(&req.messages), &saglayici).await {
         Ok(l) => l,
         Err(e) => return hata(StatusCode::SERVICE_UNAVAILABLE, &format!("{e:#}")),
     };
-    println!("[{}] istek ({} karakter)", lease.name, istem.len());
-    let mut sonuc = ask(lease.client(), &st.pool.provider.selectors, &istem, st.timeout).await;
+    println!("[{}/{}] istek ({} karakter)", saglayici, lease.name, istem.len());
+    let secililer = lease.provider.selectors.clone();
+    let mut sonuc = ask(lease.client(), &secililer, &istem, st.timeout).await;
 
     // Saglayici "limite ulastin" dediyse bu bir YANIT DEGIL. Oldugu gibi dondurmek
     // istemciye modelin cevabi diye limit mesajini vermek olurdu; ustelik kota
@@ -222,7 +268,8 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
         }
     }
 
-    let model_adi = if req.model.is_empty() { st.model_id.to_string() } else { req.model.clone() };
+    let model_adi =
+        if req.model.is_empty() { model_kimligi(&saglayici) } else { req.model.clone() };
 
     if req.stream {
         return match sonuc {
