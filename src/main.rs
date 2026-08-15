@@ -24,7 +24,10 @@ const GEMINI: Provider = Provider {
         // `rich-textarea` sarmalayici oge; WebDriver ona yazamaz ("not interactable").
         // Yazilabilir olan icindeki contenteditable div — dogrudan onu hedefle.
         prompt_input: "div[contenteditable='true']",
-        login_hint: "a[href*='accounts.google.com'], a[href*='ServiceLogin']",
+        // YALNIZ ServiceLogin: `accounts.google.com` bagi girisli sayfada da var
+        // (hesap degistirici), olculdu — girisli 2 adet, cikisli 1 adet. Ayirt
+        // etmeyen isaret, isaret degildir.
+        login_hint: "a[href*='ServiceLogin']",
         response: "model-response, message-content",
     },
 };

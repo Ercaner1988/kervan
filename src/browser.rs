@@ -83,11 +83,7 @@ impl Session {
         if headless {
             args.push("-headless".to_string());
         }
-        let mut caps = serde_json::map::Map::new();
-        caps.insert(
-            "moz:firefoxOptions".to_string(),
-            serde_json::json!({ "binary": browser.0, "args": args }),
-        );
+        let caps = yetenekler(&browser.0, args);
 
         let client = baglan(port, caps).await?;
         Ok(Self { client, driver, profile_dir })
@@ -118,6 +114,52 @@ impl Drop for Session {
         self.driver.kill().ok();
         self.driver.wait().ok();
     }
+}
+
+/// WebDriver yetenekleri: tarayici ikilisi, profil bagimsizligi ve ilk-acilis
+/// ekranlarini kapatan ayarlar.
+///
+/// SORUN: her hesap sifirdan bir profil oldugu icin tarayici her seferinde kurulum
+/// karsilama akisini basa sariyor ve hesaba giris yapmaya sira gelmiyor.
+///
+/// Ayarlar tahminle degil OLCUMLE bulundu: kurulumu tamamlanmis bir profilin
+/// prefs.js'i okundu, Zen'in kapisi `zen.welcome-screen.seen` cikti. Firefox'un kendi
+/// ilk-acilis ayarlarini geckodriver zaten yaziyor, Zen'e ozgu olani bilmiyor.
+///
+/// PROFILE `user.js` YAZMAYI DENEMEK YANLIS YOL: geckodriver profile kendi user.js'ini
+/// yaziyor ve bizimkini eziyor (olculdu — dosyada bizim satirlarimiz yerine
+/// `app.update.disabledForTesting` gibi geckodriver ayarlari cikti). Dogrusu ayarlari
+/// yetenekler uzerinden vermek; geckodriver onlari kendi dosyasiyla BIRLESTIRIYOR.
+fn yetenekler(ikili: &Path, args: Vec<String>) -> serde_json::map::Map<String, serde_json::Value> {
+    let mut caps = serde_json::map::Map::new();
+    caps.insert(
+        "moz:firefoxOptions".to_string(),
+        serde_json::json!({
+            "binary": ikili,
+            "args": args,
+            "prefs": {
+                // Zen'in kendi karsilama akisi — giris yapmayi engelleyen asil ekran.
+                "zen.welcome-screen.seen": true,
+
+                // Firefox tarafindaki ilk-acilis ve tanitim ekranlari.
+                "browser.aboutwelcome.enabled": false,
+                "browser.startup.homepage_override.mstone": "ignore",
+                "startup.homepage_welcome_url": "about:blank",
+                "startup.homepage_welcome_url.additional": "",
+                "browser.laterrun.enabled": false,
+                "browser.messaging-system.whatsNewPanel.enabled": false,
+                "browser.uitour.enabled": false,
+                "browser.shell.checkDefaultBrowser": false,
+                "datareporting.policy.dataSubmissionPolicyBypassNotification": true,
+                "toolkit.telemetry.reportingpolicy.firstRun": false,
+
+                // Kervan zorla oldurulunce (Drop calismaz) sonraki acilista "oturumu
+                // geri yukle" penceresi cikiyor; o da elle tiklanmayi bekleyen engel.
+                "browser.sessionstore.resume_from_crash": false,
+            }
+        }),
+    );
+    caps
 }
 
 /// geckodriver acilirken birkac yuz ms gecikiyor; hazir olana kadar kisa araliklarla dene.
@@ -320,12 +362,19 @@ pub async fn dom_ozeti(c: &Client, sel: &Selectors) -> Result<String> {
     Ok(s)
 }
 
+/// SIRA ONEMLI: once giris isareti, sonra istem kutusu.
+///
+/// Olculdu: Gemini'nin CIKIS YAPILMIS sayfasinda da `contenteditable` bir istem
+/// kutusu var (tiklayinca girise yonlendiriyor). "Istem kutusu varsa girislidir"
+/// varsayimi bu yuzden yanlisti ve hic giris yapilmamis bir profile "GIRISLI"
+/// dedirtiyordu — yani havuzun insan kapisi hic acilmazdi. Ayirt eden isaret
+/// giris baglantisi; o varsa oturum kapalidir, istem kutusu ne derse desin.
 pub async fn detect_login(c: &Client, sel: &Selectors) -> Result<LoginState> {
-    if c.find(Locator::Css(sel.prompt_input)).await.is_ok() {
-        return Ok(LoginState::Ready);
-    }
     if c.find(Locator::Css(sel.login_hint)).await.is_ok() {
         return Ok(LoginState::NeedsLogin);
+    }
+    if c.find(Locator::Css(sel.prompt_input)).await.is_ok() {
+        return Ok(LoginState::Ready);
     }
     Ok(LoginState::Unknown)
 }
@@ -343,6 +392,18 @@ mod tests {
         assert_ne!(root.join("hesap-a"), root.join("hesap-b"));
         // ayni ad ayni dizini vermeli, yoksa oturum kalici olmaz
         assert_eq!(root.join("hesap-a"), root.join("hesap-a"));
+    }
+
+    /// Karsilama ekranini kapatan ayarlar YETENEKLERDEN gitmeli. Profile user.js
+    /// yazmak ise yaramiyor: geckodriver kendi user.js'ini yazip uzerine biniyor.
+    #[test]
+    fn yetenekler_karsilama_ayarlarini_tasir() {
+        let caps = yetenekler(Path::new("C:\\zen.exe"), vec!["-profile".into(), "d".into()]);
+        let prefs = &caps["moz:firefoxOptions"]["prefs"];
+        assert_eq!(prefs["zen.welcome-screen.seen"], true, "Zen karsilama kapisi eksik");
+        assert_eq!(prefs["browser.sessionstore.resume_from_crash"], false);
+        // profil bagimsizligi da ayni yetenekten geliyor; kirilirsa hesaplar birlesir
+        assert_eq!(caps["moz:firefoxOptions"]["args"][0], "-profile");
     }
 
     /// Her oturum ayri port almali; sabit port ikinci hesabi engellerdi.
