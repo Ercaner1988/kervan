@@ -60,7 +60,10 @@ async fn accounts(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
             "duraklatildi": s.paused_reason,
         }));
     }
-    Json(serde_json::json!({ "accounts": liste }))
+    Json(serde_json::json!({
+        "accounts": liste,
+        "sabit_oturumlar": st.pool.sabit_sayisi().await,
+    }))
 }
 
 async fn devam(State(st): State<Arc<AppState>>, Path(i): Path<usize>) -> Response {
@@ -150,8 +153,9 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
         return hata(StatusCode::BAD_REQUEST, "messages icinde user rolu yok");
     };
 
-    // Havuzdan hesap kirala: hiz butcesi burada uygulanir, gerekirse beklenir.
-    let lease = match st.pool.acquire().await {
+    // Havuzdan hesap kirala: konusma kendi hesabina sabitlenir, hiz butcesi burada
+    // uygulanir, gerekirse beklenir.
+    let lease = match st.pool.acquire_for(konusma_izi(&req.messages)).await {
         Ok(l) => l,
         Err(e) => return hata(StatusCode::SERVICE_UNAVAILABLE, &format!("{e:#}")),
     };
@@ -232,6 +236,27 @@ fn sse_yanit(metin: &str, model: &str) -> Response {
         .into_response()
 }
 
+/// Konusmanin parmak izi: **ilk kullanici mesajinin** ozeti.
+///
+/// OpenAI API'sinde oturum kimligi yok, istemciden yeni bir alan istemeden konusmalari
+/// ayirt etmenin yolu icerikten tanimak. Ilk kullanici mesaji her turda gonderildigi
+/// icin konusma boyunca degismez; farkli konusmalar farkli iz verir.
+///
+/// Neden yalniz o mesaj, sistem istemi de degil: sistem istemine tarih/saat gibi her
+/// istekte degisen seyler girebiliyor. Onu ize katmak izi her turda degistirir, yani
+/// sabitlemeyi sessizce ise yaramaz hale getirirdi.
+///
+/// Iki bilinen sinir: (a) ayni cumleyle baslayan iki ayri konusma ayni ize duser —
+/// sonucu yalniz ayni hesaba yonlenmeleridir, yanlis yanit degil; (b) istemci gecmisi
+/// yeniden yazarsa (Hermes'te compaction) iz degisir ve konusma baska hesaba tasinabilir.
+fn konusma_izi(msgs: &[Message]) -> Option<u64> {
+    use std::hash::{Hash, Hasher};
+    let ilk = msgs.iter().find(|m| m.role == "user")?;
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    ilk.content.hash(&mut h);
+    Some(h.finish())
+}
+
 /// Yalnizca son `user` mesaji — gerekcesi dosya basindaki durum gerilimi notunda.
 fn son_kullanici_mesaji(msgs: &[Message]) -> Option<String> {
     msgs.iter()
@@ -280,5 +305,37 @@ mod tests {
     fn kullanici_mesaji_yoksa_none() {
         let msgs = vec![m("system", "yalniz sistem")];
         assert_eq!(son_kullanici_mesaji(&msgs), None);
+    }
+
+    /// Konusma buyudukce iz DEGISMEMELI — degisirse ikinci tur baska hesaba duser ve
+    /// tarayicidaki sohbet gecmisi bosa cikar. Sabitlemenin tamami buna dayaniyor.
+    #[test]
+    fn iz_konusma_boyunca_sabit_kalir() {
+        let tur1 = vec![m("system", "sen bir asistansin"), m("user", "ilk soru")];
+        let tur2 = vec![
+            m("system", "sen bir asistansin"),
+            m("user", "ilk soru"),
+            m("assistant", "ilk cevap"),
+            m("user", "ikinci soru"),
+        ];
+        assert_eq!(konusma_izi(&tur1), konusma_izi(&tur2));
+    }
+
+    /// Sistem istemi degisse bile iz sabit kalmali: oraya tarih/saat gibi her istekte
+    /// degisen seyler giriyor, ize katilsa sabitleme sessizce ise yaramaz olurdu.
+    #[test]
+    fn degisen_sistem_istemi_izi_bozmaz() {
+        let a = vec![m("system", "tarih: 2026-08-15 10:00"), m("user", "ilk soru")];
+        let b = vec![m("system", "tarih: 2026-08-15 10:42"), m("user", "ilk soru")];
+        assert_eq!(konusma_izi(&a), konusma_izi(&b));
+    }
+
+    /// Ayri konusmalar ayri ize dusmeli, yoksa hepsi tek hesaba yigilir.
+    #[test]
+    fn ayri_konusmalar_ayri_ize_duser() {
+        let a = vec![m("user", "ilk soru")];
+        let b = vec![m("user", "bambaska bir soru")];
+        assert_ne!(konusma_izi(&a), konusma_izi(&b));
+        assert_eq!(konusma_izi(&[]), None);
     }
 }

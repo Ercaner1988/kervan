@@ -129,6 +129,12 @@ async fn main() -> Result<()> {
         }
     }
 
+    // --dom: secicilerin sayfada neyi esledigini olc (canlilik sinamasi).
+    // --sor'dan SONRA calisir; bos sayfada olcum bir sey soylemez.
+    if args.iter().any(|a| a == "--dom") {
+        println!("\n{}", browser::dom_ozeti(&oturum.client, &GEMINI.selectors).await?);
+    }
+
     if !headless {
         println!("\nPencere acik. Kapatmak icin Enter'a bas.");
         let mut satir = String::new();

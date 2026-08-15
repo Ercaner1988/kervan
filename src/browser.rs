@@ -197,6 +197,10 @@ pub async fn ask(
     prompt: &str,
     zaman_asimi: std::time::Duration,
 ) -> Result<String> {
+    // Gondermeden ONCE kac yanit balonu vardi. Bu temel cizgi olmadan "onceki turun
+    // yaniti, degismeden duruyor" ile "yeni yanit, tamamlandi" ayirt edilemez.
+    let taban = son_balon(c, sel).await.0;
+
     let kutu = c
         .find(Locator::Css(sel.prompt_input))
         .await
@@ -206,33 +210,19 @@ pub async fn ask(
     kutu.send_keys(ENTER).await.context("istem gonderilemedi")?;
 
     const ARALIK: std::time::Duration = std::time::Duration::from_millis(500);
-    const KARARLILIK_ESIGI: u8 = 4; // 4 x 500ms = 2 sn degismezse bitti say
 
     let baslangic = std::time::Instant::now();
-    let mut onceki = String::new();
-    let mut sabit = 0u8;
+    let mut dedektor = BitisDedektoru::yeni(taban);
 
     while baslangic.elapsed() < zaman_asimi {
         tokio::time::sleep(ARALIK).await;
-        let simdi = son_yanit(c, sel).await;
-        match simdi {
-            Some(t) if !t.trim().is_empty() => {
-                if t == onceki {
-                    sabit += 1;
-                    if sabit >= KARARLILIK_ESIGI {
-                        return Ok(t);
-                    }
-                } else {
-                    sabit = 0;
-                    onceki = t;
-                }
-            }
-            // Henuz yanit balonu yok ya da bos — beklemeye devam.
-            _ => sabit = 0,
+        let (sayi, metin) = son_balon(c, sel).await;
+        if let Some(t) = dedektor.gozlem(sayi, &metin) {
+            return Ok(t);
         }
     }
 
-    if onceki.trim().is_empty() {
+    if dedektor.yarim().trim().is_empty() {
         bail!(
             "yanit gelmedi ({} sn). Dogrulama duvari cikmis olabilir — gorunur kipte calistirip bak.",
             zaman_asimi.as_secs()
@@ -243,14 +233,91 @@ pub async fn ask(
     bail!(
         "yanit {} sn icinde tamamlanmadi; son goruleni yarim kabul ediyorum ({} karakter)",
         zaman_asimi.as_secs(),
-        onceki.len()
+        dedektor.yarim().len()
     )
 }
 
-async fn son_yanit(c: &Client, sel: &Selectors) -> Option<String> {
-    let hepsi = c.find_all(Locator::Css(sel.response)).await.ok()?;
-    let son = hepsi.last()?;
-    son.text().await.ok()
+/// Kac ust uste ayni gozlem "bitti" sayilir. 4 x 500ms = 2 sn.
+const KARARLILIK_ESIGI: u8 = 4;
+
+/// Yoklama dongusunun karar cekirdegi.
+///
+/// Ayri bir tur olarak duruyor cunku buradaki hata sessiz ve tehlikeli: temel cizgi
+/// olmadan dedektor, gonderimden hemen sonra hala ekranda duran ONCEKI turun yanitini
+/// "kararli" gorup dondurur. Ne kilitlenme ne bos yanit uretir — dogru bicimde YANLIS
+/// cevap dondurur. Cekirdegi ayirmak onu tarayicisiz sinanabilir kiliyor.
+struct BitisDedektoru {
+    taban_sayi: usize,
+    onceki: String,
+    sabit: u8,
+}
+
+impl BitisDedektoru {
+    fn yeni(taban_sayi: usize) -> Self {
+        Self { taban_sayi, onceki: String::new(), sabit: 0 }
+    }
+
+    /// `sayi`: su anki balon sayisi, `metin`: son balonun metni.
+    /// Gonderimden sonra yeni balon eklenmemisse gozlem yok sayilir.
+    fn gozlem(&mut self, sayi: usize, metin: &str) -> Option<String> {
+        if sayi <= self.taban_sayi || metin.trim().is_empty() {
+            self.sabit = 0;
+            return None;
+        }
+        if metin == self.onceki {
+            self.sabit += 1;
+            if self.sabit >= KARARLILIK_ESIGI {
+                return Some(metin.to_string());
+            }
+        } else {
+            self.sabit = 0;
+            self.onceki = metin.to_string();
+        }
+        None
+    }
+
+    /// Zaman asiminda elde kalan (yarim) metin.
+    fn yarim(&self) -> &str {
+        &self.onceki
+    }
+}
+
+/// (balon sayisi, son balonun metni). Sayfa okunamazsa (0, "") — gozlem atlanir.
+async fn son_balon(c: &Client, sel: &Selectors) -> (usize, String) {
+    let Ok(hepsi) = c.find_all(Locator::Css(sel.response)).await else {
+        return (0, String::new());
+    };
+    let metin = match hepsi.last() {
+        Some(e) => e.text().await.unwrap_or_default(),
+        None => String::new(),
+    };
+    (hepsi.len(), metin)
+}
+
+/// Canlilik sinamasi: her secicinin sayfada KAC oge esledigini ve sonuncusunun
+/// metnini bastirir. Site arayuzu degistiginde "neden kirildi" sorusunu tahminle
+/// degil olcumle cevaplamanin yolu.
+pub async fn dom_ozeti(c: &Client, sel: &Selectors) -> Result<String> {
+    let mut s = String::new();
+    for (ad, secici) in [
+        ("prompt_input", sel.prompt_input),
+        ("login_hint", sel.login_hint),
+        ("response", sel.response),
+    ] {
+        s.push_str(&format!("{ad:14}: {secici}\n"));
+        // Virgullu seciciyi parcalarina ayirip her birini ayri sayiyoruz: birlesik
+        // sayim hangi parcanin esledigini gizler.
+        for parca in secici.split(',').map(str::trim) {
+            let ogeler = c.find_all(Locator::Css(parca)).await.unwrap_or_default();
+            let son = match ogeler.last() {
+                Some(e) => e.text().await.unwrap_or_default(),
+                None => String::new(),
+            };
+            let kirp: String = son.chars().take(60).collect();
+            s.push_str(&format!("  {:<28} {} adet   son: {kirp:?}\n", parca, ogeler.len()));
+        }
+    }
+    Ok(s)
 }
 
 pub async fn detect_login(c: &Client, sel: &Selectors) -> Result<LoginState> {
@@ -284,6 +351,50 @@ mod tests {
         let a = bos_port().unwrap();
         let b = bos_port().unwrap();
         assert!(a > 0 && b > 0);
+    }
+
+    /// ASIL HATA BUYDU: ikinci turda onceki turun yaniti hala ekranda ve kararli.
+    /// Temel cizgi olmadan dedektor onu "tamamlanmis yeni yanit" sanip donduruyordu —
+    /// yani onceki sorunun cevabi, yeni sorunun cevabi diye. Sessiz ve yanlis.
+    #[test]
+    fn onceki_turun_yaniti_dondurulmez() {
+        let mut d = BitisDedektoru::yeni(2); // gondermeden once 2 balon vardi
+        for _ in 0..20 {
+            // Sayi artmiyor: ekrandaki hala onceki turun yaniti.
+            assert_eq!(d.gozlem(2, "onceki turun yaniti"), None);
+        }
+        assert_eq!(d.yarim(), "", "yeni balon yokken metin biriktirilmemeli");
+    }
+
+    /// Yeni balon gelip buyumesi durunca yanit donmeli.
+    #[test]
+    fn yeni_yanit_kararlilasinca_donulur() {
+        let mut d = BitisDedektoru::yeni(2);
+        assert_eq!(d.gozlem(3, "el"), None);
+        assert_eq!(d.gozlem(3, "elma"), None);
+        // ayni metin ust uste: esige kadar None, esikte deger
+        for _ in 0..KARARLILIK_ESIGI - 1 {
+            assert_eq!(d.gozlem(3, "elma"), None);
+        }
+        assert_eq!(d.gozlem(3, "elma"), Some("elma".to_string()));
+    }
+
+    /// Balon acildi ama henuz bos: bekleme surmeli, bos yanit dondurulmemeli.
+    #[test]
+    fn bos_balon_bitis_sayilmaz() {
+        let mut d = BitisDedektoru::yeni(0);
+        for _ in 0..10 {
+            assert_eq!(d.gozlem(1, "   "), None);
+        }
+    }
+
+    /// Yanit buyurken kesilirse elde kalan YARIM metin saklanmali; `ask` bunu
+    /// tam yanit gibi degil, yarim oldugunu soyleyerek bildiriyor.
+    #[test]
+    fn yarim_metin_saklanir() {
+        let mut d = BitisDedektoru::yeni(0);
+        d.gozlem(1, "yarim kalmis ya");
+        assert_eq!(d.yarim(), "yarim kalmis ya");
     }
 
     /// Bulunamayan tarayici sessizce baska bir seye dusmemeli.

@@ -43,6 +43,8 @@ Sırada: kota öğrenici (SQLite), TUI, ek sağlayıcılar.
   sonra yazar.
 - Hesap açılırken oturum durumu ölçülür. Giriş yapılmamışsa hesap duraklatılır,
   istek başka hesaba düşer — havuzun kalanı bundan etkilenmez.
+- **Bir konuşmanın tüm turları aynı hesaba gider.** Tarayıcı sohbeti durumlu olduğu
+  için ikinci tur başka hesaba düşerse o hesabın dizisinde birinci tur yoktur.
 - Üst üste 5 hata, sebebi ne olursa olsun insan kapısını açar. Ölü bir oturuma
   sonsuza kadar istek atmak hesabı boşuna yıpratır.
 
@@ -117,16 +119,35 @@ Dosya yoksa tek hesaplı muhafazakâr bir varsayılanla çalışır. `pacing` bl
 ## Bilinen sınırlama
 
 OpenAI API durumsuz, tarayıcı sohbeti durumlu. v1 yalnızca **son kullanıcı mesajını**
-gönderir; süreklilik tarayıcının kendi konuşma dizisinden gelir. İki sonucu var:
+gönderir; süreklilik tarayıcının kendi konuşma dizisinden gelir.
 
-- Farklı konuşmalar aynı tarayıcı dizisine karışır (istemci oturumu başına ayrı sekme
-  henüz yok).
-- Havuz isteği başka bir hesaba yönlendirdiğinde o hesabın konuşma geçmişi farklıdır.
-  Yani çok hesap, tek bir uzun konuşmanın sürekliliğini garanti etmez — çok sayıda
-  bağımsız istek için doğru, tek bir derin sohbet için değil.
+Konuşmayı hesaba sabitlemek bunu çalışır kılıyor: **ilk kullanıcı mesajının** özeti
+konuşma kimliği sayılır (her turda gönderildiği için sabit kalır) ve o konuşma hep aynı
+hesaba yönlendirilir. Sistem istemi kasten ize katılmaz — içine tarih/saat gibi her
+istekte değişen şeyler giriyor, katılsaydı sabitleme sessizce işlemez olurdu.
+
+Kalan sınırlar:
+
+- Aynı cümleyle başlayan iki ayrı konuşma aynı ize düşer. Sonucu yalnızca aynı hesaba
+  yönlenmeleridir; yanlış yanıt değil, tek tarayıcı dizisinde karışmalarıdır.
+- İstemci geçmişi yeniden yazarsa (Hermes'te compaction) iz değişir, konuşma başka
+  hesaba taşınabilir.
+- Sabitlenen hesabın saatlik tavanı dolarsa süreklilik yerine yanıt vermek seçilir:
+  konuşma başka hesaba geçer ve bu günlüğe yazılır (sessizce değil).
+- Sabitler bellekte tutulur; yeniden başlatınca düşer.
 
 `usage` alanı bilerek sıfır döner: tarayıcı arayüzü token saymıyor, uydurma sayı kota
 hesabını bozar.
+
+## Seçici kırılınca
+
+Site arayüzü değişince seçiciler kırılır. Ne eşleştiğini tahmin etmek yerine ölç:
+
+```
+cargo run -- ercan-gemini-1 --headless --sor "Sadece 'elma' yaz." --dom
+```
+
+Her seçicinin kaç öğe eşlediğini ve sonuncusunun metnini basar.
 
 ## Güvenlik
 

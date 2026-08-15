@@ -9,6 +9,7 @@
 //! gorun" gerilimi tek hesabi hizlandirarak degil, havuzu genisletip her hesabi hafif
 //! kullanarak cozulur — burasi o cozumun yeri.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
@@ -69,10 +70,30 @@ pub struct Pool {
     pub pacing: Pacing,
     /// ponytail: tek saglayici. Hesap basina saglayici gerekince `Slot`'a tasinir.
     pub provider: Provider,
+    /// Konusma parmak izi -> hesap. Tarayici sohbeti durumlu oldugu icin bir konusmanin
+    /// tum turlari AYNI hesaba gitmeli; baska hesabin gecmisi bos olur.
+    /// Bellekte tutulur: yeniden baslatinca sabitler dusur, tarayici dizileri kalir.
+    sabitler: Mutex<HashMap<u64, usize>>,
     profiles_root: PathBuf,
     browser: BrowserBinary,
     geckodriver: PathBuf,
     headless: bool,
+}
+
+/// Sabitlenmis hesap mesgulse ne kadar beklenir. Otesinde sureklilik yerine yanit
+/// vermeyi seciyoruz — sessizce degil, gunluge yazarak.
+const PIN_MAX_BEKLEME: Duration = Duration::from_secs(60);
+
+/// Sabit tablosu sinirsiz buyumesin. 7/24 bir ayda bunun yanina bile yaklasilmaz;
+/// asilirsa tablo bosaltilir — sureklilik kaybi olur, veri kaybi olmaz.
+const SABIT_TAVANI: usize = 10_000;
+
+/// Sabitlenmis hesap icin uc olasilik.
+enum Sabit {
+    Kullan,
+    Bekle(Duration),
+    /// Sabit birakiliyor; sebebi gunluge yazilir, sessizce hesap degistirilmez.
+    Birak(&'static str),
 }
 
 /// Secilen hesabin oturumunu tutan kilit. Dusunce hesap serbest kalir.
@@ -107,7 +128,21 @@ impl Pool {
                 state: Mutex::new(AccountState::default()),
             })
             .collect();
-        Self { slots, pacing, provider, profiles_root, browser, geckodriver, headless }
+        Self {
+            slots,
+            pacing,
+            provider,
+            sabitler: Mutex::new(HashMap::new()),
+            profiles_root,
+            browser,
+            geckodriver,
+            headless,
+        }
+    }
+
+    /// Kac konusma sabitlenmis (gorunurluk icin).
+    pub async fn sabit_sayisi(&self) -> usize {
+        self.sabitler.lock().await.len()
     }
 
     /// Kullanilabilir hesaplardan **en az kullanilani** sec, oturumunu (gerekirse acarak)
@@ -115,9 +150,51 @@ impl Pool {
     ///
     /// Hicbiri hazir degilse en erken hazir olacagi bekler. Sessizce hata dondurmek
     /// yerine beklemek dogru: hiz butcesi bir arıza degil, tasarim geregi.
-    pub async fn acquire(&self) -> Result<Lease<'_>> {
+    /// `oturum` verilirse o konusma **kendi hesabina sabitlenir**; None ise yalniz
+    /// en-az-kullanilan secimi isler.
+    ///
+    /// NEDEN: tarayici sohbeti durumlu. Ayni konusmanin ikinci turu baska hesaba
+    /// duserse o hesabin dizisinde birinci tur hic yoktur — model gecmissiz cevaplar.
+    /// Sabit, havuzun yuk dagitmasiyla sohbetin surekliligi arasindaki gerilimi
+    /// surekliligi ustun tutarak cozer; ama hesap insan kapisindaysa ya da tavani
+    /// dolmussa yanit vermeyi sureklilige tercih eder ve bunu gunluge yazar.
+    pub async fn acquire_for(&self, oturum: Option<u64>) -> Result<Lease<'_>> {
         loop {
             let simdi = Instant::now();
+
+            // 1) Sabitlenmis hesap varsa onceligi onun.
+            if let Some(anahtar) = oturum
+                && let Some(i) = self.sabitler.lock().await.get(&anahtar).copied()
+            {
+                let karar = sabit_karari(
+                    &mut *self.slots[i].state.lock().await,
+                    simdi,
+                    &self.pacing,
+                );
+                match karar {
+                    Sabit::Kullan => match self.kilitle(i).await {
+                        Ok(l) => return Ok(l),
+                        Err(e) => {
+                            let mesaj = format!("{e:#}");
+                            eprintln!("[{}] sabit hesap acilamadi: {mesaj}", self.slots[i].account.name);
+                            self.basarisiz(i, &mesaj).await;
+                            continue;
+                        }
+                    },
+                    Sabit::Bekle(sure) => {
+                        tokio::time::sleep(sure + Duration::from_millis(50)).await;
+                        continue;
+                    }
+                    Sabit::Birak(neden) => {
+                        self.sabitler.lock().await.remove(&anahtar);
+                        eprintln!(
+                            "[{}] konusma sabiti birakildi ({neden}); yeni hesapta sohbet \
+                             gecmissiz baslayacak",
+                            self.slots[i].account.name
+                        );
+                    }
+                }
+            }
             let mut aday: Option<(usize, u32)> = None;
             let mut en_erken: Option<Instant> = None;
 
@@ -138,7 +215,12 @@ impl Pool {
 
             if let Some((i, _)) = aday {
                 match self.kilitle(i).await {
-                    Ok(l) => return Ok(l),
+                    Ok(l) => {
+                        if let Some(anahtar) = oturum {
+                            self.sabitle(anahtar, i).await;
+                        }
+                        return Ok(l);
+                    }
                     // Hesap acilamadi (tarayici baslamadi, oturum dusmus...). Durumu
                     // `basarisiz` isliyor: geri cekilme uygular, dogrulama duvariysa
                     // insan kapisinda duraklatir. Boylece dongu ya baska hesaba gecer
@@ -160,6 +242,15 @@ impl Pool {
             };
             tokio::time::sleep(nb.saturating_duration_since(Instant::now()) + Duration::from_millis(50)).await;
         }
+    }
+
+    async fn sabitle(&self, anahtar: u64, i: usize) {
+        let mut s = self.sabitler.lock().await;
+        if s.len() >= SABIT_TAVANI {
+            eprintln!("sabit tablosu {SABIT_TAVANI} girdiyi asti, bosaltiliyor");
+            s.clear();
+        }
+        s.insert(anahtar, i);
     }
 
     async fn kilitle(&self, i: usize) -> Result<Lease<'_>> {
@@ -256,6 +347,27 @@ impl Pool {
         st.paused_reason = None;
         st.consecutive_errors = 0;
         st.not_before = None;
+    }
+}
+
+/// Sabitlenmis hesap su an kullanilabilir mi, beklenmeli mi, birakilmali mi?
+///
+/// Ayri fonksiyon cunku uc yolun ucu de yanlis olabilir ve ucu de tarayicisiz sinanabilir:
+/// yanlis "Bekle" istegi bir saat asar, yanlis "Birak" sohbet gecmisini sessizce kaybeder.
+fn sabit_karari(st: &mut AccountState, simdi: Instant, pacing: &Pacing) -> Sabit {
+    if st.hazir_mi(simdi, pacing) {
+        return Sabit::Kullan;
+    }
+    if st.paused_reason.is_some() {
+        return Sabit::Birak("hesap insan kapisinda");
+    }
+    // Kisa bekleme (hiz butcesi) surekliligi korumaya deger; uzun bekleme (saatlik
+    // tavan) degmez — 7/24 kosuda istegi bir saat askida birakmak yanit vermemektir.
+    match st.not_before {
+        Some(nb) if nb.saturating_duration_since(simdi) <= PIN_MAX_BEKLEME => {
+            Sabit::Bekle(nb.saturating_duration_since(simdi))
+        }
+        _ => Sabit::Birak("saatlik tavan dolu ya da bekleme cok uzun"),
     }
 }
 
@@ -364,6 +476,54 @@ mod tests {
         assert!(p.slots[0].state.lock().await.paused_reason.is_none(), "sinira gelmeden duraklamamali");
         p.basarisiz(0, "connection reset by peer").await;
         assert!(p.slots[0].state.lock().await.paused_reason.is_some(), "sinirda insan cagrilmali");
+    }
+
+    /// Sabitlenmis hesap kisa bir hiz butcesi beklemesi icin BIRAKILMAMALI — birakilirsa
+    /// konusma baska hesaba gecer ve tarayicidaki sohbet gecmisi bosa cikar.
+    #[test]
+    fn kisa_bekleme_icin_sabit_birakilmaz() {
+        let p = pacing(0);
+        let mut st = AccountState {
+            not_before: Some(Instant::now() + Duration::from_secs(4)),
+            ..Default::default()
+        };
+        assert!(matches!(sabit_karari(&mut st, Instant::now(), &p), Sabit::Bekle(_)));
+    }
+
+    /// Saatlik tavan dolduysa beklemek istegi bir saat askida birakirdi: sureklilik
+    /// yerine yanit vermeyi seciyoruz.
+    #[test]
+    fn tavan_dolunca_sabit_birakilir() {
+        let p = pacing(1);
+        let simdi = Instant::now();
+        let mut st = AccountState { recent: vec![simdi], ..Default::default() };
+        assert!(matches!(sabit_karari(&mut st, simdi, &p), Sabit::Birak(_)));
+    }
+
+    /// Insan kapisindaki hesap beklenmez, birakilir.
+    #[test]
+    fn duraklatilmis_sabit_birakilir() {
+        let mut st = AccountState { paused_reason: Some("captcha".into()), ..Default::default() };
+        assert!(matches!(sabit_karari(&mut st, Instant::now(), &pacing(0)), Sabit::Birak(_)));
+    }
+
+    /// Bos hesap dogrudan kullanilmali.
+    #[test]
+    fn hazir_sabit_kullanilir() {
+        let mut st = AccountState::default();
+        assert!(matches!(sabit_karari(&mut st, Instant::now(), &pacing(0)), Sabit::Kullan));
+    }
+
+    /// Sabit tablosu tavani asinca bosalmali; sinirsiz buyumemeli.
+    #[tokio::test]
+    async fn sabit_tablosu_tavanda_bosalir() {
+        let p = havuz(Pacing { min_delay_ms: 0, jitter_ms: 0, hourly_cap: 0 });
+        for k in 0..SABIT_TAVANI as u64 {
+            p.sabitle(k, 0).await;
+        }
+        assert_eq!(p.sabit_sayisi().await, SABIT_TAVANI);
+        p.sabitle(u64::MAX, 0).await;
+        assert_eq!(p.sabit_sayisi().await, 1, "tavan asilinca tablo bosalip yeniden baslamali");
     }
 
     /// Kendi TAHMIN iceren hata metnimiz hesabi duraklatmamali; yoksa tek bir yavas
