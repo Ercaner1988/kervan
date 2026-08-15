@@ -116,6 +116,37 @@ impl Drop for Session {
     }
 }
 
+/// Hesabin profiliyle **otomasyon disinda**, sira bir tarayici penceresi acar.
+///
+/// NEDEN GEREKLI: Google, WebDriver ile surulen tarayicida oturum acmayi engelliyor
+/// ("Bu tarayıcı veya uygulama güvenli olmayabilir"). Sayfayi KULLANMAYI degil,
+/// yalnizca GIRISI engelliyor — zaten acilmis oturum otomasyonda sorunsuz calisiyor.
+///
+/// Bunu asmanin teknik yolu otomasyon imzasini gizlemek olurdu (marionette/webdriver
+/// bayraklarini kapatmak). Kurmuyoruz: plandaki "yapilmayacaklar" listesinin ilk
+/// maddesi bu. Onun yerine dogrusunu yapiyoruz — giris gercekten bir insan tarafindan,
+/// gercekten sira bir tarayicida yapiliyor. Gizlenen bir sey yok.
+///
+/// `-no-remote` sart: onsuz Zen zaten calisan ornege devredip sekmeyi KULLANICININ
+/// kendi profilinde acar, yani yanlis hesaba giris yapilir.
+pub fn elle_giris(
+    profiles_root: &Path,
+    hesap: &str,
+    browser: &BrowserBinary,
+    url: &str,
+) -> Result<Child> {
+    let dir = profiles_root.join(hesap);
+    std::fs::create_dir_all(&dir)
+        .with_context(|| format!("profil dizini olusturulamadi: {}", dir.display()))?;
+    Command::new(&browser.0)
+        .arg("-no-remote")
+        .arg("-profile")
+        .arg(&dir)
+        .arg(url)
+        .spawn()
+        .with_context(|| format!("tarayici baslatilamadi: {}", browser.0.display()))
+}
+
 /// WebDriver yetenekleri: tarayici ikilisi, profil bagimsizligi ve ilk-acilis
 /// ekranlarini kapatan ayarlar.
 ///

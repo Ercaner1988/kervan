@@ -78,14 +78,25 @@ cargo run -- ercan-gemini-1 --headless --sor "Mimar Sinan kimdir?"
 
 ### Hesap ekleme
 
-`kervan.toml`'a bir blok ekle, sonra o hesap için bir kez görünür kipte giriş yap:
+Bir kerelik girişi `--giris` ile yap:
 
 ```
-cargo run -- ercan-gemini-2
+cargo run -- ercan-gemini-2 --giris
 ```
+
+Tarayıcı **otomasyon dışında** açılır. Giriş yap, pencereyi düzgün kapat (çerezler o
+sırada diske yazılıyor), terminale dönüp Enter'a bas — Kervan girişi doğrular ve
+`kervan.toml`'a ekleyeceğin satırı basar.
+
+Neden otomasyon dışında: Google, WebDriver ile sürülen tarayıcıda oturum açmayı
+engelliyor — *"Bu tarayıcı veya uygulama güvenli olmayabilir"*. Sayfayı **kullanmayı**
+engellemiyor; zaten açılmış oturum otomasyonda sorunsuz çalışıyor. Engeli aşmanın
+teknik yolu otomasyon imzasını gizlemek olurdu; Kervan bunu yapmaz (bkz. Güvenlik).
+Bunun yerine giriş gerçekten bir insan tarafından, gerçekten sıradan bir tarayıcıda
+yapılır.
 
 Girişi yapılmamış bir hesap havuzu bozmaz: ilk seçilişinde duraklatılır, istek başka
-hesaba düşer. Girişi elle yaptıktan sonra:
+hesaba düşer. Sonradan elle çözdüysen:
 
 ```
 curl -X POST http://127.0.0.1:20129/accounts/1/devam
@@ -153,6 +164,13 @@ Her seçicinin kaç öğe eşlediğini ve sonuncusunun metnini basar.
 
 Profil dizinleri çerez ve oturum içerir, `.gitignore`'da. Ağ geçidi yalnız
 `127.0.0.1`'e bağlanır. Kervan tek başına oturum açamaz — doğrulama hep insandan geçer.
+
+**Yapılmayanlar.** Kervan insan hızında davranır (gecikme, sapma, saatlik tavan,
+üstel geri çekilme, kalıcı oturum) ama bot tespitini yenmeye çalışmaz: parmak izi
+sahteciliği yok, CAPTCHA çözme yok, vekil/IP döndürme yok, otomasyon imzasını gizleme
+yok. Doğrulama duvarına çarpınca hesap duraklatılır ve duvar kullanıcıya gösterilir.
+Google'ın giriş engeli de bu yüzden aşılmaz, `--giris` ile *etrafından* dolaşılır:
+giriş otomasyonun dışında, gerçek bir insan tarafından yapılır.
 
 ## Lisans
 

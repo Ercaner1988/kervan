@@ -98,6 +98,50 @@ async fn main() -> Result<()> {
     }
 
     println!("hesap        : {hesap}");
+
+    // --giris: bir kerelik elle giris. Gerekcesi browser::elle_giris uzerinde.
+    if args.iter().any(|a| a == "--giris") {
+        println!("\nOtomasyon DISINDA tarayici aciliyor — Google, WebDriver ile surulen");
+        println!("tarayicida oturum acmayi engelliyor. Bu pencere sira bir tarayici.");
+        println!("\n1. Acilan pencerede hesaba giris yap.");
+        println!("2. Tarayici penceresini DUZGUN kapat (cerezler o sirada diske yaziliyor).");
+        println!("3. Buraya donup Enter'a bas; Kervan girisi dogrulayacak.\n");
+
+        browser::elle_giris(&profiles_root, hesap, &browser, GEMINI.url)?;
+
+        // Surecin bitmesini BEKLEYEMEYIZ: Firefox/Zen bir baslatici surec kullaniyor,
+        // o hemen cikip asil tarayiciyi ayri surecte birakiyor — `wait()` aninda
+        // donuyor ve dogrulama kullanici giris yapmadan calisiyordu (olculdu).
+        // Bitisi insan bildirir. Tarayicinin DUZGUN kapatilmasi ayrica sart:
+        // cerezler o sirada diske yaziliyor, zorla oldurmek girisi kaybettirebilir.
+        println!("Giris bitince tarayiciyi kapat, sonra buraya donup Enter'a bas.");
+        let mut satir = String::new();
+        std::io::stdin().read_line(&mut satir).ok();
+
+        println!("dogrulaniyor...");
+        // Dogrulama WebDriver ile: giris tuttu mu, havuzun gordugu haliyle bakiyoruz.
+        let oturum = Session::open(&profiles_root, hesap, &browser, &geckodriver, true)
+            .await
+            .context(
+                "profil acilamadi — tarayici penceresi hala acik olabilir. Kapat ve \
+                 `--giris` ile yeniden dene.",
+            )?;
+        oturum.goto(GEMINI.url).await?;
+        let durum = detect_login(&oturum.client, &GEMINI.selectors).await?;
+        oturum.close().await.ok();
+        return match durum {
+            LoginState::Ready => {
+                println!("durum        : GIRISLI — hesap havuza eklenmeye hazir.");
+                println!("kervan.toml'a ekle:\n\n[[accounts]]\nname = \"{hesap}\"\n");
+                Ok(())
+            }
+            _ => anyhow::bail!(
+                "giris dogrulanamadi ({durum:?}). Pencerede giris tamamlanmamis olabilir; \
+                 `--giris` ile yeniden dene."
+            ),
+        };
+    }
+
     let oturum = Session::open(&profiles_root, hesap, &browser, &geckodriver, headless).await?;
     println!("profil       : {}", oturum.profile_dir.display());
 
