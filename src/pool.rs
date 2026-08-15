@@ -41,20 +41,32 @@ impl AccountState {
         self.recent.retain(|t| simdi.duration_since(*t) < Duration::from_secs(3600));
     }
 
-    fn hazir_mi(&mut self, simdi: Instant, pacing: &Pacing) -> bool {
+    /// Hesap **ne zaman** hazir olur? `None` = insan kapisinda, suresi belirsiz.
+    ///
+    /// Neden bool degil de zaman: bekleme suresini yalniz `not_before`'dan hesaplamak,
+    /// saatlik tavandan habersiz olmak demekti. Tavan dolup `not_before` gecmiste
+    /// kalinca bekleme 0 cikiyor, dongu bir saat boyunca saniyede 20 tur atarak bosa
+    /// doniyordu. Engelin ne oldugunu bilen tek yer burasi, o yuzden sureyi de burasi
+    /// soylemeli.
+    fn hazir_zamani(&mut self, simdi: Instant, pacing: &Pacing) -> Option<Instant> {
         if self.paused_reason.is_some() {
-            return false;
-        }
-        if let Some(nb) = self.not_before
-            && simdi < nb
-        {
-            return false;
+            return None;
         }
         self.buda(simdi);
+        let mut ne_zaman = self.not_before.unwrap_or(simdi);
         if pacing.hourly_cap > 0 && self.recent.len() as u32 >= pacing.hourly_cap {
-            return false;
+            // Tavan dolu: en eski istek pencereden dusunce yer acilir. `recent` sirali
+            // eklendigi ve `buda` sirayi bozmadigi icin ilki en eskisidir.
+            if let Some(&en_eski) = self.recent.first() {
+                ne_zaman = ne_zaman.max(en_eski + Duration::from_secs(3600));
+            }
         }
-        true
+        Some(ne_zaman)
+    }
+
+    #[cfg(test)]
+    fn hazir_mi(&mut self, simdi: Instant, pacing: &Pacing) -> bool {
+        self.hazir_zamani(simdi, pacing).is_some_and(|t| t <= simdi)
     }
 }
 
@@ -200,16 +212,17 @@ impl Pool {
 
             for (i, slot) in self.slots.iter().enumerate() {
                 let mut st = slot.state.lock().await;
-                if st.hazir_mi(simdi, &self.pacing) {
+                match st.hazir_zamani(simdi, &self.pacing) {
                     // en az kullanilan kazanir
-                    if aday.is_none_or(|(_, t)| st.total < t) {
-                        aday = Some((i, st.total));
+                    Some(t) if t <= simdi => {
+                        if aday.is_none_or(|(_, n)| st.total < n) {
+                            aday = Some((i, st.total));
+                        }
                     }
-                } else if st.paused_reason.is_none()
-                    && let Some(nb) = st.not_before
-                    && en_erken.is_none_or(|e| nb < e)
-                {
-                    en_erken = Some(nb);
+                    Some(t) if en_erken.is_none_or(|e| t < e) => en_erken = Some(t),
+                    Some(_) => {}
+                    // Insan kapisinda: ne secilir ne beklenir.
+                    None => {}
                 }
             }
 
@@ -355,19 +368,19 @@ impl Pool {
 /// Ayri fonksiyon cunku uc yolun ucu de yanlis olabilir ve ucu de tarayicisiz sinanabilir:
 /// yanlis "Bekle" istegi bir saat asar, yanlis "Birak" sohbet gecmisini sessizce kaybeder.
 fn sabit_karari(st: &mut AccountState, simdi: Instant, pacing: &Pacing) -> Sabit {
-    if st.hazir_mi(simdi, pacing) {
-        return Sabit::Kullan;
-    }
-    if st.paused_reason.is_some() {
+    let Some(ne_zaman) = st.hazir_zamani(simdi, pacing) else {
         return Sabit::Birak("hesap insan kapisinda");
+    };
+    if ne_zaman <= simdi {
+        return Sabit::Kullan;
     }
     // Kisa bekleme (hiz butcesi) surekliligi korumaya deger; uzun bekleme (saatlik
     // tavan) degmez — 7/24 kosuda istegi bir saat askida birakmak yanit vermemektir.
-    match st.not_before {
-        Some(nb) if nb.saturating_duration_since(simdi) <= PIN_MAX_BEKLEME => {
-            Sabit::Bekle(nb.saturating_duration_since(simdi))
-        }
-        _ => Sabit::Birak("saatlik tavan dolu ya da bekleme cok uzun"),
+    let bekleme = ne_zaman.duration_since(simdi);
+    if bekleme <= PIN_MAX_BEKLEME {
+        Sabit::Bekle(bekleme)
+    } else {
+        Sabit::Birak("bekleme cok uzun — saatlik tavan dolmus olabilir")
     }
 }
 
@@ -478,6 +491,23 @@ mod tests {
         assert!(p.slots[0].state.lock().await.paused_reason.is_some(), "sinirda insan cagrilmali");
     }
 
+    /// Tavan dolunca bekleme suresi SIFIR degil, pencerenin bosalmasina kalan sure
+    /// olmali. Sifir cikarsa dongu bir saat boyunca bosa doner (canli kosuda islemciyi
+    /// yakan, hicbir yere hata da yazmayan bir hata).
+    #[test]
+    fn tavan_dolunca_bekleme_pencere_sonuna_kadar() {
+        let simdi = Instant::now();
+        let mut st = AccountState {
+            recent: vec![simdi],
+            // hiz butcesi coktan gecmis: tek engel tavan
+            not_before: Some(simdi - Duration::from_secs(10)),
+            ..Default::default()
+        };
+        let t = st.hazir_zamani(simdi, &pacing(1)).expect("duraklatilmis degil");
+        let kalan = t.duration_since(simdi);
+        assert!(kalan > Duration::from_secs(3500), "pencere sonuna kadar beklemeli, kalan: {kalan:?}");
+    }
+
     /// Sabitlenmis hesap kisa bir hiz butcesi beklemesi icin BIRAKILMAMALI — birakilirsa
     /// konusma baska hesaba gecer ve tarayicidaki sohbet gecmisi bosa cikar.
     #[test]
@@ -496,7 +526,13 @@ mod tests {
     fn tavan_dolunca_sabit_birakilir() {
         let p = pacing(1);
         let simdi = Instant::now();
-        let mut st = AccountState { recent: vec![simdi], ..Default::default() };
+        // not_before gecmiste: eski kodda bekleme 0 cikip Bekle(0) donuyordu, yani
+        // sabit hic birakilmiyor ve dongu bir saat bosa doniyordu.
+        let mut st = AccountState {
+            recent: vec![simdi],
+            not_before: Some(simdi - Duration::from_secs(10)),
+            ..Default::default()
+        };
         assert!(matches!(sabit_karari(&mut st, simdi, &p), Sabit::Birak(_)));
     }
 
