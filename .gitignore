@@ -1,0 +1,14 @@
+/target
+
+# Tarayici profilleri: cerez ve oturum icerir. Asla commit'lenmez.
+/profiles
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Yerel yapilandirma (anahtar/cerez alanlari icerebilir)
+/kervan.toml
+.env
+
+# OmniRoute kaynak klonu — referans, depoya ait degil
+/ref
