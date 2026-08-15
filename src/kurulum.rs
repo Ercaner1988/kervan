@@ -108,6 +108,13 @@ pub async fn calistir(
             continue;
         }
 
+        // Kapatilan tarayici kilidi hemen birakmiyor; beklemeyi kullaniciya yaptirma.
+        crate::browser::kilidin_birakilmasini_bekle(
+            &profiles_root.join(&profil),
+            std::time::Duration::from_secs(20),
+        )
+        .await;
+
         match girisli_mi(profiles_root, &profil, browser, geckodriver, saglayici).await {
             Ok(true) => {
                 println!("durum        : GIRISLI");

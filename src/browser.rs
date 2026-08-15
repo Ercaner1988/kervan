@@ -16,6 +16,12 @@ use std::process::{Child, Command, Stdio};
 use anyhow::{bail, Context, Result};
 use fantoccini::{Client, ClientBuilder, Locator};
 
+/// Gizli pencerenin konumu: gorunur masaustunun sagi/altinda kalan bos alan.
+/// WebDriver `set_window_rect` isaretsiz sayi aliyor, yani negatif koordinat yok;
+/// gizlemek icin buyuk POZITIF bir konum kullaniliyor.
+const GIZLI_X: u32 = 20_000;
+const GIZLI_Y: u32 = 20_000;
+
 /// Bir hesabin tarayici oturumu. `close()` cagrilmazsa geckodriver sureci sizar.
 pub struct Session {
     pub client: Client,
@@ -86,14 +92,77 @@ impl Session {
             .spawn()
             .with_context(|| format!("geckodriver baslatilamadi: {}", geckodriver.display()))?;
 
-        let mut args = vec!["-profile".to_string(), profile_dir.display().to_string()];
-        if headless {
-            args.push("-headless".to_string());
-        }
+        // GIZLI KIP HEADLESS DEGIL. Headless bir tarayici calisirken gorunur hale
+        // GETIRILEMEZ; "arkada dursun, istedigim an one cekeyim" ancak gercek bir
+        // pencereyi kucultup geri yukleyerek olur. Yan fayda: claude.ai headless'ta
+        // bot duvarina carpiyordu ("Performing security verification"), gercek
+        // pencerede o duvar cikmiyor.
+        let args = vec!["-profile".to_string(), profile_dir.display().to_string()];
+        let _ = headless;
         let caps = yetenekler(&browser.0, args);
 
         let client = baglan(port, caps).await?;
-        Ok(Self { client, driver, profile_dir })
+        let s = Self { client, driver, profile_dir };
+        if headless {
+            s.gizle().await;
+        }
+        Ok(s)
+    }
+
+    /// Pencereyi gozden cekilir: EKRAN DISINA tasinir, kucultulmez.
+    ///
+    /// NEDEN KUCULTME DEGIL: olculdu — kucultulmus pencerede tarayici cizimi kisiyor
+    /// ve Gemini'nin yanit balonu DOM'a hic dusmuyordu (120 sn zaman asimi). Ayni
+    /// istem gorunur pencerede 5.9 saniyede dogru yanit verdi. Ekran disindaki
+    /// pencere ise normal cizilmeye devam ediyor, sadece gorunmuyor.
+    pub async fn gizle(&self) {
+        // Hata yutuluyor: gizlenemezse is durmaz, yalnizca pencere gorunur kalir.
+        self.client.set_window_rect(GIZLI_X, GIZLI_Y, 1280, 900).await.ok();
+        // Isletim sistemi konumu masaustune KIRPABILIR. Kirptiysa pencere gorunur
+        // kalir; bunu sessizce "gizledim" diye gecistirmek yanlis olur.
+        if let Ok((x, y, _, _)) = self.client.get_window_rect().await
+            && (x + 1200 < GIZLI_X as u64 || y + 800 < GIZLI_Y as u64)
+        {
+            eprintln!(
+                "uyari: pencere ekran disina alinamadi (isletim sistemi {x},{y} konumuna \
+                 kirpti); gorunur kalacak"
+            );
+        }
+    }
+
+    /// Pencereyi one getirir — model secimi, istemi durdurma, dogrulama cozme icin.
+    /// Insan kapisinin gorunur ayagi bu.
+    pub async fn goster(&self) -> Result<()> {
+        self.client
+            .set_window_rect(80, 60, 1280, 900)
+            .await
+            .context("pencere one getirilemedi")?;
+        Ok(())
+    }
+
+    /// Yeni sekme acar ve ona gecer; dondurdugu tutamakla sonra geri donulur.
+    ///
+    /// NEDEN SEKME: bir profilde birden cok saglayici barinir (ayni Google oturumu
+    /// hepsine yetiyor). Sekme yerine ayni sekmede adres degistirmek sohbeti
+    /// sifirlardi — Gemini `/app`'e her donuste yeni konusma aciyor, yani konusma
+    /// surekliligi sabitlemesi calismaz olurdu. Her saglayici kendi sekmesinde
+    /// oturur, aralarinda gecis yapariz.
+    pub async fn yeni_sekme(&self, url: &str) -> Result<fantoccini::wd::WindowHandle> {
+        let y = self.client.new_window(true).await.context("yeni sekme acilamadi")?;
+        self.client
+            .switch_to_window(y.handle.clone())
+            .await
+            .context("yeni sekmeye gecilemedi")?;
+        self.goto(url).await?;
+        Ok(y.handle)
+    }
+
+    pub async fn sekmeye_gec(&self, h: fantoccini::wd::WindowHandle) -> Result<()> {
+        self.client.switch_to_window(h).await.context("sekmeye gecilemedi")
+    }
+
+    pub async fn gecerli_sekme(&self) -> Result<fantoccini::wd::WindowHandle> {
+        self.client.window().await.context("gecerli sekme okunamadi")
     }
 
     pub async fn goto(&self, url: &str) -> Result<()> {
@@ -129,6 +198,19 @@ impl Drop for Session {
 /// Dosyanin VARLIGI kanit degil — cokme sonrasi geride kalabiliyor. Yazmaya acmayi
 /// denemek canliyi olulden ayiriyor; olculdu: tutan surec varken acilmiyor, o surec
 /// olunce ayni dosya sorunsuz aciliyor.
+/// Kilidin birakilmasini kisa bir sure bekler.
+///
+/// Tarayici penceresi kapandiktan SONRA da surec birkac saniye yasiyor ve kilidi
+/// hemen birakmiyor. "Kapat, sonra Enter'a bas" akisinda kullanici tam da bu araliga
+/// denk gelip "profil baska bir surecte acik" hatasi aliyordu — oysa yapmasi gereken
+/// tek sey biraz beklemekti. Beklemeyi kullaniciya yaptirmak yerine biz yapiyoruz.
+pub async fn kilidin_birakilmasini_bekle(dir: &Path, azami: std::time::Duration) {
+    let baslangic = std::time::Instant::now();
+    while profil_kilitli(dir) && baslangic.elapsed() < azami {
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+}
+
 fn profil_kilitli(dir: &Path) -> bool {
     // Windows'ta parent.lock, Unix'te .parentlock.
     for ad in ["parent.lock", ".parentlock"] {
@@ -365,16 +447,17 @@ pub async fn ask(
     prompt: &str,
     zaman_asimi: std::time::Duration,
 ) -> Result<String> {
+    // Once sayfanin yerlesmesini bekle. Beklemeden bakmak, sayfa henuz cizilmemisken
+    // "secici kirilmis" diye sahte hata veriyordu (olculdu).
+    let kutu = kutuyu_bekle(c, sel).await?;
+
     // Gondermeden ONCE kac yanit balonu vardi. Bu temel cizgi olmadan "onceki turun
     // yaniti, degismeden duruyor" ile "yeni yanit, tamamlandi" ayirt edilemez.
+    // Kutu bulunduktan SONRA sayiliyor: once sayarsak yarim cizilmis sayfada 0 gorup
+    // temel cizgiyi yanlis kurardik.
     let taban = son_balon(c, sel).await.0;
-
-    let kutu = c
-        .find(Locator::Css(&sel.prompt_input))
-        .await
-        .context("istem kutusu bulunamadi — oturum dusmus ya da secici kirilmis olabilir")?;
     kutu.click().await.context("istem kutusuna tiklanamadi")?;
-    kutu.send_keys(prompt).await.context("istem yazilamadi")?;
+    istemi_yaz(c, sel, &kutu, prompt).await?;
     kutu.send_keys(ENTER).await.context("istem gonderilemedi")?;
 
     const ARALIK: std::time::Duration = std::time::Duration::from_millis(500);
@@ -403,6 +486,119 @@ pub async fn ask(
         zaman_asimi.as_secs(),
         dedektor.yarim().len()
     )
+}
+
+/// Istemi yazar ve **yazildigini dogrular**.
+///
+/// NEDEN DOGRULAMA: olculdu — perplexity'de "Sadece 'elma' yaz." yazildiginda kutuda
+/// yalnizca ilk karakter kaldi; Enter'a basilinca site "S" harfini aratti ve
+/// ansiklopedik bir cevap dondu. Yani eksik yazilan istem, YANLIS SORUYA DOGRU
+/// GORUNEN bir cevap uretiyor — sessiz hatanin en kotu bicimi. Sebebi editorun ilk
+/// tustan sonra kendini yeniden cizmesi: sonraki tuslar artik kopmus oge'ye gidiyor.
+///
+/// Cozum: yaz, geri oku, tutmadiysa ogeyi YENIDEN BUL, temizle, tekrar yaz. Iki
+/// denemede de tutmazsa gondermeden hata ver. Yarim istem gondermektense hic
+/// gondermemek dogru.
+async fn istemi_yaz(
+    c: &Client,
+    sel: &Selectors,
+    kutu: &fantoccini::elements::Element,
+    prompt: &str,
+) -> Result<()> {
+    kutu.send_keys(prompt).await.context("istem yazilamadi")?;
+    if yazilan_dogru_mu(kutu, prompt).await {
+        return Ok(());
+    }
+
+    // Ikinci deneme: YAVAS yaz. Bazi editorler (perplexity) ilk tustan sonra kendini
+    // yeniden ciziyor ve toplu gonderilen tuslarin gerisini yutuyor; harf harf yazip
+    // arada ogeyi tazelemek bunu asiyor. Yan fayda: insan temposuna zaten uygun.
+    let taze = c
+        .find(Locator::Css(&sel.prompt_input))
+        .await
+        .context("istem kutusu ikinci denemede bulunamadi")?;
+    taze.click().await.ok();
+    temizle(&taze).await;
+    yavas_yaz(c, sel, prompt).await?;
+    let taze = c
+        .find(Locator::Css(&sel.prompt_input))
+        .await
+        .context("istem kutusu yazim sonrasi bulunamadi")?;
+    if yazilan_dogru_mu(&taze, prompt).await {
+        return Ok(());
+    }
+
+    let goruler = kutu_metni(&taze).await;
+    bail!(
+        "istem kutuya tam yazilamadi, GONDERILMEDI. Beklenen {} karakter, kutuda {} karakter \
+         var (\"{}\"). Yarim istem gondermek yanlis soruya cevap almak olurdu.",
+        prompt.chars().count(),
+        goruler.chars().count(),
+        goruler.chars().take(40).collect::<String>()
+    )
+}
+
+/// Harf harf yazar, arada ogeyi yeniden bulur.
+///
+/// Editor kendini yeniden cizdiginde elimizdeki tutamak eskir; her parcadan once
+/// tazesini almak bunu asiyor. Gecikme ayrica insan temposuna denk dusuyor — plandaki
+/// "insan hizinda davran" maddesiyle ayni yone bakiyor, ayrica bir bedeli yok.
+async fn yavas_yaz(c: &Client, sel: &Selectors, prompt: &str) -> Result<()> {
+    const GECIKME: std::time::Duration = std::time::Duration::from_millis(35);
+    let mut oge = c
+        .find(Locator::Css(&sel.prompt_input))
+        .await
+        .context("yavas yazim icin istem kutusu bulunamadi")?;
+
+    for (i, harf) in prompt.chars().enumerate() {
+        // Oge eskiyebilir; arada tazele. Her harfte aramak gereksiz yavaslatirdi.
+        if i > 0
+            && i.is_multiple_of(10)
+            && let Ok(t) = c.find(Locator::Css(&sel.prompt_input)).await
+        {
+            oge = t;
+        }
+        let s = harf.to_string();
+        // SIRALI yazmak sart: paralel gondermek harfleri karistirirdi.
+        if oge.send_keys(&s).await.is_err()
+            && let Ok(t) = c.find(Locator::Css(&sel.prompt_input)).await
+        {
+            oge = t;
+            oge.send_keys(&s).await.ok();
+        }
+        tokio::time::sleep(GECIKME).await;
+    }
+    Ok(())
+}
+
+/// contenteditable'da metin `text()`, textarea'da `value` ozelliginde durur.
+async fn kutu_metni(e: &fantoccini::elements::Element) -> String {
+    if let Ok(Some(v)) = e.prop("value").await
+        && !v.is_empty()
+    {
+        return v;
+    }
+    e.text().await.unwrap_or_default()
+}
+
+async fn yazilan_dogru_mu(e: &fantoccini::elements::Element, prompt: &str) -> bool {
+    metin_esit_mi(&kutu_metni(e).await, prompt)
+}
+
+/// Kutudaki metin istemle ayni mi? Bosluk/satir farklari onemsenmiyor — editorler
+/// satir sonlarini kendilerine gore bicimliyor — ama EKSIK metin onemseniyor.
+fn metin_esit_mi(kutuda: &str, prompt: &str) -> bool {
+    let sadelestir = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
+    sadelestir(kutuda) == sadelestir(prompt)
+}
+
+/// Ctrl+A ile secip siler. WebDriver'da degistirici tus "yapiskan"dir: ayni tusu
+/// tekrar gondermek onu birakir, yoksa sonraki harfler de Ctrl'lu gider.
+async fn temizle(e: &fantoccini::elements::Element) {
+    const CTRL: &str = "\u{E009}";
+    const SIL: &str = "\u{E017}";
+    e.clear().await.ok();
+    e.send_keys(&format!("{CTRL}a{CTRL}{SIL}")).await.ok();
 }
 
 /// Kac ust uste ayni gozlem "bitti" sayilir. 4 x 500ms = 2 sn.
@@ -460,6 +656,32 @@ async fn son_balon(c: &Client, sel: &Selectors) -> (usize, String) {
         None => String::new(),
     };
     (hepsi.len(), metin)
+}
+
+/// Bir secicinin esledigi ogeleri TEK TEK doker: sinif, data-testid ve metin basi.
+///
+/// Sayim yetmedigi yerde gerekiyor. Ornegin bir "tur satiri" secicisi hem kullanici
+/// hem model turunu esliyorsa, sonuncusunu okumak istemi cevap sanmak demek olur —
+/// hangi ogenin kime ait oldugunu ancak boyle gorursun.
+pub async fn oge_dokumu(c: &Client, secici: &str) -> Result<String> {
+    let ogeler = c.find_all(Locator::Css(secici)).await.unwrap_or_default();
+    let mut s = format!("inceleme '{secici}': {} oge\n", ogeler.len());
+    for (i, e) in ogeler.iter().enumerate() {
+        let al = |v: Option<String>, n: usize| -> String {
+            v.unwrap_or_default().chars().take(n).collect()
+        };
+        let tid = al(e.attr("data-testid").await.ok().flatten(), 40);
+        let sinif = al(e.attr("class").await.ok().flatten(), 70);
+        // aria-label ve href, hesap kimligini tasiyan yerler: Google'in hesap
+        // dugmesi eposta adresini aria-label icinde veriyor.
+        let aria = al(e.attr("aria-label").await.ok().flatten(), 90);
+        let href = al(e.attr("href").await.ok().flatten(), 70);
+        let metin = al(Some(e.text().await.unwrap_or_default()), 60);
+        s.push_str(&format!(
+            "  [{i}] testid={tid:?} aria={aria:?}\n      href={href:?}\n      class={sinif:?}\n      text={metin:?}\n"
+        ));
+    }
+    Ok(s)
 }
 
 /// Canlilik sinamasi: her secicinin sayfada KAC oge esledigini ve sonuncusunun
@@ -546,13 +768,59 @@ pub async fn dom_ozeti(c: &Client, sel: &Selectors) -> Result<String> {
 /// dedirtiyordu — yani havuzun insan kapisi hic acilmazdi. Ayirt eden isaret
 /// giris baglantisi; o varsa oturum kapalidir, istem kutusu ne derse desin.
 pub async fn detect_login(c: &Client, sel: &Selectors) -> Result<LoginState> {
-    if c.find(Locator::Css(&sel.login_hint)).await.is_ok() {
-        return Ok(LoginState::NeedsLogin);
+    detect_login_bekleyerek(c, sel, YERLESME_SURESI).await
+}
+
+/// Sayfa yerlesene kadar bekleyip oturum durumunu soyler.
+///
+/// NEDEN BEKLEME: `goto` belge yuklenince doner, ama bu siteler tek sayfa uygulamasi —
+/// arayuz saniyeler sonra ciziliyor. Beklemeden bakmak "secici kirilmis" gibi gorunen
+/// SAHTE hatalar uretiyor. Olculdu: claude.ai'da ayni profille ust uste uc kosuda
+/// istem kutusu sirasiyla 1, 0 ve 0 adet cikti — secici degismedi, sayfa henuz
+/// cizilmemisti. Gemini yeterince hizli oldugu icin bu hata orada gorunmuyordu.
+pub async fn detect_login_bekleyerek(
+    c: &Client,
+    sel: &Selectors,
+    zaman_asimi: std::time::Duration,
+) -> Result<LoginState> {
+    const ARALIK: std::time::Duration = std::time::Duration::from_millis(250);
+    let baslangic = std::time::Instant::now();
+    loop {
+        // Sira onemli: cikis yapilmis sayfada da istem kutusu olabiliyor.
+        if c.find(Locator::Css(&sel.login_hint)).await.is_ok() {
+            return Ok(LoginState::NeedsLogin);
+        }
+        if c.find(Locator::Css(&sel.prompt_input)).await.is_ok() {
+            return Ok(LoginState::Ready);
+        }
+        if baslangic.elapsed() >= zaman_asimi {
+            return Ok(LoginState::Unknown);
+        }
+        tokio::time::sleep(ARALIK).await;
     }
-    if c.find(Locator::Css(&sel.prompt_input)).await.is_ok() {
-        return Ok(LoginState::Ready);
+}
+
+/// Tek sayfa uygulamasinin arayuzunu cizmesi icin taninan sure.
+const YERLESME_SURESI: std::time::Duration = std::time::Duration::from_secs(25);
+
+/// Istem kutusu cizilene kadar bekler.
+async fn kutuyu_bekle(c: &Client, sel: &Selectors) -> Result<fantoccini::elements::Element> {
+    const ARALIK: std::time::Duration = std::time::Duration::from_millis(250);
+    let baslangic = std::time::Instant::now();
+    loop {
+        if let Ok(e) = c.find(Locator::Css(&sel.prompt_input)).await {
+            return Ok(e);
+        }
+        if baslangic.elapsed() >= YERLESME_SURESI {
+            bail!(
+                "istem kutusu {} sn icinde cizilmedi ('{}') — oturum dusmus ya da secici \
+                 kirilmis olabilir",
+                YERLESME_SURESI.as_secs(),
+                sel.prompt_input
+            );
+        }
+        tokio::time::sleep(ARALIK).await;
     }
-    Ok(LoginState::Unknown)
 }
 
 #[cfg(test)]
@@ -585,6 +853,26 @@ mod tests {
             giris_kalibi: "https://o/?Email={eposta}".into(),
         };
         assert_eq!(p.giris_url("ad+etiket@gmail.com"), "https://o/?Email=ad%2Betiket@gmail.com");
+    }
+
+    /// ASIL HATA BUYDU: perplexity'de istemin yalnizca ilk karakteri kutuya girdi,
+    /// Enter'a basilinca site "S" harfini aratti ve ansiklopedik bir cevap dondu.
+    /// Yani eksik istem, YANLIS SORUYA DOGRU GORUNEN cevap uretiyor. Kisalmis metin
+    /// asla "yazildi" sayilmamali.
+    #[test]
+    fn eksik_yazilan_istem_kabul_edilmez() {
+        let istem = "Sadece 'elma' yaz, baska hicbir sey yazma.";
+        assert!(!metin_esit_mi("S", istem), "tek harf istem sayilmamali");
+        assert!(!metin_esit_mi("", istem), "bos kutu istem sayilmamali");
+        assert!(!metin_esit_mi("Sadece 'elma' yaz", istem), "kirpilmis metin kabul edilmemeli");
+        assert!(metin_esit_mi(istem, istem));
+    }
+
+    /// Editorler satir sonu/bosluk ekleyebiliyor; bunlara takilip saglam bir yazimi
+    /// reddetmek de yanlis olurdu.
+    #[test]
+    fn bosluk_farki_yazimi_reddettirmez() {
+        assert!(metin_esit_mi("  Merhaba   dunya \n", "Merhaba dunya"));
     }
 
     /// Kilit tespiti dosyanin VARLIGINA degil, tutulup tutulmadigina bakmali:

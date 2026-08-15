@@ -71,17 +71,36 @@ impl AccountState {
     }
 }
 
-pub struct Slot {
-    pub account: Account,
-    /// Hesabin bagli oldugu saglayici. Havuz artik tek saglayiciya bagli degil:
-    /// ayni havuzda gemini, claude ve perplexity hesaplari yan yana durabilir.
-    pub provider: Arc<Provider>,
+/// Acik bir tarayici oturumu ve saglayici basina sekmeleri.
+struct AcikOturum {
+    session: Session,
+    /// saglayici adi -> sekme tutamagi.
+    sekmeler: HashMap<String, fantoccini::wd::WindowHandle>,
+}
+
+/// Bir PROFIL = bir kimlik = bir tarayici. Ayni Google oturumu profildeki tum
+/// saglayicilara yettigi icin (olculdu: Gemini oturumu acikken Perplexity'ye
+/// "Continue with Google" ile sifresiz girildi) hesap basina ayri tarayici acmak
+/// gereksiz. 3 kimlik x 3 saglayici artik 9 degil 3 tarayici.
+pub struct Kimlik {
+    pub ad: String,
     /// Tembel acilir; None = tarayici henuz baslatilmadi.
-    session: Mutex<Option<Session>>,
+    oturum: Mutex<Option<AcikOturum>>,
+}
+
+/// Kota ve hiz butcesinin birimi: (kimlik, saglayici).
+///
+/// Neden tarayiciyla ayni birim degil: limitler saglayici basina isliyor. Gemini'nin
+/// tavani dolunca ayni profildeki Perplexity'nin de durmasi yanlis olurdu.
+pub struct Slot {
+    pub kimlik: usize,
+    pub hesap_adi: String,
+    pub provider: Arc<Provider>,
     pub state: Mutex<AccountState>,
 }
 
 pub struct Pool {
+    pub kimlikler: Vec<Kimlik>,
     pub slots: Vec<Slot>,
     pub pacing: Pacing,
     /// Konusma parmak izi -> hesap. Tarayici sohbeti durumlu oldugu icin bir konusmanin
@@ -115,13 +134,13 @@ pub struct Lease<'a> {
     pub index: usize,
     pub name: String,
     pub provider: Arc<Provider>,
-    guard: tokio::sync::MutexGuard<'a, Option<Session>>,
+    guard: tokio::sync::MutexGuard<'a, Option<AcikOturum>>,
 }
 
 impl Lease<'_> {
     pub fn client(&self) -> &fantoccini::Client {
         // Kiralama ancak oturum acildiktan sonra verilir; burada None olamaz.
-        &self.guard.as_ref().expect("oturum acik olmali").client
+        &self.guard.as_ref().expect("oturum acik olmali").session.client
     }
 }
 
@@ -137,18 +156,24 @@ impl Pool {
         geckodriver: PathBuf,
         headless: bool,
     ) -> Result<Self> {
+        let mut kimlikler = Vec::new();
         let mut slots = Vec::new();
         for a in accounts {
-            let provider = crate::saglayicilar::bul(defter, &a.provider)
-                .with_context(|| format!("'{}' hesabi icin", a.name))?;
-            slots.push(Slot {
-                account: a,
-                provider,
-                session: Mutex::new(None),
-                state: Mutex::new(AccountState::default()),
-            });
+            let k = kimlikler.len();
+            kimlikler.push(Kimlik { ad: a.name.clone(), oturum: Mutex::new(None) });
+            for sad in a.saglayicilar() {
+                let provider = crate::saglayicilar::bul(defter, &sad)
+                    .with_context(|| format!("'{}' hesabi icin", a.name))?;
+                slots.push(Slot {
+                    kimlik: k,
+                    hesap_adi: a.name.clone(),
+                    provider,
+                    state: Mutex::new(AccountState::default()),
+                });
+            }
         }
         Ok(Self {
+            kimlikler,
             slots,
             pacing,
             sabitler: Mutex::new(HashMap::new()),
@@ -157,6 +182,22 @@ impl Pool {
             geckodriver,
             headless,
         })
+    }
+
+    /// Bir kimligin tarayici penceresini one getirir (model secmek, durdurmak,
+    /// dogrulama cozmek icin). Oturum acik degilse yapacak bir sey yok.
+    pub async fn goster(&self, kimlik: usize) -> Result<bool> {
+        let Some(k) = self.kimlikler.get(kimlik) else {
+            bail!("{kimlik} numarali kimlik yok");
+        };
+        let g = k.oturum.lock().await;
+        match g.as_ref() {
+            Some(o) => {
+                o.session.goster().await?;
+                Ok(true)
+            }
+            None => Ok(false),
+        }
     }
 
     /// Kac konusma sabitlenmis (gorunurluk icin).
@@ -211,7 +252,7 @@ impl Pool {
                         Ok(l) => return Ok(l),
                         Err(e) => {
                             let mesaj = format!("{e:#}");
-                            eprintln!("[{}] sabit hesap acilamadi: {mesaj}", self.slots[i].account.name);
+                            eprintln!("[{}] sabit hesap acilamadi: {mesaj}", self.slots[i].hesap_adi);
                             self.basarisiz(i, &mesaj).await;
                             continue;
                         }
@@ -225,7 +266,7 @@ impl Pool {
                         eprintln!(
                             "[{}] konusma sabiti birakildi ({neden}); yeni hesapta sohbet \
                              gecmissiz baslayacak",
-                            self.slots[i].account.name
+                            self.slots[i].hesap_adi
                         );
                     }
                 }
@@ -264,7 +305,7 @@ impl Pool {
                     // ya da hepsi elenince asagida acik hatayla biter — sonsuz donmez.
                     Err(e) => {
                         let mesaj = format!("{e:#}");
-                        eprintln!("[{}] hesap acilamadi: {mesaj}", self.slots[i].account.name);
+                        eprintln!("[{}] hesap acilamadi: {mesaj}", self.slots[i].hesap_adi);
                         self.basarisiz(i, &mesaj).await;
                         continue;
                     }
@@ -292,38 +333,58 @@ impl Pool {
 
     async fn kilitle(&self, i: usize) -> Result<Lease<'_>> {
         let slot = &self.slots[i];
-        let mut guard = slot.session.lock().await;
+        let sad = slot.provider.ad.clone();
+        let mut guard = self.kimlikler[slot.kimlik].oturum.lock().await;
+
         if guard.is_none() {
             let s = Session::open(
                 &self.profiles_root,
-                &slot.account.name,
+                &slot.hesap_adi,
                 &self.browser,
                 &self.geckodriver,
                 self.headless,
             )
             .await?;
-            // Tarayici bos sayfayla acilir; saglayiciya gitmeden istem kutusu yoktur.
-            s.goto(&slot.provider.url).await?;
-            let durum = detect_login(&s.client, &slot.provider.selectors).await?;
-            // Pencereyi KAPATMIYORUZ: gorunur kipte insan tam bu pencerede giris yapar,
-            // sonra `POST /accounts/{i}/devam` ile hesap kaldigi yerden devam eder.
-            *guard = Some(s);
-            // Burada TAHMIN yok, olcum var: giris durumunu dogrudan gorduk. O yuzden
-            // metin sezgisine birakmadan hesabi kendimiz duraklatiyoruz.
-            let neden = match durum {
-                LoginState::Ready => None,
-                LoginState::NeedsLogin => {
-                    Some("oturum kapali: acilan pencerede elle giris gerekiyor".to_string())
+            *guard = Some(AcikOturum { session: s, sekmeler: HashMap::new() });
+        }
+
+        // Saglayicinin sekmesine gec; yoksa ac. Ilk saglayici zaten acik olan
+        // pencereyi kullanir, sonrakiler yeni sekme alir.
+        {
+            let o = guard.as_mut().expect("oturum acik");
+            match o.sekmeler.get(&sad).cloned() {
+                Some(h) => o.session.sekmeye_gec(h).await?,
+                None => {
+                    let h = if o.sekmeler.is_empty() {
+                        o.session.goto(&slot.provider.url).await?;
+                        o.session.gecerli_sekme().await?
+                    } else {
+                        o.session.yeni_sekme(&slot.provider.url).await?
+                    };
+                    o.sekmeler.insert(sad.clone(), h);
+
+                    // Yeni acilan sekmede oturum durumunu OLC. Tahmin yok.
+                    let durum =
+                        detect_login(&o.session.client, &slot.provider.selectors).await?;
+                    let neden = match durum {
+                        LoginState::Ready => None,
+                        LoginState::NeedsLogin => Some(format!(
+                            "'{sad}' oturumu kapali: bu profilde elle giris gerekiyor"
+                        )),
+                        LoginState::Unknown => Some(format!(
+                            "'{sad}' sayfasinda ne istem kutusu ne giris baglantisi var — \
+                             dogrulama duvari ya da kirilmis secici"
+                        )),
+                    };
+                    if let Some(neden) = neden {
+                        slot.state.lock().await.paused_reason = Some(neden.clone());
+                        bail!(
+                            "'{}': {neden}. Pencereyi one getir: POST /accounts/{i}/goster \
+                             — cozunce: POST /accounts/{i}/devam",
+                            slot.hesap_adi
+                        );
+                    }
                 }
-                LoginState::Unknown => Some(
-                    "ne istem kutusu ne giris baglantisi bulundu — dogrulama duvari ya da \
-                     kirilmis secici. Pencereye bak."
-                        .to_string(),
-                ),
-            };
-            if let Some(neden) = neden {
-                slot.state.lock().await.paused_reason = Some(neden.clone());
-                bail!("'{}': {neden} Cozunce: POST /accounts/{i}/devam", slot.account.name);
             }
         }
         {
@@ -337,7 +398,7 @@ impl Pool {
         }
         Ok(Lease {
             index: i,
-            name: slot.account.name.clone(),
+            name: slot.hesap_adi.clone(),
             provider: slot.provider.clone(),
             guard,
         })
@@ -489,7 +550,7 @@ mod tests {
         // Tarayici baslatilmiyor: bu testler yalniz durum mantigina dokunuyor.
         let defter = crate::saglayicilar::kayit_defteri(&HashMap::new());
         Pool::new(
-            vec![Account { name: "a".into(), provider: "gemini".into() }],
+            vec![Account { name: "a".into(), provider: None, providers: vec!["gemini".into()] }],
             pacing,
             &defter,
             PathBuf::from("."),
@@ -506,7 +567,7 @@ mod tests {
     fn bilinmeyen_saglayicili_hesap_havuzu_kurmaz() {
         let defter = crate::saglayicilar::kayit_defteri(&HashMap::new());
         let r = Pool::new(
-            vec![Account { name: "a".into(), provider: "yokboyle".into() }],
+            vec![Account { name: "a".into(), provider: None, providers: vec!["yokboyle".into()] }],
             pacing(0),
             &defter,
             PathBuf::from("."),

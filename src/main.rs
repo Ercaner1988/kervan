@@ -77,7 +77,7 @@ async fn main() -> Result<()> {
         println!("yapilandirma : {}", cfg_yolu.display());
         println!("hesap havuzu ({} hesap):", cfg.accounts.len());
         for a in &cfg.accounts {
-            println!("  - {} ({})", a.name, a.provider);
+            println!("  - {} ({})", a.name, a.saglayicilar().join(", "));
         }
         println!(
             "hiz butcesi  : {} ms + 0-{} ms sapma, saatlik tavan {}",
@@ -89,7 +89,7 @@ async fn main() -> Result<()> {
         let varsayilan = cfg
             .accounts
             .first()
-            .map(|a| a.provider.clone())
+            .and_then(|a| a.saglayicilar().first().cloned())
             .unwrap_or_else(|| VARSAYILAN_SAGLAYICI.to_string());
 
         let havuz = pool::Pool::new(
@@ -170,6 +170,12 @@ async fn main() -> Result<()> {
         std::io::stdin().read_line(&mut satir).ok();
 
         println!("dogrulaniyor...");
+        // Tarayici penceresi kapansa da surec kilidi birkac saniye elinde tutuyor.
+        browser::kilidin_birakilmasini_bekle(
+            &profiles_root.join(hesap),
+            std::time::Duration::from_secs(20),
+        )
+        .await;
         // Dogrulama WebDriver ile: giris tuttu mu, havuzun gordugu haliyle bakiyoruz.
         let oturum = Session::open(&profiles_root, hesap, &browser, &geckodriver, true)
             .await
@@ -239,6 +245,12 @@ async fn main() -> Result<()> {
     // --sor'dan SONRA calisir; bos sayfada olcum bir sey soylemez.
     if args.iter().any(|a| a == "--dom") {
         println!("\n{}", browser::dom_ozeti(&oturum.client, &saglayici.selectors).await?);
+    }
+
+    // --incele <css>: bir secicinin esledigi ogeleri tek tek dok.
+    if let Some(i) = args.iter().position(|a| a == "--incele") {
+        let secici = args.get(i + 1).context("--incele icin bir CSS secici gerekli")?;
+        println!("\n{}", browser::oge_dokumu(&oturum.client, secici).await?);
     }
 
     if !headless {

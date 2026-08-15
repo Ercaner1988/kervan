@@ -52,6 +52,10 @@ pub fn router(state: Arc<AppState>) -> Router {
         // Insan kapisi cozuldukten sonra hesabi geri al. Bu uc olmadan duraklatilan
         // hesap surec omru boyunca olu kalirdi.
         .route("/accounts/{i}/devam", post(devam))
+        // Gizli duran tarayiciyi ONE GETIR: model/dusunme duzeyi secmek, bir istemi
+        // durdurup duzeltmek ya da dogrulama cozmek icin. Gizli kip headless DEGIL,
+        // kucultulmus gercek pencere — headless olsaydi bu uc imkansiz olurdu.
+        .route("/accounts/{i}/goster", post(goster))
         // Kota ogrenicinin gordugu: gercek kullanim ve gozlemden cikan limit.
         .route("/kota", get(kota_ozeti))
         .with_state(state)
@@ -60,8 +64,8 @@ pub fn router(state: Arc<AppState>) -> Router {
 async fn kota_ozeti(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let mut liste = Vec::new();
     for slot in st.pool.slots.iter() {
-        let o = st.defter.ozet(&slot.account.name).await;
-        liste.push(serde_json::json!({ "hesap": slot.account.name, "kullanim": o }));
+        let o = st.defter.ozet(&slot.hesap_adi).await;
+        liste.push(serde_json::json!({ "hesap": slot.hesap_adi, "kullanim": o }));
     }
     Json(serde_json::json!({
         "defter": kota::yol_goster(&st.defter).display().to_string(),
@@ -76,7 +80,10 @@ async fn accounts(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
         let s = slot.state.lock().await;
         liste.push(serde_json::json!({
             "index": i,
-            "name": slot.account.name,
+            "name": slot.hesap_adi,
+            // Ayni kimlik numarasini paylasan yuvalar TEK tarayiciyi paylasir;
+            // sekmeleri farklidir.
+            "kimlik": st.pool.kimlikler[slot.kimlik].ad,
             "provider": slot.provider.ad,
             "model": model_kimligi(&slot.provider.ad),
             "istek_sayisi": s.total,
@@ -97,7 +104,25 @@ async fn devam(State(st): State<Arc<AppState>>, Path(i): Path<usize>) -> Respons
         return hata(StatusCode::NOT_FOUND, &format!("{i} numarali hesap yok"));
     }
     st.pool.devam_ettir(i).await;
-    Json(serde_json::json!({ "ok": true, "name": st.pool.slots[i].account.name })).into_response()
+    Json(serde_json::json!({ "ok": true, "name": st.pool.slots[i].hesap_adi })).into_response()
+}
+
+async fn goster(State(st): State<Arc<AppState>>, Path(i): Path<usize>) -> Response {
+    let Some(slot) = st.pool.slots.get(i) else {
+        return hata(StatusCode::NOT_FOUND, &format!("{i} numarali hesap yok"));
+    };
+    match st.pool.goster(slot.kimlik).await {
+        Ok(true) => Json(serde_json::json!({
+            "ok": true, "kimlik": slot.hesap_adi, "sekme": slot.provider.ad,
+        }))
+        .into_response(),
+        // Acilmamis oturumu "gosterdim" demek yalan olurdu.
+        Ok(false) => hata(
+            StatusCode::CONFLICT,
+            &format!("'{}' icin tarayici henuz acilmadi", slot.hesap_adi),
+        ),
+        Err(e) => hata(StatusCode::INTERNAL_SERVER_ERROR, &format!("{e:#}")),
+    }
 }
 
 // ─── OpenAI bicimleri ────────────────────────────────────────────────────────

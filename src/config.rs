@@ -63,13 +63,30 @@ impl Default for Kota {
     }
 }
 
+/// Bir KIMLIK: profil dizini ve o profilde oturum acilmis saglayicilar.
+///
+/// Bir Google oturumu profildeki tum saglayicilara yetiyor (olculdu: Gemini acikken
+/// Perplexity'ye "Continue with Google" ile sifresiz girildi), o yuzden hesap basina
+/// ayri profil degil, KIMLIK basina tek profil tutuluyor.
 #[derive(Debug, Deserialize, Clone)]
 pub struct Account {
     /// Profil dizini adi. Ayni ad = ayni oturum.
     pub name: String,
-    /// Simdilik yalniz "gemini". Saglayici genislemesi Asama 4.
-    #[serde(default = "varsayilan_saglayici")]
-    pub provider: String,
+    /// Tekil bicim — eski yapilandirmalar kirilmasin diye korunuyor.
+    #[serde(default)]
+    pub provider: Option<String>,
+    /// Bu profilde acik olan saglayicilar. Her biri kendi sekmesinde oturur.
+    #[serde(default)]
+    pub providers: Vec<String>,
+}
+
+impl Account {
+    pub fn saglayicilar(&self) -> Vec<String> {
+        if !self.providers.is_empty() {
+            return self.providers.clone();
+        }
+        vec![self.provider.clone().unwrap_or_else(varsayilan_saglayici)]
+    }
 }
 
 fn varsayilan_saglayici() -> String {
@@ -114,7 +131,7 @@ impl Config {
 
     fn varsayilan() -> Self {
         Self {
-            accounts: vec![Account { name: "ercan-gemini-1".into(), provider: varsayilan_saglayici() }],
+            accounts: vec![Account { name: "ercan-gemini-1".into(), provider: None, providers: vec![varsayilan_saglayici()] }],
             pacing: Pacing::default(),
             kota: Kota::default(),
             providers: Default::default(),
@@ -149,7 +166,7 @@ mod tests {
         assert_eq!(c.accounts.len(), 2);
         assert_eq!(c.accounts[0].name, "a");
         // provider verilmezse varsayilan dolmali
-        assert_eq!(c.accounts[0].provider, "gemini");
+        assert_eq!(c.accounts[0].saglayicilar(), vec!["gemini".to_string()]);
         assert_eq!(c.pacing.hourly_cap, 10);
     }
 
