@@ -1,6 +1,7 @@
 # Kervan
 
-Tarayıcı sürülü, kota öğrenen AI ağ geçidi. Rust, tek ikili dosya.
+Web üzerinden yapay zekâ kullanımını istediğiniz arayüzlere yönlendirmeyi sağlayan bir
+geçit altyapısı. Rust, tek ikili dosya.
 
 > Çok yoldan yük taşıyan, hangi yolun ne kadar kaldırdığını bilen.
 
@@ -75,3 +76,7 @@ diziye karışır — çok hesap havuzu geldiğinde her istemci oturumuna ayrı 
 
 Profil dizinleri çerez ve oturum içerir, `.gitignore`'da. Ağ geçidi yalnız
 `127.0.0.1`'e bağlanır. Kervan tek başına oturum açamaz — doğrulama hep insandan geçer.
+
+## Lisans
+
+MIT — bkz. [LICENSE](LICENSE).
