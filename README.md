@@ -93,6 +93,27 @@ toplam 1/7. Her istek 120 saniye boşa yakıyordu.
 Sağlayıcı tanımları kodda duruyor. Duvar kalkarsa `kervan.toml`'da `providers` listesine
 adı eklemek yeterli.
 
+### Giriş adresleri — ölçüldü
+
+`--url ... --dom` ile boş bir profilde açılıp nereye düştüğüne bakıldı:
+
+| sağlayıcı | adres | sonuç |
+|---|---|---|
+| `gemini` | `AccountChooser?Email=…` | **e-posta ön-dolu** (ölçüldü: `input[name='identifier']` doluydu) |
+| `claude` | `/login` | giriş sayfası; `data-testid='login-with-google'` var |
+| `deepseek` | `/sign_in` | giriş formu (`input[type='password']`) |
+| `qwen` | `/auth?action=signin` | giriş formu (`input[type='password']`) |
+| `copilot-m365` | kök | `login.microsoftonline.com`'a yönleniyor |
+| `z.ai` | `/auth` | **doğrulanamadı** — sayfa çizilmedi (Cloudflare) |
+| `kimi` | — | **statik giriş yolu yok**: 20 bağlantının hiçbiri girişe gitmiyor, 9 düğmenin 8'i metinsiz ikon |
+| `copilot` | — | kök adres anonim uygulamayı açıyor |
+
+Çıkan sonuç: **e-posta ön-doldurma yalnızca Gemini'de var.** kimi ve copilot'ta giriş ne
+bağlantı ne de metinli düğme; bir kalıpla açılıyor. Onlarda "giriş adresi" uydurmak
+yerine kök adres bırakıldı — yanlış bir adres, çalışan bir adresten kötüdür.
+
+### Ölçüm aracı
+
 Seçiciler koda gömülü değil. Bir sağlayıcıda hesap açtıktan sonra ölç:
 
 ```

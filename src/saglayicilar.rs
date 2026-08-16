@@ -14,6 +14,24 @@
 //! "secici adaylari" bolumu sayfada ne oldugunu sayar; dogru olani `kervan.toml`'a
 //! yazarsin. Yanlis secici sessizce yanlis yanit DONDURMEZ — `ask` istem kutusunu
 //! bulamazsa gurultulu hata verir.
+//!
+//! GIRIS ADRESLERI (`giris_kalibi`) 2026-08-16'da tek tek olculdu — `--url ... --dom`
+//! ile bos bir profilde acilip nereye dustugune ve sayfada ne oldugua bakildi:
+//!
+//! | saglayici    | adres                      | sonuc                                  |
+//! |--------------|----------------------------|----------------------------------------|
+//! | gemini       | AccountChooser?Email=...   | e-posta ON-DOLU (olculdu: identifier)  |
+//! | claude       | /login                     | giris sayfasi + login-with-google      |
+//! | deepseek     | /sign_in                   | giris formu (password alani var)       |
+//! | qwen         | /auth?action=signin        | giris formu (password alani var)       |
+//! | copilot-m365 | kok                        | login.microsoftonline.com'a yonleniyor |
+//! | z.ai         | /auth                      | DOGRULANAMADI — sayfa cizilmedi (CF)   |
+//! | kimi         | —                          | STATIK GIRIS YOLU YOK, modal           |
+//! | copilot      | —                          | kok anonim uygulamayi aciyor           |
+//!
+//! Cikan sonuc: yalnizca Gemini'de e-posta on-doldurma var. kimi ve copilot'ta giris
+//! ne baglanti ne de metinli dugme — ikonla acilan bir kalip. Onlarda "giris adresi"
+//! diye bir sey uydurmak yerine kok adres birakildi.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -66,8 +84,12 @@ pub fn varsayilanlar() -> Vec<Provider> {
         // KISMEN OLCULDU (cikis yapilmis halde). `/new` cikisliyken `/logout`'a
         // dusuyordu, o yuzden taban adres kullaniliyor; girisliyken yeni sohbet
         // zaten aciliyor. Giris isareti ve yanit secicisi DOGRULANMADI — girisli
-        // bir oturumda `--dom` ile olculmeli. Giris adresi eposta on-doldurmayi
-        // desteklemiyor; duz giris sayfasi veriliyor.
+        // bir oturumda `--dom` ile olculmeli.
+        //
+        // `/login` OLCULDU: gercek giris sayfasi aciliyor ve sayfada
+        // `data-testid='login-with-google'` ile `data-testid='email'` var. Eposta
+        // on-doldurma YOK. Duvar kalkinca giris tek tikla Google'a baglanabilir;
+        // otomatik tiklatma simdilik yazilmadi, giris zaten hesap basina bir kez.
         cf(p(
             "claude",
             "https://claude.ai/",
@@ -144,10 +166,11 @@ pub fn varsayilanlar() -> Vec<Provider> {
             "input[type='email'], input[name='loginfmt']",
             "[data-testid='markdown-reply']",
         ),
-        // OLCULMEDI — asagidaki dordu yeni eklendi, seciciler genel baslangic
-        // degerleri. Once cikisli profilde `--dom`, giristen sonra
-        // `--sor ... --incele ...` ile olculecek. Yanlis secici sessizce yanlis
-        // yanit DONDURMEZ: kutu bulunamazsa gurultulu hata verir.
+        // Seciciler OLCULMEDI (giris yapilamadigi icin): deepseek ve qwen Cloudflare
+        // duvarina takiliyor. Giris ADRESLERI ise olculdu ve dogru: ikisi de gercek
+        // giris formu aciyor (`input[type='password']` var). E-posta alani
+        // `input[type='email']` DEGIL `input[type='text']`; giris isareti password
+        // uzerinden tuttugu icin degistirilmedi.
         cf(p(
             "deepseek",
             "https://chat.deepseek.com/",
@@ -159,6 +182,10 @@ pub fn varsayilanlar() -> Vec<Provider> {
         // OLCULDU ve ucdan uca calisti (23x4 -> 92, 11.3 sn). Kutu contenteditable,
         // textarea yok. Giris isareti OLCULEMEDI: kimi girissiz de cevapliyor, yani
         // "girisli mi" sorusu burada dogal olarak bulanik (perplexity gibi).
+        //
+        // Giris adresi de yok: sayfadaki 20 baglantinin hicbiri girise gitmiyor ve
+        // 9 dugmenin sekizi metinsiz (ikon). Giris bir kalipla aciliyor, yani
+        // "giris adresi" uydurmak yerine kok adres birakildi.
         p(
             "kimi",
             "https://www.kimi.com/",
