@@ -16,17 +16,30 @@ use anyhow::{Context, Result};
 use crate::browser::{detect_login, BrowserBinary, LoginState, Provider, Session};
 use crate::config::Config;
 
-/// Epostadan dosya sistemi icin guvenli, benzersiz profil adi uretir.
+/// Profil adi = HESAP ADININ KENDISI.
 ///
-/// Alfanumerik disindaki HER SEY tireye cevrilir. Bu yalniz estetik degil guvenlik:
-/// eposta disaridan gelen bir girdi ve dogrudan dizin yoluna giriyor; `../` ya da
-/// ters bolu iceren bir deger profil kokunun disina yazdirabilirdi.
-pub fn profil_adi(saglayici: &str, eposta: &str) -> String {
-    let temiz: String = eposta
+/// Once saglayici onekli, epostadan turetilmis adlar kullaniliyordu
+/// (`gemini-ad-alan-com`). Bu iki ayri kavram yaratti — "profil" ve "kimlik" — ve
+/// ikisi uyusmayabildi: taramada `claude-ercan-er-medeniyet-edu-tr` adli profilin
+/// icinde kralarthas@gmail.com cikti. Ad dogrudan hesap olunca o uyusmazlik SINIFI
+/// ortadan kalkiyor; ustelik bir profil zaten kimliktir, saglayicilar sekmedir.
+///
+/// Yine de sadelestirme sart: eposta disaridan gelen bir girdi ve dogrudan dizin
+/// yoluna giriyor. Yol ayiraci, `..` ve Windows'ta yasak karakterler tireye cevrilir;
+/// `@`, `.`, `-`, `_` korunur ki ad okunur kalsin.
+pub fn profil_adi(eposta: &str) -> String {
+    eposta
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_lowercase() } else { '-' })
-        .collect();
-    format!("{saglayici}-{temiz}")
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '@' | '.' | '-' | '_') {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        // Ardisik noktalar `..` yol yukari cikma anlamina gelebilir.
+        .replace("..", "-")
 }
 
 pub struct Sonuc {
@@ -59,7 +72,7 @@ pub async fn calistir(
 
     let mut sonuclar = Vec::new();
     for (i, eposta) in epostalar.iter().enumerate() {
-        let profil = profil_adi(saglayici_adi, eposta);
+        let profil = profil_adi(eposta);
         println!("\n=== {}/{}  {eposta}", i + 1, epostalar.len());
         println!("profil       : {profil}");
 
@@ -245,26 +258,27 @@ mod tests {
     /// `..` gecirmesi profil kokunun disina yazmak demek olurdu.
     #[test]
     fn profil_adi_yol_kacisina_izin_vermez() {
-        for kotu in ["../../etc/passwd", "a\\..\\b@x.com", "a/b@x.com"] {
-            let ad = profil_adi("gemini", kotu);
+        for kotu in ["../../etc/passwd", "a\\..\\b@x.com", "a/b@x.com", "a:b@x.com"] {
+            let ad = profil_adi(kotu);
             assert!(!ad.contains('/'), "{ad}");
             assert!(!ad.contains('\\'), "{ad}");
             assert!(!ad.contains(".."), "{ad}");
+            assert!(!ad.contains(':'), "{ad}");
         }
     }
 
-    /// Ayri epostalar ayri profil almali, ayni eposta hep ayni profili.
+    /// Ad hesabin KENDISI olmali: profil ile kimlik ayri iki kavram olunca
+    /// uyusmuyorlardi (olculdu: claude-ercan-er-medeniyet-edu-tr icinde
+    /// kralarthas@gmail.com cikti).
     #[test]
-    fn profil_adi_kararli_ve_benzersiz() {
-        let a = profil_adi("gemini", "ercan@gmail.com");
-        let b = profil_adi("gemini", "ercan@outlook.com");
-        assert_ne!(a, b, "farkli alan adlari ayni profile dusmemeli");
-        assert_eq!(a, profil_adi("gemini", "ERCAN@gmail.com"), "buyuk/kucuk fark etmemeli");
+    fn profil_adi_hesabin_kendisidir() {
+        assert_eq!(profil_adi("ercan.er@medeniyet.edu.tr"), "ercan.er@medeniyet.edu.tr");
+        assert_eq!(profil_adi("ERCAN@gmail.com"), "ercan@gmail.com", "buyuk/kucuk fark etmemeli");
     }
 
-    /// Saglayici adi ada girmeli: ayni eposta farkli saglayicilarda ayri oturumdur.
+    /// Ayri hesaplar ayri profil almali.
     #[test]
-    fn saglayici_profil_adina_girer() {
-        assert_ne!(profil_adi("gemini", "a@b.com"), profil_adi("claude", "a@b.com"));
+    fn ayri_hesaplar_ayri_profil() {
+        assert_ne!(profil_adi("ercan@gmail.com"), profil_adi("ercan@outlook.com"));
     }
 }

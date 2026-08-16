@@ -271,6 +271,15 @@ async fn main() -> Result<()> {
         println!("\n{}", browser::dom_ozeti(&oturum.client, &saglayici.selectors).await?);
     }
 
+    // --kim: sayfadan oturum sahibini oku (once Google dugmesi, sonra duz metin).
+    if args.iter().any(|a| a == "--kim") {
+        let k = match browser::google_hesabi(&oturum.client).await {
+            Some(e) => Some(e),
+            None => browser::sayfada_eposta(&oturum.client).await,
+        };
+        println!("kimlik       : {}", k.unwrap_or_else(|| "bulunamadi".into()));
+    }
+
     // --incele <css>: bir secicinin esledigi ogeleri tek tek dok.
     if let Some(i) = args.iter().position(|a| a == "--incele") {
         let secici = args.get(i + 1).context("--incele icin bir CSS secici gerekli")?;

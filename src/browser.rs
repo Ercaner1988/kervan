@@ -681,6 +681,25 @@ pub async fn google_hesabi(c: &Client) -> Option<String> {
     None
 }
 
+/// Sayfa metninde eposta gibi gorunen ilk belirteci bulur.
+///
+/// Google disi saglayicilarda kimlik icin gerekli: Google'in hesap dugmesi yokken
+/// (ornegin claude.ai ayar sayfasi) oturumun sahibini baska turlu okuyamiyoruz.
+pub async fn sayfada_eposta(c: &Client) -> Option<String> {
+    let govde = c.find(Locator::Css("body")).await.ok()?.text().await.ok()?;
+    govde
+        .split_whitespace()
+        .map(|p| p.trim_matches(|k: char| !k.is_alphanumeric() && k != '@' && k != '.' && k != '-'))
+        .find(|p| {
+            // "a@b.c" en az bicimi: kullanici kismi, alan adi ve bir nokta.
+            match p.split_once('@') {
+                Some((k, alan)) => !k.is_empty() && alan.contains('.') && !alan.ends_with('.'),
+                None => false,
+            }
+        })
+        .map(|s| s.to_lowercase())
+}
+
 /// Bir secicinin esledigi ogeleri TEK TEK doker: sinif, data-testid ve metin basi.
 ///
 /// Sayim yetmedigi yerde gerekiyor. Ornegin bir "tur satiri" secicisi hem kullanici
