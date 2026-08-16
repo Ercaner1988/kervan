@@ -78,6 +78,13 @@ struct AcikOturum {
     sekmeler: HashMap<String, fantoccini::wd::WindowHandle>,
     /// En son ne zaman kiralandi — bosta kapatma icin.
     son_kullanim: Instant,
+    /// Pencere insana gosterildi ve henuz birakilmadi.
+    ///
+    /// NEDEN: olculdu ve canli kirdi — kullanici bir profile elle giris yaparken
+    /// (deepseek, qwen, kimi, z.ai sekmeleri) bosta supurucusu 15 dakika dolunca
+    /// pencereyi ALTINDAN kapatti. Supurucu "istek gelmedi"yi "kimse kullanmiyor"
+    /// saniyordu; insanin elindeki pencere de kullanimdadir.
+    insan_elinde: bool,
 }
 
 /// Bir PROFIL = bir kimlik = bir tarayici. Ayni Google oturumu profildeki tum
@@ -186,16 +193,68 @@ impl Pool {
         })
     }
 
-    /// Bir kimligin tarayici penceresini one getirir (model secmek, durdurmak,
-    /// dogrulama cozmek icin). Oturum acik degilse yapacak bir sey yok.
-    pub async fn goster(&self, kimlik: usize) -> Result<bool> {
+    /// Bir kimligin tarayici penceresini one getirir (giris yapmak, model secmek,
+    /// dogrulama cozmek icin) ve **insanin elinde** olarak isaretler.
+    ///
+    /// Oturum kapaliysa ACAR: kullanici bir hesaba giris yapmak istediginde
+    /// "once bir istek gonder ki tarayici acilsin" demek anlamsizdi.
+    ///
+    /// `sekmeler` verilirse o saglayicilarin sayfalari sekme olarak acilir; zaten
+    /// acik olanlar tekrar acilmaz.
+    pub async fn goster(&self, kimlik: usize, sekmeler: &[Arc<Provider>]) -> Result<()> {
         let Some(k) = self.kimlikler.get(kimlik) else {
             bail!("{kimlik} numarali kimlik yok");
         };
-        let g = k.oturum.lock().await;
-        match g.as_ref() {
+        let mut g = k.oturum.lock().await;
+        if g.is_none() {
+            let s = Session::open(
+                &self.profiles_root,
+                &k.ad,
+                &self.browser,
+                &self.geckodriver,
+                self.headless,
+            )
+            .await?;
+            *g = Some(AcikOturum {
+                session: s,
+                sekmeler: HashMap::new(),
+                son_kullanim: Instant::now(),
+                insan_elinde: false,
+            });
+        }
+        let o = g.as_mut().expect("oturum acik");
+        // Istenen saglayicilarin sekmelerini ac. Elle giris turunda 8 kimlik x 4
+        // site = 32 kez adres yazmak yerine sekmeler hazir geliyor.
+        for sag in sekmeler {
+            if o.sekmeler.contains_key(&sag.ad) {
+                continue;
+            }
+            let h = if o.sekmeler.is_empty() {
+                o.session.goto(&sag.url).await?;
+                o.session.gecerli_sekme().await?
+            } else {
+                o.session.yeni_sekme(&sag.url).await?
+            };
+            o.sekmeler.insert(sag.ad.clone(), h);
+        }
+        o.session.goster().await?;
+        // Birakilana kadar supurucu bu pencereye dokunmaz.
+        o.insan_elinde = true;
+        o.son_kullanim = Instant::now();
+        Ok(())
+    }
+
+    /// Pencereyi ekran disina alir ve insanin elinden birakir.
+    pub async fn gizle(&self, kimlik: usize) -> Result<bool> {
+        let Some(k) = self.kimlikler.get(kimlik) else {
+            bail!("{kimlik} numarali kimlik yok");
+        };
+        let mut g = k.oturum.lock().await;
+        match g.as_mut() {
             Some(o) => {
-                o.session.goster().await?;
+                o.session.gizle().await;
+                o.insan_elinde = false;
+                o.son_kullanim = Instant::now();
                 Ok(true)
             }
             None => Ok(false),
@@ -215,7 +274,12 @@ impl Pool {
         let mut kapanan = 0;
         for k in &self.kimlikler {
             let Ok(mut g) = k.oturum.try_lock() else { continue };
-            if g.as_ref().is_none_or(|o| o.son_kullanim.elapsed() < esik) {
+            // Insanin elindeki pencereye ASLA dokunma: kullanici o sirada giris
+            // yapiyor ya da dogrulama coziyor olabilir. Sure dolmasi "kimse
+            // kullanmiyor" demek degil.
+            if g.as_ref()
+                .is_none_or(|o| o.insan_elinde || o.son_kullanim.elapsed() < esik)
+            {
                 continue;
             }
             if let Some(o) = g.take() {
@@ -379,6 +443,7 @@ impl Pool {
                 session: s,
                 sekmeler: HashMap::new(),
                 son_kullanim: Instant::now(),
+                insan_elinde: false,
             });
         }
         // Kiralama anini isaretle. Istek bitisini degil baslangicini yazmak yeterli:

@@ -35,9 +35,10 @@ Sırada: TUI, ek sağlayıcılar.
 
 ## Sağlayıcılar
 
-`gemini`, `claude`, `perplexity`, `copilot`, `copilot-m365`. Her hesap `kervan.toml`'da
-bir ya da birkaç sağlayıcıya bağlıdır; havuzda hepsi yan yana durabilir. Model kimliği
-`kervan/<sağlayıcı>`:
+Tanımlı: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, `deepseek`,
+`qwen`, `z.ai`. Bunların hepsi **havuzda değil** — aşağıdaki tabloya bak. Her hesap
+`kervan.toml`'da bir ya da birkaç sağlayıcıya bağlıdır; havuzda hepsi yan yana durabilir.
+Model kimliği `kervan/<sağlayıcı>`:
 
 ```
 curl http://127.0.0.1:20129/v1/models
@@ -54,31 +55,43 @@ böylece var olan Hermes yapılandırması kırılmaz.
 
 | Sağlayıcı | Durum |
 |---|---|
-| `gemini` | Ölçüldü, uçtan uca çalışıyor (7 hesapta doğrulandı) |
-| `perplexity` | Uçtan uca çalıştı; giriş işareti ölçülemedi (çıkışsız da cevap veriyor) |
-| `claude` | **Havuzda kapalı** — aşağıya bak |
-| `copilot` | Ölçüldü, uçtan uca çalışıyor (~4.5 sn) |
-| `copilot-m365` | Ölçüldü, uçtan uca çalışıyor (~7 sn) |
+| `gemini` | ✅ Havuzda — 7 hesap, 7/7 doğru, ~11 sn |
+| `kimi` | ✅ Havuzda — 7 hesap, 3/3 doğru, 25–36 sn. Girişsiz de cevaplıyor, o yüzden giriş işareti güvenilmez |
+| `copilot` | ✅ Havuzda — 1 hesap (kişisel Microsoft), ~12 sn |
+| `copilot-m365` | ✅ Havuzda — 1 hesap (iş/okul), ~14 sn |
+| `perplexity` | ⚠️ Yalnız 1 hesapta — diğer altısında Cloudflare. Kararsız |
+| `claude` | ❌ Cloudflare — havuzda kapalı |
+| `deepseek` | ❌ Cloudflare — 7 hesabın hepsinde |
+| `qwen` | ❌ Cloudflare — 7 hesabın hepsinde |
+| `z.ai` | ❌ Cloudflare — belirtisi farklı: duvar görünmez, istem gider, asistan balonu **boş** kalır. 1/7 |
 
 `copilot` (kişisel Microsoft hesabı) ile `copilot-m365` (iş/okul) **ayrı ürün**: ayrı
 adres, ayrı kota, ayrı oturum. Model kimliği eşleşmesi içerme + en-uzun-ad kuralıyla
 çalıştığı için `kervan/copilot` kişisele, `kervan/copilot-m365` iş hesabına gider.
 
-### `claude` neden havuzda değil
+### Cloudflare duvarı — hangi sağlayıcılar neden dışarıda
 
-Ölçüldü: claude.ai, WebDriver ile sürülen tarayıcıda Cloudflare doğrulamasını
-**bitmeden tekrar tekrar** soruyor — elle çözülse bile bir sonraki açılışta yeniden
-çıkıyor. Sebep açık: Cloudflare'in verdiği `cf_clearance` izni tarayıcının parmak izine
-bağlı, WebDriver'la sürülen Firefox ise kendini otomasyon olarak bildiriyor
-(`navigator.webdriver`), dolayısıyla izin yapışmıyor.
+Ölçüldü (2026-08-16, yedi Google kimliğinin **hepsinde**): claude, deepseek, qwen ve
+z.ai, WebDriver ile sürülen tarayıcıda Cloudflare doğrulamasına takılıyor. Claude'da
+duvar elle çözülse bile bir sonraki açılışta yeniden çıkıyor.
+
+Sebep açık: Cloudflare'in verdiği `cf_clearance` izni tarayıcının parmak izine bağlı,
+WebDriver'la sürülen Firefox ise kendini otomasyon olarak bildiriyor
+(`navigator.webdriver`), dolayısıyla izin yapışmıyor. Takılmayanlar Google (gemini),
+Microsoft (copilot) ve Moonshot (kimi) — yani sorun sağlayıcıya değil, **Cloudflare +
+WebDriver** bileşimine özgü.
 
 Bunu yapıştırmanın tek yolu otomasyon imzasını gizlemek, yani **parmak izi
 sahteciliği** — planın "yapılmayacaklar" listesinin ilk maddesi. Duvarı aşmıyoruz,
-gösteriyoruz. Hesapları havuzda tutmak sonuç vermeden claude.ai'a tekrar tekrar
+gösteriyoruz. Bu hesapları havuzda tutmak sonuç vermeden aynı siteye tekrar tekrar
 otomatik istek atmak olurdu; hem boşuna, hem o hesapları gereksiz yere işaretletir.
 
-Sağlayıcı tanımı kodda duruyor. Duvar kalkarsa `kervan.toml`'da `providers` listesine
-`"claude"` eklemek yeterli.
+`z.ai` ayrıca **yanıltıcı**: duvar görünmüyor, istem gidiyor, asistan balonu açılıyor
+ama boş kalıyor — yani "yavaş" gibi görünüp aslında engelli. Havuz üzerinden 0/3,
+toplam 1/7. Her istek 120 saniye boşa yakıyordu.
+
+Sağlayıcı tanımları kodda duruyor. Duvar kalkarsa `kervan.toml`'da `providers` listesine
+adı eklemek yeterli.
 
 Seçiciler koda gömülü değil. Bir sağlayıcıda hesap açtıktan sonra ölç:
 

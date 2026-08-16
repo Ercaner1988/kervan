@@ -16,7 +16,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -56,6 +56,15 @@ pub fn router(state: Arc<AppState>) -> Router {
         // durdurup duzeltmek ya da dogrulama cozmek icin. Gizli kip headless DEGIL,
         // kucultulmus gercek pencere — headless olsaydi bu uc imkansiz olurdu.
         .route("/accounts/{i}/goster", post(goster))
+        // Pencereyi geri gizle VE insanin elinden birak. Birakilmadigi surece
+        // bosta supurucusu o tarayiciya dokunmuyor — kullanici giris yaparken
+        // pencereyi altindan kapatmasin diye.
+        .route("/accounts/{i}/gizle", post(gizle))
+        // Kimlik (profil) bazli surumler: elle giris yaparken slot numarasi degil
+        // hesap adi dogal olan. `/kimlikler` sirali listeyi verir.
+        .route("/kimlikler", get(kimlikler))
+        .route("/kimlikler/{k}/goster", post(kimlik_goster))
+        .route("/kimlikler/{k}/gizle", post(kimlik_gizle))
         // Kota ogrenicinin gordugu: gercek kullanim ve gozlemden cikan limit.
         .route("/kota", get(kota_ozeti))
         .with_state(state)
@@ -111,16 +120,83 @@ async fn goster(State(st): State<Arc<AppState>>, Path(i): Path<usize>) -> Respon
     let Some(slot) = st.pool.slots.get(i) else {
         return hata(StatusCode::NOT_FOUND, &format!("{i} numarali hesap yok"));
     };
-    match st.pool.goster(slot.kimlik).await {
-        Ok(true) => Json(serde_json::json!({
-            "ok": true, "kimlik": slot.hesap_adi, "sekme": slot.provider.ad,
+    kimlik_goster(State(st.clone()), Path(slot.kimlik), Query(GosterSorgu::default())).await
+}
+
+async fn gizle(State(st): State<Arc<AppState>>, Path(i): Path<usize>) -> Response {
+    let Some(slot) = st.pool.slots.get(i) else {
+        return hata(StatusCode::NOT_FOUND, &format!("{i} numarali hesap yok"));
+    };
+    kimlik_gizle(State(st.clone()), Path(slot.kimlik)).await
+}
+
+/// Kimlik listesi: sirasi `/kimlikler/{k}/goster` icin gecerli.
+async fn kimlikler(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let liste: Vec<_> = st
+        .pool
+        .kimlikler
+        .iter()
+        .enumerate()
+        .map(|(k, kim)| {
+            let saglayicilar: Vec<&str> = st
+                .pool
+                .slots
+                .iter()
+                .filter(|s| s.kimlik == k)
+                .map(|s| s.provider.ad.as_str())
+                .collect();
+            serde_json::json!({ "k": k, "hesap": kim.ad, "saglayicilar": saglayicilar })
+        })
+        .collect();
+    Json(serde_json::json!({ "kimlikler": liste }))
+}
+
+#[derive(Deserialize, Default)]
+pub struct GosterSorgu {
+    /// Virgulle ayrilmis saglayici adlari; sekme olarak acilir.
+    #[serde(default)]
+    pub sekmeler: Option<String>,
+}
+
+async fn kimlik_goster(
+    State(st): State<Arc<AppState>>,
+    Path(k): Path<usize>,
+    Query(q): Query<GosterSorgu>,
+) -> Response {
+    let Some(kim) = st.pool.kimlikler.get(k) else {
+        return hata(StatusCode::NOT_FOUND, &format!("{k} numarali kimlik yok"));
+    };
+    // Bilinmeyen saglayici adi SESSIZCE atlanmaz: yanlis yazilmis bir ad,
+    // "sekmeyi actim" deyip acmamak olurdu.
+    let mut acilacak = Vec::new();
+    for ad in q.sekmeler.as_deref().unwrap_or("").split(',').map(str::trim).filter(|s| !s.is_empty())
+    {
+        match crate::saglayicilar::bul(&st.saglayicilar, ad) {
+            Ok(s) => acilacak.push(s),
+            Err(e) => return hata(StatusCode::BAD_REQUEST, &format!("{e:#}")),
+        }
+    }
+    let adlar: Vec<&str> = acilacak.iter().map(|s| s.ad.as_str()).collect();
+    match st.pool.goster(k, &acilacak).await {
+        Ok(()) => Json(serde_json::json!({
+            "ok": true,
+            "hesap": kim.ad,
+            "acilan_sekmeler": adlar,
+            "not": "pencere insanin elinde; bosta supurucusu dokunmayacak. \
+                    Bitince: POST /kimlikler/{k}/gizle",
         }))
         .into_response(),
-        // Acilmamis oturumu "gosterdim" demek yalan olurdu.
-        Ok(false) => hata(
-            StatusCode::CONFLICT,
-            &format!("'{}' icin tarayici henuz acilmadi", slot.hesap_adi),
-        ),
+        Err(e) => hata(StatusCode::INTERNAL_SERVER_ERROR, &format!("{e:#}")),
+    }
+}
+
+async fn kimlik_gizle(State(st): State<Arc<AppState>>, Path(k): Path<usize>) -> Response {
+    let Some(kim) = st.pool.kimlikler.get(k) else {
+        return hata(StatusCode::NOT_FOUND, &format!("{k} numarali kimlik yok"));
+    };
+    match st.pool.gizle(k).await {
+        Ok(acikti) => Json(serde_json::json!({ "ok": true, "hesap": kim.ad, "acikti": acikti }))
+            .into_response(),
         Err(e) => hata(StatusCode::INTERNAL_SERVER_ERROR, &format!("{e:#}")),
     }
 }

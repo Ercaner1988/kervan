@@ -133,6 +133,52 @@ pub fn varsayilanlar() -> Vec<Provider> {
             "input[type='email'], input[name='loginfmt']",
             "[data-testid='markdown-reply']",
         ),
+        // OLCULMEDI — asagidaki dordu yeni eklendi, seciciler genel baslangic
+        // degerleri. Once cikisli profilde `--dom`, giristen sonra
+        // `--sor ... --incele ...` ile olculecek. Yanlis secici sessizce yanlis
+        // yanit DONDURMEZ: kutu bulunamazsa gurultulu hata verir.
+        p(
+            "deepseek",
+            "https://chat.deepseek.com/",
+            "https://chat.deepseek.com/sign_in",
+            "textarea, div[contenteditable='true'], [contenteditable]",
+            "input[type='password'], input[type='email']",
+            ".ds-markdown",
+        ),
+        // OLCULDU ve ucdan uca calisti (23x4 -> 92, 11.3 sn). Kutu contenteditable,
+        // textarea yok. Giris isareti OLCULEMEDI: kimi girissiz de cevapliyor, yani
+        // "girisli mi" sorusu burada dogal olarak bulanik (perplexity gibi).
+        p(
+            "kimi",
+            "https://www.kimi.com/",
+            "https://www.kimi.com/",
+            "div[contenteditable='true']",
+            "input[type='password'], input[type='email']",
+            ".markdown",
+        ),
+        p(
+            "qwen",
+            "https://chat.qwen.ai/",
+            "https://chat.qwen.ai/auth?action=signin",
+            "textarea, div[contenteditable='true'], [contenteditable]",
+            "input[type='password'], input[type='email']",
+            ".markdown-content",
+        ),
+        // Ad "zai" degil "z.ai": model kimligi ICERME ile eslesiyor ve "zai"
+        // baska adlarin icinde gecebilir.
+        //
+        // OLCULDU: kutu `textarea`. Yanit icin `.markdown-prose` YANLIS — hem
+        // kullanici hem asistan balonu o sinifi tasiyor (`chat-user ...
+        // markdown-prose` / `chat-assistant ... markdown-prose`), yani kendi
+        // istemimizi cevap sanabilirdik. Dogrusu `.chat-assistant`.
+        p(
+            "z.ai",
+            "https://chat.z.ai/",
+            "https://chat.z.ai/auth",
+            "textarea",
+            "input[type='password'], input[type='email']",
+            ".chat-assistant",
+        ),
     ]
 }
 
