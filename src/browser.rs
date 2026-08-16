@@ -587,8 +587,20 @@ async fn yazilan_dogru_mu(e: &fantoccini::elements::Element, prompt: &str) -> bo
 
 /// Kutudaki metin istemle ayni mi? Bosluk/satir farklari onemsenmiyor — editorler
 /// satir sonlarini kendilerine gore bicimliyor — ama EKSIK metin onemseniyor.
+///
+/// SIFIR GENISLIKLI karakterler de atiliyor. Olculdu: M365 Copilot'un editoru
+/// metnin sonuna U+200C (ZWNJ) yerlestiriyor, bu da "beklenen 37, kutuda 38
+/// karakter" diye dogru istemi REDDETTIRIYORDU. Bu karakterlerin gorunur karsiligi
+/// yok, yani icerik tasimazlar; denetimi gevsetmiyoruz, gurultuyu ayikliyoruz.
 fn metin_esit_mi(kutuda: &str, prompt: &str) -> bool {
-    let sadelestir = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
+    let sadelestir = |s: &str| {
+        s.chars()
+            .filter(|c| !matches!(c, '\u{200b}' | '\u{200c}' | '\u{200d}' | '\u{feff}'))
+            .collect::<String>()
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
     sadelestir(kutuda) == sadelestir(prompt)
 }
 
@@ -933,6 +945,19 @@ mod tests {
     #[test]
     fn bosluk_farki_yazimi_reddettirmez() {
         assert!(metin_esit_mi("  Merhaba   dunya \n", "Merhaba dunya"));
+    }
+
+    /// Olculdu: M365 Copilot'un editoru metnin sonuna U+200C birakiyor ve dogru
+    /// yazilmis istem "38 karakter, beklenen 37" diye reddediliyordu. Gorunmez
+    /// karakterler icerik tasimaz; ama EKSIK metin hala reddedilmeli.
+    #[test]
+    fn sifir_genislikli_karakter_yazimi_reddettirmez() {
+        assert!(metin_esit_mi("27 carpi 3 kactir?\u{200c}", "27 carpi 3 kactir?"));
+        assert!(metin_esit_mi("\u{feff}Merhaba\u{200b} dunya", "Merhaba dunya"));
+        assert!(
+            !metin_esit_mi("27 carpi\u{200c}", "27 carpi 3 kactir?"),
+            "gorunmez karakter ayiklamak eksik metni gecirmemeli"
+        );
     }
 
     /// Kilit tespiti dosyanin VARLIGINA degil, tutulup tutulmadigina bakmali:

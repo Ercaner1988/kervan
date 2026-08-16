@@ -57,8 +57,8 @@ böylece var olan Hermes yapılandırması kırılmaz.
 | `gemini` | Ölçüldü, uçtan uca çalışıyor (7 hesapta doğrulandı) |
 | `perplexity` | Uçtan uca çalıştı; giriş işareti ölçülemedi (çıkışsız da cevap veriyor) |
 | `claude` | **Doğrulanmadı** — claude.ai şu an Cloudflare doğrulama duvarı gösteriyor |
-| `copilot` | **Kısmen** — istem kutusu (`textarea`) ve giriş işareti ölçüldü; yanıt seçicisi ölçülmedi |
-| `copilot-m365` | **Kısmen** — giriş işareti ölçüldü (çıkışlıyken `login.microsoftonline.com`'a yönleniyor); kutu ve yanıt seçicisi ölçülmedi |
+| `copilot` | Ölçüldü, uçtan uca çalışıyor (~4.5 sn) |
+| `copilot-m365` | Ölçüldü, uçtan uca çalışıyor (~7 sn) |
 
 `copilot` (kişisel Microsoft hesabı) ile `copilot-m365` (iş/okul) **ayrı ürün**: ayrı
 adres, ayrı kota, ayrı oturum. Model kimliği eşleşmesi içerme + en-uzun-ad kuralıyla

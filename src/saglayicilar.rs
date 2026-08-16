@@ -88,14 +88,21 @@ pub fn varsayilanlar() -> Vec<Provider> {
         // olcumden once detect_login cikisli profile "GIRISLI" diyordu — kutuyu
         // buluyor, giris isaretini bulamiyordu.
         //
-        // Yanit secicisi OLCULMEDI: girisli oturum gerekiyor.
+        // Girisli oturumda da OLCULDU ve ucdan uca calisti (23x4 -> 132, 4.7 sn):
+        //   kutu   : sayfada 2 textarea var, dogrusu `composer-input`. Sirasiz
+        //            `textarea` calisiyordu ama yanlis olani ilk gelirse sessizce
+        //            bosluga yazardik.
+        //   yanit  : `[data-content='ai-message']` tuttu ama metni "Copilot said /
+        //            93 / Edit in a page" seklinde kabukla geliyordu; ayni turun
+        //            `ai-message-body` cocugu tam olarak "93" veriyor.
+        //   `.ac-textBlock` hicbir olcumde eslesmedi, atildi.
         p(
             "copilot",
             "https://copilot.microsoft.com/",
             "https://copilot.microsoft.com/",
-            "textarea",
+            "textarea[data-testid='composer-input']",
             "[data-testid='anonymous-block-page-title']",
-            "[data-content='ai-message'], .ac-textBlock",
+            "[data-testid='ai-message-body']",
         ),
         // KISMEN OLCULDU (cikis yapilmis profilde). Is/okul hesabinin Copilot'u.
         //
@@ -107,14 +114,24 @@ pub fn varsayilanlar() -> Vec<Provider> {
         // Olcum: cikisliyken adres login.microsoftonline.com'a YONLENIYOR, yani
         // sayfada giris BAGI yok, giris FORMU var. Isaret bu yuzden e-posta alani.
         //
-        // Yanit secicisi OLCULMEDI: girisli oturum gerekiyor.
+        // Girisli oturumda olculdu: `textarea` 0, `div[contenteditable='true']` 0,
+        // ama `[contenteditable]` TAM 1 (aria-label "Message Copilot"). Yani kutu
+        // div degil ve/veya degeri "true" degil. Nitelik adiyla eslesmek hem dile
+        // hem karisik sinif adlarina (`fai-EditorInput__input r18fti29 ...`)
+        // bagimsiz; aria-label kullansaydik arayuz dili degisince kirilirdi.
+        //
+        // Yanit da olculdu (27x3 -> 81). Uc aday vardi ve secim onemliydi:
+        //   chatOutput                -> SORUNUN kendisi. Bunu secseydik kendi
+        //                                istemimizi cevap sanip geri dondururduk.
+        //   copilot-message-reply-div -> "Copilot said:\n81" (kabuklu)
+        //   markdown-reply            -> "81" (temiz) <- secilen
         p(
             "copilot-m365",
             "https://m365.cloud.microsoft/chat/",
             "https://m365.cloud.microsoft/chat/",
-            "textarea, div[contenteditable='true']",
+            "[contenteditable]",
             "input[type='email'], input[name='loginfmt']",
-            "[data-content='ai-message'], .ac-textBlock",
+            "[data-testid='markdown-reply']",
         ),
     ]
 }
