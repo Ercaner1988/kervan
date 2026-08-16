@@ -10,6 +10,13 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
+    /// Bir tarayici kac dakika bosta kalinca kapatilir. 0 = hic kapatma.
+    ///
+    /// Hesap sayisinin tavani kod degil bellek: olculdu, kimlik basina ~344 MB.
+    /// Bosta kapatma olmadan 20 hesap ~7 GB tutar; bununla yalniz o an calisanlar
+    /// acik kalir. Oturum diskte oldugu icin kapatmak veri kaybetmez.
+    #[serde(default = "varsayilan_bosta_dakika")]
+    pub bosta_dakika: u64,
     #[serde(default)]
     pub accounts: Vec<Account>,
     #[serde(default)]
@@ -93,6 +100,13 @@ fn varsayilan_saglayici() -> String {
     "gemini".into()
 }
 
+/// Bir tarayiciyi yeniden acmak ~5 sn; 15 dk once kullanilmis bir hesabin hemen
+/// tekrar gelmesi beklenmez. Kisa tutmak surekli ac/kapa, uzun tutmak bosuna
+/// bellek demek olurdu.
+fn varsayilan_bosta_dakika() -> u64 {
+    15
+}
+
 /// Hiz butcesi — plandaki "insan hizinda davranmak" listesinin kod karsiligi.
 /// Bot tespitini yenmek DEGIL, gercekten normal bir kullanici gibi davranmak:
 /// yuku azaltir, hesabi yasatir.
@@ -131,6 +145,7 @@ impl Config {
 
     fn varsayilan() -> Self {
         Self {
+            bosta_dakika: varsayilan_bosta_dakika(),
             accounts: vec![Account { name: "ercan-gemini-1".into(), provider: None, providers: vec![varsayilan_saglayici()] }],
             pacing: Pacing::default(),
             kota: Kota::default(),

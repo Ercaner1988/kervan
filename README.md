@@ -253,9 +253,11 @@ curl -X POST http://127.0.0.1:20129/accounts/1/devam
 ### Yapılandırma (`kervan.toml`)
 
 ```toml
+bosta_dakika = 15         # bu kadar dokunulmayan tarayıcı kapatılır; 0 = hiç kapatma
+
 [[accounts]]
-name = "ercan-gemini-1"   # profil dizini adı; aynı ad = aynı oturum
-provider = "gemini"
+name = "ercan.er@medeniyet.edu.tr"   # profil dizini = hesabın kendisi
+providers = ["gemini"]               # aynı profilde birden fazla sağlayıcı olabilir
 
 [pacing]
 min_delay_ms = 3000       # aynı hesaba iki istek arası en az süre (bitişten sayılır)
@@ -265,6 +267,17 @@ hourly_cap = 30           # hesap başına saatlik tavan; 0 = sınırsız (öner
 
 Dosya yoksa tek hesaplı muhafazakâr bir varsayılanla çalışır. `pacing` bloğu eksikse
 "sınırsız" değil, güvenli varsayılan uygulanır.
+
+### Hesap sayısının tavanı — kod değil bellek
+
+Havuzda kaç hesap olabileceğine dair kodda bir sınır **yok**; sınır makinenin belleği.
+Ölçüldü: 7 kimlik aynı anda açıkken 21 süreç, **2.4 GB** (kimlik başına ~344 MB).
+
+Bu yüzden `bosta_dakika` var: `bosta_dakika` süresince istek almayan bir kimliğin
+tarayıcısı kapatılır, bir sonraki istekte yeniden açılır. Oturum diske yazılı olduğu
+için kapatmak veri kaybettirmez — yalnız ~5 saniyelik yeniden açılma bedeli öder.
+Böylece bellek maliyeti *tanımlı* hesap sayısıyla değil, *o an çalışan* hesap sayısıyla
+orantılı olur. İstek işleyen bir kimliğe süpürücü dokunmaz.
 
 ### Ortam değişkenleri
 

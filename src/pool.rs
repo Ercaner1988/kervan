@@ -76,6 +76,8 @@ struct AcikOturum {
     session: Session,
     /// saglayici adi -> sekme tutamagi.
     sekmeler: HashMap<String, fantoccini::wd::WindowHandle>,
+    /// En son ne zaman kiralandi — bosta kapatma icin.
+    son_kullanim: Instant,
 }
 
 /// Bir PROFIL = bir kimlik = bir tarayici. Ayni Google oturumu profildeki tum
@@ -198,6 +200,34 @@ impl Pool {
             }
             None => Ok(false),
         }
+    }
+
+    /// `esik` suresince dokunulmamis tarayicilari kapatir; kac tane kapandigini doner.
+    ///
+    /// NEDEN: hesap sayisinin gercek tavani kod degil BELLEK. Olculdu: 7 kimlik = 21
+    /// surec, 2.4 GB (kimlik basina ~344 MB). Havuz buyudukce hepsini acik tutmak
+    /// makineyi yer; oysa 7/24 kosuda hesaplarin cogu her an bosta. Oturum diske
+    /// yazili oldugu icin kapatmak veri kaybetmez, yalniz bir sonraki istekte
+    /// yeniden acilma bedeli oder.
+    ///
+    /// Mesgul kimlige DOKUNMAZ: kilit alinamiyorsa o kimlik su an istek isliyordur.
+    pub async fn bosta_kapat(&self, esik: Duration) -> usize {
+        let mut kapanan = 0;
+        for k in &self.kimlikler {
+            let Ok(mut g) = k.oturum.try_lock() else { continue };
+            if g.as_ref().is_none_or(|o| o.son_kullanim.elapsed() < esik) {
+                continue;
+            }
+            if let Some(o) = g.take() {
+                if let Err(e) = o.session.close().await {
+                    eprintln!("[{}] bosta oturum kapatilamadi: {e:#}", k.ad);
+                } else {
+                    println!("[{}] bosta kaldi, tarayici kapatildi", k.ad);
+                    kapanan += 1;
+                }
+            }
+        }
+        kapanan
     }
 
     /// Kac konusma sabitlenmis (gorunurluk icin).
@@ -345,8 +375,15 @@ impl Pool {
                 self.headless,
             )
             .await?;
-            *guard = Some(AcikOturum { session: s, sekmeler: HashMap::new() });
+            *guard = Some(AcikOturum {
+                session: s,
+                sekmeler: HashMap::new(),
+                son_kullanim: Instant::now(),
+            });
         }
+        // Kiralama anini isaretle. Istek bitisini degil baslangicini yazmak yeterli:
+        // surerken zaten kilit bizde, supurucu o kimligi eline alamaz.
+        guard.as_mut().expect("oturum acik").son_kullanim = Instant::now();
 
         // Saglayicinin sekmesine gec; yoksa ac. Ilk saglayici zaten acik olan
         // pencereyi kullanir, sonrakiler yeni sekme alir.
@@ -576,6 +613,22 @@ mod tests {
             true,
         );
         assert!(r.is_err());
+    }
+
+    /// Supurucu MESGUL kimlige dokunmamali. `try_lock` yerine `lock` yazilsaydi bu
+    /// cagri, istek isleyen bir hesabin kilidinde sonsuza kadar asili kalir ve
+    /// supurucu gorevi bir daha hic tik atmazdi.
+    #[tokio::test]
+    async fn supurucu_mesgul_kimlikte_asili_kalmaz() {
+        let p = havuz(Pacing { min_delay_ms: 0, jitter_ms: 0, hourly_cap: 0 });
+        let _mesgul = p.kimlikler[0].oturum.lock().await;
+        let kapanan = tokio::time::timeout(
+            Duration::from_secs(2),
+            p.bosta_kapat(Duration::from_secs(0)),
+        )
+        .await
+        .expect("mesgul kimlik supurucuyu bloklamamali");
+        assert_eq!(kapanan, 0);
     }
 
     /// Hiz butcesi istek BITTIGINDE kurulmali. Bastan kurulunca uzun suren bir yanit

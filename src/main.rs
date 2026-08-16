@@ -18,6 +18,7 @@ mod tara;
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use browser::{detect_login, BrowserBinary, LoginState, Session};
@@ -113,6 +114,25 @@ async fn main() -> Result<()> {
             varsayilan_saglayici: varsayilan,
             timeout: YANIT_ZAMAN_ASIMI,
         });
+
+        // Bosta tarayici supurucusu. Havuzun buyuyebilmesini saglayan sey bu:
+        // hesap sayisinin tavani kod degil bellekti.
+        if cfg.bosta_dakika > 0 {
+            let esik = std::time::Duration::from_secs(cfg.bosta_dakika * 60);
+            println!("bosta kapatma: {} dk", cfg.bosta_dakika);
+            let s = state.clone();
+            tokio::spawn(async move {
+                // Esigin altinda bir tur: gecikme en fazla bir tur kadar sarkar.
+                let mut tik = tokio::time::interval(esik.min(Duration::from_secs(60)));
+                loop {
+                    tik.tick().await;
+                    s.pool.bosta_kapat(esik).await;
+                }
+            });
+        } else {
+            println!("bosta kapatma: kapali");
+        }
+
         return server::serve(state, port).await;
     }
 
