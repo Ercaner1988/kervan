@@ -393,10 +393,43 @@ isteği haklı olarak göndermedi. Uzun istemler artık tarayıcının kendi met
 5.1 sn, doğru yanıt. Bu bir gizleme değil: editörün `input` olaylarını normal biçimde
 tetikliyor, yalnızca tuşları teker teker göndermiyor.
 
-## Bilinen sınırlama
+## Süreklilik: devam eden dizi vs. boş dizi
 
-OpenAI API durumsuz, tarayıcı sohbeti durumlu. v1 yalnızca **son kullanıcı mesajını**
-gönderir; süreklilik tarayıcının kendi konuşma dizisinden gelir.
+OpenAI API durumsuz, tarayıcı sohbeti durumlu. Normalde süreklilik tarayıcının kendi
+konuşma dizisinden gelir, o yüzden yalnızca **son kullanıcı mesajı** gönderilir.
+
+Ama dizi boşsa — hesap değişti, kota bitti, tarayıcı boşta kapanıp yeniden açıldı — model
+önceki turları hiç görmemiş olur. O durumda Kervan geçmişi **tohumlar**: istemcinin zaten
+her istekte gönderdiği konuşmanın tamamı (sistem yönergesi dahil) tek bir istem olarak
+yazılır, sonuna asıl soru eklenir.
+
+Özet çıkarmaya gerek yok — geçmiş elimizde, atıyorduk. Elde olanı kullanmak ek model
+çağrısından, ek kotadan ve özetleme kaybından ucuz.
+
+Karar "sabit var mı" diye değil **"bu sekme o konuşmayı taşıyor mu"** diye veriliyor.
+Sabitler bellekte, tarayıcı dizisi ekranda: boşta kapatma tarayıcıyı kapatınca sekme yok
+olur ve yeniden açılışta sıfırdan bir sohbet başlar, ama sabit tablosunda kayıt durur. O
+kayda bakıp "devam ediyoruz" deseydik geçmişsiz cevap alırdık.
+
+Ölçüm — aynı konuşma üç sağlayıcıda, her biri sıfırdan dizide:
+
+```
+1. tur gemini              -> Tamam            (sayı: 6283)
+2. tur kimi   (yeni dizi)  -> 6283
+3. tur copilot(yeni dizi)  -> 12566
+```
+
+Tohum `24 000` karakterle sınırlı. Aşılırsa **en eski** turlar düşer (yakın bağlam
+değerlidir) ve düşenlerin sayısı tohumun içine yazılır — sessiz kırpma yok.
+
+### Çok satırlı istem
+
+Bu editörlerde Enter **gönder** demektir. Tuş tuş yazımda her `\n` istemi ortasından
+yollar; ölçüldü, 7 satırlık bir tohumda kutuda tam 7 karakter eksik çıktı (yazım koruması
+yakaladı). Bu yüzden çok satırlı ve 500 karakterden uzun istemler tarayıcının kendi metin
+girme yoluyla (`execCommand('insertText')`) tek seferde yazılıyor. Çok satırlı bir istemde
+bu yol başarısız olursa Kervan **tuş yoluna düşmez, hata verir** — yarım göndermektense
+hiç göndermemek doğru.
 
 Konuşmayı hesaba sabitlemek bunu çalışır kılıyor: **ilk kullanıcı mesajının** özeti
 konuşma kimliği sayılır (her turda gönderildiği için sabit kalır) ve o konuşma hep aynı

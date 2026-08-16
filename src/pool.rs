@@ -71,11 +71,25 @@ impl AccountState {
     }
 }
 
+/// Bir saglayicinin sekmesi ve o sekmedeki sohbet dizisinin kimligi.
+struct Sekme {
+    tutamac: fantoccini::wd::WindowHandle,
+    /// Bu sekmedeki sohbette hangi konusma yaziyor. None = bos/bilinmeyen dizi.
+    ///
+    /// NEDEN sabit tablosu yetmiyor: sabitler bellekte, tarayici dizisi ekranda.
+    /// Bosta kapatma tarayiciyi kapatinca sekme yok oluyor ve yeniden acilista
+    /// SIFIRDAN bir sohbet basliyor — ama sabit tablosunda kayit duruyor. O kayda
+    /// bakip "devam ediyoruz" desek, modele gecmissiz bir dizide yalnizca son
+    /// mesaji gonderirdik. Dogru soru "sabit var mi" degil, "BU SEKME o konusmayi
+    /// tasiyor mu".
+    konusma: Option<u64>,
+}
+
 /// Acik bir tarayici oturumu ve saglayici basina sekmeleri.
 struct AcikOturum {
     session: Session,
-    /// saglayici adi -> sekme tutamagi.
-    sekmeler: HashMap<String, fantoccini::wd::WindowHandle>,
+    /// saglayici adi -> sekme.
+    sekmeler: HashMap<String, Sekme>,
     /// En son ne zaman kiralandi — bosta kapatma icin.
     son_kullanim: Instant,
     /// Pencere insana gosterildi ve henuz birakilmadi.
@@ -174,6 +188,9 @@ pub struct Lease<'a> {
     pub index: usize,
     pub name: String,
     pub provider: Arc<Provider>,
+    /// Bu sekmedeki sohbet dizisi bu konusma icin BOS. Cagiran taraf gecmisi
+    /// tohumlamali, yoksa model onceki turlari hic gormemis olur.
+    pub yeni_dizi: bool,
     /// Saglayici kapisindaki yer. Kiralama bitince otomatik birakilir.
     _kapi: tokio::sync::OwnedSemaphorePermit,
     guard: tokio::sync::MutexGuard<'a, Option<AcikOturum>>,
@@ -274,7 +291,10 @@ impl Pool {
             } else {
                 o.session.yeni_sekme(&sag.url).await?
             };
-            o.sekmeler.insert(sag.ad.clone(), h);
+            // Insan icin acilan sekme: hangi konusmayi tasidigi bilinmiyor. None
+            // birakmak, sonraki istekte gecmisin tohumlanmasini saglar — yanlis
+            // varsayimla gecmissiz cevap almaktansa fazladan baglam gondermek iyi.
+            o.sekmeler.insert(sag.ad.clone(), Sekme { tutamac: h, konusma: None });
         }
         o.session.goster().await?;
         // Birakilana kadar supurucu bu pencereye dokunmaz.
@@ -404,12 +424,13 @@ impl Pool {
                     &self.pacing,
                 );
                 match karar {
-                    Sabit::Kullan => match self.kilitle(i).await {
-                        Ok(guard) => {
+                    Sabit::Kullan => match self.kilitle(i, oturum).await {
+                        Ok((guard, yeni_dizi)) => {
                             return Ok(Lease {
                                 index: i,
                                 name: self.slots[i].hesap_adi.clone(),
                                 provider: self.slots[i].provider.clone(),
+                                yeni_dizi,
                                 _kapi: izin.take().expect("izin bir kez kullanilir"),
                                 guard,
                             });
@@ -456,8 +477,8 @@ impl Pool {
             }
 
             if let Some((i, _)) = aday {
-                match self.kilitle(i).await {
-                    Ok(guard) => {
+                match self.kilitle(i, oturum).await {
+                    Ok((guard, yeni_dizi)) => {
                         if let Some(anahtar) = oturum {
                             self.sabitle(anahtar, i).await;
                         }
@@ -465,6 +486,7 @@ impl Pool {
                             index: i,
                             name: self.slots[i].hesap_adi.clone(),
                             provider: self.slots[i].provider.clone(),
+                            yeni_dizi,
                             _kapi: izin.take().expect("izin bir kez kullanilir"),
                             guard,
                         });
@@ -506,7 +528,14 @@ impl Pool {
     /// `Lease` DEGIL guard donuyor: kiralama basarisiz olunca saglayici kapisindaki
     /// yeri kaybetmeyelim diye. Kapi izni `acquire_for`'da tutuluyor ve `Lease`
     /// yalnizca basarida kuruluyor.
-    async fn kilitle(&self, i: usize) -> Result<tokio::sync::MutexGuard<'_, Option<AcikOturum>>> {
+    /// `konusma` bu istegin konusma izi. Donen `bool`, sekmedeki sohbet dizisinin
+    /// o konusma icin **BOS** oldugunu soyler — yani cagiran tarafin gecmisi
+    /// tohumlamasi gerekir.
+    async fn kilitle(
+        &self,
+        i: usize,
+        konusma: Option<u64>,
+    ) -> Result<(tokio::sync::MutexGuard<'_, Option<AcikOturum>>, bool)> {
         let slot = &self.slots[i];
         let sad = slot.provider.ad.clone();
         let mut guard = self.kimlikler[slot.kimlik].oturum.lock().await;
@@ -533,10 +562,17 @@ impl Pool {
 
         // Saglayicinin sekmesine gec; yoksa ac. Ilk saglayici zaten acik olan
         // pencereyi kullanir, sonrakiler yeni sekme alir.
+        let yeni_dizi;
         {
             let o = guard.as_mut().expect("oturum acik");
-            match o.sekmeler.get(&sad).cloned() {
-                Some(h) => o.session.sekmeye_gec(h).await?,
+            match o.sekmeler.get(&sad).map(|s| (s.tutamac.clone(), s.konusma)) {
+                Some((h, tasidigi)) => {
+                    o.session.sekmeye_gec(h).await?;
+                    // Ayni konusma ise dizide gecmis zaten var; degilse bu sekmeye
+                    // BASKA bir konusma giriyor demektir ve gecmisi tohumlanmali.
+                    yeni_dizi = tasidigi.is_none() || tasidigi != konusma;
+                    o.sekmeler.get_mut(&sad).expect("sekme var").konusma = konusma;
+                }
                 None => {
                     let h = if o.sekmeler.is_empty() {
                         o.session.goto(&slot.provider.url).await?;
@@ -544,7 +580,9 @@ impl Pool {
                     } else {
                         o.session.yeni_sekme(&slot.provider.url).await?
                     };
-                    o.sekmeler.insert(sad.clone(), h);
+                    // Taze sekme = bos sohbet dizisi.
+                    yeni_dizi = true;
+                    o.sekmeler.insert(sad.clone(), Sekme { tutamac: h, konusma });
 
                     // Yeni acilan sekmede oturum durumunu OLC. Tahmin yok.
                     let durum =
@@ -579,7 +617,7 @@ impl Pool {
             // Asil bekleme `basarili`/`basarisiz` icinde, istek BITTIGINDE kurulur.
             st.not_before = Some(simdi + self.gecikme());
         }
-        Ok(guard)
+        Ok((guard, yeni_dizi))
     }
 
     fn gecikme(&self) -> Duration {

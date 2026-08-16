@@ -511,22 +511,43 @@ async fn istemi_yaz(
     kutu: &fantoccini::elements::Element,
     prompt: &str,
 ) -> Result<()> {
-    // UZUN istemde once JS. Olculdu: Hermes'in 2768 karakterlik istemi tus tus
-    // yazildiginda kutuya 2697 karakter dusuyordu — editor kendini yeniden
-    // cizerken tuslari yutuyor ve koruma (hakli olarak) gondermiyordu. Yavas
-    // yazim bunu asabilirdi ama 2700 karakter x 35 ms = 95 saniye.
+    // UZUN ya da COK SATIRLI istemde once JS.
+    //
+    // Uzunluk: olculdu, Hermes'in 2768 karakterlik istemi tus tus yazildiginda
+    // kutuya 2697 karakter dusuyordu — editor kendini yeniden cizerken tuslari
+    // yutuyor. Yavas yazim asabilirdi ama 2700 x 35 ms = 95 saniye.
+    //
+    // Satir sonu: DAHA TEHLIKELI. Bu editorlerde Enter GONDER demek; `send_keys`
+    // ile giden her `\n` istemi ortasindan yollar. Olculdu — 263 karakterlik,
+    // 7 satirli bir istemde kutuda tam 7 karakter eksik cikti (koruma yakaladi).
+    // Uzunluk esigi bunu kacirirdi: kisa ama cok satirli istem tus yolundan
+    // gidiyordu.
     //
     // Bu bir gizleme/sahtecilik degil: `execCommand('insertText')` tarayicinin
     // kendi metin girme yolu, editorun `input` olaylarini normal sekilde
     // tetikliyor. Yaptigi tek sey tuslari tek tek gondermek yerine metni bir
     // kerede vermek.
-    if prompt.chars().count() > JS_ESIGI {
-        if let Err(e) = js_ile_yaz(c, sel, prompt).await {
-            eprintln!("uyari: JS ile yazim basarisiz ({e:#}), tus tus denenecek");
-        } else if let Ok(taze) = c.find(Locator::Css(&sel.prompt_input)).await
-            && yazilan_dogru_mu(&taze, prompt).await
-        {
-            return Ok(());
+    let cok_satirli = prompt.contains('\n');
+    if prompt.chars().count() > JS_ESIGI || cok_satirli {
+        match js_ile_yaz(c, sel, prompt).await {
+            Ok(()) => {
+                if let Ok(taze) = c.find(Locator::Css(&sel.prompt_input)).await
+                    && yazilan_dogru_mu(&taze, prompt).await
+                {
+                    return Ok(());
+                }
+                if cok_satirli {
+                    bail!(
+                        "cok satirli istem JS ile yazildi ama geri okunamadi, GONDERILMEDI. \
+                         Tus tus yazmak satir sonlarini GONDER'e cevirip istemi ortasindan \
+                         yollardi; yarim gondermektense hic gondermiyoruz."
+                    );
+                }
+            }
+            Err(e) if cok_satirli => {
+                bail!("cok satirli istem JS ile yazilamadi ({e:#}), GONDERILMEDI: {}", ENTER_UYARISI);
+            }
+            Err(e) => eprintln!("uyari: JS ile yazim basarisiz ({e:#}), tus tus denenecek"),
         }
     }
 
@@ -562,6 +583,11 @@ async fn istemi_yaz(
         goruler.chars().take(40).collect::<String>()
     )
 }
+
+/// Tus yoluna DUSMEME gerekcesi; hata metninde geciyor.
+const ENTER_UYARISI: &str =
+    "bu editorlerde Enter GONDER demek, tus tus yazim satir sonlarinda istemi \
+     ortasindan yollardi";
 
 /// Bu uzunluktan sonra tus tus yazmak hem kayipli hem cok yavas.
 ///

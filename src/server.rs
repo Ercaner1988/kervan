@@ -323,9 +323,26 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
         Ok(l) => l,
         Err(e) => return hata(StatusCode::SERVICE_UNAVAILABLE, &format!("{e:#}")),
     };
-    println!("[{}/{}] istek ({} karakter)", saglayici, lease.name, istem.len());
+    // Dizi bossa gecmisi TOHUMLA. Devam eden dizide tohumlamak gecmisi ikinci kez
+    // yazmak olurdu; bos dizide tohumlamamak ise modele gecmissiz cevap verdirir.
+    let gonderilecek = if lease.yeni_dizi {
+        tohum_istemi(&req.messages, TOHUM_AZAMI)
+    } else {
+        istem.clone()
+    };
+    println!(
+        "[{}/{}] istek ({} karakter{})",
+        saglayici,
+        lease.name,
+        gonderilecek.len(),
+        if lease.yeni_dizi && gonderilecek.len() > istem.len() {
+            ", yeni dizi — gecmis tohumlandi"
+        } else {
+            ""
+        }
+    );
     let secililer = lease.provider.selectors.clone();
-    let mut sonuc = ask(lease.client(), &secililer, &istem, st.timeout).await;
+    let mut sonuc = ask(lease.client(), &secililer, &gonderilecek, st.timeout).await;
 
     // Saglayici "limite ulastin" dediyse bu bir YANIT DEGIL. Oldugu gibi dondurmek
     // istemciye modelin cevabi diye limit mesajini vermek olurdu; ustelik kota
@@ -469,6 +486,72 @@ fn son_kullanici_mesaji(msgs: &[Message]) -> Option<String> {
         .map(|m| m.content.clone())
 }
 
+/// Tohumlanmis gecmis kac karakteri asmasin.
+///
+/// Istem kutusuna sigmayan bir metin gonderilemez; ustelik uzun tohum her turda
+/// degil YALNIZCA dizi degistiginde gidiyor, yani bedeli seyrek.
+const TOHUM_AZAMI: usize = 24_000;
+
+/// Bos bir sohbet dizisine gonderilecek istem: gecmis + asil soru.
+///
+/// NEDEN: OpenAI API durumsuz, tarayici sohbeti durumlu. Normalde sureklilik
+/// tarayicinin kendi dizisinden gelir ve yalnizca son mesaji gondermek yeter.
+/// Ama dizi BOSSA — hesap degisti, kota bitti, tarayici bosta kapanip yeniden
+/// acildi — model onceki turlari hic gormemis olur ve gecmissiz cevaplar.
+///
+/// Ozet cikarmaya gerek yok: istemci gecmisin TAMAMINI zaten her istekte
+/// gonderiyor, biz atiyorduk. Elde olani kullanmak ek model cagrisindan,
+/// ek kotadan ve ozetleme kaybindan ucuz.
+///
+/// Sistem mesaji da giriyor: tarayici arayuzunde sistem istemi diye ayri bir yer
+/// yok, girmezse modelin yonergeleri kaybolur.
+fn tohum_istemi(msgs: &[Message], azami: usize) -> String {
+    let Some(son) = msgs.iter().rposition(|m| m.role == "user") else {
+        return String::new();
+    };
+    let asil = &msgs[son].content;
+
+    let etiket = |rol: &str| match rol {
+        "system" => "Yonerge",
+        "assistant" => "Sen",
+        _ => "Ben",
+    };
+
+    // Sondan basa topla: kirpmak gerekirse EN ESKI turlar dussun, yakin baglam kalsin.
+    let mut parcalar: Vec<String> = Vec::new();
+    let mut uzunluk = 0usize;
+    let mut atlanan = 0usize;
+    for m in msgs[..son].iter().rev() {
+        if m.content.trim().is_empty() {
+            continue;
+        }
+        let p = format!("{}: {}", etiket(&m.role), m.content.trim());
+        if uzunluk + p.chars().count() > azami {
+            atlanan += 1;
+            continue;
+        }
+        uzunluk += p.chars().count();
+        parcalar.push(p);
+    }
+    if parcalar.is_empty() {
+        return asil.clone();
+    }
+    parcalar.reverse();
+
+    let mut s = String::from(
+        "Bu konusma baska bir oturumdan devrediliyor; asagisi onceki turlar. \
+         Okuyup baglam olarak kullan, onlara ayrica cevap verme.\n\n--- onceki turlar ---\n",
+    );
+    // Sessiz kirpma yok: eksik varsa yazili olsun.
+    if atlanan > 0 {
+        s.push_str(&format!("(en eski {atlanan} mesaj uzunluk siniri nedeniyle atlandi)\n"));
+    }
+    s.push_str(&parcalar.join("\n\n"));
+    s.push_str("\n--- onceki turlar bitti ---\n\nSimdiki sorum:\n");
+    s.push_str(asil);
+    s
+}
+
 fn simdi() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
@@ -502,6 +585,48 @@ mod tests {
             m("user", "asil soru"),
         ];
         assert_eq!(son_kullanici_mesaji(&msgs).as_deref(), Some("asil soru"));
+    }
+
+    /// Bos dizide gecmis GITMELI: tohum, onceki turlari ve asil soruyu birlikte
+    /// tasimali. Yoksa model konusmanin ortasinda gecmissiz cevap verir.
+    #[test]
+    fn tohum_gecmisi_ve_asil_soruyu_tasir() {
+        let msgs = vec![
+            m("system", "Kisa cevap ver."),
+            m("user", "Turkiye'nin baskenti neresi?"),
+            m("assistant", "Ankara."),
+            m("user", "Peki nufusu?"),
+        ];
+        let t = tohum_istemi(&msgs, TOHUM_AZAMI);
+        assert!(t.contains("Kisa cevap ver."), "sistem yonergesi dusmemeli: {t}");
+        assert!(t.contains("baskenti"), "onceki soru olmali");
+        assert!(t.contains("Ankara."), "onceki cevap olmali");
+        assert!(t.ends_with("Peki nufusu?"), "asil soru SONDA olmali: {t}");
+    }
+
+    /// Tek mesajlik konusmada tohumlanacak gecmis yok — istem oldugu gibi gitmeli,
+    /// basina gereksiz aciklama eklenmemeli.
+    #[test]
+    fn tek_mesajda_tohum_sade_kalir() {
+        assert_eq!(tohum_istemi(&[m("user", "merhaba")], TOHUM_AZAMI), "merhaba");
+    }
+
+    /// Sinir asilinca EN ESKI turlar dusmeli (yakin baglam degerlidir) ve dusen
+    /// olmasi YAZILMALI. Sessiz kirpma, eksik baglami tam sanmaktir.
+    #[test]
+    fn tohum_kirpmasi_yazili_ve_yakin_baglami_korur() {
+        let msgs = vec![
+            m("user", &"e".repeat(300)),
+            m("assistant", "eski cevap"),
+            m("user", "YAKIN SORU"),
+            m("assistant", "YAKIN CEVAP"),
+            m("user", "asil soru"),
+        ];
+        let t = tohum_istemi(&msgs, 60);
+        assert!(t.contains("atlandi"), "kirpma yazili olmali: {t}");
+        assert!(t.contains("YAKIN CEVAP"), "yakin baglam korunmali: {t}");
+        assert!(!t.contains(&"e".repeat(300)), "en eski uzun tur dusmeliydi");
+        assert!(t.ends_with("asil soru"));
     }
 
     /// Kullanici mesaji yoksa uydurma yapmadan None donmeli (uc 400 verir).
