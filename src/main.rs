@@ -14,6 +14,7 @@ mod pool;
 mod saglayicilar;
 mod server;
 mod surec;
+mod tara;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -113,6 +114,29 @@ async fn main() -> Result<()> {
             timeout: YANIT_ZAMAN_ASIMI,
         });
         return server::serve(state, port).await;
+    }
+
+    // --tara: profil dizinindeki her profili acip gercekte hangi hesabin ve hangi
+    // saglayicilarin oturumlu oldugunu OLC. Istem harcamaz.
+    if args.iter().any(|a| a == "--tara") {
+        let mut profiller: Vec<String> = std::fs::read_dir(&profiles_root)
+            .with_context(|| format!("profil dizini okunamadi: {}", profiles_root.display()))?
+            .filter_map(|g| g.ok())
+            .filter(|g| g.path().is_dir())
+            .map(|g| g.file_name().to_string_lossy().into_owned())
+            .collect();
+        profiller.sort();
+        println!("\n{} profil taranacak, hicbir istem gonderilmeyecek.\n", profiller.len());
+        let raporlar = tara::tara(
+            &profiller,
+            &defter_saglayici,
+            &profiles_root,
+            &browser,
+            &geckodriver,
+        )
+        .await;
+        tara::rapor_bas(&raporlar);
+        return Ok(());
     }
 
     // --kur: birden cok hesabi sirayla kur.

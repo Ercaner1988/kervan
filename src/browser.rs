@@ -373,7 +373,7 @@ fn bos_port() -> Result<u16> {
 
 /// Sayfanin oturum durumu. Sessiz basarisizlik yasak: "belki girislidir" diye devam
 /// etmek yerine acikca siniflandiriyoruz — belirsiz hal insana gider.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum LoginState {
     /// Girisli — istem kutusu bulundu.
     Ready,
@@ -656,6 +656,29 @@ async fn son_balon(c: &Client, sel: &Selectors) -> (usize, String) {
         None => String::new(),
     };
     (hepsi.len(), metin)
+}
+
+/// Sayfadaki Google hesap dugmesinden oturumun SAHIBINI okur.
+///
+/// Neden gerekli: profil adi kullanicinin NIYETINDEN turuyor, gercekte hangi hesabin
+/// girdiginden degil. Elle giris sirasinda siralar karisabiliyor (karisti da). Adi
+/// dogrulamanin tek saglam yolu hesabi sayfadan okumak.
+///
+/// Google dugmesinin aria-label'i "Google Hesabı: Ad (eposta)" bicimindedir; parantez
+/// icini aliyoruz.
+pub async fn google_hesabi(c: &Client) -> Option<String> {
+    for e in c.find_all(Locator::Css("a[href*='SignOutOptions']")).await.ok()? {
+        let Ok(Some(etiket)) = e.attr("aria-label").await else { continue };
+        if let Some(bas) = etiket.find('(')
+            && let Some(son) = etiket[bas..].find(')')
+        {
+            let eposta = etiket[bas + 1..bas + son].trim();
+            if eposta.contains('@') {
+                return Some(eposta.to_string());
+            }
+        }
+    }
+    None
 }
 
 /// Bir secicinin esledigi ogeleri TEK TEK doker: sinif, data-testid ve metin basi.

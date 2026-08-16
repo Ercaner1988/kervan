@@ -155,6 +155,55 @@ Tek soru sorup çıkmak için:
 cargo run -- ercan-gemini-1 --headless --sor "Mimar Sinan kimdir?"
 ```
 
+### Profil = kimlik, sağlayıcılar sekme
+
+Bir Google oturumu, o profildeki **bütün** sağlayıcılara yetiyor: Gemini'ye girilmiş bir
+profilde Perplexity'ye "Continue with Google" ile şifresiz giriliyor (ölçüldü). Bu yüzden
+profil sağlayıcı başına değil **kimlik** başına açılır; her sağlayıcı o tarayıcıda kendi
+sekmesinde oturur.
+
+```toml
+[[accounts]]
+name = "ercan-gemini-3"          # profil dizini = bir Google kimliği
+providers = ["gemini", "perplexity"]
+```
+
+- 3 kimlik × 3 sağlayıcı = 9 değil **3** tarayıcı.
+- Sekme yerine aynı sekmede adres değiştirmek Gemini'de sohbeti sıfırlar, yani
+  konuşma sabitlemesini kırardı.
+- Kota ve hız bütçesi *(kimlik, sağlayıcı)* başına ayrı: Gemini'nin tavanı dolunca
+  aynı profildeki Perplexity durmaz.
+
+### Hangi profilde kim var — `--tara`
+
+Profil adı kullanıcının *niyetinden* türer, gerçekte giren hesaptan değil. Elle girişte
+sıralar karışabiliyor. Ölçerek öğren:
+
+```
+cargo run -- --tara --headless
+```
+
+Her profili tek tarayıcıda açar, sağlayıcıları sekmelerde yoklar, Google hesabını
+**sayfadan okur** ve `kervan.toml` için hesap bloğunu basar. Hiçbir istem göndermez —
+kota doluyken de güvenle çalışır.
+
+### Gizli kip ve pencereyi öne çekme
+
+Gizli kip **headless değil**: pencere gerçek, sadece ekran dışında duruyor.
+
+- Headless bir tarayıcı çalışırken görünür hâle **getirilemez**, dolayısıyla
+  "istediğim an öne çek" headless'la mümkün değil.
+- Pencereyi **küçültmek** de olmuyor: küçültülmüş pencerede tarayıcı çizimi kısılıyor
+  ve Gemini'nin yanıt balonu DOM'a hiç düşmüyor (ölçüldü: 120 sn zaman aşımı; aynı
+  istem görünür pencerede 5.9 sn).
+
+```
+curl -X POST http://127.0.0.1:20129/accounts/3/goster
+```
+
+Pencereyi öne getirir — model/düşünme düzeyi seçmek, bir istemi durdurup düzeltmek
+ya da doğrulama çözmek için.
+
 ### Toplu hesap kurulumu
 
 Birden çok hesabı sırayla kurmak için:
