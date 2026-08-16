@@ -56,13 +56,29 @@ böylece var olan Hermes yapılandırması kırılmaz.
 |---|---|
 | `gemini` | Ölçüldü, uçtan uca çalışıyor (7 hesapta doğrulandı) |
 | `perplexity` | Uçtan uca çalıştı; giriş işareti ölçülemedi (çıkışsız da cevap veriyor) |
-| `claude` | **Doğrulanmadı** — claude.ai şu an Cloudflare doğrulama duvarı gösteriyor |
+| `claude` | **Havuzda kapalı** — aşağıya bak |
 | `copilot` | Ölçüldü, uçtan uca çalışıyor (~4.5 sn) |
 | `copilot-m365` | Ölçüldü, uçtan uca çalışıyor (~7 sn) |
 
 `copilot` (kişisel Microsoft hesabı) ile `copilot-m365` (iş/okul) **ayrı ürün**: ayrı
 adres, ayrı kota, ayrı oturum. Model kimliği eşleşmesi içerme + en-uzun-ad kuralıyla
 çalıştığı için `kervan/copilot` kişisele, `kervan/copilot-m365` iş hesabına gider.
+
+### `claude` neden havuzda değil
+
+Ölçüldü: claude.ai, WebDriver ile sürülen tarayıcıda Cloudflare doğrulamasını
+**bitmeden tekrar tekrar** soruyor — elle çözülse bile bir sonraki açılışta yeniden
+çıkıyor. Sebep açık: Cloudflare'in verdiği `cf_clearance` izni tarayıcının parmak izine
+bağlı, WebDriver'la sürülen Firefox ise kendini otomasyon olarak bildiriyor
+(`navigator.webdriver`), dolayısıyla izin yapışmıyor.
+
+Bunu yapıştırmanın tek yolu otomasyon imzasını gizlemek, yani **parmak izi
+sahteciliği** — planın "yapılmayacaklar" listesinin ilk maddesi. Duvarı aşmıyoruz,
+gösteriyoruz. Hesapları havuzda tutmak sonuç vermeden claude.ai'a tekrar tekrar
+otomatik istek atmak olurdu; hem boşuna, hem o hesapları gereksiz yere işaretletir.
+
+Sağlayıcı tanımı kodda duruyor. Duvar kalkarsa `kervan.toml`'da `providers` listesine
+`"claude"` eklemek yeterli.
 
 Seçiciler koda gömülü değil. Bir sağlayıcıda hesap açtıktan sonra ölç:
 
@@ -294,6 +310,33 @@ orantılı olur. İstek işleyen bir kimliğe süpürücü dokunmaz.
 | `KERVAN_GECKODRIVER` | `%LOCALAPPDATA%\kervan\bin\geckodriver.exe`, sonra PATH |
 | `KERVAN_PROFILES` | `%LOCALAPPDATA%\kervan\profiles` |
 | `KERVAN_CONFIG` | `kervan.toml` (çalışma dizininde) |
+
+## Hermes bağlantısı
+
+`~/.hermes/config.yaml` içinde `custom` sağlayıcı olarak duruyor:
+
+```yaml
+  - name: kervan
+    base_url: http://127.0.0.1:20129/v1
+    api_key: kervan-local        # Kervan doğrulama yapmıyor; yer tutucu
+    model: kervan/gemini-3.1-pro
+    models:
+      - kervan/gemini
+      - kervan/copilot
+      - kervan/copilot-m365
+      - kervan/perplexity
+```
+
+```
+hermes -z "..." --provider custom:kervan -m kervan/gemini
+```
+
+Ölçüldü (2026-08-16): Hermes'in gerçek istemi **2768 karakter** (sistem istemi + araçlar).
+İlk denemede tuş tuş yazım bunun 2697 karakterini kutuya sokabildi ve yazım koruması
+isteği haklı olarak göndermedi. Uzun istemler artık tarayıcının kendi metin girme yolu
+(`execCommand('insertText')`) ile tek seferde yazılıyor — 3003 karakterlik ölçümde
+5.1 sn, doğru yanıt. Bu bir gizleme değil: editörün `input` olaylarını normal biçimde
+tetikliyor, yalnızca tuşları teker teker göndermiyor.
 
 ## Bilinen sınırlama
 

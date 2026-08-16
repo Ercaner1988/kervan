@@ -505,6 +505,25 @@ async fn istemi_yaz(
     kutu: &fantoccini::elements::Element,
     prompt: &str,
 ) -> Result<()> {
+    // UZUN istemde once JS. Olculdu: Hermes'in 2768 karakterlik istemi tus tus
+    // yazildiginda kutuya 2697 karakter dusuyordu — editor kendini yeniden
+    // cizerken tuslari yutuyor ve koruma (hakli olarak) gondermiyordu. Yavas
+    // yazim bunu asabilirdi ama 2700 karakter x 35 ms = 95 saniye.
+    //
+    // Bu bir gizleme/sahtecilik degil: `execCommand('insertText')` tarayicinin
+    // kendi metin girme yolu, editorun `input` olaylarini normal sekilde
+    // tetikliyor. Yaptigi tek sey tuslari tek tek gondermek yerine metni bir
+    // kerede vermek.
+    if prompt.chars().count() > JS_ESIGI {
+        if let Err(e) = js_ile_yaz(c, sel, prompt).await {
+            eprintln!("uyari: JS ile yazim basarisiz ({e:#}), tus tus denenecek");
+        } else if let Ok(taze) = c.find(Locator::Css(&sel.prompt_input)).await
+            && yazilan_dogru_mu(&taze, prompt).await
+        {
+            return Ok(());
+        }
+    }
+
     kutu.send_keys(prompt).await.context("istem yazilamadi")?;
     if yazilan_dogru_mu(kutu, prompt).await {
         return Ok(());
@@ -536,6 +555,38 @@ async fn istemi_yaz(
         goruler.chars().count(),
         goruler.chars().take(40).collect::<String>()
     )
+}
+
+/// Bu uzunluktan sonra tus tus yazmak hem kayipli hem cok yavas.
+///
+/// Altinda kalan istemler icin tus yolu OLCULEREK calistigi bilindigi (gemini,
+/// perplexity, iki copilot) icin degistirilmedi; esik yalnizca uzun istemlerde
+/// devreye giriyor.
+const JS_ESIGI: usize = 500;
+
+/// Istemi tek seferde, tarayicinin kendi metin girme yoluyla yazar.
+///
+/// `execCommand('insertText')` editorun `beforeinput`/`input` olaylarini normal
+/// sekilde tetikler; React/ProseMirror turu editorler bunu kullanicinin yazmasindan
+/// ayirt etmez. Dogrudan `value`/`textContent` atamak ise bu olaylari tetiklemez ve
+/// editor metni "gormez" — o yuzden oyle yapilmiyor.
+async fn js_ile_yaz(c: &Client, sel: &Selectors, prompt: &str) -> Result<()> {
+    const BETIK: &str = r#"
+        const el = document.querySelector(arguments[0]);
+        if (!el) { return 'kutu-yok'; }
+        el.focus();
+        document.execCommand('selectAll', false, null);
+        document.execCommand('insertText', false, arguments[1]);
+        return 'tamam';
+    "#;
+    let sonuc = c
+        .execute(BETIK, vec![serde_json::json!(sel.prompt_input), serde_json::json!(prompt)])
+        .await
+        .context("JS ile yazim calistirilamadi")?;
+    if sonuc.as_str() != Some("tamam") {
+        bail!("JS ile yazim: istem kutusu bulunamadi ('{}')", sel.prompt_input);
+    }
+    Ok(())
 }
 
 /// Harf harf yazar, arada ogeyi yeniden bulur.
