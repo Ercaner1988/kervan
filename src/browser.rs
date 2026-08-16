@@ -827,13 +827,24 @@ pub async fn detect_login_bekleyerek(
 ) -> Result<LoginState> {
     const ARALIK: std::time::Duration = std::time::Duration::from_millis(250);
     let baslangic = std::time::Instant::now();
+    let mut kutu_gorulme: Option<std::time::Instant> = None;
     loop {
         // Sira onemli: cikis yapilmis sayfada da istem kutusu olabiliyor.
         if c.find(Locator::Css(&sel.login_hint)).await.is_ok() {
             return Ok(LoginState::NeedsLogin);
         }
         if c.find(Locator::Css(&sel.prompt_input)).await.is_ok() {
-            return Ok(LoginState::Ready);
+            // Kutuyu gorur gormez "girisli" DEMIYORUZ. Olculdu: Copilot'un cikisli
+            // sayfasinda textarea, "Sign in to Copilot" blogundan ONCE ciziliyor;
+            // ilk tura bakan kod cikis yapilmis profile GIRISLI diyordu. Kutu
+            // gorulunce giris isaretine bir sure daha sans veriliyor.
+            let ilk = *kutu_gorulme.get_or_insert_with(std::time::Instant::now);
+            if ilk.elapsed() >= KUTU_ONAY_SURESI {
+                return Ok(LoginState::Ready);
+            }
+        } else {
+            // Kutu kayboldu: sayfa hala yerlesiyor, sayaci sifirla.
+            kutu_gorulme = None;
         }
         if baslangic.elapsed() >= zaman_asimi {
             return Ok(LoginState::Unknown);
@@ -841,6 +852,13 @@ pub async fn detect_login_bekleyerek(
         tokio::time::sleep(ARALIK).await;
     }
 }
+
+/// Istem kutusu goruldukten sonra giris isaretine taninan ek sure.
+///
+/// Bedeli oturum acilisinda bu kadar gecikme; karsiligi cikis yapilmis bir hesabi
+/// "hazir" sanip havuza sokmamak. Sessizce yanlis hesap kullanmak bu projedeki en
+/// pahali hata sinifi oldugu icin takas bu yonde yapildi.
+const KUTU_ONAY_SURESI: std::time::Duration = std::time::Duration::from_secs(3);
 
 /// Tek sayfa uygulamasinin arayuzunu cizmesi icin taninan sure.
 const YERLESME_SURESI: std::time::Duration = std::time::Duration::from_secs(25);

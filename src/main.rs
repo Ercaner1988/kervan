@@ -37,12 +37,7 @@ async fn main() -> Result<()> {
     surec::agaci_bagla();
 
     let args: Vec<String> = std::env::args().collect();
-    let hesap = args
-        .iter()
-        .skip(1)
-        .find(|a| !a.starts_with("--"))
-        .map(String::as_str)
-        .unwrap_or("varsayilan");
+    let hesap = ilk_konumsal(&args).unwrap_or("varsayilan");
     // Gorunur kip varsayilan: insan kapisi icin pencerenin gorulebilmesi gerek.
     let headless = args.iter().any(|a| a == "--headless");
 
@@ -317,6 +312,32 @@ async fn main() -> Result<()> {
 }
 
 /// Profiller depo disinda tutulur — icinde cerez ve oturum var, asla commit'lenmez.
+/// Deger alan bayraklar. Bunlardan sonraki arguman DEGERDIR, hesap adi degil.
+const DEGERLI_BAYRAKLAR: [&str; 5] =
+    ["--saglayici", "--port", "--url", "--sor", "--incele"];
+
+/// Ilk konumsal arguman = hesap adi.
+///
+/// NEDEN ayri fonksiyon: onceki hali "-- ile baslamayan ilk arguman"i aliyordu,
+/// yani `kervan --saglayici copilot --giris` komutunda hesap adi "copilot"
+/// oluyordu ve o adla bos bir profil aciliyordu. Sessizce YANLIS HESAP acmak bu
+/// projenin tekrar tekrar carptigi hata sinifi; deger alan bayraklarin
+/// argumanini atlamak onu kapatiyor.
+fn ilk_konumsal(args: &[String]) -> Option<&str> {
+    let mut i = 1;
+    while i < args.len() {
+        let a = &args[i];
+        if DEGERLI_BAYRAKLAR.contains(&a.as_str()) {
+            i += 2;
+        } else if a.starts_with("--") {
+            i += 1;
+        } else {
+            return Some(a);
+        }
+    }
+    None
+}
+
 fn profiles_root() -> PathBuf {
     std::env::var_os("KERVAN_PROFILES")
         .map(PathBuf::from)
@@ -352,4 +373,33 @@ fn yerel_veri() -> PathBuf {
     std::env::var_os("LOCALAPPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn v(l: &[&str]) -> Vec<String> {
+        l.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// Bayrak degeri hesap adi sanilirsa o adla bos bir profil acilir ve giris
+    /// yanlis yere yapilir — sessiz, fark edilmesi zor.
+    #[test]
+    fn bayrak_degeri_hesap_adi_sanilmaz() {
+        let a = v(&["kervan", "--saglayici", "copilot", "--giris"]);
+        assert_eq!(ilk_konumsal(&a), None);
+    }
+
+    #[test]
+    fn hesap_bayraklardan_once_de_sonra_da_bulunur() {
+        assert_eq!(
+            ilk_konumsal(&v(&["kervan", "buzbey_@hotmail.com", "--saglayici", "copilot"])),
+            Some("buzbey_@hotmail.com")
+        );
+        assert_eq!(
+            ilk_konumsal(&v(&["kervan", "--saglayici", "copilot", "buzbey_@hotmail.com"])),
+            Some("buzbey_@hotmail.com")
+        );
+    }
 }

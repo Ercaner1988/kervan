@@ -78,6 +78,44 @@ pub fn varsayilanlar() -> Vec<Provider> {
             "a[href*='/api/auth/signin'], button[data-testid='signin-button']",
             ".prose",
         ),
+        // KISMEN OLCULDU (cikis yapilmis profilde). Kisisel Microsoft hesabinin
+        // Copilot'u (hotmail/outlook/live) — is/okul hesabininkinden AYRI urun:
+        // ayri adres, ayri kota, ayri oturum.
+        //
+        // Olcum: `textarea` 1, `div[contenteditable]` 0 — istem kutusu textarea.
+        // Cikisli sayfada `data-testid='anonymous-block-page-title'` var ve HIC
+        // giris BAGLANTISI yok; giris isareti bu yuzden bag degil o baslik. Bu
+        // olcumden once detect_login cikisli profile "GIRISLI" diyordu — kutuyu
+        // buluyor, giris isaretini bulamiyordu.
+        //
+        // Yanit secicisi OLCULMEDI: girisli oturum gerekiyor.
+        p(
+            "copilot",
+            "https://copilot.microsoft.com/",
+            "https://copilot.microsoft.com/",
+            "textarea",
+            "[data-testid='anonymous-block-page-title']",
+            "[data-content='ai-message'], .ac-textBlock",
+        ),
+        // KISMEN OLCULDU (cikis yapilmis profilde). Is/okul hesabinin Copilot'u.
+        //
+        // Adi `copilot-m365`: `model_saglayicisi` ICERME ile eslesiyor ve en UZUN
+        // ad kazaniyor, boylece "kervan/copilot" kisisele, "kervan/copilot-m365"
+        // buraya gidiyor. Ad "m365" olsaydi "kervan/m365-copilot" iki adi da
+        // tasiyip yanlis saglayiciya — yani yanlis kotaya — dusebilirdi.
+        //
+        // Olcum: cikisliyken adres login.microsoftonline.com'a YONLENIYOR, yani
+        // sayfada giris BAGI yok, giris FORMU var. Isaret bu yuzden e-posta alani.
+        //
+        // Yanit secicisi OLCULMEDI: girisli oturum gerekiyor.
+        p(
+            "copilot-m365",
+            "https://m365.cloud.microsoft/chat/",
+            "https://m365.cloud.microsoft/chat/",
+            "textarea, div[contenteditable='true']",
+            "input[type='email'], input[name='loginfmt']",
+            "[data-content='ai-message'], .ac-textBlock",
+        ),
     ]
 }
 
@@ -149,6 +187,19 @@ mod tests {
         assert_eq!(model_saglayicisi("kervan/claude", &d).as_deref(), Some("claude"));
         assert_eq!(model_saglayicisi("kervan/perplexity", &d).as_deref(), Some("perplexity"));
         assert_eq!(model_saglayicisi("bilinmeyen", &d), None);
+    }
+
+    /// Iki Copilot AYRI urun (kisisel Microsoft hesabi vs is/okul M365): ayri
+    /// adres, ayri kota. Kisa ad uzunu calarsa is hesabinin istegi kisisel
+    /// hesaba duser ve yanlis kota harcanir.
+    #[test]
+    fn copilot_kisisel_ile_m365_karismaz() {
+        let d = defter();
+        assert_eq!(model_saglayicisi("kervan/copilot", &d).as_deref(), Some("copilot"));
+        assert_eq!(
+            model_saglayicisi("kervan/copilot-m365", &d).as_deref(),
+            Some("copilot-m365")
+        );
     }
 
     /// Yapilandirma secicileri ezebilmeli — site arayuzu degisince yeniden derleme

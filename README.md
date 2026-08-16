@@ -35,8 +35,9 @@ Sırada: TUI, ek sağlayıcılar.
 
 ## Sağlayıcılar
 
-`gemini`, `claude`, `perplexity`. Her hesap `kervan.toml`'da bir sağlayıcıya bağlıdır;
-havuzda hepsi yan yana durabilir. Model kimliği `kervan/<sağlayıcı>`:
+`gemini`, `claude`, `perplexity`, `copilot`, `copilot-m365`. Her hesap `kervan.toml`'da
+bir ya da birkaç sağlayıcıya bağlıdır; havuzda hepsi yan yana durabilir. Model kimliği
+`kervan/<sağlayıcı>`:
 
 ```
 curl http://127.0.0.1:20129/v1/models
@@ -53,9 +54,15 @@ böylece var olan Hermes yapılandırması kırılmaz.
 
 | Sağlayıcı | Durum |
 |---|---|
-| `gemini` | Ölçüldü, uçtan uca çalışıyor |
-| `claude` | **Doğrulanmadı** — giriş işareti ve yanıt seçicisi ölçülmedi |
-| `perplexity` | **Kısmen** — istem kutusu ölçüldü, giriş işareti ve yanıt seçicisi ölçülmedi |
+| `gemini` | Ölçüldü, uçtan uca çalışıyor (7 hesapta doğrulandı) |
+| `perplexity` | Uçtan uca çalıştı; giriş işareti ölçülemedi (çıkışsız da cevap veriyor) |
+| `claude` | **Doğrulanmadı** — claude.ai şu an Cloudflare doğrulama duvarı gösteriyor |
+| `copilot` | **Kısmen** — istem kutusu (`textarea`) ve giriş işareti ölçüldü; yanıt seçicisi ölçülmedi |
+| `copilot-m365` | **Kısmen** — giriş işareti ölçüldü (çıkışlıyken `login.microsoftonline.com`'a yönleniyor); kutu ve yanıt seçicisi ölçülmedi |
+
+`copilot` (kişisel Microsoft hesabı) ile `copilot-m365` (iş/okul) **ayrı ürün**: ayrı
+adres, ayrı kota, ayrı oturum. Model kimliği eşleşmesi içerme + en-uzun-ad kuralıyla
+çalıştığı için `kervan/copilot` kişisele, `kervan/copilot-m365` iş hesabına gider.
 
 Seçiciler koda gömülü değil. Bir sağlayıcıda hesap açtıktan sonra ölç:
 
