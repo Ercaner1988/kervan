@@ -386,6 +386,30 @@ Süpürücünün **dokunmadığı** iki durum var:
 hermes -z "..." --provider custom:kervan -m kervan/gemini
 ```
 
+### Devretme zinciri
+
+Sıralama Kervan'da değil **Hermes'te** duruyor (`hermes fallback list`). Doğru katman
+orası: Kervan bir sağlayıcı, hangi sırayla denenecekleri istemcinin kararı. İki yerde
+tutulsaydı biri yalan söylemeye başlardı.
+
+```
+Primary:  hermes-beyin (custom:kassam)
+  1. auto/best-free       OmniRoute'un bedava havuzu — API tabanlı, tarayıcı kotası yakmaz
+  2. kervan/gemini        7 hesap, ~11 sn
+  3. kervan/kimi          7 hesap, ~25-36 sn
+  4. kervan/copilot       1 hesap, ~12 sn
+  5. kervan/copilot-m365  1 hesap, ~14 sn
+  6. kervan/perplexity    1 hesap, kararsız — en sonda
+```
+
+İki katmanlı çalışıyor: Kervan **kendi içinde** hesapları dolaşır (bir sağlayıcının
+hesapları tükenince sıradaki uyanır), hepsi bitince 5xx döner ve Hermes zincirde bir alt
+satıra düşer.
+
+Ölçüldü: gemini seçicisi kasten bozuldu → Kervan yedi hesabı da sırayla deneyip insan
+kapısında durdurdu ve **503** verdi (222 sn); Hermes zincire düşüp doğru yanıtı getirdi.
+Kervan tamamen kapatıldığında da (bağlantı hatası) zincir devreye girdi.
+
 Ölçüldü (2026-08-16): Hermes'in gerçek istemi **2768 karakter** (sistem istemi + araçlar).
 İlk denemede tuş tuş yazım bunun 2697 karakterini kutuya sokabildi ve yazım koruması
 isteği haklı olarak göndermedi. Uzun istemler artık tarayıcının kendi metin girme yolu
