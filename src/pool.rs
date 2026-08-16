@@ -139,6 +139,12 @@ pub struct Pool {
     /// Cloudflare arkasinda olmayan bir saglayicida (gemini, copilot) hiz
     /// isteniyorsa `[providers.gemini] eszamanli = 3` ile acilir.
     kapilar: HashMap<String, Arc<Semaphore>>,
+    /// Sekmesi acikken tarayicinin bosta kapatilmayacagi saglayicilar.
+    ///
+    /// Cloudflare arkasindaki siteler. Bosta kapatma bellek icin dogru ama BU
+    /// siteler icin ters calisiyor: her yeniden acilis taze bir oturum, yani yeni
+    /// bir bot-risk degerlendirmesi. Ac-kapa dongusu sinamayi davet ediyor.
+    kapanmaz: std::collections::HashSet<String>,
     pub pacing: Pacing,
     /// Konusma parmak izi -> hesap. Tarayici sohbeti durumlu oldugu icin bir konusmanin
     /// tum turlari AYNI hesaba gitmeli; baska hesabin gecmisi bos olur.
@@ -193,6 +199,7 @@ impl Pool {
         let mut kimlikler = Vec::new();
         let mut slots = Vec::new();
         let mut kapilar: HashMap<String, Arc<Semaphore>> = HashMap::new();
+        let mut kapanmaz = std::collections::HashSet::new();
         for a in accounts {
             let k = kimlikler.len();
             kimlikler.push(Kimlik { ad: a.name.clone(), oturum: Mutex::new(None) });
@@ -203,6 +210,9 @@ impl Pool {
                     let n = eszamanli.get(&provider.ad).copied().unwrap_or(1).max(1);
                     Arc::new(Semaphore::new(n as usize))
                 });
+                if provider.cloudflare {
+                    kapanmaz.insert(provider.ad.clone());
+                }
                 slots.push(Slot {
                     kimlik: k,
                     hesap_adi: a.name.clone(),
@@ -215,6 +225,7 @@ impl Pool {
             kimlikler,
             slots,
             kapilar,
+            kapanmaz,
             pacing,
             sabitler: Mutex::new(HashMap::new()),
             ortam,
@@ -308,6 +319,19 @@ impl Pool {
             if g.as_ref()
                 .is_none_or(|o| o.insan_elinde || o.son_kullanim.elapsed() < esik)
             {
+                continue;
+            }
+            // Cloudflare arkasindaki bir sekme acikken kapatma. Her yeniden acilis
+            // o site icin TAZE bir oturum, yani yeni bir bot-risk degerlendirmesi;
+            // bellek icin dogru olan sey burada sinamayi davet ediyor.
+            if let Some(o) = g.as_ref()
+                && let Some(sag) = o.sekmeler.keys().find(|s| self.kapanmaz.contains(*s))
+            {
+                println!(
+                    "[{}] bosta ama kapatilmiyor: '{sag}' sekmesi acik ve o site \
+                     Cloudflare arkasinda (yeniden acilis sinama davet eder)",
+                    k.ad
+                );
                 continue;
             }
             if let Some(o) = g.take() {
@@ -761,6 +785,33 @@ mod tests {
         e.insert("gemini".to_string(), 0);
         let p = havuz_n(pacing(0), 2, &e);
         assert!(p.kapilar["gemini"].available_permits() >= 1);
+    }
+
+    /// Havuz, Cloudflare arkasindaki saglayicilari "kapanmaz" diye tanimali.
+    /// Bu kume bos kalirsa supurucu o tarayicilari kapatir ve her yeniden acilis
+    /// yeni bir bot-risk degerlendirmesi olur — bugun tam bunu yasadik.
+    #[test]
+    fn cloudflare_saglayicisi_kapanmaz_sayilir() {
+        let defter = crate::saglayicilar::kayit_defteri(&HashMap::new());
+        let p = Pool::new(
+            vec![Account {
+                name: "a".into(),
+                provider: None,
+                providers: vec!["gemini".into(), "perplexity".into()],
+            }],
+            pacing(0),
+            &defter,
+            &HashMap::new(),
+            Ortam {
+                profiles_root: PathBuf::from("."),
+                browser: BrowserBinary(PathBuf::from(".")),
+                geckodriver: PathBuf::from("."),
+                headless: true,
+            },
+        )
+        .expect("iki saglayici da taninmali");
+        assert!(p.kapanmaz.contains("perplexity"), "perplexity Cloudflare arkasinda");
+        assert!(!p.kapanmaz.contains("gemini"), "gemini takilmiyor, kapatilabilir");
     }
 
     /// Bilinmeyen saglayici adi havuz kurulurken PATLAMALI: sessizce varsayilana

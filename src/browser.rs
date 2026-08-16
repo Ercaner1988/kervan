@@ -408,6 +408,12 @@ pub struct Provider {
     /// Eposta ON-DOLDURULMUS giris adresi; `{eposta}` yerine hesap konur.
     /// Saglayici on-doldurmayi desteklemiyorsa duz giris adresi yazilir.
     pub giris_kalibi: String,
+    /// Site Cloudflare bot korumasinin arkasinda mi? OLCULEN bir olgu, tercih degil.
+    ///
+    /// Tek etkisi bosta kapatmadir: bu saglayicinin sekmesi acikken tarayici
+    /// kapatilmaz. Cunku her yeniden acilis Cloudflare icin TAZE bir oturum, yani
+    /// yeni bir risk degerlendirmesi; ac-kapa dongusu sinamayi davet ediyor.
+    pub cloudflare: bool,
 }
 
 impl Provider {
@@ -974,6 +980,7 @@ mod tests {
                 response: "c".into(),
             },
             giris_kalibi: "https://o/?Email={eposta}".into(),
+            cloudflare: false,
         };
         assert_eq!(p.giris_url("ad+etiket@gmail.com"), "https://o/?Email=ad%2Betiket@gmail.com");
     }

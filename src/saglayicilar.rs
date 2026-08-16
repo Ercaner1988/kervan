@@ -33,7 +33,18 @@ fn p(ad: &str, url: &str, giris: &str, istem: &str, giris_isareti: &str, yanit: 
             login_hint: giris_isareti.to_string(),
             response: yanit.to_string(),
         },
+        cloudflare: false,
     }
+}
+
+/// Cloudflare arkasinda oldugu OLCULEN siteler icin isaret.
+///
+/// Ayri bir sarmalayici, `p()`'ye yedinci bir `bool` parametresi eklemekten iyi:
+/// cagri yerinde `cf(p("claude", ...))` ne dedigi belli, `p("claude", ..., true)`
+/// ise okurken hangi bayrak oldugu belirsiz.
+fn cf(mut s: Provider) -> Provider {
+    s.cloudflare = true;
+    s
 }
 
 /// Yerlesik varsayilanlar.
@@ -57,27 +68,27 @@ pub fn varsayilanlar() -> Vec<Provider> {
         // zaten aciliyor. Giris isareti ve yanit secicisi DOGRULANMADI — girisli
         // bir oturumda `--dom` ile olculmeli. Giris adresi eposta on-doldurmayi
         // desteklemiyor; duz giris sayfasi veriliyor.
-        p(
+        cf(p(
             "claude",
             "https://claude.ai/",
             "https://claude.ai/login",
             "div[contenteditable='true']",
             "a[href*='/login'], button[data-testid='login-button']",
             ".font-claude-message, [data-testid='conversation-turn']",
-        ),
+        )),
         // KISMEN OLCULDU: istem alani `textarea` DEGIL contenteditable (olcumde
         // textarea 0, contenteditable 1). Giris isareti ve yanit secicisi
         // DOGRULANMADI. Ayrica perplexity girissiz de calisiyor, yani "girisli mi"
         // sorusu burada dogal olarak bulanik — hesap basina kota takibi icin girisin
         // dogrulanmasi gerekir.
-        p(
+        cf(p(
             "perplexity",
             "https://www.perplexity.ai/",
             "https://www.perplexity.ai/",
             "div[contenteditable='true']",
             "a[href*='/api/auth/signin'], button[data-testid='signin-button']",
             ".prose",
-        ),
+        )),
         // KISMEN OLCULDU (cikis yapilmis profilde). Kisisel Microsoft hesabinin
         // Copilot'u (hotmail/outlook/live) — is/okul hesabininkinden AYRI urun:
         // ayri adres, ayri kota, ayri oturum.
@@ -137,14 +148,14 @@ pub fn varsayilanlar() -> Vec<Provider> {
         // degerleri. Once cikisli profilde `--dom`, giristen sonra
         // `--sor ... --incele ...` ile olculecek. Yanlis secici sessizce yanlis
         // yanit DONDURMEZ: kutu bulunamazsa gurultulu hata verir.
-        p(
+        cf(p(
             "deepseek",
             "https://chat.deepseek.com/",
             "https://chat.deepseek.com/sign_in",
             "textarea, div[contenteditable='true'], [contenteditable]",
             "input[type='password'], input[type='email']",
             ".ds-markdown",
-        ),
+        )),
         // OLCULDU ve ucdan uca calisti (23x4 -> 92, 11.3 sn). Kutu contenteditable,
         // textarea yok. Giris isareti OLCULEMEDI: kimi girissiz de cevapliyor, yani
         // "girisli mi" sorusu burada dogal olarak bulanik (perplexity gibi).
@@ -156,14 +167,14 @@ pub fn varsayilanlar() -> Vec<Provider> {
             "input[type='password'], input[type='email']",
             ".markdown",
         ),
-        p(
+        cf(p(
             "qwen",
             "https://chat.qwen.ai/",
             "https://chat.qwen.ai/auth?action=signin",
             "textarea, div[contenteditable='true'], [contenteditable]",
             "input[type='password'], input[type='email']",
             ".markdown-content",
-        ),
+        )),
         // Ad "zai" degil "z.ai": model kimligi ICERME ile eslesiyor ve "zai"
         // baska adlarin icinde gecebilir.
         //
@@ -171,14 +182,14 @@ pub fn varsayilanlar() -> Vec<Provider> {
         // kullanici hem asistan balonu o sinifi tasiyor (`chat-user ...
         // markdown-prose` / `chat-assistant ... markdown-prose`), yani kendi
         // istemimizi cevap sanabilirdik. Dogrusu `.chat-assistant`.
-        p(
+        cf(p(
             "z.ai",
             "https://chat.z.ai/",
             "https://chat.z.ai/auth",
             "textarea",
             "input[type='password'], input[type='email']",
             ".chat-assistant",
-        ),
+        )),
     ]
 }
 
@@ -201,6 +212,9 @@ pub fn kayit_defteri(ayarlar: &HashMap<String, SaglayiciAyar>) -> HashMap<String
             }
             if let Some(v) = &a.response {
                 sag.selectors.response = v.clone();
+            }
+            if let Some(v) = a.cloudflare {
+                sag.cloudflare = v;
             }
         }
         d.insert(sag.ad.clone(), Arc::new(sag));
@@ -282,6 +296,29 @@ mod tests {
         assert_eq!(d["perplexity"].selectors.prompt_input, "div[contenteditable='true']");
         // baska saglayici etkilenmemeli
         assert_eq!(d["gemini"].selectors.response, "model-response, message-content");
+    }
+
+    /// Cloudflare isareti OLCUME dayaniyor ve bosta kapatmayi yonetiyor. Yanlis
+    /// tarafa dusmesi iki turlu zarar: isaretlenmeyen bir CF sitesi ac-kapa
+    /// dongusune girip sinama davet eder, gereksiz isaretlenen bir site ise
+    /// bosuna bellek tutar.
+    #[test]
+    fn cloudflare_isareti_olculene_uyar() {
+        let d = defter();
+        for ad in ["claude", "perplexity", "deepseek", "qwen", "z.ai"] {
+            assert!(d[ad].cloudflare, "{ad} Cloudflare arkasinda olculdu");
+        }
+        for ad in ["gemini", "kimi", "copilot", "copilot-m365"] {
+            assert!(!d[ad].cloudflare, "{ad} yedi hesapta da duvara takilmadi");
+        }
+    }
+
+    /// Olcum degisirse yeniden derleme gerekmemeli.
+    #[test]
+    fn cloudflare_isareti_yapilandirmayla_ezilir() {
+        let mut a = HashMap::new();
+        a.insert("claude".to_string(), SaglayiciAyar { cloudflare: Some(false), ..Default::default() });
+        assert!(!kayit_defteri(&a)["claude"].cloudflare);
     }
 
     /// Bilinmeyen saglayici SESSIZCE varsayilana dusmemeli; yanlis hesabi yanlis

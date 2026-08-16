@@ -345,7 +345,17 @@ Bu yüzden `bosta_dakika` var: `bosta_dakika` süresince istek almayan bir kimli
 tarayıcısı kapatılır, bir sonraki istekte yeniden açılır. Oturum diske yazılı olduğu
 için kapatmak veri kaybettirmez — yalnız ~5 saniyelik yeniden açılma bedeli öder.
 Böylece bellek maliyeti *tanımlı* hesap sayısıyla değil, *o an çalışan* hesap sayısıyla
-orantılı olur. İstek işleyen bir kimliğe süpürücü dokunmaz.
+orantılı olur.
+
+Süpürücünün **dokunmadığı** iki durum var:
+
+1. **İstek işleyen ya da insanın elindeki pencere.** `goster` ile öne çekilmiş bir
+   pencere `gizle` denene kadar kapatılmaz. (Bu bir hatanın karşılığı: süpürücü bir
+   kez kullanıcı elle giriş yaparken pencereyi altından kapattı.)
+2. **Cloudflare arkasındaki bir sekmenin açık olduğu tarayıcı.** Her yeniden açılış o
+   site için taze bir oturum, yani yeni bir bot-risk değerlendirmesi; bellek için doğru
+   olan şey burada sınamayı davet ediyor. Hangi sağlayıcıların Cloudflare arkasında
+   olduğu ölçüldü ve kodda işaretli; `[providers.x] cloudflare = false` ile ezilebilir.
 
 ### Ortam değişkenleri
 

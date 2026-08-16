@@ -44,6 +44,10 @@ pub struct SaglayiciAyar {
     /// o yuzden varsayilan sirali. Cloudflare arkasinda olmayan bir saglayicida
     /// hiz gerekiyorsa burada yukseltilir.
     pub eszamanli: Option<u32>,
+    /// Site Cloudflare arkasinda mi? Verilirse yerlesik OLCUMU ezer.
+    ///
+    /// Tek etkisi: bu saglayicinin sekmesi acikken tarayici bosta kapatilmaz.
+    pub cloudflare: Option<bool>,
 }
 
 /// Kota ogrenicinin ayarlari.
