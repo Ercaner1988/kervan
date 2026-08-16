@@ -37,6 +37,13 @@ pub struct SaglayiciAyar {
     pub prompt_input: Option<String>,
     pub login_hint: Option<String>,
     pub response: Option<String>,
+    /// Bu saglayiciya ayni anda kac istek gidebilir. Verilmezse 1.
+    ///
+    /// Olculdu: ayni siteye ayni anda yedi profille gitmek Cloudflare'i interaktif
+    /// sinamaya gecirdi. Cok hesapli olmanin amaci es zamanlilik degil SUREKLILIK,
+    /// o yuzden varsayilan sirali. Cloudflare arkasinda olmayan bir saglayicida
+    /// hiz gerekiyorsa burada yukseltilir.
+    pub eszamanli: Option<u32>,
 }
 
 /// Kota ogrenicinin ayarlari.

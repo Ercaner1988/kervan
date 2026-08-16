@@ -304,6 +304,38 @@ hourly_cap = 30           # hesap başına saatlik tavan; 0 = sınırsız (öner
 Dosya yoksa tek hesaplı muhafazakâr bir varsayılanla çalışır. `pacing` bloğu eksikse
 "sınırsız" değil, güvenli varsayılan uygulanır.
 
+### Aynı sağlayıcıya aynı anda tek istek
+
+Havuz varsayılan olarak her sağlayıcıya **sırayla** gider: sekiz hesap tanımlı olsa da
+aynı siteye aynı anda yalnız bir oturum bağlanır.
+
+Bu bir performans tercihi değil, ölçülmüş bir hasarın karşılığı. 2026-08-16'da sekiz
+hesaplık havuz claude'u denerken üç hesaba aynı anda gitti; dakikalar içinde aynı IP'den
+aynı Cloudflare sitesine yedi taze oturum açıldı ve Cloudflare tam o dakikada interaktif
+sınamaya geçti (çerezlerde `cf_chl_rc_ni` 14:22'de belirdi). Oysa 11:25'te aynı
+WebDriver'lı tarayıcı sorunsuz `cf_clearance` almıştı — **yani sorun otomasyon imzası
+değil, ani yoğunluktu.**
+
+Tek bir insan aynı siteye aynı anda yedi hesapla girmez. Çok hesaplı olmanın amacı
+eşzamanlılık değil **süreklilik**: biri tükenince sıradaki uyanır, hepsi birden değil.
+
+Ölçüm (üç istek aynı anda gönderildi):
+
+```
+31x3  başla  0.0s  bitiş 16.1s  -> 93
+42x5  başla  0.0s  bitiş 32.9s  -> 210
+53x7  başla  0.0s  bitiş 48.6s  -> 371
+```
+
+Cloudflare arkasında olmayan bir sağlayıcıda hız gerekiyorsa açılabilir:
+
+```toml
+[providers.gemini]
+eszamanli = 3
+```
+
+0 yazmak sağlayıcıyı kilitlerdi; en az 1'e yuvarlanır.
+
 ### Hesap sayısının tavanı — kod değil bellek
 
 Havuzda kaç hesap olabileceğine dair kodda bir sınır **yok**; sınır makinenin belleği.

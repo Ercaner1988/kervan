@@ -89,14 +89,19 @@ async fn main() -> Result<()> {
             .and_then(|a| a.saglayicilar().first().cloned())
             .unwrap_or_else(|| VARSAYILAN_SAGLAYICI.to_string());
 
+        // Saglayici basina es zamanlilik tavani; verilmeyene 1 uygulanir.
+        let eszamanli: std::collections::HashMap<String, u32> = cfg
+            .providers
+            .iter()
+            .filter_map(|(ad, a)| a.eszamanli.map(|n| (ad.clone(), n)))
+            .collect();
+
         let havuz = pool::Pool::new(
             cfg.accounts,
             cfg.pacing,
             &defter_saglayici,
-            profiles_root,
-            browser,
-            geckodriver,
-            headless,
+            &eszamanli,
+            pool::Ortam { profiles_root, browser, geckodriver, headless },
         )?;
         let defter = kota::Defter::ac(kota::varsayilan_yol())?;
         println!("kota defteri : {}", kota::yol_goster(&defter).display());

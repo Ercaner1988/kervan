@@ -15,7 +15,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context, Result};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, Semaphore};
 
 use crate::browser::{detect_login, BrowserBinary, LoginState, Provider, Session};
 use crate::config::{Account, Pacing};
@@ -108,18 +108,43 @@ pub struct Slot {
     pub state: Mutex<AccountState>,
 }
 
+/// Tarayici calistirma ortami.
+///
+/// Dordu birlikte tasindigi icin tek parca. Ayri parametre olduklarinda
+/// `profiles_root` ile `geckodriver` yan yana iki `PathBuf`'tu — yer degistirseler
+/// derleyici uyarmaz, Kervan sessizce yanlis dizinde profil arardi.
+pub struct Ortam {
+    pub profiles_root: PathBuf,
+    pub browser: BrowserBinary,
+    pub geckodriver: PathBuf,
+    pub headless: bool,
+}
+
 pub struct Pool {
     pub kimlikler: Vec<Kimlik>,
     pub slots: Vec<Slot>,
+    /// Saglayici adi -> ayni anda kac istek gecebilir. VARSAYILAN 1.
+    ///
+    /// NEDEN: olculdu ve zarar verdi. 8 hesaplik havuz claude'u denerken UC
+    /// hesaba ayni anda gitti; dakikalar icinde ayni IP'den ayni Cloudflare
+    /// sitesine yedi taze oturum acildi ve Cloudflare o an interaktif sinamaya
+    /// gecti (cerezlerde `cf_chl_rc_ni` tam o dakikada belirdi). Oysa 11:25'te
+    /// ayni WebDriver'li tarayici sorunsuz `cf_clearance` almisti — yani sorun
+    /// otomasyon imzasi degil, ANI YOGUNLUKTU.
+    ///
+    /// Tek bir insan ayni siteye ayni anda yedi hesapla girmez. Bu yuzden kapi
+    /// varsayilan olarak 1: kota bitince siradaki hesap uyanir, hepsi birden
+    /// degil. Cok hesapli olmanin amaci es zamanlilik degil SUREKLILIKTI.
+    ///
+    /// Cloudflare arkasinda olmayan bir saglayicida (gemini, copilot) hiz
+    /// isteniyorsa `[providers.gemini] eszamanli = 3` ile acilir.
+    kapilar: HashMap<String, Arc<Semaphore>>,
     pub pacing: Pacing,
     /// Konusma parmak izi -> hesap. Tarayici sohbeti durumlu oldugu icin bir konusmanin
     /// tum turlari AYNI hesaba gitmeli; baska hesabin gecmisi bos olur.
     /// Bellekte tutulur: yeniden baslatinca sabitler dusur, tarayici dizileri kalir.
     sabitler: Mutex<HashMap<u64, usize>>,
-    profiles_root: PathBuf,
-    browser: BrowserBinary,
-    geckodriver: PathBuf,
-    headless: bool,
+    ortam: Ortam,
 }
 
 /// Sabitlenmis hesap mesgulse ne kadar beklenir. Otesinde sureklilik yerine yanit
@@ -143,6 +168,8 @@ pub struct Lease<'a> {
     pub index: usize,
     pub name: String,
     pub provider: Arc<Provider>,
+    /// Saglayici kapisindaki yer. Kiralama bitince otomatik birakilir.
+    _kapi: tokio::sync::OwnedSemaphorePermit,
     guard: tokio::sync::MutexGuard<'a, Option<AcikOturum>>,
 }
 
@@ -160,19 +187,22 @@ impl Pool {
         accounts: Vec<Account>,
         pacing: Pacing,
         defter: &std::collections::HashMap<String, Arc<Provider>>,
-        profiles_root: PathBuf,
-        browser: BrowserBinary,
-        geckodriver: PathBuf,
-        headless: bool,
+        eszamanli: &std::collections::HashMap<String, u32>,
+        ortam: Ortam,
     ) -> Result<Self> {
         let mut kimlikler = Vec::new();
         let mut slots = Vec::new();
+        let mut kapilar: HashMap<String, Arc<Semaphore>> = HashMap::new();
         for a in accounts {
             let k = kimlikler.len();
             kimlikler.push(Kimlik { ad: a.name.clone(), oturum: Mutex::new(None) });
             for sad in a.saglayicilar() {
                 let provider = crate::saglayicilar::bul(defter, &sad)
                     .with_context(|| format!("'{}' hesabi icin", a.name))?;
+                kapilar.entry(provider.ad.clone()).or_insert_with(|| {
+                    let n = eszamanli.get(&provider.ad).copied().unwrap_or(1).max(1);
+                    Arc::new(Semaphore::new(n as usize))
+                });
                 slots.push(Slot {
                     kimlik: k,
                     hesap_adi: a.name.clone(),
@@ -184,12 +214,10 @@ impl Pool {
         Ok(Self {
             kimlikler,
             slots,
+            kapilar,
             pacing,
             sabitler: Mutex::new(HashMap::new()),
-            profiles_root,
-            browser,
-            geckodriver,
-            headless,
+            ortam,
         })
     }
 
@@ -208,11 +236,11 @@ impl Pool {
         let mut g = k.oturum.lock().await;
         if g.is_none() {
             let s = Session::open(
-                &self.profiles_root,
+                &self.ortam.profiles_root,
                 &k.ad,
-                &self.browser,
-                &self.geckodriver,
-                self.headless,
+                &self.ortam.browser,
+                &self.ortam.geckodriver,
+                self.ortam.headless,
             )
             .await?;
             *g = Some(AcikOturum {
@@ -328,6 +356,16 @@ impl Pool {
             bail!("'{saglayici}' saglayicisi icin tanimli hesap yok (kervan.toml)");
         }
 
+        // Saglayici kapisi. Hesap SECILMEDEN once alinir: amac "ayni hesaba iki
+        // istek" degil, "ayni SITEYE ayni anda birden fazla oturum" olmasin.
+        // Bekleme hesap secimini de kapsiyor, cunku hizli ard arda acilan taze
+        // oturumlarin kendisi risk uretiyor.
+        let kapi = self.kapilar.get(saglayici).cloned().with_context(|| {
+            format!("'{saglayici}' icin kapi yok — havuz kurulumunda atlanmis")
+        })?;
+        // Option: dongu icinde tasinabilmesi icin. Yalnizca basarida `take` edilir.
+        let mut izin = Some(kapi.acquire_owned().await.expect("kapi kapatilmiyor"));
+
         loop {
             let simdi = Instant::now();
 
@@ -343,7 +381,15 @@ impl Pool {
                 );
                 match karar {
                     Sabit::Kullan => match self.kilitle(i).await {
-                        Ok(l) => return Ok(l),
+                        Ok(guard) => {
+                            return Ok(Lease {
+                                index: i,
+                                name: self.slots[i].hesap_adi.clone(),
+                                provider: self.slots[i].provider.clone(),
+                                _kapi: izin.take().expect("izin bir kez kullanilir"),
+                                guard,
+                            });
+                        }
                         Err(e) => {
                             let mesaj = format!("{e:#}");
                             eprintln!("[{}] sabit hesap acilamadi: {mesaj}", self.slots[i].hesap_adi);
@@ -387,11 +433,17 @@ impl Pool {
 
             if let Some((i, _)) = aday {
                 match self.kilitle(i).await {
-                    Ok(l) => {
+                    Ok(guard) => {
                         if let Some(anahtar) = oturum {
                             self.sabitle(anahtar, i).await;
                         }
-                        return Ok(l);
+                        return Ok(Lease {
+                            index: i,
+                            name: self.slots[i].hesap_adi.clone(),
+                            provider: self.slots[i].provider.clone(),
+                            _kapi: izin.take().expect("izin bir kez kullanilir"),
+                            guard,
+                        });
                     }
                     // Hesap acilamadi (tarayici baslamadi, oturum dusmus...). Durumu
                     // `basarisiz` isliyor: geri cekilme uygular, dogrulama duvariysa
@@ -425,18 +477,23 @@ impl Pool {
         s.insert(anahtar, i);
     }
 
-    async fn kilitle(&self, i: usize) -> Result<Lease<'_>> {
+    /// Oturumu (gerekirse acarak) kilitler ve saglayicinin sekmesine gecer.
+    ///
+    /// `Lease` DEGIL guard donuyor: kiralama basarisiz olunca saglayici kapisindaki
+    /// yeri kaybetmeyelim diye. Kapi izni `acquire_for`'da tutuluyor ve `Lease`
+    /// yalnizca basarida kuruluyor.
+    async fn kilitle(&self, i: usize) -> Result<tokio::sync::MutexGuard<'_, Option<AcikOturum>>> {
         let slot = &self.slots[i];
         let sad = slot.provider.ad.clone();
         let mut guard = self.kimlikler[slot.kimlik].oturum.lock().await;
 
         if guard.is_none() {
             let s = Session::open(
-                &self.profiles_root,
+                &self.ortam.profiles_root,
                 &slot.hesap_adi,
-                &self.browser,
-                &self.geckodriver,
-                self.headless,
+                &self.ortam.browser,
+                &self.ortam.geckodriver,
+                self.ortam.headless,
             )
             .await?;
             *guard = Some(AcikOturum {
@@ -498,12 +555,7 @@ impl Pool {
             // Asil bekleme `basarili`/`basarisiz` icinde, istek BITTIGINDE kurulur.
             st.not_before = Some(simdi + self.gecikme());
         }
-        Ok(Lease {
-            index: i,
-            name: slot.hesap_adi.clone(),
-            provider: slot.provider.clone(),
-            guard,
-        })
+        Ok(guard)
     }
 
     fn gecikme(&self) -> Duration {
@@ -649,18 +701,66 @@ mod tests {
     }
 
     fn havuz(pacing: Pacing) -> Pool {
+        havuz_n(pacing, 1, &HashMap::new())
+    }
+
+    /// `n` hesapli havuz; hepsi ayni saglayiciya bagli.
+    fn havuz_n(pacing: Pacing, n: usize, eszamanli: &HashMap<String, u32>) -> Pool {
         // Tarayici baslatilmiyor: bu testler yalniz durum mantigina dokunuyor.
         let defter = crate::saglayicilar::kayit_defteri(&HashMap::new());
         Pool::new(
-            vec![Account { name: "a".into(), provider: None, providers: vec!["gemini".into()] }],
+            (0..n)
+                .map(|i| Account {
+                    name: format!("hesap{i}"),
+                    provider: None,
+                    providers: vec!["gemini".into()],
+                })
+                .collect(),
             pacing,
             &defter,
-            PathBuf::from("."),
-            BrowserBinary(PathBuf::from(".")),
-            PathBuf::from("."),
-            true,
+            eszamanli,
+            Ortam {
+                profiles_root: PathBuf::from("."),
+                browser: BrowserBinary(PathBuf::from(".")),
+                geckodriver: PathBuf::from("."),
+                headless: true,
+            },
         )
         .expect("gemini taninmali")
+    }
+
+    /// Kapi varsayilan olarak 1 olmali: hesap sayisi kac olursa olsun ayni siteye
+    /// ayni anda tek istek. Olculdu — yedi profille ayni anda gitmek Cloudflare'i
+    /// interaktif sinamaya gecirdi.
+    #[test]
+    fn kapi_varsayilani_siralidir() {
+        let p = havuz_n(pacing(0), 7, &HashMap::new());
+        assert_eq!(p.slots.len(), 7, "yedi hesap kurulmali");
+        assert_eq!(
+            p.kapilar["gemini"].available_permits(),
+            1,
+            "yedi hesap olsa da kapi tek gecis vermeli"
+        );
+    }
+
+    /// Cloudflare arkasinda olmayan bir saglayicida hiz istenirse acilabilmeli.
+    #[test]
+    fn kapi_yapilandirmayla_genisler() {
+        let mut e = HashMap::new();
+        e.insert("gemini".to_string(), 3);
+        let p = havuz_n(pacing(0), 7, &e);
+        assert_eq!(p.kapilar["gemini"].available_permits(), 3);
+    }
+
+    /// 0 verilirse havuz KILITLENIRDI: sifir izinli bir kapidan hicbir istek gecmez
+    /// ve `acquire_for` sonsuza kadar bekler. Yazim hatasi butun saglayiciyi
+    /// sessizce olduremesin.
+    #[test]
+    fn kapi_sifira_dusurulemez() {
+        let mut e = HashMap::new();
+        e.insert("gemini".to_string(), 0);
+        let p = havuz_n(pacing(0), 2, &e);
+        assert!(p.kapilar["gemini"].available_permits() >= 1);
     }
 
     /// Bilinmeyen saglayici adi havuz kurulurken PATLAMALI: sessizce varsayilana
@@ -672,10 +772,13 @@ mod tests {
             vec![Account { name: "a".into(), provider: None, providers: vec!["yokboyle".into()] }],
             pacing(0),
             &defter,
-            PathBuf::from("."),
-            BrowserBinary(PathBuf::from(".")),
-            PathBuf::from("."),
-            true,
+            &HashMap::new(),
+            Ortam {
+                profiles_root: PathBuf::from("."),
+                browser: BrowserBinary(PathBuf::from(".")),
+                geckodriver: PathBuf::from("."),
+                headless: true,
+            },
         );
         assert!(r.is_err());
     }
