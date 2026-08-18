@@ -1,0 +1,46 @@
+# Kervan hesap havuzu - Örnek yapılandırma
+#
+# ADLANDIRMA: profil adı = HESAP ADININ KENDISI.
+# Örnek: "kullanici@example.com" profil dizini adıdır.
+#
+# BIR PROFIL = BIR KIMLIK. Sağlayıcılar sekmedir: aynı Google oturumu
+# aynı tarayıcıda gemini, perplexity sekmelerine birden yeter.
+
+# Hız bütçesi: bot tespitini yenmek için değil, gerçekten normal bir kullanıcı
+# gibi davranmak için. Hesap başına uygulanır.
+[pacing]
+min_delay_ms = 3000   # aynı hesaba ardışık iki istek arası en az süre
+jitter_ms = 2000      # üzerine 0-2 sn rastgele sapma (sabit aralık en belirgin bot izidir)
+hourly_cap = 30       # hesap başına saatlik tavan; 0 = sınırsız (önerilmez)
+
+# --- örnek hesaplar ---
+#
+# Yeni sağlayıcı bağlamak: görünür kipte aç, sekmede giriş yap, kapat.
+#
+#     cargo run -- --giris "<hesap>"
+#
+# Sonra `cargo run -- --tara` ile gerçekte hangi oturumların açıldığını ÖLÇ;
+# bu dosyayı tahminle değil ölçümle doldur.
+
+[[accounts]]
+name = "kullanici1@example.com"
+providers = ["gemini", "perplexity"]
+
+[[accounts]]
+name = "kullanici2@example.com"
+providers = ["gemini", "kimi"]
+
+[[accounts]]
+name = "kullanici3@work.edu.tr"
+providers = ["gemini", "copilot-m365"]
+
+# Kisisel Microsoft hesabı. Google tarafında karşılığı yok;
+# Copilot'un kişisel sürümü iş/okul sürümünden ayrı ürün, ayrı kota.
+[[accounts]]
+name = "kullanici4@hotmail.com"
+providers = ["copilot"]
+
+# Kota limit ifadeleri (gözlemlendiğinde ekleyin)
+[kota]
+isaretler = ["reached your limit", "sınırına ulaştınız"]
+bilinmeyen_pencere_dk = 60
