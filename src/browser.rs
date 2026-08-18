@@ -475,6 +475,12 @@ pub async fn ask(
         tokio::time::sleep(ARALIK).await;
         let (sayi, metin) = son_balon(c, sel).await;
         if let Some(t) = dedektor.gozlem(sayi, &metin) {
+            // Sayfa cevap yerine dogrulama hatasi bastiysa bunu CEVAP diye dondurmek
+            // sessiz basarisizlik olurdu; hata donuyoruz ki Hermes'in fallback
+            // zinciri siradaki saglayiciya gecebilsin.
+            if dogrulama_duvari_mi(&t) {
+                bail!("saglayici cevap yerine dogrulama hatasi dondu: {}", t.trim());
+            }
             return Ok(t);
         }
     }
@@ -531,16 +537,21 @@ async fn istemi_yaz(
     if prompt.chars().count() > JS_ESIGI || cok_satirli {
         match js_ile_yaz(c, sel, prompt).await {
             Ok(()) => {
-                if let Ok(taze) = c.find(Locator::Css(&sel.prompt_input)).await
-                    && yazilan_dogru_mu(&taze, prompt).await
-                {
-                    return Ok(());
+                // Kutu metnini BIR KEZ okuyup hem karari hem teshisi ondan uretiyoruz;
+                // ikinci bir okuma araya baska bir cizim girdiginde yaniltirdi.
+                let mut kutuda = String::new();
+                if let Ok(taze) = c.find(Locator::Css(&sel.prompt_input)).await {
+                    kutuda = kutu_metni(&taze).await;
+                    if metin_esit_mi(&kutuda, prompt) {
+                        return Ok(());
+                    }
                 }
                 if cok_satirli {
                     bail!(
                         "cok satirli istem JS ile yazildi ama geri okunamadi, GONDERILMEDI. \
                          Tus tus yazmak satir sonlarini GONDER'e cevirip istemi ortasindan \
-                         yollardi; yarim gondermektense hic gondermiyoruz."
+                         yollardi; yarim gondermektense hic gondermiyoruz. [{}]",
+                        uzunluk_tanisi(prompt.chars().count(), kutuda.chars().count())
                     );
                 }
             }
@@ -664,6 +675,30 @@ async fn kutu_metni(e: &fantoccini::elements::Element) -> String {
     e.text().await.unwrap_or_default()
 }
 
+/// Geri okuma tutmadiginda sebebi AYIRT EDEN teshis.
+///
+/// NEDEN: "geri okunamadi" tek basina iki ayri arizayi ortuyordu — kutu metni
+/// KIRPMIS olabilir (saglayicinin uzunluk sinirina carpildi) ya da metin tam
+/// gelmis ama karsilastirma takilmis olabilir (editor bicimlemesi). Ikisinin
+/// cozumu farkli: birincisi tavani dusurmeyi, ikincisi sadelestirmeyi
+/// genisletmeyi gerektirir.
+///
+/// Olculdu 2026-08-18 (gemini): 32.147 karakter geciyor, 40.150 gecmiyor.
+/// Hangi ariza oldugunu bu satir olmadan soyleyemedik — tavani tahminle
+/// degistirmek yerine once olcebilmek icin var.
+fn uzunluk_tanisi(yazilan: usize, okunan: usize) -> String {
+    let yorum = if okunan == 0 {
+        "kutu BOS okundu — secici yanlis ya da metin hic yerlesmemis"
+    } else if okunan < yazilan {
+        "kutu metni KIRPMIS — saglayicinin uzunluk sinirina carpildi"
+    } else if okunan > yazilan {
+        "kutuda FAZLA karakter var — editor kendiliginden ekleme yapmis"
+    } else {
+        "uzunluklar ESIT — icerik tam, karsilastirma bicimlemede takildi"
+    };
+    format!("yazilan {yazilan}, kutuda {okunan} karakter: {yorum}")
+}
+
 async fn yazilan_dogru_mu(e: &fantoccini::elements::Element, prompt: &str) -> bool {
     metin_esit_mi(&kutu_metni(e).await, prompt)
 }
@@ -697,6 +732,51 @@ async fn temizle(e: &fantoccini::elements::Element) {
 }
 
 /// Kac ust uste ayni gozlem "bitti" sayilir. 4 x 500ms = 2 sn.
+/// Dusunme panelinin metne karistirdigi ISARET kelimeleri.
+///
+/// OLCULDU (z.ai, 2026-08-18): yanit secicisi `.chat-assistant` dusunme panelini de
+/// kapsiyor ve DOM'da onu ayirt edecek bir sinif/`data-testid` YOK — balonun cocugu
+/// sinifsiz tek bir sarmalayici. Yani secici ile ayiklamak mumkun degil, metinden
+/// ayiklamak zorundayiz.
+///
+/// Iki ayri ariza uretiyordu: (a) "Thought Process\nAnkara" -> cevabin basina
+/// gurultu; (b) "Thinking... Skip" -> HENUZ CEVAP YOKKEN kararli gorunup cevap
+/// diye donuyordu. Ikincisi tehlikeli olani: Hermes bunu modelin cevabi saniyor.
+const DUSUNME_KELIMELERI: [&str; 4] = ["thought", "process", "thinking", "skip"];
+
+/// Bastaki dusunme satirlarini atar. Bir satir ancak TAMAMEN isaret kelimelerinden
+/// olusuyorsa atilir; icinde gercek icerik varsa dokunulmaz.
+fn cevabi_ayikla(metin: &str) -> &str {
+    let mut kalan = metin.trim_start();
+    loop {
+        let son = kalan.find('\n').unwrap_or(kalan.len());
+        let satir = kalan[..son].trim();
+        if satir.is_empty() {
+            break;
+        }
+        let hepsi_isaret = satir.split_whitespace().all(|k| {
+            let s = k.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase();
+            DUSUNME_KELIMELERI.contains(&s.as_str())
+        });
+        if !hepsi_isaret {
+            break;
+        }
+        kalan = kalan[son..].trim_start();
+    }
+    kalan
+}
+
+/// Sayfanin cevap yerine bastigi dogrulama/hata metni mi?
+///
+/// OLCULDU: z.ai ardisik otomatik isteklerde balona "No response, Please try again
+/// later." + "Verification failed, please try again" yaziyor. Kervan'in yanit
+/// yolunda hicbir hata denetimi YOKTU, yani bu metin modelin cevabi olarak
+/// donuyordu. Projenin kurali sessiz basarisizligi yasakliyor: cevap degil HATA.
+fn dogrulama_duvari_mi(metin: &str) -> bool {
+    let m = metin.to_lowercase();
+    ["verification failed", "no response, please try again"].iter().any(|k| m.contains(k))
+}
+
 const KARARLILIK_ESIGI: u8 = 4;
 
 /// Yoklama dongusunun karar cekirdegi.
@@ -719,7 +799,15 @@ impl BitisDedektoru {
     /// `sayi`: su anki balon sayisi, `metin`: son balonun metni.
     /// Gonderimden sonra yeni balon eklenmemisse gozlem yok sayilir.
     fn gozlem(&mut self, sayi: usize, metin: &str) -> Option<String> {
-        if sayi <= self.taban_sayi || metin.trim().is_empty() {
+        if sayi <= self.taban_sayi {
+            self.sabit = 0;
+            return None;
+        }
+        // Gurultuyu once ayikla: "Thinking... Skip" sabit durdugu icin ayiklanmadan
+        // KARARLI gorunur ve cevap diye donerdi. Ayiklandiktan sonra bos kaliyorsa
+        // yanit henuz baslamamis demektir.
+        let metin = cevabi_ayikla(metin);
+        if metin.trim().is_empty() {
             self.sabit = 0;
             return None;
         }
@@ -1022,6 +1110,57 @@ mod tests {
         assert!(!metin_esit_mi("", istem), "bos kutu istem sayilmamali");
         assert!(!metin_esit_mi("Sadece 'elma' yaz", istem), "kirpilmis metin kabul edilmemeli");
         assert!(metin_esit_mi(istem, istem));
+    }
+
+    /// Teshis cumlesi, sonraki adimi belirledigi icin ayrimin kendisi sinaniyor:
+    /// KIRPMIS -> tavani dusur, ESIT -> sadelestirmeyi genislet.
+    /// OLCULEN iki ariza da burada sinaniyor; ikisi de z.ai'dan geldi.
+    #[test]
+    fn dusunme_gurultusu_ayiklanir() {
+        // (a) cevabin basindaki gurultu
+        assert_eq!(cevabi_ayikla("Thought Process\nAnkara"), "Ankara");
+        // (b) henuz cevap yok: ayiklaninca geriye bir sey kalmamali
+        assert_eq!(cevabi_ayikla("Thinking... Skip").trim(), "");
+        assert_eq!(cevabi_ayikla("Thinking...\nSkip").trim(), "");
+        // Gercek icerik tasiyan satira DOKUNULMAMALI
+        assert_eq!(cevabi_ayikla("Thinking about it: Ankara"), "Thinking about it: Ankara");
+        assert_eq!(cevabi_ayikla("Ankara"), "Ankara");
+    }
+
+    /// "Thinking... Skip" ayiklanmadan once KARARLI gorunuyordu — yani cevap
+    /// beklemek yerine dusunme gostergesi cevap diye donuyordu.
+    #[test]
+    fn dusunme_gostergesi_kararli_sayilmaz() {
+        let mut d = BitisDedektoru::yeni(0);
+        for _ in 0..10 {
+            assert_eq!(d.gozlem(1, "Thinking... Skip"), None, "gosterge cevap sayilmamali");
+        }
+        // Gercek cevap gelince normal kararlilik isler.
+        let mut sonuc = None;
+        // ESIK + 1: ilk gozlem `onceki`yi kurar, sayac ondan SONRA islemeye baslar.
+        for _ in 0..=KARARLILIK_ESIGI {
+            sonuc = d.gozlem(1, "Thought Process\nAnkara");
+        }
+        assert_eq!(sonuc.as_deref(), Some("Ankara"), "gurultu ayiklanmis cevap donmeli");
+    }
+
+    #[test]
+    fn dogrulama_duvari_taninir() {
+        assert!(dogrulama_duvari_mi("No response, Please try again later.\nVerification failed, please try again"));
+        assert!(dogrulama_duvari_mi("Verification failed, please try again"));
+        assert!(!dogrulama_duvari_mi("Ankara"));
+        // Cevabin icinde gecen benzer bir cumle yanlis alarm vermemeli diye
+        // kaliplar dar tutuldu; bu satir onun bekcisi.
+        assert!(!dogrulama_duvari_mi("Dogrulama basarili, devam ediyorum"));
+    }
+
+    #[test]
+    fn uzunluk_tanisi_arizalari_ayirt_eder() {
+        assert!(uzunluk_tanisi(40150, 32000).contains("KIRPMIS"));
+        assert!(uzunluk_tanisi(40150, 40150).contains("ESIT"));
+        assert!(uzunluk_tanisi(100, 0).contains("BOS"));
+        assert!(uzunluk_tanisi(100, 101).contains("FAZLA"));
+        assert!(uzunluk_tanisi(40150, 32000).contains("40150"));
     }
 
     /// Editorler satir sonu/bosluk ekleyebiliyor; bunlara takilip saglam bir yazimi

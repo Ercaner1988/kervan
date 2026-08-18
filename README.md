@@ -519,3 +519,30 @@ giriş otomasyonun dışında, gerçek bir insan tarafından yapılır.
 ## Lisans
 
 MIT — bkz. [LICENSE](LICENSE).
+
+## Sinama tuzagi: her istek yeni konusma acar (2026-08-18)
+
+`konusma_izi` **ilk kullanici mesajinin** hash'i (`server.rs`). Gercek bir Hermes
+konusmasinda ilk mesaj her turda ayni gider, iz sabit kalir ve ayni tarayici
+dizisi kullanilir. Ama **tek atislik sinama istekleri** her seferinde farkli tek
+bir mesaj tasir, yani her biri ayri ize duser ve **yeni sohbet acar**.
+
+Olculdu: ayni ilk mesajla gonderilen ikinci tur onceki turu hatirladi (4271) ve
+14,4 sn yerine 10,7 sn surdu — yeni oturum/sekme acilmadigi icin.
+
+Iki sonucu var:
+
+1. **Sinama sonuclari temsili olmayabilir.** z.ai icin olculen "2/3 basarili"
+   orani, her istegin yeni konusma actigi kosullarda cikti. Gercek kullanimda
+   desen farkli.
+2. **Cloudflare tetikleyicisi buraya bakiyor.** Kisa surede cok sayida YENI
+   KONUSMA acmak, ayni konusmada birkac mesaj gondermekten cok daha ayirt edici
+   bir desen. Sabahki sekiz hesaplik havuz kosusu da, bugunku z.ai kilitlenmesi
+   de bu desene denk geliyor.
+
+**Kural:** saglayici davranisini olcerken tek atislik istekler yerine AYNI ilk
+mesaji paylasan bir konusma dizisi kullan; yoksa hem siteyi gereksiz zorlarsin
+hem de olctugun sey gercek kullanim olmaz.
+
+Yan sonuc: model ve kip secimi (derin dusunme, model surumu) konusma boyunca
+kalici oldugu icin **her istekte degil, `yeni_dizi` aninda bir kez** yapilmali.
