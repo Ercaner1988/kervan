@@ -512,6 +512,14 @@ impl Pool {
                     // ya da hepsi elenince asagida acik hatayla biter — sonsuz donmez.
                     Err(e) => {
                         let mesaj = format!("{e:#}");
+                        // SURUCU ARIZASI ortamsaldir: siradaki hesapta da ayni sonuc
+                        // cikar. Donguye devam etmek sekiz hesabi tek tek deneyip
+                        // hepsini bosuna geri cekilmeye sokar ve dakikalar yakar
+                        // (olculdu: 300 sn, dort hesap cezalandirildi). Hemen ve
+                        // ACIK bicimde duruyoruz, hesaplara dokunmadan.
+                        if mesaj.contains(crate::browser::SURUCU_ARIZASI) {
+                            bail!("{mesaj}");
+                        }
                         eprintln!("[{}] hesap acilamadi: {mesaj}", self.slots[i].hesap_adi);
                         self.basarisiz(i, &mesaj).await;
                         continue;

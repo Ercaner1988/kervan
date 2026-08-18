@@ -90,7 +90,7 @@ impl Session {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
-            .with_context(|| format!("geckodriver baslatilamadi: {}", geckodriver.display()))?;
+            .with_context(|| format!("{SURUCU_ARIZASI}: geckodriver baslatilamadi: {}", geckodriver.display()))?;
 
         // GIZLI KIP HEADLESS DEGIL. Headless bir tarayici calisirken gorunur hale
         // GETIRILEMEZ; "arkada dursun, istedigim an one cekeyim" ancak gercek bir
@@ -346,9 +346,16 @@ fn yetenekler(ikili: &Path, args: Vec<String>) -> serde_json::map::Map<String, s
 
 /// geckodriver acilirken birkac yuz ms gecikiyor; hazir olana kadar kisa araliklarla dene.
 async fn baglan(port: u16, caps: serde_json::map::Map<String, serde_json::Value>) -> Result<Client> {
+    // SAYI DEGIL SURE ile sinirli. Eskiden `for _ in 0..40` idi ve "10 saniye"
+    // saniliyordu (40 x 250 ms uyku). Oysa her denemenin KENDI baglanti zaman
+    // asimi var; olculdu 2026-08-18 — cevap vermeyen bir surucude tek istek
+    // 92 saniye surdu. Sure tavani, deneme sayisindan bagimsiz olarak dogruyu
+    // soyler ve hata mesajindaki sure gercekten dogru olur.
+    const SURUCU_BEKLEME: std::time::Duration = std::time::Duration::from_secs(15);
     let url = format!("http://127.0.0.1:{port}");
     let mut son = None;
-    for _ in 0..40 {
+    let basladi = std::time::Instant::now();
+    while basladi.elapsed() < SURUCU_BEKLEME {
         match ClientBuilder::native()
             .capabilities(caps.clone())
             .connect(&url)
@@ -361,7 +368,13 @@ async fn baglan(port: u16, caps: serde_json::map::Map<String, serde_json::Value>
             }
         }
     }
-    bail!("geckodriver'a baglanilamadi ({url}): {}", son.unwrap())
+    bail!(
+        "{SURUCU_ARIZASI}: geckodriver'a baglanilamadi ({url}) — {} sn denendi. Bu ariza \
+         ORTAMSALDIR, hesapla ilgisi yoktur: surucu ikilisi calisiyor mu, port kullanimda \
+         mi, baska bir Kervan ornegi acik mi diye bak. Ayrinti: {}",
+        SURUCU_BEKLEME.as_secs(),
+        son.map(|e| e.to_string()).unwrap_or_else(|| "deneme yapilamadi".into())
+    )
 }
 
 /// Isletim sisteminden bos port iste, hemen birak. Sabit port kullanmak birden fazla
@@ -447,6 +460,15 @@ const ENTER: &str = "\u{E007}";
 /// imzalarina kadar yayilirdi, oysa tek ihtiyac "bu hata insan mudahalesi
 /// istiyor mu" sorusu.
 pub const INSAN_KAPISI: &str = "INSAN KAPISI";
+
+/// SURUCU ARIZASI onegi: geckodriver baslatilamadi ya da baglanti kurulamadi.
+///
+/// NEDEN AYRI SINIF: bu ariza ORTAMSALDIR — her hesapta aynidir. Havuz bunu
+/// hesaba ozel sanip sirayla butun hesaplari deniyordu; her denemede hesap geri
+/// cekilmeye sokuluyor ve zaman yaniyordu. Olculdu 2026-08-18: tek istek 300
+/// saniyeye kadar surdu ve dort hesap bosuna cezalandirildi, uzerine hata
+/// "yanit gelmedi" gibi gorunup yanlis yere baktirdi.
+pub const SURUCU_ARIZASI: &str = "SURUCU ARIZASI";
 
 /// Sayfanin ustunu kapatan dogrulama katmanlari.
 ///
@@ -1215,6 +1237,22 @@ mod tests {
 
     /// Insan kapisi hatasi cagiran tarafta METINDEN taniniyor; onek degisirse
     /// pool/server baglantisi sessizce kopar. Bu sinama o baglantinin bekcisi.
+    /// Surucu arizasi ORTAMSALDIR: havuz bunu hesaba ozel sanip sirayla butun
+    /// hesaplari deniyordu (olculdu: 300 sn, dort hesap bosuna cezalandirildi).
+    /// Ayrim metinden taniniyor; onek degisirse pool baglantisi sessizce kopar.
+    #[test]
+    fn surucu_arizasi_hesap_arizasindan_ayrilir() {
+        let s = anyhow::anyhow!("{SURUCU_ARIZASI}: geckodriver'a baglanilamadi (http://127.0.0.1:5555)");
+        assert!(format!("{s:#}").contains(SURUCU_ARIZASI));
+        // Hesaba ozel arizalar bu sinifa DUSMEMELI, yoksa tek hesabin sorunu
+        // butun istegi dusururdu.
+        for h in ["oturum dusmus", "yanit gelmedi (120 sn)", "kota bildirdi"] {
+            assert!(!anyhow::anyhow!("{h}").to_string().contains(SURUCU_ARIZASI), "{h}");
+        }
+        // Insan kapisi ile de karismamali: biri insan bekler, oteki ortam onarimi.
+        assert_ne!(SURUCU_ARIZASI, INSAN_KAPISI);
+    }
+
     #[test]
     fn insan_kapisi_oneki_taninabilir() {
         let h = anyhow::anyhow!("{INSAN_KAPISI}: dogrulama katmani acik (#aliyunCaptcha-mask.mask-show)");
