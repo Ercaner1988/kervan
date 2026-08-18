@@ -440,6 +440,53 @@ fn url_kodla(s: &str) -> String {
 /// WebDriver Enter tusu (U+E007).
 const ENTER: &str = "\u{E007}";
 
+/// Insan kapisi hatalarinin ONEKI. Cagiran taraf bunu gorunce oturumu insanin
+/// elinde sayar (bosta supurucu kapatmaz) ve kullaniciya gosterir.
+///
+/// Metin uzerinden tanima bilincli bir tercih: hata tipi eklemek pool ve server
+/// imzalarina kadar yayilirdi, oysa tek ihtiyac "bu hata insan mudahalesi
+/// istiyor mu" sorusu.
+pub const INSAN_KAPISI: &str = "INSAN KAPISI";
+
+/// Sayfanin ustunu kapatan dogrulama katmanlari.
+///
+/// OLCULDU (z.ai, 2026-08-18): istem kutusuna tiklama
+/// `<div id="aliyunCaptcha-mask" class="mask-show"> obscures it` diye reddedildi.
+/// Yani z.ai'da karsimiza cikan sey CLOUDFLARE DEGIL, ALIYUN dogrulamasi — z.ai
+/// Cin merkezli ve Aliyun'un katmanini kullaniyor. Bugun "cloudflare'e takildi"
+/// dedigimiz z.ai olaylarinin kaynagi buydu.
+///
+/// Belirti METIN degil KATMAN oldugu icin `dogrulama_duvari_mi` (cevap balonundaki
+/// metni denetler) bunu yakalayamaz; ayri bir olcume ihtiyac var.
+const DOGRULAMA_KATMANLARI: [&str; 5] = [
+    "#aliyunCaptcha-mask.mask-show",
+    "iframe[src*='captcha']",
+    "iframe[title*='challenge']",
+    "#challenge-running",
+    "#cf-challenge-running",
+];
+
+/// Acik bir dogrulama katmani varsa hangisi oldugunu dondurur.
+///
+/// `is_displayed` sart: bu katmanlar DOM'da gizli halde de duruyor olabilir, sadece
+/// varliklarina bakmak her istegi sahte insan kapisina dusururdu.
+async fn dogrulama_katmani(c: &Client) -> Option<String> {
+    for s in DOGRULAMA_KATMANLARI {
+        if let Ok(e) = c.find(Locator::Css(s)).await
+            && e.is_displayed().await.unwrap_or(false)
+        {
+            return Some(s.to_string());
+        }
+    }
+    None
+}
+
+/// Pencereyi one getirir. Insan kapisinin gorunur ayagi; `Session::goster` ile ayni
+/// isi yapiyor ama `ask` elinde yalnizca `Client` tutuyor.
+async fn pencereyi_one_getir(c: &Client) {
+    c.set_window_rect(80, 60, 1280, 900).await.ok();
+}
+
 /// Istemi yazip gonderir, yanit tamamlanana kadar bekler ve metnini dondurur.
 ///
 /// BITIS ALGILAMA KARARI: "durdur dugmesi kayboldu mu" gibi secici tabanli bir olcut
@@ -462,7 +509,29 @@ pub async fn ask(
     // Kutu bulunduktan SONRA sayiliyor: once sayarsak yarim cizilmis sayfada 0 gorup
     // temel cizgiyi yanlis kurardik.
     let taban = son_balon(c, sel).await.0;
-    kutu.click().await.context("istem kutusuna tiklanamadi")?;
+
+    // INSAN KAPISI, birinci ayak: katman ZATEN acik mi? Tiklamayi denemeden once
+    // bakiyoruz, yoksa 120 saniye bosuna yanit bekleyip "yanit gelmedi" gibi
+    // yaniltici bir hata veriyorduk (olculdu: z.ai, 129,6 sn).
+    if let Some(katman) = dogrulama_katmani(c).await {
+        pencereyi_one_getir(c).await;
+        bail!(
+            "{INSAN_KAPISI}: dogrulama katmani acik ({katman}). Pencere one getirildi — \
+             dogrulamayi elle coz, sonra istegi tekrarla. Duvari asmiyoruz, gosteriyoruz."
+        );
+    }
+
+    // Ikinci ayak: katman listede olmayan bir seyse tiklama reddi onu yine yakalar.
+    // WebDriver bu durumda "is not clickable ... obscures it" diyor ve ustteki
+    // ogenin ne oldugunu da yaziyor — teshis icin onu oldugu gibi tasiyoruz.
+    if let Err(e) = kutu.click().await {
+        let m = e.to_string();
+        if m.contains("obscures it") || m.contains("not clickable") {
+            pencereyi_one_getir(c).await;
+            bail!("{INSAN_KAPISI}: istem kutusunun ustunu bir katman kapatiyor. {m}");
+        }
+        return Err(e).context("istem kutusuna tiklanamadi");
+    }
     istemi_yaz(c, sel, &kutu, prompt).await?;
     kutu.send_keys(ENTER).await.context("istem gonderilemedi")?;
 
@@ -1142,6 +1211,17 @@ mod tests {
             sonuc = d.gozlem(1, "Thought Process\nAnkara");
         }
         assert_eq!(sonuc.as_deref(), Some("Ankara"), "gurultu ayiklanmis cevap donmeli");
+    }
+
+    /// Insan kapisi hatasi cagiran tarafta METINDEN taniniyor; onek degisirse
+    /// pool/server baglantisi sessizce kopar. Bu sinama o baglantinin bekcisi.
+    #[test]
+    fn insan_kapisi_oneki_taninabilir() {
+        let h = anyhow::anyhow!("{INSAN_KAPISI}: dogrulama katmani acik (#aliyunCaptcha-mask.mask-show)");
+        assert!(format!("{h:#}").contains(INSAN_KAPISI));
+        // Siradan bir hata insan kapisi sayilmamali.
+        let d = anyhow::anyhow!("yanit gelmedi (120 sn)");
+        assert!(!format!("{d:#}").contains(INSAN_KAPISI));
     }
 
     #[test]

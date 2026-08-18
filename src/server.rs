@@ -319,7 +319,7 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
 
     // Havuzdan hesap kirala: konusma kendi hesabina sabitlenir, hiz butcesi burada
     // uygulanir, gerekirse beklenir.
-    let lease = match st.pool.acquire_for(konusma_izi(&req.messages), &saglayici).await {
+    let mut lease = match st.pool.acquire_for(konusma_izi(&req.messages), &saglayici).await {
         Ok(l) => l,
         Err(e) => return hata(StatusCode::SERVICE_UNAVAILABLE, &format!("{e:#}")),
     };
@@ -356,6 +356,13 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
     }
     if let Err(e) = &sonuc {
         println!("[{}] HATA: {e:#}", lease.name);
+        // INSAN KAPISI: dogrulama katmani cikmissa pencere one getirildi ve insan
+        // cozecek. Oturumu insanin eline birakiyoruz ki bosta supurucu 15 dakika
+        // sonra pencereyi kapatmasin — cozum yarida kalirdi.
+        if format!("{e:#}").contains(crate::browser::INSAN_KAPISI) {
+            lease.insan_eline_birak();
+            println!("[{}] oturum insanin elinde: dogrulamayi coz, sonra istegi tekrarla.", lease.name);
+        }
     }
 
     // Sonucu havuza bildir: basari sayaci sifirlar, hata ustel geri cekilme uygular

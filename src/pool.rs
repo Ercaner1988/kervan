@@ -197,6 +197,21 @@ pub struct Lease<'a> {
 }
 
 impl Lease<'_> {
+    /// INSAN KAPISI: bu oturumu insanin eline birakir.
+    ///
+    /// NEDEN `goster` degil: `goster` kimlik kilidini kendisi alir, oysa `Lease`
+    /// o kilidi zaten tutuyor — oradan cagirmak kilitlenme olurdu. Burada elde
+    /// tutulan guard uzerinden isaretliyoruz.
+    ///
+    /// NEDEN GEREKLI: dogrulamayi cozmek icin acilan pencereyi bosta supurucu
+    /// 15 dakika sonra kapatirdi. Ayni sinif hata daha once yasandi — Qwen'e
+    /// giris yapilirken pencere altindan cekilmisti.
+    pub fn insan_eline_birak(&mut self) {
+        if let Some(o) = self.guard.as_mut() {
+            o.insan_elinde = true;
+        }
+    }
+
     pub fn client(&self) -> &fantoccini::Client {
         // Kiralama ancak oturum acildiktan sonra verilir; burada None olamaz.
         &self.guard.as_ref().expect("oturum acik olmali").session.client
