@@ -96,6 +96,8 @@ async fn main() -> Result<()> {
             .filter_map(|(ad, a)| a.eszamanli.map(|n| (ad.clone(), n)))
             .collect();
 
+        // `cfg.pacing` az sonra havuza tasiniyor; tavan bilgisi burada aliniyor.
+        let tavan = cfg.pacing.hourly_cap;
         let havuz = pool::Pool::new(
             cfg.accounts,
             cfg.pacing,
@@ -105,6 +107,14 @@ async fn main() -> Result<()> {
         )?;
         let defter = kota::Defter::ac(kota::varsayilan_yol())?;
         println!("kota defteri : {}", kota::yol_goster(&defter).display());
+
+        // Saatlik tavan penceresi bellekte durdugu icin yeniden baslatmada
+        // bosaliyordu; defterden geri kuruluyor. Sayiyi basmak sart: tohumlanmadigi
+        // gun sessizce eski davranisa donerdik ve fark edilmezdi.
+        if tavan > 0 {
+            let n = havuz.tavani_tohumla(&defter).await;
+            println!("tavan tohumu : son bir saatten {n} istek defterden geri yuklendi");
+        }
 
         let state = Arc::new(server::AppState {
             pool: havuz,
