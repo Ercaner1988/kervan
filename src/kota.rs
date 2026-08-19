@@ -11,6 +11,26 @@
 //! son satir atlanir, dosya kendini onarir. Sorgular karmasiklasirsa SQLite'a
 //! gecmek acik yol.
 //!
+//! 2026-08-19 — YUKARIDAKI KARAR OLCULDU VE KORUNDU (Turso gocu degerlendirmesi):
+//!
+//! | defter satiri | `ac()` | dosya |
+//! |---|---|---|
+//! | 88 (bugunku gercek) | 18,7 ms | 6 KB |
+//! | 20.000 (modulun kendi aylik ongorusu) | 29,0 ms | 1,2 MB |
+//! | 1.000.000 (yillarca kullanim) | 350,6 ms | 61 MB |
+//!
+//! Surec basina BIR kez odenen maliyet bu. "Dogrusal okuma acitiyor" gerekcesi
+//! bu sayilarla dusuyor.
+//!
+//! Ikinci gerekce — eszamanli yazma — de olculdu ve dustu: ikinci bir kervan
+//! ornegi `TcpListener::bind` asamasinda `os error 10048` ile cikiyor (olculdu:
+//! cikis kodu 1, defter 88 satirda degismedi) ve defter yazmalari yalniz istek
+//! servis edilirken olur. Yani PORT BIR MUTEX gibi calisiyor: hicbir zaman iki
+//! yazici olmuyor.
+//!
+//! Gecis sarti degismedi ve hala saglanmis degil: "sorgular karmasiklasirsa".
+//! Bugunku sorgu bir suzme + uc sayim + bir ortanca.
+//!
 //! UYDURMA YOK: gozlem olmadan tahmin uretmez. Kanit sayisi her zaman birlikte
 //! raporlanir; "henuz bilmiyorum" gecerli ve dogru bir cevaptir.
 
@@ -36,6 +56,19 @@ pub struct Olay {
     /// Unix saniye.
     pub t: u64,
     pub hesap: String,
+    /// Hangi saglayici. **Kota hesabin degil, hesap+saglayici ciftinin ozelligidir:**
+    /// ayni Google hesabinda gemini'nin limiti ile kimi'nin limiti ayri ayri isler.
+    ///
+    /// Bu alan yokken 88 olay tek havuza yaziliyordu ve `tahmin_et` bunlari karistiriyordu;
+    /// somut sonucu su idi: gemini'de olculmus 120 dakikalik pencere, kimi kota
+    /// bildirdiginde kimi'nin bekleme suresi olarak uygulaniyordu (server.rs'te
+    /// `ozet()` -> `pencere_dk` -> `kota_doldu`). Yani yanlis saglayicidan ogrenilen
+    /// sayi baska bir saglayiciya uygulaniyordu.
+    ///
+    /// `None` = alan eklenmeden once yazilmis ESKI kayit. Atfedilemez oldugu icin
+    /// tahmine sokulmaz; `Ozet.eski_kayit` ile sayisi acikca raporlanir.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub saglayici: Option<String>,
     pub sonuc: Sonuc,
     /// Kota olaylarinda saglayicinin metninden kisa bir kesit; gercek ifadeyi
     /// ogrenmek icin. Basarili yanitlarin icerigi ASLA yazilmaz.
@@ -74,8 +107,14 @@ impl Defter {
         Ok(Self { yol, olaylar: Mutex::new(olaylar) })
     }
 
-    pub async fn yaz(&self, hesap: &str, sonuc: Sonuc, not: Option<String>) {
-        let olay = Olay { t: simdi(), hesap: hesap.to_string(), sonuc, not };
+    pub async fn yaz(&self, hesap: &str, saglayici: &str, sonuc: Sonuc, not: Option<String>) {
+        let olay = Olay {
+            t: simdi(),
+            hesap: hesap.to_string(),
+            saglayici: Some(saglayici.to_string()),
+            sonuc,
+            not,
+        };
         // Diske yazamamak ogrenmeyi durdurur ama istegi durdurmamali: uyar, devam et.
         match self.ekle(&olay) {
             Ok(()) => {}
@@ -95,9 +134,22 @@ impl Defter {
         Ok(())
     }
 
-    pub async fn ozet(&self, hesap: &str) -> Ozet {
+    /// Ozet **hesap + saglayici** cifti icin cikar.
+    ///
+    /// Yalniz hesaba bakmak yanlisti: bir hesabin gemini ve kimi olaylari tek
+    /// akista karisiyor, `tahmin_et` birinden ogrendigi pencereyi digerine
+    /// uyguluyordu. Saglayicisi bilinmeyen ESKI kayitlar tahmine sokulmaz —
+    /// atfedilemezler — ama sayilari `eski_kayit` ile gorunur kalir; kayip
+    /// kaydi gizlemek ogrenmeyi yaniltir.
+    pub async fn ozet(&self, hesap: &str, saglayici: &str) -> Ozet {
         let hepsi = self.olaylar.lock().await;
-        let kendi: Vec<Olay> = hepsi.iter().filter(|o| o.hesap == hesap).cloned().collect();
+        let kendi: Vec<Olay> = hepsi
+            .iter()
+            .filter(|o| o.hesap == hesap && o.saglayici.as_deref() == Some(saglayici))
+            .cloned()
+            .collect();
+        let eski_kayit =
+            hepsi.iter().filter(|o| o.hesap == hesap && o.saglayici.is_none()).count();
         let n = simdi();
         let say = |sn: u64, s: Sonuc| {
             kendi.iter().filter(|o| o.sonuc == s && n.saturating_sub(o.t) < sn).count()
@@ -107,6 +159,7 @@ impl Defter {
             son_saat: say(3600, Sonuc::Basari),
             son_gun: say(86_400, Sonuc::Basari),
             son_hafta: say(604_800, Sonuc::Basari),
+            eski_kayit,
             tahmin: tahmin_et(&kendi),
         }
     }
@@ -118,6 +171,9 @@ pub struct Ozet {
     pub son_saat: usize,
     pub son_gun: usize,
     pub son_hafta: usize,
+    /// Bu hesapta saglayicisi bilinmeyen (alan eklenmeden once yazilmis) kayit sayisi.
+    /// Tahmine girmezler; gizlenmemeleri icin sayilari burada durur.
+    pub eski_kayit: usize,
     pub tahmin: Tahmin,
 }
 
@@ -227,7 +283,79 @@ mod tests {
     use super::*;
 
     fn o(t: u64, sonuc: Sonuc) -> Olay {
-        Olay { t, hesap: "a".into(), sonuc, not: None }
+        Olay { t, hesap: "a".into(), saglayici: Some("p".into()), sonuc, not: None }
+    }
+
+    /// ESKI KAYIT UYUMU (§IV kapisi): `saglayici` alani eklenmeden once yazilmis
+    /// satirlar ayristirilmaya DEVAM etmeli. Bozulursa dort gunluk gercek defter
+    /// sessizce cope giderdi.
+    #[test]
+    fn saglayicisiz_eski_satir_hala_ayrisir() {
+        let satir = r#"{"t":1786823552,"hesap":"ercan-gemini-2","sonuc":"basari"}"#;
+        let o: Olay = serde_json::from_str(satir).expect("eski satir ayrisamadi");
+        assert_eq!(o.hesap, "ercan-gemini-2");
+        assert_eq!(o.sonuc, Sonuc::Basari);
+        assert_eq!(o.saglayici, None, "eski kayit atfedilemez olmali");
+    }
+
+    /// Yeni yazilan satirda `saglayici` bulunmali; yoksa dun duzelttigimiz hata
+    /// yarin sessizce geri gelir.
+    #[test]
+    fn yeni_satir_saglayici_tasir() {
+        let o = Olay {
+            t: 1,
+            hesap: "a".into(),
+            saglayici: Some("kimi".into()),
+            sonuc: Sonuc::Basari,
+            not: None,
+        };
+        let s = serde_json::to_string(&o).unwrap();
+        assert!(s.contains(r#""saglayici":"kimi""#), "{s}");
+    }
+
+    /// ASIL HATA: bir hesabin iki saglayicisi ayri kota havuzudur.
+    ///
+    /// gemini'de 120 dakikalik pencere olculmusken kimi kota bildirirse, kimi'nin
+    /// beklemesi gemini'nin sayisiyla kurulamaz. Karisik akista `tahmin_et` tek
+    /// pencere uretiyordu; ayrildiktan sonra her saglayici kendi kanitini tasir.
+    #[test]
+    fn saglayicilar_ayri_kota_havuzudur() {
+        let s = 3600;
+        let ev = |t: u64, sag: &str, sonuc: Sonuc| Olay {
+            t,
+            hesap: "a".into(),
+            saglayici: Some(sag.into()),
+            sonuc,
+            not: None,
+        };
+        // gemini: 2 istek sonra kota, 2 saat sonra acildi.
+        // kimi: arada gecen, kotayla ilgisi olmayan basarilar.
+        let hepsi = vec![
+            ev(0, "gemini", Sonuc::Basari),
+            ev(5, "kimi", Sonuc::Basari),
+            ev(10, "gemini", Sonuc::Basari),
+            ev(15, "kimi", Sonuc::Basari),
+            ev(20, "gemini", Sonuc::Kota),
+            ev(25, "kimi", Sonuc::Basari),
+            ev(20 + 2 * s, "gemini", Sonuc::Basari),
+        ];
+
+        let sadece = |sag: &str| -> Vec<Olay> {
+            hepsi.iter().filter(|o| o.saglayici.as_deref() == Some(sag)).cloned().collect()
+        };
+
+        let g = tahmin_et(&sadece("gemini"));
+        assert_eq!(g.kanit, 1);
+        assert_eq!(g.pencere_dk, Some(120), "gemini kendi penceresini bilir");
+
+        let k = tahmin_et(&sadece("kimi"));
+        assert_eq!(k.kanit, 0, "kimi hic kota gormedi");
+        assert_eq!(k.pencere_dk, None, "kimi'ye gemini'nin penceresi uygulanamaz");
+
+        // Ayrilmamis akista kimi'nin basarilari gemini'nin kapasitesine karisiyordu:
+        // kota carpmasina kadar sayilan 4 istegin yalniz 2'si gemini'ye aitti.
+        assert_eq!(tahmin_et(&hepsi).pencere_basina_istek, Some(4), "karisik akis sisirir");
+        assert_eq!(g.pencere_basina_istek, Some(2), "gercek gemini kapasitesi");
     }
 
     /// Gozlem yoksa tahmin de OLMAMALI. Uydurulmus bir limit, olmayan bir limitten
