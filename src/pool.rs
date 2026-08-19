@@ -264,6 +264,55 @@ impl Pool {
         })
     }
 
+    /// Saatlik tavan penceresini **defterden** yeniden kurar.
+    ///
+    /// `AccountState.recent` bellekte durur, yani her yeniden baslatmada bosalirdi.
+    /// Sonucu: son bir saatte tavanini doldurmus bir hesap, kervan yeniden
+    /// baslatilinca bastan `hourly_cap` kadar istek hakki kazaniyordu — yani
+    /// yeniden baslatmak hiz butcesini delmenin yolu oluyordu. Bu, olculmus bir
+    /// Cloudflare ani-yogunluk olayindan sonra konulmus emniyetin sessizce
+    /// kalkmasi demekti; bugun kervan bir gunde dort kez yeniden baslatildi.
+    ///
+    /// Defter zaten zaman + hesap + saglayici tutuyor, o yuzden pencere yeni bir
+    /// depo olmadan kurulabiliyor.
+    ///
+    /// **Yaklasiklik bilerek ve emniyetli yonde:** `recent`'a kiralama ANINDA
+    /// yazilir, deftere ise istek BITTIGINDE. Surec istek ortasinda oldurulduyse
+    /// o istek defterde yoktur, yani tohum bir eksik kalir. Eksik kalmasi fazla
+    /// saymaktan iyidir; ters yonde hata hesabi haksiz yere bekletirdi.
+    ///
+    /// Donen sayi: kac ize tohumlandi. Cagiran taraf bunu **basar** — sessiz bir
+    /// emniyet, calisip calismadigi gorulmeyen bir emniyettir.
+    pub async fn tavani_tohumla(&self, defter: &crate::kota::Defter) -> usize {
+        const PENCERE_SN: u64 = 3600;
+        let simdi_unix = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let simdi = Instant::now();
+        let mut toplam = 0usize;
+        for slot in &self.slots {
+            let izler = defter.son_izler(&slot.hesap_adi, &slot.provider.ad, PENCERE_SN).await;
+            if izler.is_empty() {
+                continue;
+            }
+            let mut st = slot.state.lock().await;
+            // Unix saniyesi -> Instant: monotonik saat gecmise gore kurulamaz, ama
+            // "ne kadar once oldugu" tasinabilir. Ileri tarihli kayit (saat geri
+            // alinmis) simdiye duser; checked_sub None dondurmesi de o durumdur.
+            for t in izler {
+                let yas = Duration::from_secs(simdi_unix.saturating_sub(t));
+                st.recent.push(simdi.checked_sub(yas).unwrap_or(simdi));
+                toplam += 1;
+            }
+            // `hazir_zamani` ilk ogeyi EN ESKI kabul ediyor; defter zaman sirali
+            // okundugu icin siralama zaten dogru, ama tohum baska bir kaynaktan
+            // gelse sessizce bozulurdu.
+            st.recent.sort_unstable();
+        }
+        toplam
+    }
+
     /// Bir kimligin tarayici penceresini one getirir (giris yapmak, model secmek,
     /// dogrulama cozmek icin) ve **insanin elinde** olarak isaretler.
     ///
@@ -757,6 +806,54 @@ mod tests {
         st.recent.push(simdi);
         st.recent.push(simdi);
         assert!(!st.hazir_mi(simdi, &p), "tavan dolmusken hazir gorunmemeli");
+    }
+
+    /// YENIDEN BASLATMA EMNIYETI: tavan penceresi defterden geri kurulmali.
+    ///
+    /// Bu sinama olmasa tohumlama sessizce bozulabilir ve fark edilmezdi — belirtisi
+    /// "hesap biraz fazla istek aldi" gibi gorunmez bir seydir, hata mesaji vermez.
+    #[tokio::test]
+    async fn tavan_penceresi_defterden_geri_kurulur() {
+        use crate::kota::{Defter, Olay, Sonuc};
+        use std::io::Write;
+
+        let simdi_unix = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let yol = std::env::temp_dir().join("kervan-tavan-tohum-testi.jsonl");
+        let mut f = std::fs::File::create(&yol).unwrap();
+        let ev = |t: u64, hesap: &str, sag: &str| Olay {
+            t,
+            hesap: hesap.into(),
+            saglayici: Some(sag.into()),
+            sonuc: Sonuc::Basari,
+            not: None,
+        };
+        for o in [
+            ev(simdi_unix - 7200, "hesap0", "gemini"), // pencere DISINDA
+            ev(simdi_unix - 600, "hesap0", "gemini"),  // icinde
+            ev(simdi_unix - 300, "hesap0", "gemini"),  // icinde
+            ev(simdi_unix - 100, "hesap0", "kimi"),    // baska saglayici
+            ev(simdi_unix - 100, "hesap9", "gemini"),  // baska hesap
+        ] {
+            writeln!(f, "{}", serde_json::to_string(&o).unwrap()).unwrap();
+        }
+        drop(f);
+
+        let defter = Defter::ac(yol).unwrap();
+        let p = havuz(pacing(2));
+        let n = p.tavani_tohumla(&defter).await;
+
+        assert_eq!(n, 2, "yalniz pencere icindeki kendi saglayicisinin istekleri");
+
+        let mut st = p.slots[0].state.lock().await;
+        assert!(
+            !st.hazir_mi(Instant::now(), &pacing(2)),
+            "tohumlanmis tavan dolu olmali — yoksa yeniden baslatmak butceyi delerdi"
+        );
+        // Tohumsuz davranis: ayni hesap bastan iki istek hakki kazanirdi.
+        assert!(AccountState::default().hazir_mi(Instant::now(), &pacing(2)));
     }
 
     #[test]

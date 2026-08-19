@@ -134,6 +134,35 @@ impl Defter {
         Ok(())
     }
 
+    /// Son `pencere_sn` saniyedeki olaylarin zaman damgalari — hesap+saglayici cifti icin,
+    /// eskiden yeniye sirali.
+    ///
+    /// NEDEN VAR: havuzun saatlik tavan penceresi (`AccountState.recent`) bellekte tutulur
+    /// ve her yeniden baslatmada sifirlanir. Tavan sifirlaninca hesap, son bir saatte
+    /// kotasini doldurmus olsa bile bastan 30 istek hakki kazanir — yani yeniden baslatmak
+    /// hiz butcesini delmenin yolu haline gelir. Bu, olculmus bir Cloudflare ani-yogunluk
+    /// olayindan sonra konulmus bir emniyetin sessizce kalkmasi demek.
+    ///
+    /// Defter zaten her istegin zamanini, hesabini ve saglayicisini tutuyor; pencere
+    /// YENIDEN KURULABILIR. Yeni depo, yeni dosya, yeni sema gerekmiyor.
+    ///
+    /// Saglayicisi bilinmeyen eski kayitlar atfedilemedigi icin girmez — pratikte
+    /// zaten bir saatten eskiler.
+    pub async fn son_izler(&self, hesap: &str, saglayici: &str, pencere_sn: u64) -> Vec<u64> {
+        let n = simdi();
+        self.olaylar
+            .lock()
+            .await
+            .iter()
+            .filter(|o| {
+                o.hesap == hesap
+                    && o.saglayici.as_deref() == Some(saglayici)
+                    && n.saturating_sub(o.t) < pencere_sn
+            })
+            .map(|o| o.t)
+            .collect()
+    }
+
     /// Ozet **hesap + saglayici** cifti icin cikar.
     ///
     /// Yalniz hesaba bakmak yanlisti: bir hesabin gemini ve kimi olaylari tek
