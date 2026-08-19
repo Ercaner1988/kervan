@@ -186,10 +186,18 @@ pub fn varsayilanlar() -> Vec<Provider> {
         // Giris adresi de yok: sayfadaki 20 baglantinin hicbiri girise gitmiyor ve
         // 9 dugmenin sekizi metinsiz (ikon). Giris bir kalipla aciliyor, yani
         // "giris adresi" uydurmak yerine kok adres birakildi.
+        // ADRES OLCUMLE DUZELTILDI (2026-08-19): kimi.com DEGIL kimi.ai.
+        // kimi.com Cin ici adres; disaridan acilir ama giris tasimaz. Olculdu:
+        // `access_token` + `refresh_token` + `msh_user_id` localStorage'da YALNIZ
+        // `https+++www.kimi.ai` altinda; kimi.com altinda hicbiri yok. Yani buradaki
+        // her kimi istegi bugune kadar MISAFIR olarak gitti — kotasi, gecmisi ve
+        // model secimi girisli hesabin degil. "kimi girissiz de cevapliyor" notu
+        // bu hatayi gorunmez kilmisti: calisiyor gorunuyordu, cunku gercekten
+        // cevap geliyordu.
         p(
             "kimi",
-            "https://www.kimi.com/",
-            "https://www.kimi.com/",
+            "https://www.kimi.ai/",
+            "https://www.kimi.ai/",
             "div[contenteditable='true']",
             "input[type='password'], input[type='email']",
             ".markdown",

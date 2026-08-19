@@ -40,14 +40,43 @@ Tanımlı: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, 
 | Sağlayıcı | Durum |
 |---|---|
 | `gemini` | ✅ Havuzda — çok hesap, ~11 sn |
-| `kimi` | ✅ Havuzda — çok hesap, 25–36 sn |
+| `kimi` | ✅ Havuzda — çok hesap, ~24 sn. **Adres `kimi.ai`**, `kimi.com` değil |
 | `copilot` | ✅ Havuzda — kişisel Microsoft hesabı, ~12 sn |
 | `copilot-m365` | ✅ Havuzda — iş/okul hesabı, ~14 sn |
-| `perplexity` | ⚠️ Kararsız — bazı hesaplarda Cloudflare |
-| `claude` | ❌ Cloudflare — havuzda kapalı |
-| `deepseek` | ❌ Cloudflare — hesapların çoğunda |
-| `qwen` | ❌ Cloudflare — hesapların tümünde |
-| `z.ai` | ❌ Cloudflare — yanıltıcı boş yanıt |
+| `perplexity` | ⚠️ Kararsız — yalnız `erercan1988`'de çalışıyor (21,6 sn) |
+| `deepseek` | ✅ Havuzda — `erercan1988`, 9,6 sn |
+| `z.ai` | ✅ Havuzda — 18,5 sn. Düşünme gürültüsü ayıklanıyor |
+| `claude` | ❌ Havuzda kapalı — duvar kalkmadı |
+| `qwen` | ❌ Sessizce engelli — 120 sn'de yanıt yok, görünür duvar da yok |
+
+#### kimi neden `kimi.ai`
+
+`kimi.com` Çin içi adres. Dışarıdan **açılıyor ve cevap veriyor** — ama giriş
+taşımıyor. Profillerin localStorage'ı ölçüldü: `access_token`, `refresh_token` ve
+`msh_user_id` yalnız `https+++www.kimi.ai` altında; `kimi.com` altında hiçbiri yok.
+
+Yani bu satır düzelene kadar her kimi isteği **misafir** olarak gitti — kotası,
+geçmişi ve model seçimi girişli hesabın değildi. Hatayı görünmez kılan şey
+"kimi girişsiz de cevaplıyor" gerçeğiydi: çalışıyor görünüyordu, çünkü gerçekten
+cevap geliyordu. **Ders:** bir sağlayıcının cevap vermesi, doğru oturumda olduğu
+anlamına gelmiyor.
+
+#### Denendi, çözmedi: çerez sıfırlama (2026-08-19)
+
+Kilitli profillerde doğrulama/WAF çerezleri (`cf_clearance`, `cf_chl_rc_ni`,
+`__cf_bm`, `__cflb`, `acw_tc`, `ssxmod_itna`, `tfstk`, `isg`, `cna`, `xlly_s`)
+yedek alınarak silindi — 7 profilde 125 çerez, giriş çerezlerine dokunulmadan.
+Hipotez: birikmiş doğrulama izi silinirse duvar sıfırlanır.
+
+Sonuç: `ercaner1988`'de claude, perplexity, qwen ve deepseek **hâlâ kilitli**.
+Duvar çerezden gelmiyor. Geriye profil itibarı ya da sağlayıcı tarafında hesaba
+özel bir karar kalıyor; ikisi de çerez silmekle değişmez, tam silme de değiştirmez
+(o zaten sıfırdan başlamak olurdu). **Bu yol tekrar denenmesin.**
+
+Aynı gün qwen de tahminle değil ölçümle karara bağlandı: tarayıcıda sekmesi açık
+olmasına rağmen havuza geçici eklenip gönderilen tek istek 120 sn'de yanıtsız kaldı
+ve görünür bir doğrulama katmanı da çıkmadı. **Sekmenin açık olması çalıştığı
+anlamına gelmiyor.**
 
 ### Kota öğrenici
 
