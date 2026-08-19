@@ -73,8 +73,15 @@ pub fn router(state: Arc<AppState>) -> Router {
 async fn kota_ozeti(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let mut liste = Vec::new();
     for slot in st.pool.slots.iter() {
-        let o = st.defter.ozet(&slot.hesap_adi).await;
-        liste.push(serde_json::json!({ "hesap": slot.hesap_adi, "kullanim": o }));
+        let o = st.defter.ozet(&slot.hesap_adi, &slot.provider.ad).await;
+        // Saglayici adi ZORUNLU: ozet artik hesap+saglayici cifti icin cikiyor, yani
+        // ayni hesabin dort satiri dort ayri sayi tasiyor. Adi basmazsak cikti
+        // ayirt edilemez dort ayni satir gibi gorunur.
+        liste.push(serde_json::json!({
+            "hesap": slot.hesap_adi,
+            "saglayici": slot.provider.ad,
+            "kullanim": o,
+        }));
     }
     Json(serde_json::json!({
         "defter": kota::yol_goster(&st.defter).display().to_string(),
@@ -369,9 +376,9 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
     // ve dogrulama duvariysa hesabi insan kapisinda duraklatir.
     match (&kota_carpmasi, &sonuc) {
         (Some(metin), _) => {
-            st.defter.yaz(&lease.name, Sonuc::Kota, Some(kirp(metin))).await;
+            st.defter.yaz(&lease.name, &lease.provider.ad, Sonuc::Kota, Some(kirp(metin))).await;
             // Pencere ogrenildiyse onu, ogrenilmediyse muhafazakar varsayilani bekle.
-            let ozet = st.defter.ozet(&lease.name).await;
+            let ozet = st.defter.ozet(&lease.name, &lease.provider.ad).await;
             // Ogrenilmis pencere varsa onu bekle; yoksa muhafazakar varsayilan.
             // `max(1)`: ogrenilen pencere sifir dakika cikarsa beklemeden yeniden
             // denemek limite carpip durmak olurdu.
@@ -384,11 +391,11 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
             st.pool.kota_doldu(lease.index, Duration::from_secs(dk * 60)).await;
         }
         (None, Ok(_)) => {
-            st.defter.yaz(&lease.name, Sonuc::Basari, None).await;
+            st.defter.yaz(&lease.name, &lease.provider.ad, Sonuc::Basari, None).await;
             st.pool.basarili(lease.index).await;
         }
         (None, Err(e)) => {
-            st.defter.yaz(&lease.name, Sonuc::Hata, None).await;
+            st.defter.yaz(&lease.name, &lease.provider.ad, Sonuc::Hata, None).await;
             st.pool.basarisiz(lease.index, &format!("{e:#}")).await;
         }
     }
