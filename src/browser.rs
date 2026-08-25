@@ -13,7 +13,7 @@ use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use fantoccini::{Client, ClientBuilder, Locator};
 
 /// Gizli pencerenin konumu: gorunur masaustunun sagi/altinda kalan bos alan.
@@ -90,7 +90,12 @@ impl Session {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
-            .with_context(|| format!("{SURUCU_ARIZASI}: geckodriver baslatilamadi: {}", geckodriver.display()))?;
+            .with_context(|| {
+                format!(
+                    "{SURUCU_ARIZASI}: geckodriver baslatilamadi: {}",
+                    geckodriver.display()
+                )
+            })?;
 
         // GIZLI KIP HEADLESS DEGIL. Headless bir tarayici calisirken gorunur hale
         // GETIRILEMEZ; "arkada dursun, istedigim an one cekeyim" ancak gercek bir
@@ -102,7 +107,11 @@ impl Session {
         let caps = yetenekler(&browser.0, args);
 
         let client = baglan(port, caps).await?;
-        let s = Self { client, driver, profile_dir };
+        let s = Self {
+            client,
+            driver,
+            profile_dir,
+        };
         if headless {
             s.gizle().await;
         }
@@ -117,7 +126,10 @@ impl Session {
     /// pencere ise normal cizilmeye devam ediyor, sadece gorunmuyor.
     pub async fn gizle(&self) {
         // Hata yutuluyor: gizlenemezse is durmaz, yalnizca pencere gorunur kalir.
-        self.client.set_window_rect(GIZLI_X, GIZLI_Y, 1280, 900).await.ok();
+        self.client
+            .set_window_rect(GIZLI_X, GIZLI_Y, 1280, 900)
+            .await
+            .ok();
         // Isletim sistemi konumu masaustune KIRPABILIR. Kirptiysa pencere gorunur
         // kalir; bunu sessizce "gizledim" diye gecistirmek yanlis olur.
         if let Ok((x, y, _, _)) = self.client.get_window_rect().await
@@ -148,7 +160,11 @@ impl Session {
     /// surekliligi sabitlemesi calismaz olurdu. Her saglayici kendi sekmesinde
     /// oturur, aralarinda gecis yapariz.
     pub async fn yeni_sekme(&self, url: &str) -> Result<fantoccini::wd::WindowHandle> {
-        let y = self.client.new_window(true).await.context("yeni sekme acilamadi")?;
+        let y = self
+            .client
+            .new_window(true)
+            .await
+            .context("yeni sekme acilamadi")?;
         self.client
             .switch_to_window(y.handle.clone())
             .await
@@ -158,11 +174,17 @@ impl Session {
     }
 
     pub async fn sekmeye_gec(&self, h: fantoccini::wd::WindowHandle) -> Result<()> {
-        self.client.switch_to_window(h).await.context("sekmeye gecilemedi")
+        self.client
+            .switch_to_window(h)
+            .await
+            .context("sekmeye gecilemedi")
     }
 
     pub async fn gecerli_sekme(&self) -> Result<fantoccini::wd::WindowHandle> {
-        self.client.window().await.context("gecerli sekme okunamadi")
+        self.client
+            .window()
+            .await
+            .context("gecerli sekme okunamadi")
     }
 
     pub async fn goto(&self, url: &str) -> Result<()> {
@@ -345,7 +367,10 @@ fn yetenekler(ikili: &Path, args: Vec<String>) -> serde_json::map::Map<String, s
 }
 
 /// geckodriver acilirken birkac yuz ms gecikiyor; hazir olana kadar kisa araliklarla dene.
-async fn baglan(port: u16, caps: serde_json::map::Map<String, serde_json::Value>) -> Result<Client> {
+async fn baglan(
+    port: u16,
+    caps: serde_json::map::Map<String, serde_json::Value>,
+) -> Result<Client> {
     // SAYI DEGIL SURE ile sinirli. Eskiden `for _ in 0..40` idi ve "10 saniye"
     // saniliyordu (40 x 250 ms uyku). Oysa her denemenin KENDI baglanti zaman
     // asimi var; olculdu 2026-08-18 — cevap vermeyen bir surucude tek istek
@@ -373,7 +398,8 @@ async fn baglan(port: u16, caps: serde_json::map::Map<String, serde_json::Value>
          ORTAMSALDIR, hesapla ilgisi yoktur: surucu ikilisi calisiyor mu, port kullanimda \
          mi, baska bir Kervan ornegi acik mi diye bak. Ayrinti: {}",
         SURUCU_BEKLEME.as_secs(),
-        son.map(|e| e.to_string()).unwrap_or_else(|| "deneme yapilamadi".into())
+        son.map(|e| e.to_string())
+            .unwrap_or_else(|| "deneme yapilamadi".into())
     )
 }
 
@@ -570,7 +596,10 @@ pub async fn ask(
             // sessiz basarisizlik olurdu; hata donuyoruz ki Hermes'in fallback
             // zinciri siradaki saglayiciya gecebilsin.
             if dogrulama_duvari_mi(&t) {
-                bail!("saglayici cevap yerine dogrulama hatasi dondu: {}", t.trim());
+                bail!(
+                    "saglayici cevap yerine dogrulama hatasi dondu: {}",
+                    t.trim()
+                );
             }
             return Ok(t);
         }
@@ -647,7 +676,10 @@ async fn istemi_yaz(
                 }
             }
             Err(e) if cok_satirli => {
-                bail!("cok satirli istem JS ile yazilamadi ({e:#}), GONDERILMEDI: {}", ENTER_UYARISI);
+                bail!(
+                    "cok satirli istem JS ile yazilamadi ({e:#}), GONDERILMEDI: {}",
+                    ENTER_UYARISI
+                );
             }
             Err(e) => eprintln!("uyari: JS ile yazim basarisiz ({e:#}), tus tus denenecek"),
         }
@@ -687,8 +719,7 @@ async fn istemi_yaz(
 }
 
 /// Tus yoluna DUSMEME gerekcesi; hata metninde geciyor.
-const ENTER_UYARISI: &str =
-    "bu editorlerde Enter GONDER demek, tus tus yazim satir sonlarinda istemi \
+const ENTER_UYARISI: &str = "bu editorlerde Enter GONDER demek, tus tus yazim satir sonlarinda istemi \
      ortasindan yollardi";
 
 /// Bu uzunluktan sonra tus tus yazmak hem kayipli hem cok yavas.
@@ -714,11 +745,20 @@ async fn js_ile_yaz(c: &Client, sel: &Selectors, prompt: &str) -> Result<()> {
         return 'tamam';
     "#;
     let sonuc = c
-        .execute(BETIK, vec![serde_json::json!(sel.prompt_input), serde_json::json!(prompt)])
+        .execute(
+            BETIK,
+            vec![
+                serde_json::json!(sel.prompt_input),
+                serde_json::json!(prompt),
+            ],
+        )
         .await
         .context("JS ile yazim calistirilamadi")?;
     if sonuc.as_str() != Some("tamam") {
-        bail!("JS ile yazim: istem kutusu bulunamadi ('{}')", sel.prompt_input);
+        bail!(
+            "JS ile yazim: istem kutusu bulunamadi ('{}')",
+            sel.prompt_input
+        );
     }
     Ok(())
 }
@@ -846,7 +886,9 @@ fn cevabi_ayikla(metin: &str) -> &str {
             break;
         }
         let hepsi_isaret = satir.split_whitespace().all(|k| {
-            let s = k.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase();
+            let s = k
+                .trim_matches(|c: char| !c.is_alphanumeric())
+                .to_lowercase();
             DUSUNME_KELIMELERI.contains(&s.as_str())
         });
         if !hepsi_isaret {
@@ -865,7 +907,9 @@ fn cevabi_ayikla(metin: &str) -> &str {
 /// donuyordu. Projenin kurali sessiz basarisizligi yasakliyor: cevap degil HATA.
 fn dogrulama_duvari_mi(metin: &str) -> bool {
     let m = metin.to_lowercase();
-    ["verification failed", "no response, please try again"].iter().any(|k| m.contains(k))
+    ["verification failed", "no response, please try again"]
+        .iter()
+        .any(|k| m.contains(k))
 }
 
 const KARARLILIK_ESIGI: u8 = 4;
@@ -884,7 +928,11 @@ struct BitisDedektoru {
 
 impl BitisDedektoru {
     fn yeni(taban_sayi: usize) -> Self {
-        Self { taban_sayi, onceki: String::new(), sabit: 0 }
+        Self {
+            taban_sayi,
+            onceki: String::new(),
+            sabit: 0,
+        }
     }
 
     /// `sayi`: su anki balon sayisi, `metin`: son balonun metni.
@@ -941,8 +989,14 @@ async fn son_balon(c: &Client, sel: &Selectors) -> (usize, String) {
 /// Google dugmesinin aria-label'i "Google Hesabı: Ad (eposta)" bicimindedir; parantez
 /// icini aliyoruz.
 pub async fn google_hesabi(c: &Client) -> Option<String> {
-    for e in c.find_all(Locator::Css("a[href*='SignOutOptions']")).await.ok()? {
-        let Ok(Some(etiket)) = e.attr("aria-label").await else { continue };
+    for e in c
+        .find_all(Locator::Css("a[href*='SignOutOptions']"))
+        .await
+        .ok()?
+    {
+        let Ok(Some(etiket)) = e.attr("aria-label").await else {
+            continue;
+        };
         if let Some(bas) = etiket.find('(')
             && let Some(son) = etiket[bas..].find(')')
         {
@@ -1008,7 +1062,11 @@ pub async fn dom_ozeti(c: &Client, sel: &Selectors) -> Result<String> {
     // Giris alanlarinin DEGERI: "adresle eposta on-doldurulabiliyor mu" sorusu
     // ancak buradan cevaplanir.
     s.push_str("giris alanlari :\n");
-    for secici in ["input[type='email']", "input[name='identifier']", "input[type='text']"] {
+    for secici in [
+        "input[type='email']",
+        "input[name='identifier']",
+        "input[type='text']",
+    ] {
         for e in c.find_all(Locator::Css(secici)).await.unwrap_or_default() {
             let deger = e.prop("value").await.ok().flatten().unwrap_or_default();
             s.push_str(&format!("  {secici:<28} deger: {deger:?}\n"));
@@ -1036,14 +1094,21 @@ pub async fn dom_ozeti(c: &Client, sel: &Selectors) -> Result<String> {
             None => String::new(),
         };
         let kirp: String = son.chars().take(50).collect();
-        s.push_str(&format!("  {aday:<30} {} adet   son: {kirp:?}\n", ogeler.len()));
+        s.push_str(&format!(
+            "  {aday:<30} {} adet   son: {kirp:?}\n",
+            ogeler.len()
+        ));
     }
 
     // data-testid DEGERLERI: claude ve perplexity gibi siteler yapiyi bunlarla
     // isaretliyor ve sinif adlarindan cok daha kararlilar. Dogru seciciyi bulmanin
     // en kisa yolu bu listeye bakmak.
     let mut kimlikler: Vec<String> = Vec::new();
-    for e in c.find_all(Locator::Css("[data-testid]")).await.unwrap_or_default() {
+    for e in c
+        .find_all(Locator::Css("[data-testid]"))
+        .await
+        .unwrap_or_default()
+    {
         if let Ok(Some(v)) = e.attr("data-testid").await
             && !kimlikler.contains(&v)
         {
@@ -1070,7 +1135,11 @@ pub async fn dom_ozeti(c: &Client, sel: &Selectors) -> Result<String> {
                 None => String::new(),
             };
             let kirp: String = son.chars().take(60).collect();
-            s.push_str(&format!("  {:<28} {} adet   son: {kirp:?}\n", parca, ogeler.len()));
+            s.push_str(&format!(
+                "  {:<28} {} adet   son: {kirp:?}\n",
+                parca,
+                ogeler.len()
+            ));
         }
     }
     Ok(s)
@@ -1187,7 +1256,10 @@ mod tests {
             giris_kalibi: "https://o/?Email={eposta}".into(),
             cloudflare: false,
         };
-        assert_eq!(p.giris_url("ad+etiket@gmail.com"), "https://o/?Email=ad%2Betiket@gmail.com");
+        assert_eq!(
+            p.giris_url("ad+etiket@gmail.com"),
+            "https://o/?Email=ad%2Betiket@gmail.com"
+        );
     }
 
     /// ASIL HATA BUYDU: perplexity'de istemin yalnizca ilk karakteri kutuya girdi,
@@ -1199,7 +1271,10 @@ mod tests {
         let istem = "Sadece 'elma' yaz, baska hicbir sey yazma.";
         assert!(!metin_esit_mi("S", istem), "tek harf istem sayilmamali");
         assert!(!metin_esit_mi("", istem), "bos kutu istem sayilmamali");
-        assert!(!metin_esit_mi("Sadece 'elma' yaz", istem), "kirpilmis metin kabul edilmemeli");
+        assert!(
+            !metin_esit_mi("Sadece 'elma' yaz", istem),
+            "kirpilmis metin kabul edilmemeli"
+        );
         assert!(metin_esit_mi(istem, istem));
     }
 
@@ -1214,7 +1289,10 @@ mod tests {
         assert_eq!(cevabi_ayikla("Thinking... Skip").trim(), "");
         assert_eq!(cevabi_ayikla("Thinking...\nSkip").trim(), "");
         // Gercek icerik tasiyan satira DOKUNULMAMALI
-        assert_eq!(cevabi_ayikla("Thinking about it: Ankara"), "Thinking about it: Ankara");
+        assert_eq!(
+            cevabi_ayikla("Thinking about it: Ankara"),
+            "Thinking about it: Ankara"
+        );
         assert_eq!(cevabi_ayikla("Ankara"), "Ankara");
     }
 
@@ -1224,7 +1302,11 @@ mod tests {
     fn dusunme_gostergesi_kararli_sayilmaz() {
         let mut d = BitisDedektoru::yeni(0);
         for _ in 0..10 {
-            assert_eq!(d.gozlem(1, "Thinking... Skip"), None, "gosterge cevap sayilmamali");
+            assert_eq!(
+                d.gozlem(1, "Thinking... Skip"),
+                None,
+                "gosterge cevap sayilmamali"
+            );
         }
         // Gercek cevap gelince normal kararlilik isler.
         let mut sonuc = None;
@@ -1232,7 +1314,11 @@ mod tests {
         for _ in 0..=KARARLILIK_ESIGI {
             sonuc = d.gozlem(1, "Thought Process\nAnkara");
         }
-        assert_eq!(sonuc.as_deref(), Some("Ankara"), "gurultu ayiklanmis cevap donmeli");
+        assert_eq!(
+            sonuc.as_deref(),
+            Some("Ankara"),
+            "gurultu ayiklanmis cevap donmeli"
+        );
     }
 
     /// Insan kapisi hatasi cagiran tarafta METINDEN taniniyor; onek degisirse
@@ -1242,12 +1328,17 @@ mod tests {
     /// Ayrim metinden taniniyor; onek degisirse pool baglantisi sessizce kopar.
     #[test]
     fn surucu_arizasi_hesap_arizasindan_ayrilir() {
-        let s = anyhow::anyhow!("{SURUCU_ARIZASI}: geckodriver'a baglanilamadi (http://127.0.0.1:5555)");
+        let s = anyhow::anyhow!(
+            "{SURUCU_ARIZASI}: geckodriver'a baglanilamadi (http://127.0.0.1:5555)"
+        );
         assert!(format!("{s:#}").contains(SURUCU_ARIZASI));
         // Hesaba ozel arizalar bu sinifa DUSMEMELI, yoksa tek hesabin sorunu
         // butun istegi dusururdu.
         for h in ["oturum dusmus", "yanit gelmedi (120 sn)", "kota bildirdi"] {
-            assert!(!anyhow::anyhow!("{h}").to_string().contains(SURUCU_ARIZASI), "{h}");
+            assert!(
+                !anyhow::anyhow!("{h}").to_string().contains(SURUCU_ARIZASI),
+                "{h}"
+            );
         }
         // Insan kapisi ile de karismamali: biri insan bekler, oteki ortam onarimi.
         assert_ne!(SURUCU_ARIZASI, INSAN_KAPISI);
@@ -1255,7 +1346,9 @@ mod tests {
 
     #[test]
     fn insan_kapisi_oneki_taninabilir() {
-        let h = anyhow::anyhow!("{INSAN_KAPISI}: dogrulama katmani acik (#aliyunCaptcha-mask.mask-show)");
+        let h = anyhow::anyhow!(
+            "{INSAN_KAPISI}: dogrulama katmani acik (#aliyunCaptcha-mask.mask-show)"
+        );
         assert!(format!("{h:#}").contains(INSAN_KAPISI));
         // Siradan bir hata insan kapisi sayilmamali.
         let d = anyhow::anyhow!("yanit gelmedi (120 sn)");
@@ -1264,7 +1357,9 @@ mod tests {
 
     #[test]
     fn dogrulama_duvari_taninir() {
-        assert!(dogrulama_duvari_mi("No response, Please try again later.\nVerification failed, please try again"));
+        assert!(dogrulama_duvari_mi(
+            "No response, Please try again later.\nVerification failed, please try again"
+        ));
         assert!(dogrulama_duvari_mi("Verification failed, please try again"));
         assert!(!dogrulama_duvari_mi("Ankara"));
         // Cevabin icinde gecen benzer bir cumle yanlis alarm vermemeli diye
@@ -1293,8 +1388,14 @@ mod tests {
     /// karakterler icerik tasimaz; ama EKSIK metin hala reddedilmeli.
     #[test]
     fn sifir_genislikli_karakter_yazimi_reddettirmez() {
-        assert!(metin_esit_mi("27 carpi 3 kactir?\u{200c}", "27 carpi 3 kactir?"));
-        assert!(metin_esit_mi("\u{feff}Merhaba\u{200b} dunya", "Merhaba dunya"));
+        assert!(metin_esit_mi(
+            "27 carpi 3 kactir?\u{200c}",
+            "27 carpi 3 kactir?"
+        ));
+        assert!(metin_esit_mi(
+            "\u{feff}Merhaba\u{200b} dunya",
+            "Merhaba dunya"
+        ));
         assert!(
             !metin_esit_mi("27 carpi\u{200c}", "27 carpi 3 kactir?"),
             "gorunmez karakter ayiklamak eksik metni gecirmemeli"
@@ -1316,7 +1417,10 @@ mod tests {
 
         // Dosya var ama tutan yok (cokmeden kalmis) — kilitli SAYILMAMALI
         std::fs::write(&lock, b"").unwrap();
-        assert!(!profil_kilitli(&dir), "artik kilit dosyasi profili olu birakmamali");
+        assert!(
+            !profil_kilitli(&dir),
+            "artik kilit dosyasi profili olu birakmamali"
+        );
 
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -1340,7 +1444,10 @@ mod tests {
             .filter_map(|l| l.split('"').next())
             .map(String::from)
             .collect();
-        assert_eq!(dosya, yetenek, "elle giris ve WebDriver yollari ayni ayarlari vermeli");
+        assert_eq!(
+            dosya, yetenek,
+            "elle giris ve WebDriver yollari ayni ayarlari vermeli"
+        );
         assert!(dosya.contains("zen.welcome-screen.seen"));
     }
 
@@ -1360,9 +1467,15 @@ mod tests {
 
     #[test]
     fn yetenekler_karsilama_ayarlarini_tasir() {
-        let caps = yetenekler(Path::new("C:\\zen.exe"), vec!["-profile".into(), "d".into()]);
+        let caps = yetenekler(
+            Path::new("C:\\zen.exe"),
+            vec!["-profile".into(), "d".into()],
+        );
         let prefs = &caps["moz:firefoxOptions"]["prefs"];
-        assert_eq!(prefs["zen.welcome-screen.seen"], true, "Zen karsilama kapisi eksik");
+        assert_eq!(
+            prefs["zen.welcome-screen.seen"], true,
+            "Zen karsilama kapisi eksik"
+        );
         assert_eq!(prefs["browser.sessionstore.resume_from_crash"], false);
         // profil bagimsizligi da ayni yetenekten geliyor; kirilirsa hesaplar birlesir
         assert_eq!(caps["moz:firefoxOptions"]["args"][0], "-profile");

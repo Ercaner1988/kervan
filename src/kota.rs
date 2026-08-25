@@ -104,7 +104,10 @@ impl Defter {
         if let Some(ust) = yol.parent() {
             std::fs::create_dir_all(ust).ok();
         }
-        Ok(Self { yol, olaylar: Mutex::new(olaylar) })
+        Ok(Self {
+            yol,
+            olaylar: Mutex::new(olaylar),
+        })
     }
 
     pub async fn yaz(&self, hesap: &str, saglayici: &str, sonuc: Sonuc, not: Option<String>) {
@@ -177,11 +180,16 @@ impl Defter {
             .filter(|o| o.hesap == hesap && o.saglayici.as_deref() == Some(saglayici))
             .cloned()
             .collect();
-        let eski_kayit =
-            hepsi.iter().filter(|o| o.hesap == hesap && o.saglayici.is_none()).count();
+        let eski_kayit = hepsi
+            .iter()
+            .filter(|o| o.hesap == hesap && o.saglayici.is_none())
+            .count();
         let n = simdi();
         let say = |sn: u64, s: Sonuc| {
-            kendi.iter().filter(|o| o.sonuc == s && n.saturating_sub(o.t) < sn).count()
+            kendi
+                .iter()
+                .filter(|o| o.sonuc == s && n.saturating_sub(o.t) < sn)
+                .count()
         };
         Ozet {
             toplam: kendi.len(),
@@ -295,11 +303,16 @@ pub fn varsayilan_yol() -> PathBuf {
 }
 
 fn yerel_veri() -> PathBuf {
-    std::env::var_os("LOCALAPPDATA").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("."))
+    std::env::var_os("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
 }
 
 fn simdi() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 /// Defter yolunu disaridan gormek icin (gunluge basmak amaciyla).
@@ -312,7 +325,13 @@ mod tests {
     use super::*;
 
     fn o(t: u64, sonuc: Sonuc) -> Olay {
-        Olay { t, hesap: "a".into(), saglayici: Some("p".into()), sonuc, not: None }
+        Olay {
+            t,
+            hesap: "a".into(),
+            saglayici: Some("p".into()),
+            sonuc,
+            not: None,
+        }
     }
 
     /// ESKI KAYIT UYUMU (§IV kapisi): `saglayici` alani eklenmeden once yazilmis
@@ -370,7 +389,11 @@ mod tests {
         ];
 
         let sadece = |sag: &str| -> Vec<Olay> {
-            hepsi.iter().filter(|o| o.saglayici.as_deref() == Some(sag)).cloned().collect()
+            hepsi
+                .iter()
+                .filter(|o| o.saglayici.as_deref() == Some(sag))
+                .cloned()
+                .collect()
         };
 
         let g = tahmin_et(&sadece("gemini"));
@@ -379,11 +402,18 @@ mod tests {
 
         let k = tahmin_et(&sadece("kimi"));
         assert_eq!(k.kanit, 0, "kimi hic kota gormedi");
-        assert_eq!(k.pencere_dk, None, "kimi'ye gemini'nin penceresi uygulanamaz");
+        assert_eq!(
+            k.pencere_dk, None,
+            "kimi'ye gemini'nin penceresi uygulanamaz"
+        );
 
         // Ayrilmamis akista kimi'nin basarilari gemini'nin kapasitesine karisiyordu:
         // kota carpmasina kadar sayilan 4 istegin yalniz 2'si gemini'ye aitti.
-        assert_eq!(tahmin_et(&hepsi).pencere_basina_istek, Some(4), "karisik akis sisirir");
+        assert_eq!(
+            tahmin_et(&hepsi).pencere_basina_istek,
+            Some(4),
+            "karisik akis sisirir"
+        );
         assert_eq!(g.pencere_basina_istek, Some(2), "gercek gemini kapasitesi");
     }
 
@@ -465,8 +495,15 @@ mod tests {
     fn uzun_yanit_kota_sayilmaz() {
         let isaretler = vec!["reached your limit".to_string()];
         assert!(kota_sinyali("You've reached your limit.", &isaretler));
-        let uzun = format!("{} {}", "Kota limitleri soyle isler: ".repeat(20), "reached your limit");
-        assert!(!kota_sinyali(&uzun, &isaretler), "uzun aciklama kota degildir");
+        let uzun = format!(
+            "{} {}",
+            "Kota limitleri soyle isler: ".repeat(20),
+            "reached your limit"
+        );
+        assert!(
+            !kota_sinyali(&uzun, &isaretler),
+            "uzun aciklama kota degildir"
+        );
     }
 
     #[test]

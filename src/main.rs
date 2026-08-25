@@ -21,7 +21,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use browser::{detect_login, BrowserBinary, LoginState, Session};
+use browser::{BrowserBinary, LoginState, Session, detect_login};
 
 /// Saglayici verilmediginde kullanilan. Tanimlar `saglayicilar.rs`'te, ezmeler
 /// `kervan.toml`'un `[providers.*]` bolumunde.
@@ -59,7 +59,10 @@ async fn main() -> Result<()> {
 
     println!("tarayici     : {}", browser.0.display());
     println!("surucu       : {}", geckodriver.display());
-    println!("kip          : {}", if headless { "headless" } else { "gorunur" });
+    println!(
+        "kip          : {}",
+        if headless { "headless" } else { "gorunur" }
+    );
 
     // Sunucu kipinde tekil oturum HIC acilmaz: hesaplar havuzdan tembel acilir.
     // Once acip hemen kapatmak bir tarayici baslatma bedelini bosuna oderdi.
@@ -103,7 +106,12 @@ async fn main() -> Result<()> {
             cfg.pacing,
             &defter_saglayici,
             &eszamanli,
-            pool::Ortam { profiles_root, browser, geckodriver, headless },
+            pool::Ortam {
+                profiles_root,
+                browser,
+                geckodriver,
+                headless,
+            },
         )?;
         let defter = kota::Defter::ac(kota::varsayilan_yol())?;
         println!("kota defteri : {}", kota::yol_goster(&defter).display());
@@ -156,7 +164,10 @@ async fn main() -> Result<()> {
             .map(|g| g.file_name().to_string_lossy().into_owned())
             .collect();
         profiller.sort();
-        println!("\n{} profil taranacak, hicbir istem gonderilmeyecek.\n", profiller.len());
+        println!(
+            "\n{} profil taranacak, hicbir istem gonderilmeyecek.\n",
+            profiller.len()
+        );
         let raporlar = tara::tara(
             &profiller,
             &defter_saglayici,
@@ -184,7 +195,10 @@ async fn main() -> Result<()> {
         if epostalar.is_empty() {
             anyhow::bail!("eposta listesi bos");
         }
-        println!("\n{} hesap kurulacak. Sifreler Kervan'a GIRILMEZ; her hesabin", epostalar.len());
+        println!(
+            "\n{} hesap kurulacak. Sifreler Kervan'a GIRILMEZ; her hesabin",
+            epostalar.len()
+        );
         println!("giris ekrani sirayla acilir, sifreyi tarayiciya sen yazarsin.");
 
         println!("saglayici    : {saglayici_adi}");
@@ -284,7 +298,14 @@ async fn main() -> Result<()> {
         let istem = args.get(i + 1).context("--sor icin istem metni gerekli")?;
         println!("\nistem        : {istem}");
         let t = std::time::Instant::now();
-        match browser::ask(&oturum.client, &saglayici.selectors, istem, YANIT_ZAMAN_ASIMI).await {
+        match browser::ask(
+            &oturum.client,
+            &saglayici.selectors,
+            istem,
+            YANIT_ZAMAN_ASIMI,
+        )
+        .await
+        {
             Ok(yanit) => {
                 println!("sure         : {:.1} sn", t.elapsed().as_secs_f32());
                 println!("--- yanit ---\n{yanit}");
@@ -298,7 +319,10 @@ async fn main() -> Result<()> {
     // --dom: secicilerin sayfada neyi esledigini olc (canlilik sinamasi).
     // --sor'dan SONRA calisir; bos sayfada olcum bir sey soylemez.
     if args.iter().any(|a| a == "--dom") {
-        println!("\n{}", browser::dom_ozeti(&oturum.client, &saglayici.selectors).await?);
+        println!(
+            "\n{}",
+            browser::dom_ozeti(&oturum.client, &saglayici.selectors).await?
+        );
     }
 
     // --kim: sayfadan oturum sahibini oku (once Google dugmesi, sonra duz metin).
@@ -307,12 +331,17 @@ async fn main() -> Result<()> {
             Some(e) => Some(e),
             None => browser::sayfada_eposta(&oturum.client).await,
         };
-        println!("kimlik       : {}", k.unwrap_or_else(|| "bulunamadi".into()));
+        println!(
+            "kimlik       : {}",
+            k.unwrap_or_else(|| "bulunamadi".into())
+        );
     }
 
     // --incele <css>: bir secicinin esledigi ogeleri tek tek dok.
     if let Some(i) = args.iter().position(|a| a == "--incele") {
-        let secici = args.get(i + 1).context("--incele icin bir CSS secici gerekli")?;
+        let secici = args
+            .get(i + 1)
+            .context("--incele icin bir CSS secici gerekli")?;
         println!("\n{}", browser::oge_dokumu(&oturum.client, secici).await?);
     }
 
@@ -328,8 +357,7 @@ async fn main() -> Result<()> {
 
 /// Profiller depo disinda tutulur — icinde cerez ve oturum var, asla commit'lenmez.
 /// Deger alan bayraklar. Bunlardan sonraki arguman DEGERDIR, hesap adi degil.
-const DEGERLI_BAYRAKLAR: [&str; 5] =
-    ["--saglayici", "--port", "--url", "--sor", "--incele"];
+const DEGERLI_BAYRAKLAR: [&str; 5] = ["--saglayici", "--port", "--url", "--sor", "--incele"];
 
 /// Ilk konumsal arguman = hesap adi.
 ///
@@ -363,7 +391,10 @@ fn geckodriver_yolu() -> Result<PathBuf> {
     if let Some(p) = std::env::var_os("KERVAN_GECKODRIVER") {
         return Ok(PathBuf::from(p));
     }
-    let p = yerel_veri().join("kervan").join("bin").join("geckodriver.exe");
+    let p = yerel_veri()
+        .join("kervan")
+        .join("bin")
+        .join("geckodriver.exe");
     if p.is_file() {
         return Ok(p);
     }
@@ -375,7 +406,9 @@ fn geckodriver_yolu() -> Result<PathBuf> {
 }
 
 fn which_gecko() -> Result<PathBuf> {
-    let out = std::process::Command::new("where").arg("geckodriver").output()?;
+    let out = std::process::Command::new("where")
+        .arg("geckodriver")
+        .output()?;
     let s = String::from_utf8_lossy(&out.stdout);
     let ilk = s.lines().next().unwrap_or("").trim().to_string();
     if ilk.is_empty() {
@@ -409,11 +442,21 @@ mod tests {
     #[test]
     fn hesap_bayraklardan_once_de_sonra_da_bulunur() {
         assert_eq!(
-            ilk_konumsal(&v(&["kervan", "buzbey_@hotmail.com", "--saglayici", "copilot"])),
+            ilk_konumsal(&v(&[
+                "kervan",
+                "buzbey_@hotmail.com",
+                "--saglayici",
+                "copilot"
+            ])),
             Some("buzbey_@hotmail.com")
         );
         assert_eq!(
-            ilk_konumsal(&v(&["kervan", "--saglayici", "copilot", "buzbey_@hotmail.com"])),
+            ilk_konumsal(&v(&[
+                "kervan",
+                "--saglayici",
+                "copilot",
+                "buzbey_@hotmail.com"
+            ])),
             Some("buzbey_@hotmail.com")
         );
     }

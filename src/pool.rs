@@ -14,10 +14,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use tokio::sync::{Mutex, Semaphore};
 
-use crate::browser::{detect_login, BrowserBinary, LoginState, Provider, Session};
+use crate::browser::{BrowserBinary, LoginState, Provider, Session, detect_login};
 use crate::config::{Account, Pacing};
 
 /// Bir hesabin calisma durumu. Oturumdan ayri tutuluyor ki durum sorgulamak icin
@@ -39,7 +39,8 @@ pub struct AccountState {
 impl AccountState {
     /// Saatlik pencereden dusenleri at.
     fn buda(&mut self, simdi: Instant) {
-        self.recent.retain(|t| simdi.duration_since(*t) < Duration::from_secs(3600));
+        self.recent
+            .retain(|t| simdi.duration_since(*t) < Duration::from_secs(3600));
     }
 
     /// Hesap **ne zaman** hazir olur? `None` = insan kapisinda, suresi belirsiz.
@@ -214,7 +215,12 @@ impl Lease<'_> {
 
     pub fn client(&self) -> &fantoccini::Client {
         // Kiralama ancak oturum acildiktan sonra verilir; burada None olamaz.
-        &self.guard.as_ref().expect("oturum acik olmali").session.client
+        &self
+            .guard
+            .as_ref()
+            .expect("oturum acik olmali")
+            .session
+            .client
     }
 }
 
@@ -234,7 +240,10 @@ impl Pool {
         let mut kapanmaz = std::collections::HashSet::new();
         for a in accounts {
             let k = kimlikler.len();
-            kimlikler.push(Kimlik { ad: a.name.clone(), oturum: Mutex::new(None) });
+            kimlikler.push(Kimlik {
+                ad: a.name.clone(),
+                oturum: Mutex::new(None),
+            });
             for sad in a.saglayicilar() {
                 let provider = crate::saglayicilar::bul(defter, &sad)
                     .with_context(|| format!("'{}' hesabi icin", a.name))?;
@@ -292,7 +301,9 @@ impl Pool {
         let simdi = Instant::now();
         let mut toplam = 0usize;
         for slot in &self.slots {
-            let izler = defter.son_izler(&slot.hesap_adi, &slot.provider.ad, PENCERE_SN).await;
+            let izler = defter
+                .son_izler(&slot.hesap_adi, &slot.provider.ad, PENCERE_SN)
+                .await;
             if izler.is_empty() {
                 continue;
             }
@@ -358,7 +369,13 @@ impl Pool {
             // Insan icin acilan sekme: hangi konusmayi tasidigi bilinmiyor. None
             // birakmak, sonraki istekte gecmisin tohumlanmasini saglar — yanlis
             // varsayimla gecmissiz cevap almaktansa fazladan baglam gondermek iyi.
-            o.sekmeler.insert(sag.ad.clone(), Sekme { tutamac: h, konusma: None });
+            o.sekmeler.insert(
+                sag.ad.clone(),
+                Sekme {
+                    tutamac: h,
+                    konusma: None,
+                },
+            );
         }
         o.session.goster().await?;
         // Birakilana kadar supurucu bu pencereye dokunmaz.
@@ -396,7 +413,9 @@ impl Pool {
     pub async fn bosta_kapat(&self, esik: Duration) -> usize {
         let mut kapanan = 0;
         for k in &self.kimlikler {
-            let Ok(mut g) = k.oturum.try_lock() else { continue };
+            let Ok(mut g) = k.oturum.try_lock() else {
+                continue;
+            };
             // Insanin elindeki pencereye ASLA dokunma: kullanici o sirada giris
             // yapiyor ya da dogrulama coziyor olabilir. Sure dolmasi "kimse
             // kullanmiyor" demek degil.
@@ -468,9 +487,10 @@ impl Pool {
         // istek" degil, "ayni SITEYE ayni anda birden fazla oturum" olmasin.
         // Bekleme hesap secimini de kapsiyor, cunku hizli ard arda acilan taze
         // oturumlarin kendisi risk uretiyor.
-        let kapi = self.kapilar.get(saglayici).cloned().with_context(|| {
-            format!("'{saglayici}' icin kapi yok — havuz kurulumunda atlanmis")
-        })?;
+        let kapi =
+            self.kapilar.get(saglayici).cloned().with_context(|| {
+                format!("'{saglayici}' icin kapi yok — havuz kurulumunda atlanmis")
+            })?;
         // Option: dongu icinde tasinabilmesi icin. Yalnizca basarida `take` edilir.
         let mut izin = Some(kapi.acquire_owned().await.expect("kapi kapatilmiyor"));
 
@@ -482,11 +502,8 @@ impl Pool {
                 && let Some(i) = self.sabitler.lock().await.get(&anahtar).copied()
                 && uygun.contains(&i)
             {
-                let karar = sabit_karari(
-                    &mut *self.slots[i].state.lock().await,
-                    simdi,
-                    &self.pacing,
-                );
+                let karar =
+                    sabit_karari(&mut *self.slots[i].state.lock().await, simdi, &self.pacing);
                 match karar {
                     Sabit::Kullan => match self.kilitle(i, oturum).await {
                         Ok((guard, yeni_dizi)) => {
@@ -501,7 +518,10 @@ impl Pool {
                         }
                         Err(e) => {
                             let mesaj = format!("{e:#}");
-                            eprintln!("[{}] sabit hesap acilamadi: {mesaj}", self.slots[i].hesap_adi);
+                            eprintln!(
+                                "[{}] sabit hesap acilamadi: {mesaj}",
+                                self.slots[i].hesap_adi
+                            );
                             self.basarisiz(i, &mesaj).await;
                             continue;
                         }
@@ -582,7 +602,10 @@ impl Pool {
                      saatlik tavani dolmus. Insan kapisinda bekleyen var mi diye bak."
                 );
             };
-            tokio::time::sleep(nb.saturating_duration_since(Instant::now()) + Duration::from_millis(50)).await;
+            tokio::time::sleep(
+                nb.saturating_duration_since(Instant::now()) + Duration::from_millis(50),
+            )
+            .await;
         }
     }
 
@@ -654,11 +677,16 @@ impl Pool {
                     };
                     // Taze sekme = bos sohbet dizisi.
                     yeni_dizi = true;
-                    o.sekmeler.insert(sad.clone(), Sekme { tutamac: h, konusma });
+                    o.sekmeler.insert(
+                        sad.clone(),
+                        Sekme {
+                            tutamac: h,
+                            konusma,
+                        },
+                    );
 
                     // Yeni acilan sekmede oturum durumunu OLC. Tahmin yok.
-                    let durum =
-                        detect_login(&o.session.client, &slot.provider.selectors).await?;
+                    let durum = detect_login(&o.session.client, &slot.provider.selectors).await?;
                     let neden = match durum {
                         LoginState::Ready => None,
                         LoginState::NeedsLogin => Some(format!(
@@ -784,9 +812,15 @@ const UST_USTE_SINIR: u32 = 5;
 /// duraklatirdi. Belirsiz haller `UST_USTE_SINIR` ile zaten yakalaniyor.
 pub fn insan_kapisi_gerekir(hata: &str) -> bool {
     let h = hata.to_lowercase();
-    ["captcha", "unusual traffic", "sign in", "are you a robot", "verify it's you"]
-        .iter()
-        .any(|k| h.contains(k))
+    [
+        "captcha",
+        "unusual traffic",
+        "sign in",
+        "are you a robot",
+        "verify it's you",
+    ]
+    .iter()
+    .any(|k| h.contains(k))
 }
 
 #[cfg(test)]
@@ -794,7 +828,11 @@ mod tests {
     use super::*;
 
     fn pacing(cap: u32) -> Pacing {
-        Pacing { min_delay_ms: 0, jitter_ms: 0, hourly_cap: cap }
+        Pacing {
+            min_delay_ms: 0,
+            jitter_ms: 0,
+            hourly_cap: cap,
+        }
     }
 
     #[test]
@@ -845,7 +883,10 @@ mod tests {
         let p = havuz(pacing(2));
         let n = p.tavani_tohumla(&defter).await;
 
-        assert_eq!(n, 2, "yalniz pencere icindeki kendi saglayicisinin istekleri");
+        assert_eq!(
+            n, 2,
+            "yalniz pencere icindeki kendi saglayicisinin istekleri"
+        );
 
         let mut st = p.slots[0].state.lock().await;
         assert!(
@@ -858,7 +899,10 @@ mod tests {
 
     #[test]
     fn duraklatilmis_hesap_secilmez() {
-        let mut st = AccountState { paused_reason: Some("captcha".into()), ..Default::default() };
+        let mut st = AccountState {
+            paused_reason: Some("captcha".into()),
+            ..Default::default()
+        };
         assert!(!st.hazir_mi(Instant::now(), &pacing(0)));
     }
 
@@ -968,8 +1012,14 @@ mod tests {
             },
         )
         .expect("iki saglayici da taninmali");
-        assert!(p.kapanmaz.contains("perplexity"), "perplexity Cloudflare arkasinda");
-        assert!(!p.kapanmaz.contains("gemini"), "gemini takilmiyor, kapatilabilir");
+        assert!(
+            p.kapanmaz.contains("perplexity"),
+            "perplexity Cloudflare arkasinda"
+        );
+        assert!(
+            !p.kapanmaz.contains("gemini"),
+            "gemini takilmiyor, kapatilabilir"
+        );
     }
 
     /// Bilinmeyen saglayici adi havuz kurulurken PATLAMALI: sessizce varsayilana
@@ -978,7 +1028,11 @@ mod tests {
     fn bilinmeyen_saglayicili_hesap_havuzu_kurmaz() {
         let defter = crate::saglayicilar::kayit_defteri(&HashMap::new());
         let r = Pool::new(
-            vec![Account { name: "a".into(), provider: None, providers: vec!["yokboyle".into()] }],
+            vec![Account {
+                name: "a".into(),
+                provider: None,
+                providers: vec!["yokboyle".into()],
+            }],
             pacing(0),
             &defter,
             &HashMap::new(),
@@ -997,7 +1051,11 @@ mod tests {
     /// supurucu gorevi bir daha hic tik atmazdi.
     #[tokio::test]
     async fn supurucu_mesgul_kimlikte_asili_kalmaz() {
-        let p = havuz(Pacing { min_delay_ms: 0, jitter_ms: 0, hourly_cap: 0 });
+        let p = havuz(Pacing {
+            min_delay_ms: 0,
+            jitter_ms: 0,
+            hourly_cap: 0,
+        });
         let _mesgul = p.kimlikler[0].oturum.lock().await;
         let kapanan = tokio::time::timeout(
             Duration::from_secs(2),
@@ -1012,10 +1070,17 @@ mod tests {
     /// butceyi yiyip sonraki istegi sifir arayla gecirtiyordu — canli olcumde gorulmustu.
     #[tokio::test]
     async fn hiz_butcesi_bitisten_itibaren_sayilir() {
-        let p = havuz(Pacing { min_delay_ms: 3000, jitter_ms: 0, hourly_cap: 0 });
+        let p = havuz(Pacing {
+            min_delay_ms: 3000,
+            jitter_ms: 0,
+            hourly_cap: 0,
+        });
         p.basarili(0).await;
         let mut st = p.slots[0].state.lock().await;
-        assert!(!st.hazir_mi(Instant::now(), &p.pacing), "bitisten hemen sonra hazir olmamali");
+        assert!(
+            !st.hazir_mi(Instant::now(), &p.pacing),
+            "bitisten hemen sonra hazir olmamali"
+        );
         let nb = st.not_before.expect("bitiste not_before kurulmali");
         assert!(nb.duration_since(Instant::now()) > Duration::from_millis(2500));
     }
@@ -1024,13 +1089,23 @@ mod tests {
     /// sonsuza kadar 64 saniyede bir istek atmak hesabi bosuna yipratir.
     #[tokio::test]
     async fn ust_uste_hata_insan_kapisini_acar() {
-        let p = havuz(Pacing { min_delay_ms: 0, jitter_ms: 0, hourly_cap: 0 });
+        let p = havuz(Pacing {
+            min_delay_ms: 0,
+            jitter_ms: 0,
+            hourly_cap: 0,
+        });
         for _ in 0..UST_USTE_SINIR - 1 {
             p.basarisiz(0, "connection reset by peer").await;
         }
-        assert!(p.slots[0].state.lock().await.paused_reason.is_none(), "sinira gelmeden duraklamamali");
+        assert!(
+            p.slots[0].state.lock().await.paused_reason.is_none(),
+            "sinira gelmeden duraklamamali"
+        );
         p.basarisiz(0, "connection reset by peer").await;
-        assert!(p.slots[0].state.lock().await.paused_reason.is_some(), "sinirda insan cagrilmali");
+        assert!(
+            p.slots[0].state.lock().await.paused_reason.is_some(),
+            "sinirda insan cagrilmali"
+        );
     }
 
     /// Tavan dolunca bekleme suresi SIFIR degil, pencerenin bosalmasina kalan sure
@@ -1045,9 +1120,14 @@ mod tests {
             not_before: Some(simdi - Duration::from_secs(10)),
             ..Default::default()
         };
-        let t = st.hazir_zamani(simdi, &pacing(1)).expect("duraklatilmis degil");
+        let t = st
+            .hazir_zamani(simdi, &pacing(1))
+            .expect("duraklatilmis degil");
         let kalan = t.duration_since(simdi);
-        assert!(kalan > Duration::from_secs(3500), "pencere sonuna kadar beklemeli, kalan: {kalan:?}");
+        assert!(
+            kalan > Duration::from_secs(3500),
+            "pencere sonuna kadar beklemeli, kalan: {kalan:?}"
+        );
     }
 
     /// Sabitlenmis hesap kisa bir hiz butcesi beklemesi icin BIRAKILMAMALI — birakilirsa
@@ -1059,7 +1139,10 @@ mod tests {
             not_before: Some(Instant::now() + Duration::from_secs(4)),
             ..Default::default()
         };
-        assert!(matches!(sabit_karari(&mut st, Instant::now(), &p), Sabit::Bekle(_)));
+        assert!(matches!(
+            sabit_karari(&mut st, Instant::now(), &p),
+            Sabit::Bekle(_)
+        ));
     }
 
     /// Saatlik tavan dolduysa beklemek istegi bir saat askida birakirdi: sureklilik
@@ -1081,27 +1164,44 @@ mod tests {
     /// Insan kapisindaki hesap beklenmez, birakilir.
     #[test]
     fn duraklatilmis_sabit_birakilir() {
-        let mut st = AccountState { paused_reason: Some("captcha".into()), ..Default::default() };
-        assert!(matches!(sabit_karari(&mut st, Instant::now(), &pacing(0)), Sabit::Birak(_)));
+        let mut st = AccountState {
+            paused_reason: Some("captcha".into()),
+            ..Default::default()
+        };
+        assert!(matches!(
+            sabit_karari(&mut st, Instant::now(), &pacing(0)),
+            Sabit::Birak(_)
+        ));
     }
 
     /// Bos hesap dogrudan kullanilmali.
     #[test]
     fn hazir_sabit_kullanilir() {
         let mut st = AccountState::default();
-        assert!(matches!(sabit_karari(&mut st, Instant::now(), &pacing(0)), Sabit::Kullan));
+        assert!(matches!(
+            sabit_karari(&mut st, Instant::now(), &pacing(0)),
+            Sabit::Kullan
+        ));
     }
 
     /// Sabit tablosu tavani asinca bosalmali; sinirsiz buyumemeli.
     #[tokio::test]
     async fn sabit_tablosu_tavanda_bosalir() {
-        let p = havuz(Pacing { min_delay_ms: 0, jitter_ms: 0, hourly_cap: 0 });
+        let p = havuz(Pacing {
+            min_delay_ms: 0,
+            jitter_ms: 0,
+            hourly_cap: 0,
+        });
         for k in 0..SABIT_TAVANI as u64 {
             p.sabitle(k, 0).await;
         }
         assert_eq!(p.sabit_sayisi().await, SABIT_TAVANI);
         p.sabitle(u64::MAX, 0).await;
-        assert_eq!(p.sabit_sayisi().await, 1, "tavan asilinca tablo bosalip yeniden baslamali");
+        assert_eq!(
+            p.sabit_sayisi().await,
+            1,
+            "tavan asilinca tablo bosalip yeniden baslamali"
+        );
     }
 
     /// Kendi TAHMIN iceren hata metnimiz hesabi duraklatmamali; yoksa tek bir yavas

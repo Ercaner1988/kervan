@@ -14,7 +14,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
-use crate::browser::{detect_login, google_hesabi, BrowserBinary, LoginState, Provider, Session};
+use crate::browser::{BrowserBinary, LoginState, Provider, Session, detect_login, google_hesabi};
 
 pub struct ProfilRaporu {
     pub profil: String,
@@ -28,7 +28,10 @@ impl ProfilRaporu {
     /// Hicbir saglayicida oturum yoksa profil oludur.
     pub fn olu_mu(&self) -> bool {
         self.hata.is_none()
-            && !self.saglayicilar.iter().any(|(_, d)| *d == LoginState::Ready)
+            && !self
+                .saglayicilar
+                .iter()
+                .any(|(_, d)| *d == LoginState::Ready)
     }
 
     pub fn acik_saglayicilar(&self) -> Vec<String> {
@@ -103,12 +106,20 @@ async fn tek_profil(
     }
 
     oturum.close().await.ok();
-    Ok(ProfilRaporu { profil: profil.to_string(), kimlik, saglayicilar: durumlar, hata: None })
+    Ok(ProfilRaporu {
+        profil: profil.to_string(),
+        kimlik,
+        saglayicilar: durumlar,
+        hata: None,
+    })
 }
 
 pub fn rapor_bas(raporlar: &[ProfilRaporu]) {
     println!("\n=== TARAMA SONUCU ===");
-    println!("{:<34} {:<30} acik saglayicilar", "profil", "gercekte hangi hesap");
+    println!(
+        "{:<34} {:<30} acik saglayicilar",
+        "profil", "gercekte hangi hesap"
+    );
     println!("{}", "-".repeat(90));
     for r in raporlar {
         let kimlik = r.kimlik.clone().unwrap_or_else(|| "?".into());
@@ -123,7 +134,10 @@ pub fn rapor_bas(raporlar: &[ProfilRaporu]) {
 
     let olu: Vec<&ProfilRaporu> = raporlar.iter().filter(|r| r.olu_mu()).collect();
     if !olu.is_empty() {
-        println!("\nOLU PROFILLER ({}) — hicbir saglayicida oturum yok:", olu.len());
+        println!(
+            "\nOLU PROFILLER ({}) — hicbir saglayicida oturum yok:",
+            olu.len()
+        );
         for r in &olu {
             println!("  {}", r.profil);
         }
@@ -141,7 +155,13 @@ pub fn rapor_bas(raporlar: &[ProfilRaporu]) {
         }
         println!("[[accounts]]");
         println!("name = \"{}\"", r.profil);
-        println!("providers = [{}]", acik.iter().map(|a| format!("\"{a}\"")).collect::<Vec<_>>().join(", "));
+        println!(
+            "providers = [{}]",
+            acik.iter()
+                .map(|a| format!("\"{a}\""))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
     }
 }
 
@@ -153,7 +173,10 @@ mod tests {
         ProfilRaporu {
             profil: "p".into(),
             kimlik: None,
-            saglayicilar: durumlar.iter().map(|(a, d)| ((*a).to_string(), *d)).collect(),
+            saglayicilar: durumlar
+                .iter()
+                .map(|(a, d)| ((*a).to_string(), *d))
+                .collect(),
             hata: hata.map(String::from),
         }
     }
@@ -187,7 +210,10 @@ mod tests {
     #[test]
     fn hicbir_oturumu_olmayan_profil_olu() {
         let r = rapor(
-            &[("claude", LoginState::NeedsLogin), ("gemini", LoginState::Unknown)],
+            &[
+                ("claude", LoginState::NeedsLogin),
+                ("gemini", LoginState::Unknown),
+            ],
             None,
         );
         assert!(r.olu_mu());

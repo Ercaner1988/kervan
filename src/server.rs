@@ -15,6 +15,9 @@
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use crate::browser::ask;
+use crate::kota::{self, Defter, Sonuc};
+use crate::pool::Pool;
 use anyhow::Result;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -22,9 +25,6 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
-use crate::browser::ask;
-use crate::kota::{self, Defter, Sonuc};
-use crate::pool::Pool;
 
 pub struct AppState {
     pub pool: Pool,
@@ -127,7 +127,12 @@ async fn goster(State(st): State<Arc<AppState>>, Path(i): Path<usize>) -> Respon
     let Some(slot) = st.pool.slots.get(i) else {
         return hata(StatusCode::NOT_FOUND, &format!("{i} numarali hesap yok"));
     };
-    kimlik_goster(State(st.clone()), Path(slot.kimlik), Query(GosterSorgu::default())).await
+    kimlik_goster(
+        State(st.clone()),
+        Path(slot.kimlik),
+        Query(GosterSorgu::default()),
+    )
+    .await
 }
 
 async fn gizle(State(st): State<Arc<AppState>>, Path(i): Path<usize>) -> Response {
@@ -176,7 +181,13 @@ async fn kimlik_goster(
     // Bilinmeyen saglayici adi SESSIZCE atlanmaz: yanlis yazilmis bir ad,
     // "sekmeyi actim" deyip acmamak olurdu.
     let mut acilacak = Vec::new();
-    for ad in q.sekmeler.as_deref().unwrap_or("").split(',').map(str::trim).filter(|s| !s.is_empty())
+    for ad in q
+        .sekmeler
+        .as_deref()
+        .unwrap_or("")
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
     {
         match crate::saglayicilar::bul(&st.saglayicilar, ad) {
             Ok(s) => acilacak.push(s),
@@ -274,8 +285,14 @@ async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
     // Yalniz HESABI OLAN saglayicilar listelenir. Hesapsiz bir modeli listelemek,
     // istemciye var olmayan bir yol gostermek olurdu — OmniRoute'un katalogunda
     // gercekte calismayan modellerin durmasi tam olarak bu hataydi.
-    let mut adlar: Vec<String> =
-        st.pool.slots.iter().map(|s| s.provider.ad.clone()).collect::<std::collections::BTreeSet<_>>().into_iter().collect();
+    let mut adlar: Vec<String> = st
+        .pool
+        .slots
+        .iter()
+        .map(|s| s.provider.ad.clone())
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect();
     adlar.sort();
     Json(ModelList {
         object: "list",
@@ -326,7 +343,11 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
 
     // Havuzdan hesap kirala: konusma kendi hesabina sabitlenir, hiz butcesi burada
     // uygulanir, gerekirse beklenir.
-    let mut lease = match st.pool.acquire_for(konusma_izi(&req.messages), &saglayici).await {
+    let mut lease = match st
+        .pool
+        .acquire_for(konusma_izi(&req.messages), &saglayici)
+        .await
+    {
         Ok(l) => l,
         Err(e) => return hata(StatusCode::SERVICE_UNAVAILABLE, &format!("{e:#}")),
     };
@@ -368,7 +389,10 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
         // sonra pencereyi kapatmasin — cozum yarida kalirdi.
         if format!("{e:#}").contains(crate::browser::INSAN_KAPISI) {
             lease.insan_eline_birak();
-            println!("[{}] oturum insanin elinde: dogrulamayi coz, sonra istegi tekrarla.", lease.name);
+            println!(
+                "[{}] oturum insanin elinde: dogrulamayi coz, sonra istegi tekrarla.",
+                lease.name
+            );
         }
     }
 
@@ -376,7 +400,14 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
     // ve dogrulama duvariysa hesabi insan kapisinda duraklatir.
     match (&kota_carpmasi, &sonuc) {
         (Some(metin), _) => {
-            st.defter.yaz(&lease.name, &lease.provider.ad, Sonuc::Kota, Some(kirp(metin))).await;
+            st.defter
+                .yaz(
+                    &lease.name,
+                    &lease.provider.ad,
+                    Sonuc::Kota,
+                    Some(kirp(metin)),
+                )
+                .await;
             // Pencere ogrenildiyse onu, ogrenilmediyse muhafazakar varsayilani bekle.
             let ozet = st.defter.ozet(&lease.name, &lease.provider.ad).await;
             // Ogrenilmis pencere varsa onu bekle; yoksa muhafazakar varsayilan.
@@ -388,20 +419,29 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
                 .map(|d| d.max(1))
                 .unwrap_or(st.kota_ayar.bilinmeyen_pencere_dk);
             println!("[{}] KOTA doldu, {dk} dk bekletiliyor", lease.name);
-            st.pool.kota_doldu(lease.index, Duration::from_secs(dk * 60)).await;
+            st.pool
+                .kota_doldu(lease.index, Duration::from_secs(dk * 60))
+                .await;
         }
         (None, Ok(_)) => {
-            st.defter.yaz(&lease.name, &lease.provider.ad, Sonuc::Basari, None).await;
+            st.defter
+                .yaz(&lease.name, &lease.provider.ad, Sonuc::Basari, None)
+                .await;
             st.pool.basarili(lease.index).await;
         }
         (None, Err(e)) => {
-            st.defter.yaz(&lease.name, &lease.provider.ad, Sonuc::Hata, None).await;
+            st.defter
+                .yaz(&lease.name, &lease.provider.ad, Sonuc::Hata, None)
+                .await;
             st.pool.basarisiz(lease.index, &format!("{e:#}")).await;
         }
     }
 
-    let model_adi =
-        if req.model.is_empty() { model_kimligi(&saglayici) } else { req.model.clone() };
+    let model_adi = if req.model.is_empty() {
+        model_kimligi(&saglayici)
+    } else {
+        req.model.clone()
+    };
 
     if req.stream {
         return match sonuc {
@@ -418,10 +458,17 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
             model: model_adi,
             choices: vec![Choice {
                 index: 0,
-                message: Message { role: "assistant".into(), content: metin },
+                message: Message {
+                    role: "assistant".into(),
+                    content: metin,
+                },
                 finish_reason: "stop",
             }],
-            usage: Usage { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+            usage: Usage {
+                prompt_tokens: 0,
+                completion_tokens: 0,
+                total_tokens: 0,
+            },
         })
         .into_response(),
         // Ham neden zinciri ({e:#}) istemciye gider. Hatayi maskelemek, OmniRoute'un
@@ -437,7 +484,11 @@ fn kirp(m: &str) -> String {
 }
 
 fn hata(kod: StatusCode, mesaj: &str) -> Response {
-    (kod, Json(serde_json::json!({ "error": { "message": mesaj } }))).into_response()
+    (
+        kod,
+        Json(serde_json::json!({ "error": { "message": mesaj } })),
+    )
+        .into_response()
 }
 
 /// OpenAI uyumlu SSE akisi.
@@ -558,7 +609,9 @@ fn tohum_istemi(msgs: &[Message], azami: usize) -> String {
     );
     // Sessiz kirpma yok: eksik varsa yazili olsun.
     if atlanan > 0 {
-        s.push_str(&format!("(en eski {atlanan} mesaj uzunluk siniri nedeniyle atlandi)\n"));
+        s.push_str(&format!(
+            "(en eski {atlanan} mesaj uzunluk siniri nedeniyle atlandi)\n"
+        ));
     }
     s.push_str(&parcalar.join("\n\n"));
     s.push_str("\n--- onceki turlar bitti ---\n\nSimdiki sorum:\n");
@@ -567,7 +620,10 @@ fn tohum_istemi(msgs: &[Message], azami: usize) -> String {
 }
 
 fn simdi() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 pub async fn serve(state: Arc<AppState>, port: u16) -> Result<()> {
@@ -585,7 +641,10 @@ mod tests {
     use super::*;
 
     fn m(role: &str, content: &str) -> Message {
-        Message { role: role.into(), content: content.into() }
+        Message {
+            role: role.into(),
+            content: content.into(),
+        }
     }
 
     /// Gecmisin tamami degil SON kullanici mesaji gitmeli; ayrica araya asistan
@@ -612,7 +671,10 @@ mod tests {
             m("user", "Peki nufusu?"),
         ];
         let t = tohum_istemi(&msgs, TOHUM_AZAMI);
-        assert!(t.contains("Kisa cevap ver."), "sistem yonergesi dusmemeli: {t}");
+        assert!(
+            t.contains("Kisa cevap ver."),
+            "sistem yonergesi dusmemeli: {t}"
+        );
         assert!(t.contains("baskenti"), "onceki soru olmali");
         assert!(t.contains("Ankara."), "onceki cevap olmali");
         assert!(t.ends_with("Peki nufusu?"), "asil soru SONDA olmali: {t}");
@@ -622,7 +684,10 @@ mod tests {
     /// basina gereksiz aciklama eklenmemeli.
     #[test]
     fn tek_mesajda_tohum_sade_kalir() {
-        assert_eq!(tohum_istemi(&[m("user", "merhaba")], TOHUM_AZAMI), "merhaba");
+        assert_eq!(
+            tohum_istemi(&[m("user", "merhaba")], TOHUM_AZAMI),
+            "merhaba"
+        );
     }
 
     /// Sinir asilinca EN ESKI turlar dusmeli (yakin baglam degerlidir) ve dusen
@@ -668,8 +733,14 @@ mod tests {
     /// degisen seyler giriyor, ize katilsa sabitleme sessizce ise yaramaz olurdu.
     #[test]
     fn degisen_sistem_istemi_izi_bozmaz() {
-        let a = vec![m("system", "tarih: 2026-08-15 10:00"), m("user", "ilk soru")];
-        let b = vec![m("system", "tarih: 2026-08-15 10:42"), m("user", "ilk soru")];
+        let a = vec![
+            m("system", "tarih: 2026-08-15 10:00"),
+            m("user", "ilk soru"),
+        ];
+        let b = vec![
+            m("system", "tarih: 2026-08-15 10:42"),
+            m("user", "ilk soru"),
+        ];
         assert_eq!(konusma_izi(&a), konusma_izi(&b));
     }
 

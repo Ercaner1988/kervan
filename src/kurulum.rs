@@ -13,7 +13,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 
-use crate::browser::{detect_login, BrowserBinary, LoginState, Provider, Session};
+use crate::browser::{BrowserBinary, LoginState, Provider, Session, detect_login};
 use crate::config::Config;
 
 /// Profil adi = HESAP ADININ KENDISI.
@@ -82,7 +82,11 @@ pub async fn calistir(
             match girisli_mi(profiles_root, &profil, browser, geckodriver, saglayici).await {
                 Ok(true) => {
                     println!("durum        : ZATEN GIRISLI, atlaniyor");
-                    sonuclar.push(Sonuc { eposta: eposta.clone(), profil, durum: Durum::Vardi });
+                    sonuclar.push(Sonuc {
+                        eposta: eposta.clone(),
+                        profil,
+                        durum: Durum::Vardi,
+                    });
                     continue;
                 }
                 Ok(false) => println!("durum        : profil var ama giris yok, devam ediliyor"),
@@ -117,7 +121,11 @@ pub async fn calistir(
         std::io::stdin().read_line(&mut satir).ok();
         if satir.trim().eq_ignore_ascii_case("a") {
             println!("atlandi.");
-            sonuclar.push(Sonuc { eposta: eposta.clone(), profil, durum: Durum::Atlandi });
+            sonuclar.push(Sonuc {
+                eposta: eposta.clone(),
+                profil,
+                durum: Durum::Atlandi,
+            });
             continue;
         }
 
@@ -131,7 +139,11 @@ pub async fn calistir(
         match girisli_mi(profiles_root, &profil, browser, geckodriver, saglayici).await {
             Ok(true) => {
                 println!("durum        : GIRISLI");
-                sonuclar.push(Sonuc { eposta: eposta.clone(), profil, durum: Durum::Kuruldu });
+                sonuclar.push(Sonuc {
+                    eposta: eposta.clone(),
+                    profil,
+                    durum: Durum::Kuruldu,
+                });
             }
             Ok(false) => {
                 println!("durum        : giris dogrulanamadi");
@@ -205,7 +217,11 @@ fn yapilandirmaya_ekle(
         .open(yol)
         .with_context(|| format!("yapilandirma acilamadi: {}", yol.display()))?;
     d.write_all(metin.as_bytes())?;
-    println!("\n{} hesap {} dosyasina eklendi.", yeniler.len(), yol.display());
+    println!(
+        "\n{} hesap {} dosyasina eklendi.",
+        yeniler.len(),
+        yol.display()
+    );
     Ok(())
 }
 
@@ -258,7 +274,12 @@ mod tests {
     /// `..` gecirmesi profil kokunun disina yazmak demek olurdu.
     #[test]
     fn profil_adi_yol_kacisina_izin_vermez() {
-        for kotu in ["../../etc/passwd", "a\\..\\b@x.com", "a/b@x.com", "a:b@x.com"] {
+        for kotu in [
+            "../../etc/passwd",
+            "a\\..\\b@x.com",
+            "a/b@x.com",
+            "a:b@x.com",
+        ] {
             let ad = profil_adi(kotu);
             assert!(!ad.contains('/'), "{ad}");
             assert!(!ad.contains('\\'), "{ad}");
@@ -272,13 +293,23 @@ mod tests {
     /// kralarthas@gmail.com cikti).
     #[test]
     fn profil_adi_hesabin_kendisidir() {
-        assert_eq!(profil_adi("ercan.er@medeniyet.edu.tr"), "ercan.er@medeniyet.edu.tr");
-        assert_eq!(profil_adi("ERCAN@gmail.com"), "ercan@gmail.com", "buyuk/kucuk fark etmemeli");
+        assert_eq!(
+            profil_adi("ercan.er@medeniyet.edu.tr"),
+            "ercan.er@medeniyet.edu.tr"
+        );
+        assert_eq!(
+            profil_adi("ERCAN@gmail.com"),
+            "ercan@gmail.com",
+            "buyuk/kucuk fark etmemeli"
+        );
     }
 
     /// Ayri hesaplar ayri profil almali.
     #[test]
     fn ayri_hesaplar_ayri_profil() {
-        assert_ne!(profil_adi("ercan@gmail.com"), profil_adi("ercan@outlook.com"));
+        assert_ne!(
+            profil_adi("ercan@gmail.com"),
+            profil_adi("ercan@outlook.com")
+        );
     }
 }

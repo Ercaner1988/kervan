@@ -36,7 +36,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 use crate::browser::{Provider, Selectors};
 use crate::config::SaglayiciAyar;
@@ -263,7 +263,10 @@ pub fn bul(defter: &HashMap<String, Arc<Provider>>, ad: &str) -> Result<Arc<Prov
         None => {
             let mut adlar: Vec<&str> = defter.keys().map(|s| s.as_str()).collect();
             adlar.sort_unstable();
-            bail!("bilinmeyen saglayici '{ad}'. Taninanlar: {}", adlar.join(", "))
+            bail!(
+                "bilinmeyen saglayici '{ad}'. Taninanlar: {}",
+                adlar.join(", ")
+            )
         }
     }
 }
@@ -295,9 +298,18 @@ mod tests {
     #[test]
     fn surum_ekli_model_kimligi_eslesir() {
         let d = defter();
-        assert_eq!(model_saglayicisi("kervan/gemini-3.1-pro", &d).as_deref(), Some("gemini"));
-        assert_eq!(model_saglayicisi("kervan/claude", &d).as_deref(), Some("claude"));
-        assert_eq!(model_saglayicisi("kervan/perplexity", &d).as_deref(), Some("perplexity"));
+        assert_eq!(
+            model_saglayicisi("kervan/gemini-3.1-pro", &d).as_deref(),
+            Some("gemini")
+        );
+        assert_eq!(
+            model_saglayicisi("kervan/claude", &d).as_deref(),
+            Some("claude")
+        );
+        assert_eq!(
+            model_saglayicisi("kervan/perplexity", &d).as_deref(),
+            Some("perplexity")
+        );
         assert_eq!(model_saglayicisi("bilinmeyen", &d), None);
     }
 
@@ -307,7 +319,10 @@ mod tests {
     #[test]
     fn copilot_kisisel_ile_m365_karismaz() {
         let d = defter();
-        assert_eq!(model_saglayicisi("kervan/copilot", &d).as_deref(), Some("copilot"));
+        assert_eq!(
+            model_saglayicisi("kervan/copilot", &d).as_deref(),
+            Some("copilot")
+        );
         assert_eq!(
             model_saglayicisi("kervan/copilot-m365", &d).as_deref(),
             Some("copilot-m365")
@@ -321,16 +336,25 @@ mod tests {
         let mut a = HashMap::new();
         a.insert(
             "claude".to_string(),
-            SaglayiciAyar { response: Some(".yeni-secici".into()), ..Default::default() },
+            SaglayiciAyar {
+                response: Some(".yeni-secici".into()),
+                ..Default::default()
+            },
         );
         let d = kayit_defteri(&a);
         assert_eq!(d["claude"].selectors.response, ".yeni-secici");
         // ezilmeyen alanlar varsayilanda kalmali
         assert!(d["claude"].url.contains("claude.ai"));
         // olculdu: perplexity'de textarea yok, contenteditable var
-        assert_eq!(d["perplexity"].selectors.prompt_input, "div[contenteditable='true']");
+        assert_eq!(
+            d["perplexity"].selectors.prompt_input,
+            "div[contenteditable='true']"
+        );
         // baska saglayici etkilenmemeli
-        assert_eq!(d["gemini"].selectors.response, "model-response, message-content");
+        assert_eq!(
+            d["gemini"].selectors.response,
+            "model-response, message-content"
+        );
     }
 
     /// Cloudflare isareti OLCUME dayaniyor ve bosta kapatmayi yonetiyor. Yanlis
@@ -352,7 +376,13 @@ mod tests {
     #[test]
     fn cloudflare_isareti_yapilandirmayla_ezilir() {
         let mut a = HashMap::new();
-        a.insert("claude".to_string(), SaglayiciAyar { cloudflare: Some(false), ..Default::default() });
+        a.insert(
+            "claude".to_string(),
+            SaglayiciAyar {
+                cloudflare: Some(false),
+                ..Default::default()
+            },
+        );
         assert!(!kayit_defteri(&a)["claude"].cloudflare);
     }
 

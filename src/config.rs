@@ -77,7 +77,10 @@ fn varsayilan_kota_bekleme() -> u64 {
 
 impl Default for Kota {
     fn default() -> Self {
-        Self { isaretler: varsayilan_isaretler(), bilinmeyen_pencere_dk: varsayilan_kota_bekleme() }
+        Self {
+            isaretler: varsayilan_isaretler(),
+            bilinmeyen_pencere_dk: varsayilan_kota_bekleme(),
+        }
     }
 }
 
@@ -135,7 +138,11 @@ pub struct Pacing {
 impl Default for Pacing {
     fn default() -> Self {
         // Muhafazakar varsayilanlar: bir insanin sohbet temposu.
-        Self { min_delay_ms: 3000, jitter_ms: 2000, hourly_cap: 30 }
+        Self {
+            min_delay_ms: 3000,
+            jitter_ms: 2000,
+            hourly_cap: 30,
+        }
     }
 }
 
@@ -157,7 +164,11 @@ impl Config {
     fn varsayilan() -> Self {
         Self {
             bosta_dakika: varsayilan_bosta_dakika(),
-            accounts: vec![Account { name: "ercan-gemini-1".into(), provider: None, providers: vec![varsayilan_saglayici()] }],
+            accounts: vec![Account {
+                name: "ercan-gemini-1".into(),
+                provider: None,
+                providers: vec![varsayilan_saglayici()],
+            }],
             pacing: Pacing::default(),
             kota: Kota::default(),
             providers: Default::default(),
