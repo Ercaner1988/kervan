@@ -1,16 +1,22 @@
+**🌍 [Türkçe](README.md) | [English](README.en.md) | [العربية](README.ar.md) | [日本語](README.ja.md)**
+
 # Kervan
 
 A gateway infrastructure that routes AI usage from web interfaces to your preferred endpoints. Rust, single binary.
 
 > Carrying loads across many paths, knowing how much each path can bear.
 
-[**Türkçe**](README.md#türkçe) | [**English**](#english) | [**العربية**](README.ar.md) | [**日本語**](README.ja.md)
-
 ---
 
-## English
+## 📦 Prerequisites
 
-### What it does
+| Requirement | Version / Note |
+|---|---|
+| Rust | 1.70+ (for building) |
+| Firefox | Zen or standard Firefox (with geckodriver) |
+| OS | Windows, Linux, macOS |
+
+## 🛠 Features & Functionality
 
 Transforms AI accounts without API keys (Gemini, Claude, Perplexity web interfaces) into a single OpenAI-compatible endpoint. Instead of copying cookies, it drives a **real browser**: log in once, and the session persists in a profile directory.
 
@@ -20,9 +26,54 @@ Key differences from existing solutions:
 - **Persistent session** — no cookie pasting, no refreshing when cookies rotate.
 - **Human gate** — doesn't silently fail on verification walls; pauses the account, brings the window to the foreground, lets you resolve it. Doesn't attempt to bypass bot detection.
 
-### Status
+## ⚙ Installation
 
-Phase 3 (pool mode) is working: multiple providers, **multiple accounts**, rate budget, human gate.
+### Installation Steps
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/Ercaner1988/kervan.git
+cd kervan
+```
+
+2. Build:
+
+```bash
+cargo build --release
+```
+
+3. Create the config file:
+
+```bash
+cp kervan.toml.example kervan.toml
+```
+
+4. Define your accounts in `kervan.toml`.
+
+### Usage
+
+```bash
+./target/release/kervan
+```
+
+Server runs on `127.0.0.1:20129`. OpenAI-compatible endpoint:
+
+```bash
+curl http://127.0.0.1:20129/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gemini", "messages": [{"role": "user", "content": "Hello"}]}'
+```
+
+## 🗺 Status & Roadmap
+
+| Status | Topic |
+|---|---|
+| ✅ Done | Multi-provider, multi-account, rate budget, human gate |
+| 🔬 Experimental | Quota learning (observed quota limits) |
+| 📅 Future | `kervan.toml` templates, per-provider quota learning |
+
+### Technical Details
 
 | | |
 |---|---|
@@ -43,86 +94,22 @@ Defined: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, `d
 | `kimi` | ✅ In pool — multiple accounts, 25–36s |
 | `copilot` | ✅ In pool — personal Microsoft account, ~12s |
 | `copilot-m365` | ✅ In pool — work/school account, ~14s |
-| `perplexity` | ⚠️ Unstable — Cloudflare on some accounts |
+| `perplexity` | ⚠️ Unstable — some accounts hit Cloudflare |
 | `claude` | ❌ Cloudflare — disabled in pool |
-| `deepseek` | ❌ Cloudflare — on most accounts |
-| `qwen` | ❌ Cloudflare — on all accounts |
-| `z.ai` | ❌ Cloudflare — misleading empty response |
+| `deepseek` | ❌ Cloudflare — most accounts |
+| `qwen` | ❌ Cloudflare — all accounts |
+| `z.ai` | ❌ Cloudflare — misleading empty responses |
 
-### Quota Learner
+## ⚠️ Known Issues / Experimental Features
 
-Web providers don't expose remaining quota. Kervan logs each request result to `%LOCALAPPDATA%\kervan\kota.jsonl`, marking limit-hit moments.
+- **Quota learning:** Web providers don't expose quota status. Kervan logs every request's outcome to `%LOCALAPPDATA%\kervan\kota.jsonl` and marks quota exhaustion.
+- **Cloudflare:** Claude, Deepseek, Qwen, Z.ai hit Cloudflare walls on most accounts.
+- **Human gate:** Pauses the account and brings the window to the foreground on verification walls — no automated resolution.
 
-```
-curl http://127.0.0.1:20129/kota
-```
+## 🤝 Contributors
 
-- **No fabrication.** Won't produce estimates without an observed limit hit.
-- Limit message **doesn't return as response** — client gets 502.
+- [Ercan ER](https://github.com/Ercaner1988) — design & development
 
-### Requirements
+## 📜 License
 
-- Rust 1.97+
-- Firefox-based browser (Zen is supported)
-- [geckodriver](https://github.com/mozilla/geckodriver/releases) — at `%LOCALAPPDATA%\kervan\bin\geckodriver.exe` or in PATH
-
-### Usage
-
-First time: log in through a visible window (one-time).
-
-```bash
-cargo run -- profile-name --giris
-```
-
-Then run as a gateway:
-
-```bash
-cargo run -- --headless --serve
-```
-
-Single query mode:
-
-```bash
-cargo run -- profile-name --headless --sor "Who is Mimar Sinan?"
-```
-
-### Configuration (`kervan.toml`)
-
-```toml
-idle_minutes = 15         # close browser unused for this long
-
-[[accounts]]
-name = "user@example.com"   # profile directory = account itself
-providers = ["gemini", "perplexity"]
-
-[pacing]
-min_delay_ms = 3000       # minimum delay between requests to same account
-jitter_ms = 2000          # random jitter on top
-hourly_cap = 30           # per-account hourly limit
-```
-
-### Hermes Integration
-
-In `~/.hermes/config.yaml` as a `custom` provider:
-
-```yaml
-  - name: kervan
-    base_url: http://127.0.0.1:20129/v1
-    api_key: kervan-local
-    model: kervan/gemini
-    models:
-      - kervan/gemini
-      - kervan/copilot
-```
-
-### Security
-
-- Profile directories contain cookies and sessions, listed in `.gitignore`.
-- Gateway binds only to `127.0.0.1`.
-- Kervan cannot log in on its own — verification always goes through a human.
-
-**What it doesn't do:** no fingerprint spoofing, no CAPTCHA solving, no proxy/IP rotation, no automation signature hiding.
-
-### License
-
-MIT — see [LICENSE](LICENSE).
+No open-source license chosen yet; to be decided before publishing.
