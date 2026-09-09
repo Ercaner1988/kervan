@@ -12,3 +12,6 @@
 
 # OmniRoute kaynak klonu — referans, depoya ait degil
 /ref
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
