@@ -2,6 +2,8 @@
 
 # Kervan
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/Ercaner1988/kervan?utm_source=badge)
+
 A gateway infrastructure that routes AI usage from web interfaces to your preferred endpoints. Rust, single binary.
 
 > Carrying loads across many paths, knowing how much each path can bear.
