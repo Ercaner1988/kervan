@@ -2,6 +2,8 @@
 
 # キャラバン (Kervan)
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/Ercaner1988/kervan?utm_source=badge)
+
 WebベースのAI利用を選択したインターフェースにルーティングするゲートウェイ基盤。Rust製、単一バイナリ。
 
 > 多くの道を通り、各道がどれだけの荷を運べるかを知る。

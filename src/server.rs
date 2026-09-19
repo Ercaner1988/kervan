@@ -535,7 +535,7 @@ fn sse_yanit(metin: &str, model: &str) -> Response {
 /// Iki bilinen sinir: (a) ayni cumleyle baslayan iki ayri konusma ayni ize duser —
 /// sonucu yalniz ayni hesaba yonlenmeleridir, yanlis yanit degil; (b) istemci gecmisi
 /// yeniden yazarsa (Hermes'te compaction) iz degisir ve konusma baska hesaba tasinabilir.
-fn konusma_izi(msgs: &[Message]) -> Option<u64> {
+pub fn konusma_izi(msgs: &[Message]) -> Option<u64> {
     use std::hash::{Hash, Hasher};
     let ilk = msgs.iter().find(|m| m.role == "user")?;
     let mut h = std::collections::hash_map::DefaultHasher::new();
@@ -544,7 +544,7 @@ fn konusma_izi(msgs: &[Message]) -> Option<u64> {
 }
 
 /// Yalnizca son `user` mesaji — gerekcesi dosya basindaki durum gerilimi notunda.
-fn son_kullanici_mesaji(msgs: &[Message]) -> Option<String> {
+pub fn son_kullanici_mesaji(msgs: &[Message]) -> Option<String> {
     msgs.iter()
         .rev()
         .find(|m| m.role == "user")
@@ -555,7 +555,7 @@ fn son_kullanici_mesaji(msgs: &[Message]) -> Option<String> {
 ///
 /// Istem kutusuna sigmayan bir metin gonderilemez; ustelik uzun tohum her turda
 /// degil YALNIZCA dizi degistiginde gidiyor, yani bedeli seyrek.
-const TOHUM_AZAMI: usize = 24_000;
+pub const TOHUM_AZAMI: usize = 24_000;
 
 /// Bos bir sohbet dizisine gonderilecek istem: gecmis + asil soru.
 ///
@@ -570,7 +570,7 @@ const TOHUM_AZAMI: usize = 24_000;
 ///
 /// Sistem mesaji da giriyor: tarayici arayuzunde sistem istemi diye ayri bir yer
 /// yok, girmezse modelin yonergeleri kaybolur.
-fn tohum_istemi(msgs: &[Message], azami: usize) -> String {
+pub fn tohum_istemi(msgs: &[Message], azami: usize) -> String {
     let Some(son) = msgs.iter().rposition(|m| m.role == "user") else {
         return String::new();
     };

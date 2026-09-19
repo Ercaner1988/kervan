@@ -9,7 +9,9 @@
 //! Asagidakiler makul baslangic degerleri, kesin degil. Dogru degerleri bulmanin yolu
 //! tahmin degil olcum:
 //!
-//!     kervan <hesap> --saglayici claude --headless --dom
+//! ```text
+//! kervan <hesap> --saglayici claude --headless --dom
+//! ```
 //!
 //! "secici adaylari" bolumu sayfada ne oldugunu sayar; dogru olani `kervan.toml`'a
 //! yazarsin. Yanlis secici sessizce yanlis yanit DONDURMEZ — `ask` istem kutusunu

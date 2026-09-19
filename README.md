@@ -2,6 +2,8 @@
 
 # Kervan
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/Ercaner1988/kervan?utm_source=badge)
+
 Web üzerinden yapay zekâ kullanımını istediğiniz arayüzlere yönlendirmeyi sağlayan bir geçit altyapısı. Rust, tek ikili dosya.
 
 > Çok yoldan yük taşıyan, hangi yolun ne kadar kaldırdığını bilen.

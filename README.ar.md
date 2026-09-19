@@ -2,6 +2,8 @@
 
 # كرفان
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/Ercaner1988/kervan?utm_source=badge)
+
 بنية بوابة توجه استخدام الذكاء الاصطناعي من واجهات الويب إلى نقاط النهاية المطلوبة. Rust، ملف ثنائي واحد.
 
 > حملتُ على دروب كثيرة، وأعلمُ ما يتحمّلُ كلُّ طريق.

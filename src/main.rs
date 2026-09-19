@@ -6,22 +6,13 @@
 //!
 //! Kullanim:  kervan <hesap-adi> [--headless]
 
-mod browser;
-mod config;
-mod kota;
-mod kurulum;
-mod pool;
-mod saglayicilar;
-mod server;
-mod surec;
-mod tara;
-
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use browser::{BrowserBinary, LoginState, Session, detect_login};
+use kervan::browser::{BrowserBinary, LoginState, Session, detect_login};
+use kervan::{browser, config, kota, kurulum, pool, saglayicilar, server, surec, tara};
 
 /// Saglayici verilmediginde kullanilan. Tanimlar `saglayicilar.rs`'te, ezmeler
 /// `kervan.toml`'un `[providers.*]` bolumunde.
