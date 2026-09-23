@@ -114,4 +114,4 @@ Tanımlı: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, 
 
 ## 📜 Lisans
 
-Açık kaynak lisansı henüz seçilmedi; yayım öncesinde kararlaştırılacaktır.
+MIT — ayrıntı için [LICENSE](LICENSE).

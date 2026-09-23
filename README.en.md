@@ -114,4 +114,4 @@ Defined: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, `d
 
 ## 📜 License
 
-No open-source license chosen yet; to be decided before publishing.
+MIT — see [LICENSE](LICENSE).
