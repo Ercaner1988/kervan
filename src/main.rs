@@ -28,6 +28,21 @@ async fn main() -> Result<()> {
     surec::agaci_bagla();
 
     let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|a| a == "mcp" || a == "--mcp") {
+        use std::io::{BufRead, Write};
+        let mcp = kervan::mcp_server::McpSunucusu::yeni();
+        let stdin = std::io::stdin();
+        let mut stdout = std::io::stdout();
+        for satir in stdin.lock().lines() {
+            if let Ok(line) = satir {
+                if let Some(yanit) = mcp.isle_istek(&line) {
+                    writeln!(stdout, "{}", yanit)?;
+                    stdout.flush()?;
+                }
+            }
+        }
+        return Ok(());
+    }
     let hesap = ilk_konumsal(&args).unwrap_or("varsayilan");
     // Gorunur kip varsayilan: insan kapisi icin pencerenin gorulebilmesi gerek.
     let headless = args.iter().any(|a| a == "--headless");
@@ -122,6 +137,9 @@ async fn main() -> Result<()> {
             saglayicilar: defter_saglayici,
             varsayilan_saglayici: varsayilan,
             timeout: YANIT_ZAMAN_ASIMI,
+            eklenti_hub: kervan::eklenti::EklentiHub::new(),
+            compressor: kervan::compressor::Compressor::new(),
+            router: kervan::router::SmartRouter::new(kervan::router::RoutingStrategy::Lkgp),
         });
 
         // Bosta tarayici supurucusu. Havuzun buyuyebilmesini saglayan sey bu:
@@ -140,6 +158,25 @@ async fn main() -> Result<()> {
             });
         } else {
             println!("bosta kapatma: kapali");
+        }
+
+        // --gui bayrağı verildiyse egui arayüzünü başlat, sunucuyu arka planda koştur
+        if args.iter().any(|a| a == "--gui") {
+            #[cfg(feature = "gui")]
+            {
+                let s = state.clone();
+                tokio::spawn(async move {
+                    let _ = server::serve(s, port).await;
+                });
+                return match kervan::gui::KervanApp::baslat(state) {
+                    Ok(()) => Ok(()),
+                    Err(e) => anyhow::bail!("GUI baslatilamadi: {e}"),
+                };
+            }
+            #[cfg(not(feature = "gui"))]
+            {
+                eprintln!("uyari: Kervan GUI ozelligi olmadan derlenmis. '--features gui' ile derleyin.");
+            }
         }
 
         return server::serve(state, port).await;

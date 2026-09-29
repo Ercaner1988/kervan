@@ -19,11 +19,13 @@ use crate::browser::ask;
 use crate::kota::{self, Defter, Sonuc};
 use crate::pool::Pool;
 use anyhow::Result;
+use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 
 pub struct AppState {
@@ -34,6 +36,9 @@ pub struct AppState {
     /// Model istenmediginde kullanilacak saglayici (yapilandirmadaki ilk hesabinki).
     pub varsayilan_saglayici: String,
     pub timeout: std::time::Duration,
+    pub eklenti_hub: crate::eklenti::EklentiHub,
+    pub compressor: crate::compressor::Compressor,
+    pub router: crate::router::SmartRouter,
 }
 
 /// `kervan/<saglayici>` — `/v1/models` bunu listeler, istemci bunu ister.
@@ -46,6 +51,13 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/models", get(models))
         .route("/v1/chat/completions", post(chat))
         .route("/health", get(|| async { "ok" }))
+        .route("/telemetri", get(telemetri_handler))
+        // Zcode tarzı dinamik bakiye ve hediye token takibi
+        .route("/bakiye", get(bakiye_handler))
+        .route("/bakiye/hediye", post(bakiye_hediye_handler))
+        // Eklenti WebSocket köprüsü — WebDriver olmadan doğrudan tarayıcı ile konuşur.
+        .route("/ws/eklenti", get(ws_eklenti_handler))
+        .route("/eklenti/sekmeler", get(eklenti_sekmeler))
         // Hesap durumu — TUI gelene kadarki gorunurluk penceresi. Insan kapisinda
         // bekleyen hesap buradan gorulur.
         .route("/accounts", get(accounts))
@@ -68,6 +80,99 @@ pub fn router(state: Arc<AppState>) -> Router {
         // Kota ogrenicinin gordugu: gercek kullanim ve gozlemden cikan limit.
         .route("/kota", get(kota_ozeti))
         .with_state(state)
+}
+
+async fn ws_eklenti_handler(
+    ws: WebSocketUpgrade,
+    State(st): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| handle_eklenti_socket(socket, st.eklenti_hub.clone()))
+}
+
+async fn handle_eklenti_socket(socket: WebSocket, hub: crate::eklenti::EklentiHub) {
+    let (mut ws_tx, mut ws_rx) = socket.split();
+    let (tx_giden, mut rx_giden) = tokio::sync::mpsc::unbounded_channel::<crate::eklenti::GidenMesaj>();
+
+    let mut provider_kayitli: Option<String> = None;
+
+    // Kervan'dan gelen komutları eklenti WebSocket'ine basan arka plan görevi
+    let giden_gorev = tokio::spawn(async move {
+        while let Some(msg) = rx_giden.recv().await {
+            if let Ok(json) = serde_json::to_string(&msg) {
+                if ws_tx.send(WsMessage::Text(json.into())).await.is_err() {
+                    break;
+                }
+            }
+        }
+    });
+
+    // Eklentiden gelen mesajları okuyan döngü
+    while let Some(Ok(msg)) = ws_rx.next().await {
+        if let WsMessage::Text(text) = msg {
+            if let Ok(gelen) = serde_json::from_str::<crate::eklenti::GelenMesaj>(&text) {
+                if let crate::eklenti::GelenMesaj::Kayit { ref provider, ref profile, .. } = gelen {
+                    let prof = profile.clone().unwrap_or_else(|| "varsayilan".into());
+                    provider_kayitli = Some(provider.clone());
+                    hub.sekme_kaydet(provider.clone(), prof, tx_giden.clone()).await;
+                }
+                hub.mesaji_isle(gelen).await;
+            }
+        }
+    }
+
+    if let Some(p) = provider_kayitli {
+        hub.sekme_ayril(&p).await;
+    }
+    giden_gorev.abort();
+}
+
+async fn eklenti_sekmeler(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let sekmeler = st.eklenti_hub.bagli_sekmeler().await;
+    Json(serde_json::json!({
+        "bagli_sekmeler": sekmeler,
+        "sayi": sekmeler.len(),
+    }))
+}
+
+async fn telemetri_handler(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let strat = *st.router.strategy.read().await;
+    let tasarruf = st.compressor.toplam_tasarruf_orani();
+    let bagli = st.eklenti_hub.bagli_sekmeler().await;
+
+    Json(serde_json::json!({
+        "aktif_yonlendirme_stratejisi": format!("{strat:?}"),
+        "token_tasarruf_orani_yuzde": format!("{:.1}%", tasarruf),
+        "bagli_web_sekmeleri": bagli,
+        "durum": "saglikli",
+    }))
+}
+
+#[derive(Deserialize)]
+struct HediyeIstek {
+    hesap: String,
+    saglayici: String,
+    miktar: u64,
+}
+
+async fn bakiye_handler(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let bakiyeler = st.defter.tum_bakiyeler().await;
+    Json(serde_json::json!({
+        "hesaplar": bakiyeler,
+        "not": "Zcode tarzi dinamik bakiye, haftasonu hediye ve giris takip verileri",
+    }))
+}
+
+async fn bakiye_hediye_handler(
+    State(st): State<Arc<AppState>>,
+    Json(req): Json<HediyeIstek>,
+) -> Response {
+    match st.defter.hediye_ekle(&req.hesap, &req.saglayici, req.miktar).await {
+        Ok(()) => Json(serde_json::json!({
+            "ok": true,
+            "mesaj": format!("{}+{} icin {} hediye token eklendi", req.hesap, req.saglayici, req.miktar),
+        })).into_response(),
+        Err(e) => hata(StatusCode::INTERNAL_SERVER_ERROR, &format!("{e:#}")),
+    }
 }
 
 async fn kota_ozeti(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
@@ -282,17 +387,17 @@ struct ModelInfo {
 // ─── Uclar ───────────────────────────────────────────────────────────────────
 
 async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
-    // Yalniz HESABI OLAN saglayicilar listelenir. Hesapsiz bir modeli listelemek,
-    // istemciye var olmayan bir yol gostermek olurdu — OmniRoute'un katalogunda
-    // gercekte calismayan modellerin durmasi tam olarak bu hataydi.
-    let mut adlar: Vec<String> = st
+    // Hem havuzdaki hesaplar hem de canli bagli eklenti sekmeleri listelenir.
+    let mut ad_seti: std::collections::BTreeSet<String> = st
         .pool
         .slots
         .iter()
         .map(|s| s.provider.ad.clone())
-        .collect::<std::collections::BTreeSet<_>>()
-        .into_iter()
         .collect();
+    for ext_s in st.eklenti_hub.bagli_sekmeler().await {
+        ad_seti.insert(ext_s);
+    }
+    let mut adlar: Vec<String> = ad_seti.into_iter().collect();
     adlar.sort();
     Json(ModelList {
         object: "list",
@@ -313,33 +418,112 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
         return hata(StatusCode::BAD_REQUEST, "messages icinde user rolu yok");
     };
 
-    // Model kimliginden saglayiciyi sec. Taninmayan bir model SESSIZCE varsayilana
-    // dusmemeli: istemci claude isteyip gemini cevabi alirsa bunu fark edemez.
-    let saglayici = if req.model.trim().is_empty() {
-        st.varsayilan_saglayici.clone()
+    // Model kimliginden saglayiciyi sec. 'auto' verilirse SmartRouter en uygununu belirler.
+    let model_adi = req.model.trim();
+    let saglayici = if model_adi.is_empty() || model_adi == "auto" {
+        let mut adaylar = st.eklenti_hub.bagli_sekmeler().await;
+        if adaylar.is_empty() {
+            // Havuzdaki benzersiz saglayicilari aday olarak ekle
+            for slot in &st.pool.slots {
+                if !adaylar.contains(&slot.provider.ad) {
+                    adaylar.push(slot.provider.ad.clone());
+                }
+            }
+        }
+        if let Some(secilen) = st.router.select_provider(&adaylar).await {
+            println!("akilli-rota   : 'auto' isteği için en uygun sağlayıcı seçildi -> [{secilen}]");
+            secilen
+        } else {
+            st.varsayilan_saglayici.clone()
+        }
     } else {
-        match crate::saglayicilar::model_saglayicisi(&req.model, &st.saglayicilar) {
+        match crate::saglayicilar::model_saglayicisi(model_adi, &st.saglayicilar) {
             Some(s) => s,
             None => {
-                let mevcut: Vec<String> = st
-                    .pool
-                    .slots
-                    .iter()
-                    .map(|s| model_kimligi(&s.provider.ad))
-                    .collect::<std::collections::BTreeSet<_>>()
-                    .into_iter()
-                    .collect();
-                return hata(
-                    StatusCode::BAD_REQUEST,
-                    &format!(
-                        "'{}' hangi saglayiciya ait bilinmiyor. Kullanilabilir: {}",
-                        req.model,
-                        mevcut.join(", ")
-                    ),
-                );
+                let sade = model_adi.strip_prefix("kervan/").unwrap_or(model_adi);
+                if st.eklenti_hub.sekme_var_mi(sade).await {
+                    sade.to_string()
+                } else {
+                    let mut mevcut: Vec<String> = st
+                        .pool
+                        .slots
+                        .iter()
+                        .map(|s| model_kimligi(&s.provider.ad))
+                        .collect::<std::collections::BTreeSet<_>>()
+                        .into_iter()
+                        .collect();
+                    for ext_s in st.eklenti_hub.bagli_sekmeler().await {
+                        mevcut.push(model_kimligi(&ext_s));
+                    }
+                    mevcut.push("auto".into());
+                    mevcut.sort();
+                    mevcut.dedup();
+                    return hata(
+                        StatusCode::BAD_REQUEST,
+                        &format!(
+                            "'{}' hangi saglayiciya ait bilinmiyor. Kullanilabilir: {}",
+                            req.model,
+                            mevcut.join(", ")
+                        ),
+                    );
+                }
             }
         }
     };
+
+    // TOKEN SIKIŞTIRMA (RTK + Caveman): Gelen istemi göndermeden önce gereksiz boşluk ve kalıplardan arındır
+    let sikistirma = st.compressor.rtk_sikistir(&istem);
+    let gonderilecek_istem = if sikistirma.tasarruf_yuzdesi > 3.0 {
+        println!(
+            "sıkıştırma   : %{:.1} token tasarrufu sağlandı ({} -> {} karakter)",
+            sikistirma.tasarruf_yuzdesi, sikistirma.orijinal_uzunluk, sikistirma.yeni_uzunluk
+        );
+        &sikistirma.metin
+    } else {
+        &istem
+    };
+
+    // EKLENTİ KONTROLÜ: Eğer ilgili sağlayıcı için eklenti sekmesi bağlıysa,
+    // WebDriver havuzuna hiç bulaşmadan doğrudan eklenti üzerinden sorulur!
+    if st.eklenti_hub.sekme_var_mi(&saglayici).await {
+        println!("[{}] istek Kervan Eklentisi uzerinden iletiliyor ({} karakter)", saglayici, gonderilecek_istem.len());
+        let t = std::time::Instant::now();
+        match st.eklenti_hub.sor(&saglayici, gonderilecek_istem, st.timeout).await {
+            Ok(yanit) => {
+                let latency = t.elapsed().as_millis() as u64;
+                st.router.record_success(&saglayici, latency).await;
+                println!("[{}] eklenti yaniti alindi ({:.1} sn)", saglayici, t.elapsed().as_secs_f32());
+                let model_res = model_kimligi(&saglayici);
+                if req.stream {
+                    return sse_yanit(&yanit, &model_res);
+                }
+                return Json(ChatResponse {
+                    id: format!("chatcmpl-{}", simdi()),
+                    object: "chat.completion",
+                    created: simdi(),
+                    model: model_res,
+                    choices: vec![Choice {
+                        index: 0,
+                        message: Message {
+                            role: "assistant".into(),
+                            content: yanit,
+                        },
+                        finish_reason: "stop",
+                    }],
+                    usage: Usage {
+                        prompt_tokens: 0,
+                        completion_tokens: 0,
+                        total_tokens: 0,
+                    },
+                }).into_response();
+            }
+            Err(e) => {
+                st.router.record_failure(&saglayici).await;
+                println!("[{}] eklenti hatasi: {e:#}", saglayici);
+                return hata(StatusCode::INTERNAL_SERVER_ERROR, &format!("Eklenti hatası: {e:#}"));
+            }
+        }
+    }
 
     // Havuzdan hesap kirala: konusma kendi hesabina sabitlenir, hiz butcesi burada
     // uygulanir, gerekirse beklenir.
@@ -356,7 +540,7 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
     let gonderilecek = if lease.yeni_dizi {
         tohum_istemi(&req.messages, TOHUM_AZAMI)
     } else {
-        istem.clone()
+        gonderilecek_istem.to_string()
     };
     println!(
         "[{}/{}] istek ({} karakter{})",
@@ -370,6 +554,7 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
         }
     );
     let secililer = lease.provider.selectors.clone();
+    let t_wd = std::time::Instant::now();
     let mut sonuc = ask(lease.client(), &secililer, &gonderilecek, st.timeout).await;
 
     // Saglayici "limite ulastin" dediyse bu bir YANIT DEGIL. Oldugu gibi dondurmek
@@ -400,6 +585,7 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
     // ve dogrulama duvariysa hesabi insan kapisinda duraklatir.
     match (&kota_carpmasi, &sonuc) {
         (Some(metin), _) => {
+            st.router.record_failure(&lease.provider.ad).await;
             st.defter
                 .yaz(
                     &lease.name,
@@ -424,12 +610,15 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
                 .await;
         }
         (None, Ok(_)) => {
+            let latency = t_wd.elapsed().as_millis() as u64;
+            st.router.record_success(&lease.provider.ad, latency).await;
             st.defter
                 .yaz(&lease.name, &lease.provider.ad, Sonuc::Basari, None)
                 .await;
             st.pool.basarili(lease.index).await;
         }
         (None, Err(e)) => {
+            st.router.record_failure(&lease.provider.ad).await;
             st.defter
                 .yaz(&lease.name, &lease.provider.ad, Sonuc::Hata, None)
                 .await;

@@ -200,6 +200,66 @@ impl Defter {
             tahmin: tahmin_et(&kendi),
         }
     }
+
+    fn bakiye_yolu(&self) -> PathBuf {
+        self.yol.with_file_name("bakiye.json")
+    }
+
+    pub async fn bakiye_kaydet(&self, b: &HesapBakiyesi) -> Result<()> {
+        let mut hepsi = self.tum_bakiyeler().await;
+        if let Some(pos) = hepsi.iter().position(|x| x.hesap == b.hesap && x.saglayici == b.saglayici) {
+            hepsi[pos] = b.clone();
+        } else {
+            hepsi.push(b.clone());
+        }
+        let json = serde_json::to_string_pretty(&hepsi)?;
+        std::fs::write(self.bakiye_yolu(), json)?;
+        Ok(())
+    }
+
+    pub async fn hediye_ekle(&self, hesap: &str, saglayici: &str, miktar: u64) -> Result<()> {
+        let mut hepsi = self.tum_bakiyeler().await;
+        if let Some(pos) = hepsi.iter().position(|x| x.hesap == hesap && x.saglayici == saglayici) {
+            hepsi[pos].hediye_token_bakiyesi += miktar;
+        } else {
+            hepsi.push(HesapBakiyesi {
+                hesap: hesap.to_string(),
+                saglayici: saglayici.to_string(),
+                gunluk_giris_yapildi: true,
+                son_giris_t: Some(simdi()),
+                tanimli_token_limiti: 0,
+                hediye_token_bakiyesi: miktar,
+                harcanan_tahmini_token: 0,
+            });
+        }
+        let json = serde_json::to_string_pretty(&hepsi)?;
+        std::fs::write(self.bakiye_yolu(), json)?;
+        Ok(())
+    }
+
+    pub async fn tum_bakiyeler(&self) -> Vec<HesapBakiyesi> {
+        let p = self.bakiye_yolu();
+        if p.exists() {
+            if let Ok(s) = std::fs::read_to_string(&p) {
+                if let Ok(liste) = serde_json::from_str::<Vec<HesapBakiyesi>>(&s) {
+                    return liste;
+                }
+            }
+        }
+        Vec::new()
+    }
+}
+
+/// Zcode benzeri dinamik bakiye, günlük giriş ve hediye token takip modeli.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HesapBakiyesi {
+    pub hesap: String,
+    pub saglayici: String,
+    pub gunluk_giris_yapildi: bool,
+    pub son_giris_t: Option<u64>,
+    pub tanimli_token_limiti: u64,
+    pub hediye_token_bakiyesi: u64, // Örn: Haftasonu verilen 3M hediye
+    pub harcanan_tahmini_token: u64,
 }
 
 #[derive(Debug, Serialize)]

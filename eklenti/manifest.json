@@ -1,0 +1,129 @@
+{
+  "manifest_version": 3,
+  "name": "Kervan AI Köprüsü",
+  "version": "0.1.0",
+  "description": "Kervan yerel ağ geçidi için bot-tespiti içermeyen doğrudan WebExtension köprüsü",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "kervan-bridge@ercan.dev",
+      "strict_min_version": "109.0"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; connect-src 'self' ws://127.0.0.1:20129 http://127.0.0.1:20129 ws://localhost:20129 http://localhost:20129;"
+  },
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://chat.qwenlm.ai/*",
+    "*://*.qwen.ai/*",
+    "*://*.kimi.ai/*",
+    "*://*.z.ai/*",
+    "*://gemini.google.com/*",
+    "*://chatgpt.com/*",
+    "*://chat.openai.com/*",
+    "*://*.deepseek.com/*",
+    "*://*.copilot.com/*",
+    "*://copilot.com/*",
+    "*://copilot.microsoft.com/*",
+    "*://m365.cloud.microsoft/*",
+    "*://*.perplexity.ai/*",
+    "*://*.cerebras.ai/*",
+    "*://chat.mistral.ai/*"
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://chat.qwenlm.ai/*",
+        "*://*.qwen.ai/*",
+        "*://*.kimi.ai/*",
+        "*://*.z.ai/*",
+        "*://gemini.google.com/*",
+        "*://chatgpt.com/*",
+        "*://chat.openai.com/*",
+        "*://*.deepseek.com/*",
+        "*://*.copilot.com/*",
+        "*://copilot.com/*",
+        "*://copilot.microsoft.com/*",
+        "*://m365.cloud.microsoft/*",
+        "*://*.perplexity.ai/*",
+        "*://chat.mistral.ai/*"
+      ],
+      "js": ["content_common.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://chat.qwenlm.ai/*",
+        "*://*.qwen.ai/*"
+      ],
+      "js": ["content_qwen.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.kimi.ai/*"
+      ],
+      "js": ["content_kimi.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://gemini.google.com/*"
+      ],
+      "js": ["content_gemini.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.deepseek.com/*"
+      ],
+      "js": ["content_deepseek.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://chatgpt.com/*",
+        "*://chat.openai.com/*"
+      ],
+      "js": ["content_chatgpt.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.copilot.com/*",
+        "*://copilot.com/*",
+        "*://copilot.microsoft.com/*",
+        "*://m365.cloud.microsoft/*"
+      ],
+      "js": ["content_copilot.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.z.ai/*"
+      ],
+      "js": ["content_zai.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.perplexity.ai/*"
+      ],
+      "js": ["content_perplexity.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://chat.mistral.ai/*"
+      ],
+      "js": ["content_mistral.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
