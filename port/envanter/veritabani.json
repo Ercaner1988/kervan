@@ -1,0 +1,2503 @@
+{
+  "toplamGoc": 193,
+  "basariliGoc": 184,
+  "hataliGoc": 9,
+  "hatalar": [
+    "src/lib/db/migrations/007_search_request_type.sql: duplicate column name: request_type",
+    "src/lib/db/migrations/009_requested_model.sql: duplicate column name: requested_model",
+    "src/lib/db/migrations/018_call_logs_detailed_tokens.sql: duplicate column name: tokens_cache_read",
+    "src/lib/db/migrations/021_combo_call_log_targets.sql: duplicate column name: combo_step_id",
+    "src/lib/db/migrations/025_call_logs_summary_storage.sql: no such column: error",
+    "src/lib/db/migrations/054_usage_history_service_tier.sql: duplicate column name: service_tier",
+    "src/lib/db/migrations/127_usage_history_account_identity.sql: no such column: account_key",
+    "src/lib/db/migrations/129_usage_history_codex_strong_identity.sql: no such column: account_key",
+    "src/lib/db/migrations/147_api_keys_model_access_mode.sql: no such column: allowed_models"
+  ],
+  "ozellikSayimi": {
+    "fts5": 3,
+    "with_recursive": 0,
+    "instead_of": 14,
+    "without_rowid": 5,
+    "vacuum_into": 0,
+    "pragma": 4,
+    "json_funcs": 10,
+    "triggers": 10,
+    "views": 0
+  },
+  "tabloSayisi": 136,
+  "indeksSayisi": 330,
+  "gorunumSayisi": 0,
+  "tetikleyiciSayisi": 28,
+  "altinSema": [
+    {
+      "type": "table",
+      "name": "a2a_task_events",
+      "sql": "CREATE TABLE a2a_task_events (\r\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n    task_id TEXT NOT NULL REFERENCES a2a_tasks(id) ON DELETE CASCADE,\r\n    event_type TEXT NOT NULL,\r\n    data_json TEXT,\r\n    created_at TEXT DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "a2a_tasks",
+      "sql": "CREATE TABLE a2a_tasks (\r\n    id TEXT PRIMARY KEY,\r\n    state TEXT NOT NULL DEFAULT 'submitted',\r\n    skill_id TEXT,\r\n    input_json TEXT,\r\n    output_json TEXT,\r\n    cost_estimated REAL,\r\n    cost_actual REAL,\r\n    routing_explanation TEXT,\r\n    resilience_trace TEXT,\r\n    policy_verdict TEXT,\r\n    api_key_id TEXT,\r\n    created_at TEXT DEFAULT (datetime('now')),\r\n    updated_at TEXT DEFAULT (datetime('now')),\r\n    completed_at TEXT,\r\n    expires_at TEXT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "account_key_limits",
+      "sql": "CREATE TABLE account_key_limits (\r\n  account_id       TEXT PRIMARY KEY,\r\n  max_active_keys  INTEGER,\r\n  daily_issue_limit  INTEGER,\r\n  hourly_issue_limit INTEGER,\r\n  daily_issued     INTEGER NOT NULL DEFAULT 0,\r\n  hourly_issued    INTEGER NOT NULL DEFAULT 0,\r\n  last_reset_day   TEXT NOT NULL DEFAULT '',\r\n  last_reset_hour  TEXT NOT NULL DEFAULT '',\r\n  updated_at       TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "agent_bridge_bypass",
+      "sql": "CREATE TABLE agent_bridge_bypass (\r\n  pattern TEXT PRIMARY KEY,\r\n  source TEXT NOT NULL CHECK (source IN ('default','user')),\r\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "agent_bridge_mappings",
+      "sql": "CREATE TABLE agent_bridge_mappings (\r\n  agent_id TEXT NOT NULL,\r\n  source_model TEXT NOT NULL,\r\n  target_model TEXT NOT NULL,\r\n  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\r\n  PRIMARY KEY (agent_id, source_model)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "agent_bridge_state",
+      "sql": "CREATE TABLE agent_bridge_state (\r\n  agent_id TEXT PRIMARY KEY,\r\n  dns_enabled INTEGER NOT NULL DEFAULT 0,\r\n  cert_trusted INTEGER NOT NULL DEFAULT 0,\r\n  setup_completed INTEGER NOT NULL DEFAULT 0,\r\n  last_started_at TEXT,\r\n  last_error TEXT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "agentic_conversations",
+      "sql": "CREATE TABLE agentic_conversations (\r\n  id TEXT PRIMARY KEY,               -- 'conv_' + uuid, or the raw client\r\n                                      -- X-Omniroute-Session-Id value when supplied\r\n  api_key_id TEXT,\r\n  fingerprint_hash TEXT NOT NULL,     -- fast candidate lookup\r\n  last_message_count INTEGER NOT NULL,\r\n  last_messages_hash TEXT NOT NULL,   -- bounded hash, for prefix verification\r\n  turn_count INTEGER NOT NULL DEFAULT 1,\r\n  first_seen_at TEXT NOT NULL,\r\n  last_seen_at TEXT NOT NULL\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "api_key_context_sources",
+      "sql": "CREATE TABLE api_key_context_sources (\r\n  api_key_id TEXT NOT NULL,\r\n  source_type TEXT NOT NULL,\r\n  token TEXT,\r\n  base_url TEXT,\r\n  vault_path TEXT,\r\n  enabled INTEGER NOT NULL DEFAULT 1,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  PRIMARY KEY (api_key_id, source_type),\r\n  FOREIGN KEY (api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "api_key_quota_counters",
+      "sql": "CREATE TABLE api_key_quota_counters (\r\n  api_key_id    TEXT NOT NULL,\r\n  dimension_key TEXT NOT NULL,\r\n  bucket_index  INTEGER NOT NULL,\r\n  consumed      REAL NOT NULL DEFAULT 0,\r\n  updated_at    INTEGER NOT NULL,\r\n  PRIMARY KEY (api_key_id, dimension_key, bucket_index)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "api_key_quota_limits",
+      "sql": "CREATE TABLE api_key_quota_limits (\r\n  api_key_id         TEXT PRIMARY KEY,\r\n  tpm_limit          INTEGER,\r\n  rpm_limit          INTEGER,\r\n  monthly_amount_usd REAL,\r\n  updated_at         TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "api_key_token_counters",
+      "sql": "CREATE TABLE api_key_token_counters (\r\n  limit_id      TEXT NOT NULL,\r\n  window_start  TEXT NOT NULL,\r\n  tokens_used   INTEGER NOT NULL DEFAULT 0,\r\n  updated_at    TEXT NOT NULL DEFAULT (datetime('now')),\r\n  PRIMARY KEY (limit_id, window_start),\r\n  FOREIGN KEY (limit_id) REFERENCES api_key_token_limits (id) ON DELETE CASCADE\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "api_key_token_limit_reset_logs",
+      "sql": "CREATE TABLE api_key_token_limit_reset_logs (\r\n  id            INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  limit_id      TEXT NOT NULL,\r\n  reset_at      TEXT NOT NULL DEFAULT (datetime('now')),\r\n  prev_tokens   INTEGER NOT NULL DEFAULT 0,\r\n  window_start  TEXT NOT NULL,\r\n  FOREIGN KEY (limit_id) REFERENCES api_key_token_limits (id) ON DELETE CASCADE\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "api_key_token_limits",
+      "sql": "CREATE TABLE \"api_key_token_limits\" (\r\n  id              TEXT PRIMARY KEY,\r\n  api_key_id      TEXT NOT NULL,\r\n  scope_type      TEXT NOT NULL CHECK (scope_type IN ('model', 'provider', 'global')),\r\n  scope_value     TEXT NOT NULL DEFAULT '',\r\n  token_limit     INTEGER NOT NULL CHECK (token_limit > 0),\r\n  reset_interval  TEXT NOT NULL DEFAULT 'monthly' CHECK (reset_interval IN ('daily', 'weekly', 'monthly')),\r\n  reset_time      TEXT,\r\n  enabled         INTEGER NOT NULL DEFAULT 1,\r\n  created_at      TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at      TEXT NOT NULL DEFAULT (datetime('now')),\r\n  UNIQUE (api_key_id, scope_type, scope_value, reset_interval)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "api_keys",
+      "sql": "CREATE TABLE api_keys (\r\n  id TEXT PRIMARY KEY,\r\n  name TEXT NOT NULL,\r\n  key TEXT NOT NULL UNIQUE,\r\n  machine_id TEXT,\r\n  created_at TEXT NOT NULL\r\n, revoked_at TEXT, expires_at TEXT, last_used_at TEXT, key_prefix TEXT, ip_allowlist TEXT, scopes TEXT, allowed_combos TEXT, throttle_delay_ms INTEGER, stream_default_mode TEXT NOT NULL DEFAULT 'legacy', allowed_quotas TEXT NOT NULL DEFAULT '[]', disable_non_public_models INTEGER NOT NULL DEFAULT 0, usage_limit_enabled INTEGER NOT NULL DEFAULT 0, daily_usage_limit_usd REAL, weekly_usage_limit_usd REAL, cache_default_mode TEXT NOT NULL DEFAULT 'legacy', model_access_mode TEXT NOT NULL DEFAULT 'all'\r\nCHECK (model_access_mode IN ('all', 'restricted')), compression_enabled INTEGER NOT NULL DEFAULT 1)"
+    },
+    {
+      "type": "table",
+      "name": "auto_candidate_overrides",
+      "sql": "CREATE TABLE auto_candidate_overrides (\r\n  id TEXT PRIMARY KEY,\r\n  api_key_id TEXT NOT NULL,\r\n  auto_channel TEXT NOT NULL,\r\n  connection_id TEXT NOT NULL,\r\n  excluded INTEGER NOT NULL DEFAULT 1,\r\n  created_at TEXT NOT NULL,\r\n  UNIQUE(api_key_id, auto_channel, connection_id)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "badge_definitions",
+      "sql": "CREATE TABLE badge_definitions (\r\n  id TEXT PRIMARY KEY,\r\n  name TEXT NOT NULL,\r\n  description TEXT,\r\n  icon TEXT,\r\n  category TEXT,\r\n  rarity TEXT NOT NULL DEFAULT 'common',\r\n  criteria TEXT,\r\n  hidden INTEGER NOT NULL DEFAULT 0,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "batch_item_checkpoints",
+      "sql": "CREATE TABLE batch_item_checkpoints (\r\n  batch_id TEXT NOT NULL,\r\n  line_number INTEGER NOT NULL,\r\n  custom_id TEXT,\r\n  status TEXT NOT NULL CHECK(status IN ('pending', 'processing', 'completed', 'errored')),\r\n  result_json TEXT,\r\n  error_json TEXT,\r\n  created_at INTEGER NOT NULL,\r\n  updated_at INTEGER NOT NULL,\r\n  PRIMARY KEY (batch_id, line_number),\r\n  FOREIGN KEY(batch_id) REFERENCES batches(id) ON DELETE CASCADE\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "batches",
+      "sql": "CREATE TABLE batches (\r\n  id TEXT PRIMARY KEY,\r\n  endpoint TEXT NOT NULL,\r\n  completion_window TEXT NOT NULL,\r\n  status TEXT NOT NULL,\r\n  input_file_id TEXT NOT NULL,\r\n  output_file_id TEXT,\r\n  error_file_id TEXT,\r\n  created_at INTEGER NOT NULL,\r\n  in_progress_at INTEGER,\r\n  expires_at INTEGER,\r\n  finalizing_at INTEGER,\r\n  completed_at INTEGER,\r\n  failed_at INTEGER,\r\n  expired_at INTEGER,\r\n  cancelling_at INTEGER,\r\n  cancelled_at INTEGER,\r\n  request_counts_total INTEGER DEFAULT 0,\r\n  request_counts_completed INTEGER DEFAULT 0,\r\n  request_counts_failed INTEGER DEFAULT 0,\r\n  metadata TEXT,\r\n  api_key_id TEXT,\r\n  errors TEXT,\r\n  model TEXT,\r\n  usage TEXT,\r\n  output_expires_after_seconds INTEGER,\r\n  output_expires_after_anchor TEXT,\r\n  FOREIGN KEY(input_file_id) REFERENCES files(id),\r\n  FOREIGN KEY(output_file_id) REFERENCES files(id),\r\n  FOREIGN KEY(error_file_id) REFERENCES files(id)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "call_logs",
+      "sql": "CREATE TABLE call_logs (\r\n  id TEXT PRIMARY KEY,\r\n  timestamp TEXT NOT NULL,\r\n  method TEXT,\r\n  path TEXT,\r\n  status INTEGER,\r\n  model TEXT,\r\n  requested_model TEXT,\r\n  provider TEXT,\r\n  account TEXT,\r\n  connection_id TEXT,\r\n  duration INTEGER DEFAULT 0,\r\n  tokens_in INTEGER DEFAULT 0,\r\n  tokens_out INTEGER DEFAULT 0,\r\n  tokens_cache_read INTEGER DEFAULT NULL,\r\n  tokens_cache_creation INTEGER DEFAULT NULL,\r\n  tokens_reasoning INTEGER DEFAULT NULL,\r\n  cache_source TEXT DEFAULT 'upstream',\r\n  request_type TEXT,\r\n  source_format TEXT,\r\n  target_format TEXT,\r\n  api_key_id TEXT,\r\n  api_key_name TEXT,\r\n  combo_name TEXT,\r\n  combo_step_id TEXT,\r\n  combo_execution_key TEXT,\r\n  error_summary TEXT,\r\n  detail_state TEXT DEFAULT 'none',\r\n  artifact_relpath TEXT,\r\n  artifact_size_bytes INTEGER DEFAULT NULL,\r\n  artifact_sha256 TEXT DEFAULT NULL,\r\n  has_request_body INTEGER DEFAULT 0,\r\n  has_response_body INTEGER DEFAULT 0,\r\n  has_pipeline_details INTEGER DEFAULT 0,\r\n  request_summary TEXT\r\n, tokens_compressed INTEGER DEFAULT NULL, correlation_id TEXT, reasoning_source TEXT DEFAULT NULL, reasoning_chars INTEGER DEFAULT NULL, session_tag TEXT DEFAULT NULL, response_id TEXT DEFAULT NULL, error_type TEXT DEFAULT NULL, video_content_removed INTEGER NOT NULL DEFAULT 0, reasoning_duration_ms INTEGER DEFAULT NULL, reasoning_effort_requested TEXT DEFAULT NULL, reasoning_effort_upstream TEXT DEFAULT NULL, reasoning_encrypted INTEGER DEFAULT NULL, has_content INTEGER DEFAULT NULL, usage_provenance TEXT DEFAULT NULL, resilience_actions TEXT DEFAULT NULL, added_wait_ms INTEGER DEFAULT NULL, added_wait_cause TEXT DEFAULT NULL, ttft_ms INTEGER DEFAULT NULL)"
+    },
+    {
+      "type": "table",
+      "name": "call_logs_v1_legacy",
+      "sql": "CREATE TABLE \"call_logs_v1_legacy\" (\r\n  id TEXT PRIMARY KEY,\r\n  timestamp TEXT NOT NULL,\r\n  method TEXT,\r\n  path TEXT,\r\n  status INTEGER,\r\n  model TEXT,\r\n  requested_model TEXT,\r\n  provider TEXT,\r\n  account TEXT,\r\n  connection_id TEXT,\r\n  duration INTEGER DEFAULT 0,\r\n  tokens_in INTEGER DEFAULT 0,\r\n  tokens_out INTEGER DEFAULT 0,\r\n  tokens_cache_read INTEGER DEFAULT NULL,\r\n  tokens_cache_creation INTEGER DEFAULT NULL,\r\n  tokens_reasoning INTEGER DEFAULT NULL,\r\n  cache_source TEXT DEFAULT 'upstream',\r\n  request_type TEXT,\r\n  source_format TEXT,\r\n  target_format TEXT,\r\n  api_key_id TEXT,\r\n  api_key_name TEXT,\r\n  combo_name TEXT,\r\n  combo_step_id TEXT,\r\n  combo_execution_key TEXT,\r\n  error_summary TEXT,\r\n  detail_state TEXT DEFAULT 'none',\r\n  artifact_relpath TEXT,\r\n  artifact_size_bytes INTEGER DEFAULT NULL,\r\n  artifact_sha256 TEXT DEFAULT NULL,\r\n  has_request_body INTEGER DEFAULT 0,\r\n  has_response_body INTEGER DEFAULT 0,\r\n  has_pipeline_details INTEGER DEFAULT 0,\r\n  request_summary TEXT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "ccr_blocks",
+      "sql": "CREATE TABLE ccr_blocks (\r\n  principal_id     TEXT    NOT NULL,\r\n  hash             TEXT    NOT NULL,\r\n  content          TEXT    NOT NULL,\r\n  bytes            INTEGER NOT NULL,\r\n  chars            INTEGER NOT NULL,\r\n  lines            INTEGER NOT NULL,\r\n  content_type     TEXT    NOT NULL DEFAULT 'text/plain',\r\n  source           TEXT    NOT NULL DEFAULT 'compression',\r\n  created_at       INTEGER NOT NULL,\r\n  last_accessed_at INTEGER NOT NULL,\r\n  expires_at       INTEGER NOT NULL,\r\n  PRIMARY KEY (principal_id, hash)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "cli_access_tokens",
+      "sql": "CREATE TABLE cli_access_tokens (\r\n  id           TEXT PRIMARY KEY,\r\n  token_hash   TEXT NOT NULL UNIQUE,\r\n  token_prefix TEXT NOT NULL,\r\n  name         TEXT NOT NULL,\r\n  scope        TEXT NOT NULL DEFAULT 'read',\r\n  created_at   TEXT NOT NULL DEFAULT (datetime('now')),\r\n  last_used_at TEXT,\r\n  expires_at   TEXT,\r\n  revoked_at   TEXT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "cloud_agent_credentials",
+      "sql": "CREATE TABLE cloud_agent_credentials (\r\n  provider_id TEXT PRIMARY KEY,\r\n  api_key_encrypted TEXT NOT NULL,\r\n  base_url TEXT,\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "combo_adaptation_state",
+      "sql": "CREATE TABLE combo_adaptation_state (\r\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n    combo_id TEXT NOT NULL,\r\n    provider_id TEXT NOT NULL,\r\n    learned_score REAL DEFAULT 0.5,\r\n    request_count INTEGER DEFAULT 0,\r\n    success_count INTEGER DEFAULT 0,\r\n    avg_latency_ms REAL,\r\n    last_failure_at TEXT,\r\n    excluded_until TEXT,\r\n    updated_at TEXT DEFAULT (datetime('now')),\r\n    UNIQUE(combo_id, provider_id)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "combos",
+      "sql": "CREATE TABLE combos (\r\n  id TEXT PRIMARY KEY,\r\n  name TEXT NOT NULL UNIQUE,\r\n  data TEXT NOT NULL,\r\n  created_at TEXT NOT NULL,\r\n  updated_at TEXT NOT NULL\r\n, system_message TEXT DEFAULT NULL, tool_filter_regex TEXT DEFAULT NULL, context_cache_protection INTEGER DEFAULT 0, sort_order INTEGER NOT NULL DEFAULT 0)"
+    },
+    {
+      "type": "table",
+      "name": "command_code_auth_sessions",
+      "sql": "CREATE TABLE command_code_auth_sessions (\r\n  id TEXT PRIMARY KEY,\r\n  state_hash TEXT NOT NULL UNIQUE,\r\n  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'received', 'applied', 'expired')),\r\n  encrypted_api_key TEXT,\r\n  metadata_json TEXT,\r\n  created_at TEXT NOT NULL,\r\n  expires_at TEXT NOT NULL,\r\n  received_at TEXT,\r\n  applied_at TEXT,\r\n  updated_at TEXT NOT NULL\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "community_servers",
+      "sql": "CREATE TABLE community_servers (\r\n  id TEXT PRIMARY KEY,\r\n  name TEXT NOT NULL,\r\n  url TEXT NOT NULL,\r\n  api_key_hash TEXT NOT NULL,\r\n  connected_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  last_sync_at TEXT,\r\n  status TEXT NOT NULL DEFAULT 'connected' CHECK (status IN ('connected', 'disconnected', 'error')),\r\n  error_message TEXT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "compression_analytics",
+      "sql": "CREATE TABLE compression_analytics (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  timestamp TEXT NOT NULL,\r\n  combo_id TEXT,\r\n  provider TEXT,\r\n  mode TEXT NOT NULL,\r\n  original_tokens INTEGER NOT NULL,\r\n  compressed_tokens INTEGER NOT NULL,\r\n  tokens_saved INTEGER NOT NULL,\r\n  duration_ms INTEGER,\r\n  request_id TEXT\r\n, actual_prompt_tokens INTEGER, actual_completion_tokens INTEGER, actual_total_tokens INTEGER, actual_cache_read_tokens INTEGER, actual_cache_write_tokens INTEGER, estimated_usd_saved REAL, mcp_description_tokens_saved INTEGER DEFAULT 0, multimodal_skip_count INTEGER DEFAULT 0, receipt_source TEXT, validation_fallback INTEGER DEFAULT 0, output_mode TEXT)"
+    },
+    {
+      "type": "table",
+      "name": "compression_cache_stats",
+      "sql": "CREATE TABLE compression_cache_stats (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  provider TEXT NOT NULL,\r\n  model TEXT NOT NULL DEFAULT '',\r\n  compression_mode TEXT NOT NULL,\r\n  cache_control_present INTEGER NOT NULL DEFAULT 0,\r\n  estimated_cache_hit INTEGER NOT NULL DEFAULT 0,\r\n  tokens_saved_compression INTEGER NOT NULL DEFAULT 0,\r\n  tokens_saved_caching INTEGER NOT NULL DEFAULT 0,\r\n  net_savings INTEGER NOT NULL DEFAULT 0,\r\n  created_at DATETIME DEFAULT CURRENT_TIMESTAMP\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "compression_combo_assignments",
+      "sql": "CREATE TABLE compression_combo_assignments (\r\n  id TEXT PRIMARY KEY,\r\n  compression_combo_id TEXT NOT NULL REFERENCES compression_combos(id) ON DELETE CASCADE,\r\n  routing_combo_id TEXT NOT NULL,\r\n  created_at TEXT DEFAULT (datetime('now')),\r\n  UNIQUE(routing_combo_id)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "compression_combos",
+      "sql": "CREATE TABLE compression_combos (\r\n  id TEXT PRIMARY KEY,\r\n  name TEXT NOT NULL,\r\n  description TEXT DEFAULT '',\r\n  pipeline TEXT NOT NULL DEFAULT '[]',\r\n  language_packs TEXT DEFAULT '[\"en\"]',\r\n  output_mode INTEGER DEFAULT 0,\r\n  output_mode_intensity TEXT DEFAULT 'full',\r\n  is_default INTEGER DEFAULT 0,\r\n  created_at TEXT DEFAULT (datetime('now')),\r\n  updated_at TEXT DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "config_audit_log",
+      "sql": "CREATE TABLE config_audit_log (\r\n  id TEXT PRIMARY KEY,\r\n  timestamp TEXT NOT NULL,\r\n  action TEXT NOT NULL,\r\n  target TEXT NOT NULL,\r\n  target_id TEXT NOT NULL,\r\n  target_name TEXT NOT NULL,\r\n  before_json TEXT,\r\n  after_json TEXT,\r\n  diff_json TEXT NOT NULL,\r\n  source TEXT NOT NULL,\r\n  note TEXT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "connection_runtime_state",
+      "sql": "CREATE TABLE connection_runtime_state (\r\n  connection_id TEXT PRIMARY KEY REFERENCES provider_connections(id) ON DELETE CASCADE,\r\n  refresh_circuit_streak INTEGER DEFAULT 0,\r\n  refresh_circuit_until TEXT,\r\n  refresh_last_fail_at TEXT,\r\n  warmup_circuit_streak INTEGER DEFAULT 0,\r\n  warmup_circuit_until TEXT,\r\n  warmup_last_fail_at TEXT,\r\n  last_warmup_at TEXT,\r\n  last_warmup_result TEXT,\r\n  warmup_tokens_used INTEGER DEFAULT 0,\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "context_handoffs",
+      "sql": "CREATE TABLE context_handoffs (\r\n  id                    TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),\r\n  session_id            TEXT NOT NULL,\r\n  combo_name            TEXT NOT NULL,\r\n  from_account          TEXT NOT NULL,\r\n  summary               TEXT NOT NULL,\r\n  key_decisions         TEXT NOT NULL DEFAULT '[]',\r\n  task_progress         TEXT NOT NULL DEFAULT '',\r\n  active_entities       TEXT NOT NULL DEFAULT '[]',\r\n  message_count         INTEGER NOT NULL DEFAULT 0,\r\n  model                 TEXT NOT NULL DEFAULT '',\r\n  warning_threshold_pct REAL NOT NULL DEFAULT 0.85,\r\n  generated_at          TEXT NOT NULL,\r\n  expires_at            TEXT NOT NULL,\r\n  created_at            TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))\r\n, last_model TEXT)"
+    },
+    {
+      "type": "table",
+      "name": "conversation_turn_nodes",
+      "sql": "CREATE TABLE conversation_turn_nodes (\r\n  id TEXT PRIMARY KEY,               -- chain hash, see above\r\n  conversation_id TEXT NOT NULL,     -- agentic_conversations.id (this chain's conversation)\r\n  parent_id TEXT,                    -- NULL for the first turn of the chain\r\n  role TEXT NOT NULL,\r\n  content_hash TEXT NOT NULL DEFAULT '', -- sha256(role+text) — reconnect-anchor lookup AND\r\n                                      -- the key the tree API resolves display content by\r\n  last_correlation_id TEXT,          -- call_logs.correlation_id of the request that\r\n                                      -- (re)touched this node — resolveConversationId\r\n                                      -- runs before the call_logs row's own id exists,\r\n                                      -- but correlation_id (109_call_logs_correlation_id)\r\n                                      -- is already generated earlier in the same request\r\n                                      -- and is available synchronously; the tree API route\r\n                                      -- joins through it to the call_logs artifact holding\r\n                                      -- this node's actual display content\r\n  first_seen_at TEXT NOT NULL,\r\n  last_seen_at TEXT NOT NULL\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "daily_usage_summary",
+      "sql": "CREATE TABLE daily_usage_summary (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  provider TEXT NOT NULL,\r\n  model TEXT NOT NULL,\r\n  date TEXT NOT NULL, -- Format: YYYY-MM-DD\r\n  total_requests INTEGER NOT NULL DEFAULT 0,\r\n  total_input_tokens INTEGER NOT NULL DEFAULT 0,\r\n  total_output_tokens INTEGER NOT NULL DEFAULT 0,\r\n  total_cost REAL NOT NULL DEFAULT 0.0,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "db_meta",
+      "sql": "CREATE TABLE db_meta (\r\n  key TEXT PRIMARY KEY,\r\n  value TEXT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "discovery_results",
+      "sql": "CREATE TABLE discovery_results (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  provider_id TEXT NOT NULL,\r\n  method TEXT NOT NULL CHECK(method IN ('free_tier', 'web_cookie', 'auto_register', 'trial', 'public_api')),\r\n  endpoint TEXT,\r\n  auth_type TEXT CHECK(auth_type IN ('none', 'cookie', 'api_key', 'oauth')),\r\n  models TEXT, -- JSON array\r\n  rate_limit TEXT,\r\n  feasibility INTEGER CHECK(feasibility BETWEEN 1 AND 5),\r\n  risk_level TEXT CHECK(risk_level IN ('none', 'low', 'medium', 'high', 'critical')),\r\n  status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'testing', 'verified', 'rejected')),\r\n  notes TEXT,\r\n  discovered_at TEXT DEFAULT (datetime('now')),\r\n  verified_at TEXT,\r\n  UNIQUE(provider_id, method, endpoint)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "domain_budgets",
+      "sql": "CREATE TABLE domain_budgets (\r\n  api_key_id TEXT PRIMARY KEY,\r\n  daily_limit_usd REAL NOT NULL,\r\n  monthly_limit_usd REAL DEFAULT 0,\r\n  warning_threshold REAL DEFAULT 0.8\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "domain_circuit_breakers",
+      "sql": "CREATE TABLE domain_circuit_breakers (\r\n  name TEXT PRIMARY KEY,\r\n  state TEXT NOT NULL DEFAULT 'CLOSED',\r\n  failure_count INTEGER DEFAULT 0,\r\n  last_failure_time INTEGER,\r\n  options TEXT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "domain_cost_history",
+      "sql": "CREATE TABLE domain_cost_history (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  api_key_id TEXT NOT NULL,\r\n  cost REAL NOT NULL,\r\n  timestamp INTEGER NOT NULL\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "domain_fallback_chains",
+      "sql": "CREATE TABLE domain_fallback_chains (\r\n  model TEXT PRIMARY KEY,\r\n  chain TEXT NOT NULL\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "domain_lockout_state",
+      "sql": "CREATE TABLE domain_lockout_state (\r\n  identifier TEXT PRIMARY KEY,\r\n  attempts TEXT NOT NULL,\r\n  locked_until INTEGER\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "eval_cases",
+      "sql": "CREATE TABLE eval_cases (\r\n  id TEXT PRIMARY KEY,\r\n  suite_id TEXT NOT NULL,\r\n  sort_order INTEGER NOT NULL DEFAULT 0,\r\n  name TEXT NOT NULL,\r\n  model TEXT,\r\n  input_json TEXT NOT NULL,\r\n  expected_strategy TEXT NOT NULL,\r\n  expected_value TEXT,\r\n  tags_json TEXT,\r\n  created_at TEXT NOT NULL,\r\n  updated_at TEXT NOT NULL\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "eval_runs",
+      "sql": "CREATE TABLE eval_runs (\r\n  id TEXT PRIMARY KEY,\r\n  run_group_id TEXT,\r\n  suite_id TEXT NOT NULL,\r\n  suite_name TEXT NOT NULL,\r\n  target_type TEXT NOT NULL,\r\n  target_id TEXT,\r\n  target_label TEXT NOT NULL,\r\n  api_key_id TEXT,\r\n  pass_rate INTEGER NOT NULL DEFAULT 0,\r\n  total INTEGER NOT NULL DEFAULT 0,\r\n  passed INTEGER NOT NULL DEFAULT 0,\r\n  failed INTEGER NOT NULL DEFAULT 0,\r\n  avg_latency_ms INTEGER NOT NULL DEFAULT 0,\r\n  summary_json TEXT NOT NULL,\r\n  results_json TEXT NOT NULL,\r\n  outputs_json TEXT,\r\n  created_at TEXT NOT NULL\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "eval_suites",
+      "sql": "CREATE TABLE eval_suites (\r\n  id TEXT PRIMARY KEY,\r\n  name TEXT NOT NULL,\r\n  description TEXT,\r\n  created_at TEXT NOT NULL,\r\n  updated_at TEXT NOT NULL\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "exclusive_connection_leases",
+      "sql": "CREATE TABLE exclusive_connection_leases (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  lease_owner_hash TEXT NOT NULL\r\n    CHECK (length(lease_owner_hash) = 64 AND lease_owner_hash = lower(lease_owner_hash)),\r\n  api_key_id TEXT NOT NULL,\r\n  provider TEXT NOT NULL,\r\n  connection_id TEXT NOT NULL,\r\n  generation INTEGER NOT NULL CHECK (generation > 0),\r\n  state TEXT NOT NULL\r\n    CHECK (state IN ('ACTIVE', 'RELEASED', 'EXPIRED', 'INVALIDATED')),\r\n  acquired_at TEXT NOT NULL,\r\n  renewed_at TEXT NOT NULL,\r\n  expires_at TEXT NOT NULL,\r\n  ended_at TEXT,\r\n  end_reason TEXT\r\n)"
+    },
+    {
+      "type": "trigger",
+      "name": "exclusive_connection_leases_retire_chatgpt_web_insert",
+      "sql": "CREATE TRIGGER exclusive_connection_leases_retire_chatgpt_web_insert\r\nAFTER INSERT ON exclusive_connection_leases\r\nWHEN NEW.state = 'ACTIVE'\r\n  AND (\r\n    lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n      = 'cgpt-web'\r\n    OR EXISTS (\r\n      SELECT 1\r\n      FROM provider_connections\r\n      WHERE id = NEW.connection_id\r\n        AND lower(trim(provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n          = 'cgpt-web'\r\n    )\r\n  )\r\nBEGIN\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = datetime('now'),\r\n      end_reason = 'CONNECTION_INELIGIBLE'\r\n  WHERE id = NEW.id\r\n    AND state = 'ACTIVE';\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "exclusive_connection_leases_retire_chatgpt_web_update",
+      "sql": "CREATE TRIGGER exclusive_connection_leases_retire_chatgpt_web_update\r\nAFTER UPDATE OF provider, connection_id, state ON exclusive_connection_leases\r\nWHEN NEW.state = 'ACTIVE'\r\n  AND (\r\n    lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n      = 'cgpt-web'\r\n    OR EXISTS (\r\n      SELECT 1\r\n      FROM provider_connections\r\n      WHERE id = NEW.connection_id\r\n        AND lower(trim(provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n          = 'cgpt-web'\r\n    )\r\n  )\r\nBEGIN\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = datetime('now'),\r\n      end_reason = 'CONNECTION_INELIGIBLE'\r\n  WHERE id = NEW.id\r\n    AND state = 'ACTIVE';\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "exclusive_connection_leases_retire_felo_web_insert",
+      "sql": "CREATE TRIGGER exclusive_connection_leases_retire_felo_web_insert\r\nAFTER INSERT ON exclusive_connection_leases\r\nWHEN NEW.state = 'ACTIVE'\r\n  AND (\r\n    lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n      IN ('felo-web', 'felo')\r\n    OR EXISTS (\r\n      SELECT 1\r\n      FROM provider_connections\r\n      WHERE id = NEW.connection_id\r\n        AND lower(trim(provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n          IN ('felo-web', 'felo')\r\n    )\r\n  )\r\nBEGIN\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = datetime('now'),\r\n      end_reason = 'CONNECTION_INELIGIBLE'\r\n  WHERE id = NEW.id\r\n    AND state = 'ACTIVE';\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "exclusive_connection_leases_retire_felo_web_update",
+      "sql": "CREATE TRIGGER exclusive_connection_leases_retire_felo_web_update\r\nAFTER UPDATE OF provider, connection_id, state ON exclusive_connection_leases\r\nWHEN NEW.state = 'ACTIVE'\r\n  AND (\r\n    lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n      IN ('felo-web', 'felo')\r\n    OR EXISTS (\r\n      SELECT 1\r\n      FROM provider_connections\r\n      WHERE id = NEW.connection_id\r\n        AND lower(trim(provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n          IN ('felo-web', 'felo')\r\n    )\r\n  )\r\nBEGIN\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = datetime('now'),\r\n      end_reason = 'CONNECTION_INELIGIBLE'\r\n  WHERE id = NEW.id\r\n    AND state = 'ACTIVE';\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "exclusive_connection_leases_retire_qwen_web_insert",
+      "sql": "CREATE TRIGGER exclusive_connection_leases_retire_qwen_web_insert\r\nAFTER INSERT ON exclusive_connection_leases\r\nWHEN NEW.state = 'ACTIVE'\r\n  AND (\r\n    lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n      IN ('qwen-web', 'qw')\r\n    OR EXISTS (\r\n      SELECT 1\r\n      FROM provider_connections\r\n      WHERE id = NEW.connection_id\r\n        AND lower(trim(provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n          IN ('qwen-web', 'qw')\r\n    )\r\n  )\r\nBEGIN\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = COALESCE(ended_at, datetime('now')),\r\n      end_reason = 'CONNECTION_INELIGIBLE'\r\n  WHERE id = NEW.id\r\n    AND state = 'ACTIVE';\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "exclusive_connection_leases_retire_qwen_web_update",
+      "sql": "CREATE TRIGGER exclusive_connection_leases_retire_qwen_web_update\r\nAFTER UPDATE OF provider, connection_id, state ON exclusive_connection_leases\r\nWHEN NEW.state = 'ACTIVE'\r\n  AND (\r\n    lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n      IN ('qwen-web', 'qw')\r\n    OR EXISTS (\r\n      SELECT 1\r\n      FROM provider_connections\r\n      WHERE id = NEW.connection_id\r\n        AND lower(trim(provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n          IN ('qwen-web', 'qw')\r\n    )\r\n  )\r\nBEGIN\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = COALESCE(ended_at, datetime('now')),\r\n      end_reason = 'CONNECTION_INELIGIBLE'\r\n  WHERE id = NEW.id\r\n    AND state = 'ACTIVE';\r\nEND"
+    },
+    {
+      "type": "table",
+      "name": "files",
+      "sql": "CREATE TABLE files (\r\n  id TEXT PRIMARY KEY,\r\n  bytes INTEGER NOT NULL,\r\n  created_at INTEGER NOT NULL,\r\n  filename TEXT NOT NULL,\r\n  purpose TEXT NOT NULL,\r\n  content BLOB,\r\n  mime_type TEXT,\r\n  api_key_id TEXT,\r\n  deleted_at INTEGER,\r\n  expires_at INTEGER\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "free_proxies",
+      "sql": "CREATE TABLE free_proxies (\r\n  id TEXT PRIMARY KEY,\r\n  source TEXT NOT NULL,          -- '1proxy' | 'proxifly' | 'iplocate'\r\n  host TEXT NOT NULL,\r\n  port INTEGER NOT NULL,\r\n  type TEXT NOT NULL DEFAULT 'http',\r\n  country_code TEXT,\r\n  quality_score INTEGER,\r\n  latency_ms INTEGER,\r\n  anonymity TEXT,\r\n  last_validated TEXT,\r\n  in_pool INTEGER DEFAULT 0,     -- 0 = not in registry, 1 = promoted to proxy_registry\r\n  pool_proxy_id TEXT,            -- FK para proxy_registry.id se in_pool=1\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  UNIQUE(source, host, port)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "free_proxy_sync_errors",
+      "sql": "CREATE TABLE free_proxy_sync_errors (\r\n  source TEXT PRIMARY KEY,\r\n  errors TEXT NOT NULL,\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "group_model_permissions",
+      "sql": "CREATE TABLE group_model_permissions (\r\n  id TEXT PRIMARY KEY NOT NULL,\r\n  group_id TEXT NOT NULL,\r\n  -- Model identifier (supports wildcards: \"gpt-*\", \"claude-*\", \"*\" for all)\r\n  model_pattern TEXT NOT NULL,\r\n  -- Provider constraint (NULL = any provider, otherwise specific provider ID)\r\n  provider TEXT,\r\n  -- Allow or deny\r\n  access_type TEXT NOT NULL DEFAULT 'allow' CHECK(access_type IN ('allow', 'deny')),\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  FOREIGN KEY (group_id) REFERENCES key_groups(id) ON DELETE CASCADE\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "hourly_usage_summary",
+      "sql": "CREATE TABLE hourly_usage_summary (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  provider TEXT NOT NULL,\r\n  model TEXT NOT NULL,\r\n  date_hour TEXT NOT NULL, -- Format: YYYY-MM-DD HH:00:00\r\n  total_requests INTEGER NOT NULL DEFAULT 0,\r\n  total_input_tokens INTEGER NOT NULL DEFAULT 0,\r\n  total_output_tokens INTEGER NOT NULL DEFAULT 0,\r\n  total_cost REAL NOT NULL DEFAULT 0.0,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_a2a_created",
+      "sql": "CREATE INDEX idx_a2a_created ON a2a_tasks(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_a2a_skill",
+      "sql": "CREATE INDEX idx_a2a_skill ON a2a_tasks(skill_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_a2a_state",
+      "sql": "CREATE INDEX idx_a2a_state ON a2a_tasks(state)"
+    },
+    {
+      "type": "index",
+      "name": "idx_a2ae_task",
+      "sql": "CREATE INDEX idx_a2ae_task ON a2a_task_events(task_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_a2ae_type",
+      "sql": "CREATE INDEX idx_a2ae_type ON a2a_task_events(event_type)"
+    },
+    {
+      "type": "index",
+      "name": "idx_agent_bridge_mappings_agent",
+      "sql": "CREATE INDEX idx_agent_bridge_mappings_agent ON agent_bridge_mappings(agent_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_agentic_conversations_api_key",
+      "sql": "CREATE INDEX idx_agentic_conversations_api_key\r\n  ON agentic_conversations(api_key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_agentic_conversations_fingerprint",
+      "sql": "CREATE INDEX idx_agentic_conversations_fingerprint\r\n  ON agentic_conversations(fingerprint_hash)"
+    },
+    {
+      "type": "index",
+      "name": "idx_agentic_conversations_last_seen",
+      "sql": "CREATE INDEX idx_agentic_conversations_last_seen\r\n  ON agentic_conversations(last_seen_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_ak_key",
+      "sql": "CREATE INDEX idx_ak_key ON api_keys(key)"
+    },
+    {
+      "type": "index",
+      "name": "idx_akqc_dim_bucket",
+      "sql": "CREATE INDEX idx_akqc_dim_bucket ON api_key_quota_counters(dimension_key, bucket_index)"
+    },
+    {
+      "type": "index",
+      "name": "idx_akqc_updated_at",
+      "sql": "CREATE INDEX idx_akqc_updated_at ON api_key_quota_counters(updated_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_aktl_api_key_id",
+      "sql": "CREATE INDEX idx_aktl_api_key_id ON api_key_token_limits (api_key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_aktlrl_limit_id",
+      "sql": "CREATE INDEX idx_aktlrl_limit_id\r\n  ON api_key_token_limit_reset_logs (limit_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_api_keys_expires_at",
+      "sql": "CREATE INDEX idx_api_keys_expires_at ON api_keys(expires_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_api_keys_revoked_at",
+      "sql": "CREATE INDEX idx_api_keys_revoked_at ON api_keys(revoked_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_auto_candidate_overrides_key_channel",
+      "sql": "CREATE INDEX idx_auto_candidate_overrides_key_channel\r\n  ON auto_candidate_overrides(api_key_id, auto_channel)"
+    },
+    {
+      "type": "index",
+      "name": "idx_batch_item_checkpoints_batch_status",
+      "sql": "CREATE INDEX idx_batch_item_checkpoints_batch_status\r\n  ON batch_item_checkpoints(batch_id, status)"
+    },
+    {
+      "type": "index",
+      "name": "idx_batches_api_key",
+      "sql": "CREATE INDEX idx_batches_api_key ON batches(api_key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_batches_status",
+      "sql": "CREATE INDEX idx_batches_status ON batches(status)"
+    },
+    {
+      "type": "index",
+      "name": "idx_call_logs_combo_name_timestamp",
+      "sql": "CREATE INDEX idx_call_logs_combo_name_timestamp\r\n  ON call_logs(combo_name, timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_cas_combo",
+      "sql": "CREATE INDEX idx_cas_combo ON combo_adaptation_state(combo_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_ccr_blocks_expires",
+      "sql": "CREATE INDEX idx_ccr_blocks_expires ON ccr_blocks(expires_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_cl_correlation_id",
+      "sql": "CREATE INDEX idx_cl_correlation_id ON call_logs(correlation_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_cl_provider_timestamp",
+      "sql": "CREATE INDEX idx_cl_provider_timestamp ON call_logs(provider, timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_cl_request_provider",
+      "sql": "CREATE INDEX idx_cl_request_provider ON call_logs(request_type, provider)"
+    },
+    {
+      "type": "index",
+      "name": "idx_cl_response_id",
+      "sql": "CREATE INDEX idx_cl_response_id ON call_logs(response_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_cl_session_tag",
+      "sql": "CREATE INDEX idx_cl_session_tag ON call_logs(session_tag)"
+    },
+    {
+      "type": "index",
+      "name": "idx_cli_access_tokens_hash",
+      "sql": "CREATE INDEX idx_cli_access_tokens_hash ON cli_access_tokens(token_hash)"
+    },
+    {
+      "type": "index",
+      "name": "idx_combos_cache_protection",
+      "sql": "CREATE INDEX idx_combos_cache_protection ON combos(context_cache_protection)"
+    },
+    {
+      "type": "index",
+      "name": "idx_command_code_auth_sessions_state_hash",
+      "sql": "CREATE INDEX idx_command_code_auth_sessions_state_hash\r\n  ON command_code_auth_sessions(state_hash)"
+    },
+    {
+      "type": "index",
+      "name": "idx_command_code_auth_sessions_status_expires",
+      "sql": "CREATE INDEX idx_command_code_auth_sessions_status_expires\r\n  ON command_code_auth_sessions(status, expires_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_compression_analytics_provider",
+      "sql": "CREATE INDEX idx_compression_analytics_provider \r\n  ON compression_analytics(provider)"
+    },
+    {
+      "type": "index",
+      "name": "idx_compression_analytics_provider_timestamp",
+      "sql": "CREATE INDEX idx_compression_analytics_provider_timestamp \r\n  ON compression_analytics(provider, timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_compression_analytics_receipt_source",
+      "sql": "CREATE INDEX idx_compression_analytics_receipt_source\r\n  ON compression_analytics(receipt_source)"
+    },
+    {
+      "type": "index",
+      "name": "idx_compression_analytics_request_id",
+      "sql": "CREATE INDEX idx_compression_analytics_request_id\r\n  ON compression_analytics(request_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_compression_analytics_timestamp",
+      "sql": "CREATE INDEX idx_compression_analytics_timestamp \r\n  ON compression_analytics(timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_compression_cache_stats_created",
+      "sql": "CREATE INDEX idx_compression_cache_stats_created ON compression_cache_stats(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_compression_cache_stats_provider",
+      "sql": "CREATE INDEX idx_compression_cache_stats_provider ON compression_cache_stats(provider)"
+    },
+    {
+      "type": "index",
+      "name": "idx_compression_combo_assignments_combo",
+      "sql": "CREATE INDEX idx_compression_combo_assignments_combo\r\n  ON compression_combo_assignments(compression_combo_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_compression_combo_assignments_routing",
+      "sql": "CREATE INDEX idx_compression_combo_assignments_routing\r\n  ON compression_combo_assignments(routing_combo_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_compression_combos_default",
+      "sql": "CREATE INDEX idx_compression_combos_default\r\n  ON compression_combos(is_default)"
+    },
+    {
+      "type": "index",
+      "name": "idx_config_audit_log_created",
+      "sql": "CREATE INDEX idx_config_audit_log_created ON config_audit_log(timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_config_audit_log_target_created",
+      "sql": "CREATE INDEX idx_config_audit_log_target_created ON config_audit_log(target, timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_context_handoffs_expires",
+      "sql": "CREATE INDEX idx_context_handoffs_expires\r\n  ON context_handoffs(expires_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_context_handoffs_last_model",
+      "sql": "CREATE INDEX idx_context_handoffs_last_model\r\nON context_handoffs(session_id, combo_name, last_model)"
+    },
+    {
+      "type": "index",
+      "name": "idx_context_handoffs_session",
+      "sql": "CREATE INDEX idx_context_handoffs_session\r\n  ON context_handoffs(session_id, expires_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_context_handoffs_session_combo",
+      "sql": "CREATE UNIQUE INDEX idx_context_handoffs_session_combo\r\n  ON context_handoffs(session_id, combo_name)"
+    },
+    {
+      "type": "index",
+      "name": "idx_crs_warmup_until",
+      "sql": "CREATE INDEX idx_crs_warmup_until ON connection_runtime_state(warmup_circuit_until) WHERE warmup_circuit_until IS NOT NULL"
+    },
+    {
+      "type": "index",
+      "name": "idx_daily_usage_date",
+      "sql": "CREATE INDEX idx_daily_usage_date \r\n  ON daily_usage_summary(date)"
+    },
+    {
+      "type": "index",
+      "name": "idx_daily_usage_model_date",
+      "sql": "CREATE INDEX idx_daily_usage_model_date\r\n  ON daily_usage_summary(model, date)"
+    },
+    {
+      "type": "index",
+      "name": "idx_daily_usage_provider_date",
+      "sql": "CREATE INDEX idx_daily_usage_provider_date\r\n  ON daily_usage_summary(provider, date)"
+    },
+    {
+      "type": "index",
+      "name": "idx_daily_usage_provider_model_date",
+      "sql": "CREATE INDEX idx_daily_usage_provider_model_date \r\n  ON daily_usage_summary(provider, model, date)"
+    },
+    {
+      "type": "index",
+      "name": "idx_daily_usage_provider_model_date_composite",
+      "sql": "CREATE INDEX idx_daily_usage_provider_model_date_composite\r\n  ON daily_usage_summary(provider, model, date)"
+    },
+    {
+      "type": "index",
+      "name": "idx_daily_usage_unique",
+      "sql": "CREATE UNIQUE INDEX idx_daily_usage_unique\r\n  ON daily_usage_summary(provider, model, date)"
+    },
+    {
+      "type": "index",
+      "name": "idx_dch_key",
+      "sql": "CREATE INDEX idx_dch_key ON domain_cost_history(api_key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_dch_key_timestamp",
+      "sql": "CREATE INDEX idx_dch_key_timestamp ON domain_cost_history(api_key_id, timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_dch_ts",
+      "sql": "CREATE INDEX idx_dch_ts ON domain_cost_history(timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_discovery_results_provider",
+      "sql": "CREATE INDEX idx_discovery_results_provider ON discovery_results(provider_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_discovery_results_status",
+      "sql": "CREATE INDEX idx_discovery_results_status ON discovery_results(status)"
+    },
+    {
+      "type": "index",
+      "name": "idx_eval_cases_suite_order",
+      "sql": "CREATE INDEX idx_eval_cases_suite_order\r\n  ON eval_cases(suite_id, sort_order ASC, created_at ASC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_eval_runs_created_at",
+      "sql": "CREATE INDEX idx_eval_runs_created_at\r\n  ON eval_runs(created_at DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_eval_runs_group_id",
+      "sql": "CREATE INDEX idx_eval_runs_group_id\r\n  ON eval_runs(run_group_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_eval_runs_suite_created_at",
+      "sql": "CREATE INDEX idx_eval_runs_suite_created_at\r\n  ON eval_runs(suite_id, created_at DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_eval_suites_updated_at",
+      "sql": "CREATE INDEX idx_eval_suites_updated_at\r\n  ON eval_suites(updated_at DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_exclusive_lease_active_connection",
+      "sql": "CREATE UNIQUE INDEX idx_exclusive_lease_active_connection\r\n  ON exclusive_connection_leases(connection_id)\r\n  WHERE state = 'ACTIVE'"
+    },
+    {
+      "type": "index",
+      "name": "idx_exclusive_lease_active_owner",
+      "sql": "CREATE UNIQUE INDEX idx_exclusive_lease_active_owner\r\n  ON exclusive_connection_leases(lease_owner_hash)\r\n  WHERE state = 'ACTIVE'"
+    },
+    {
+      "type": "index",
+      "name": "idx_exclusive_lease_expiry",
+      "sql": "CREATE INDEX idx_exclusive_lease_expiry\r\n  ON exclusive_connection_leases(state, expires_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_exclusive_lease_owner_history",
+      "sql": "CREATE INDEX idx_exclusive_lease_owner_history\r\n  ON exclusive_connection_leases(lease_owner_hash, generation, id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_files_api_key",
+      "sql": "CREATE INDEX idx_files_api_key ON files(api_key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_free_proxies_in_pool",
+      "sql": "CREATE INDEX idx_free_proxies_in_pool ON free_proxies(in_pool)"
+    },
+    {
+      "type": "index",
+      "name": "idx_free_proxies_quality",
+      "sql": "CREATE INDEX idx_free_proxies_quality ON free_proxies(quality_score DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_free_proxies_source",
+      "sql": "CREATE INDEX idx_free_proxies_source ON free_proxies(source)"
+    },
+    {
+      "type": "index",
+      "name": "idx_group_members_group",
+      "sql": "CREATE INDEX idx_group_members_group\r\n  ON key_group_members(group_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_group_members_key",
+      "sql": "CREATE INDEX idx_group_members_key\r\n  ON key_group_members(key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_group_permissions_group",
+      "sql": "CREATE INDEX idx_group_permissions_group\r\n  ON group_model_permissions(group_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_hourly_usage_date",
+      "sql": "CREATE INDEX idx_hourly_usage_date \r\n  ON hourly_usage_summary(date_hour)"
+    },
+    {
+      "type": "index",
+      "name": "idx_hourly_usage_model_date",
+      "sql": "CREATE INDEX idx_hourly_usage_model_date\r\n  ON hourly_usage_summary(model, date_hour)"
+    },
+    {
+      "type": "index",
+      "name": "idx_hourly_usage_provider_date",
+      "sql": "CREATE INDEX idx_hourly_usage_provider_date\r\n  ON hourly_usage_summary(provider, date_hour)"
+    },
+    {
+      "type": "index",
+      "name": "idx_hourly_usage_provider_model_date",
+      "sql": "CREATE INDEX idx_hourly_usage_provider_model_date \r\n  ON hourly_usage_summary(provider, model, date_hour)"
+    },
+    {
+      "type": "index",
+      "name": "idx_hourly_usage_provider_model_date_composite",
+      "sql": "CREATE INDEX idx_hourly_usage_provider_model_date_composite\r\n  ON hourly_usage_summary(provider, model, date_hour)"
+    },
+    {
+      "type": "index",
+      "name": "idx_hourly_usage_unique",
+      "sql": "CREATE UNIQUE INDEX idx_hourly_usage_unique\r\n  ON hourly_usage_summary(provider, model, date_hour)"
+    },
+    {
+      "type": "index",
+      "name": "idx_inspector_custom_hosts_enabled",
+      "sql": "CREATE INDEX idx_inspector_custom_hosts_enabled\r\n  ON inspector_custom_hosts(enabled)"
+    },
+    {
+      "type": "index",
+      "name": "idx_inspector_session_requests_sid",
+      "sql": "CREATE INDEX idx_inspector_session_requests_sid\r\n  ON inspector_session_requests(session_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_invite_tokens_code",
+      "sql": "CREATE INDEX idx_invite_tokens_code\r\n  ON invite_tokens (code)"
+    },
+    {
+      "type": "index",
+      "name": "idx_invite_tokens_token_hash",
+      "sql": "CREATE INDEX idx_invite_tokens_token_hash\r\n  ON invite_tokens (token_hash)"
+    },
+    {
+      "type": "index",
+      "name": "idx_jr_job_id",
+      "sql": "CREATE INDEX idx_jr_job_id ON job_runs(job_id, started_at DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_jr_started_at",
+      "sql": "CREATE INDEX idx_jr_started_at ON job_runs(started_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_leaderboard_scope_score",
+      "sql": "CREATE INDEX idx_leaderboard_scope_score\r\n  ON leaderboard (scope, score DESC, api_key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_log_export_destinations_enabled",
+      "sql": "CREATE INDEX idx_log_export_destinations_enabled\r\n  ON log_export_destinations(enabled)"
+    },
+    {
+      "type": "index",
+      "name": "idx_mcm_enabled",
+      "sql": "CREATE INDEX idx_mcm_enabled ON model_combo_mappings(enabled)"
+    },
+    {
+      "type": "index",
+      "name": "idx_mcm_priority",
+      "sql": "CREATE INDEX idx_mcm_priority ON model_combo_mappings(priority DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_mco_source",
+      "sql": "CREATE INDEX idx_mco_source ON model_context_overrides (source)"
+    },
+    {
+      "type": "index",
+      "name": "idx_memories_api_key",
+      "sql": "CREATE INDEX idx_memories_api_key ON memories(api_key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_memories_expires",
+      "sql": "CREATE INDEX idx_memories_expires ON memories(expires_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_memories_memory_id",
+      "sql": "CREATE UNIQUE INDEX idx_memories_memory_id ON memories(memory_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_memories_needs_reindex",
+      "sql": "CREATE INDEX idx_memories_needs_reindex\r\n  ON memories(needs_reindex)\r\n  WHERE needs_reindex = 1"
+    },
+    {
+      "type": "index",
+      "name": "idx_memories_session",
+      "sql": "CREATE INDEX idx_memories_session ON memories(session_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_memories_type",
+      "sql": "CREATE INDEX idx_memories_type ON memories(type)"
+    },
+    {
+      "type": "index",
+      "name": "idx_mi_expires",
+      "sql": "CREATE INDEX idx_mi_expires\r\n  ON model_intelligence (expires_at) WHERE expires_at IS NOT NULL"
+    },
+    {
+      "type": "index",
+      "name": "idx_mi_model_category",
+      "sql": "CREATE INDEX idx_mi_model_category\r\n  ON model_intelligence (model, category)"
+    },
+    {
+      "type": "index",
+      "name": "idx_mi_source",
+      "sql": "CREATE INDEX idx_mi_source\r\n  ON model_intelligence (source)"
+    },
+    {
+      "type": "index",
+      "name": "idx_middleware_hooks_enabled",
+      "sql": "CREATE INDEX idx_middleware_hooks_enabled\r\n  ON middleware_hooks(enabled, priority)"
+    },
+    {
+      "type": "index",
+      "name": "idx_middleware_hooks_scope",
+      "sql": "CREATE INDEX idx_middleware_hooks_scope\r\n  ON middleware_hooks(scope_type, combo_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_middleware_logs_hook",
+      "sql": "CREATE INDEX idx_middleware_logs_hook\r\n  ON middleware_logs(hook_name, timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_middleware_logs_request",
+      "sql": "CREATE INDEX idx_middleware_logs_request\r\n  ON middleware_logs(request_id, timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_model_capability_overrides_key",
+      "sql": "CREATE INDEX idx_model_capability_overrides_key\r\n  ON model_capability_overrides (override_key)"
+    },
+    {
+      "type": "index",
+      "name": "idx_mta_apikey",
+      "sql": "CREATE INDEX idx_mta_apikey ON mcp_tool_audit(api_key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_mta_created",
+      "sql": "CREATE INDEX idx_mta_created ON mcp_tool_audit(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_mta_tool",
+      "sql": "CREATE INDEX idx_mta_tool ON mcp_tool_audit(tool_name)"
+    },
+    {
+      "type": "index",
+      "name": "idx_pc_active",
+      "sql": "CREATE INDEX idx_pc_active ON provider_connections(is_active)"
+    },
+    {
+      "type": "index",
+      "name": "idx_pc_max_concurrent",
+      "sql": "CREATE INDEX idx_pc_max_concurrent ON provider_connections(provider, max_concurrent)"
+    },
+    {
+      "type": "index",
+      "name": "idx_pc_priority",
+      "sql": "CREATE INDEX idx_pc_priority ON provider_connections(provider, priority)"
+    },
+    {
+      "type": "index",
+      "name": "idx_pc_provider",
+      "sql": "CREATE INDEX idx_pc_provider ON provider_connections(provider)"
+    },
+    {
+      "type": "index",
+      "name": "idx_pl_provider",
+      "sql": "CREATE INDEX idx_pl_provider ON proxy_logs(provider)"
+    },
+    {
+      "type": "index",
+      "name": "idx_pl_status",
+      "sql": "CREATE INDEX idx_pl_status ON proxy_logs(status)"
+    },
+    {
+      "type": "index",
+      "name": "idx_pl_timestamp",
+      "sql": "CREATE INDEX idx_pl_timestamp ON proxy_logs(timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_playground_presets_endpoint",
+      "sql": "CREATE INDEX idx_playground_presets_endpoint\r\n  ON playground_presets(endpoint)"
+    },
+    {
+      "type": "index",
+      "name": "idx_playground_presets_name",
+      "sql": "CREATE INDEX idx_playground_presets_name\r\n  ON playground_presets(name)"
+    },
+    {
+      "type": "index",
+      "name": "idx_plugin_analytics_created",
+      "sql": "CREATE INDEX idx_plugin_analytics_created ON plugin_analytics(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_plugin_analytics_name",
+      "sql": "CREATE INDEX idx_plugin_analytics_name ON plugin_analytics(plugin_name)"
+    },
+    {
+      "type": "index",
+      "name": "idx_plugins_enabled",
+      "sql": "CREATE INDEX idx_plugins_enabled ON plugins(enabled)"
+    },
+    {
+      "type": "index",
+      "name": "idx_plugins_name",
+      "sql": "CREATE INDEX idx_plugins_name ON plugins(name)"
+    },
+    {
+      "type": "index",
+      "name": "idx_plugins_status",
+      "sql": "CREATE INDEX idx_plugins_status ON plugins(status)"
+    },
+    {
+      "type": "index",
+      "name": "idx_pqs_connection",
+      "sql": "CREATE INDEX idx_pqs_connection ON provider_quota_state(connection_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_pqs_reset",
+      "sql": "CREATE INDEX idx_pqs_reset ON provider_quota_state(window_reset) WHERE window_reset IS NOT NULL"
+    },
+    {
+      "type": "index",
+      "name": "idx_provider_plans_provider",
+      "sql": "CREATE INDEX idx_provider_plans_provider\r\n  ON provider_plans(provider)"
+    },
+    {
+      "type": "index",
+      "name": "idx_provider_quota_reset_events_connection_window",
+      "sql": "CREATE INDEX idx_provider_quota_reset_events_connection_window\r\n  ON provider_quota_reset_events(connection_id, window_key, window_resets_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_provider_quota_reset_events_provider_observed",
+      "sql": "CREATE INDEX idx_provider_quota_reset_events_provider_observed\r\n  ON provider_quota_reset_events(provider, observed_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_proxy_assignments_proxy_id",
+      "sql": "CREATE INDEX idx_proxy_assignments_proxy_id ON proxy_assignments(proxy_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_proxy_assignments_scope",
+      "sql": "CREATE INDEX idx_proxy_assignments_scope ON proxy_assignments(scope, scope_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_proxy_registry_country",
+      "sql": "CREATE INDEX idx_proxy_registry_country ON proxy_registry(country_code)"
+    },
+    {
+      "type": "index",
+      "name": "idx_proxy_registry_host",
+      "sql": "CREATE INDEX idx_proxy_registry_host ON proxy_registry(host)"
+    },
+    {
+      "type": "index",
+      "name": "idx_proxy_registry_quality",
+      "sql": "CREATE INDEX idx_proxy_registry_quality ON proxy_registry(quality_score DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_proxy_registry_source",
+      "sql": "CREATE INDEX idx_proxy_registry_source ON proxy_registry(source)"
+    },
+    {
+      "type": "index",
+      "name": "idx_proxy_registry_status",
+      "sql": "CREATE INDEX idx_proxy_registry_status ON proxy_registry(status)"
+    },
+    {
+      "type": "index",
+      "name": "idx_proxy_registry_subscription",
+      "sql": "CREATE INDEX idx_proxy_registry_subscription ON proxy_registry(subscription_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_proxy_subscriptions_enabled",
+      "sql": "CREATE INDEX idx_proxy_subscriptions_enabled ON proxy_subscriptions(enabled)"
+    },
+    {
+      "type": "index",
+      "name": "idx_proxy_subscriptions_last_error",
+      "sql": "CREATE INDEX idx_proxy_subscriptions_last_error ON proxy_subscriptions(last_error_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_qamc_pool_key",
+      "sql": "CREATE INDEX idx_qamc_pool_key\r\n  ON quota_allocation_model_caps(pool_id, api_key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_quota_allocations_apikey",
+      "sql": "CREATE INDEX idx_quota_allocations_apikey\r\n  ON quota_allocations(api_key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_quota_consumption_dim_bucket",
+      "sql": "CREATE INDEX idx_quota_consumption_dim_bucket\r\n  ON quota_consumption(dimension_key, bucket_index)"
+    },
+    {
+      "type": "index",
+      "name": "idx_quota_consumption_updated_at",
+      "sql": "CREATE INDEX idx_quota_consumption_updated_at\r\n  ON quota_consumption(updated_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_quota_pool_connections_pool",
+      "sql": "CREATE INDEX idx_quota_pool_connections_pool\r\n  ON quota_pool_connections(pool_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_quota_pools_connection",
+      "sql": "CREATE INDEX idx_quota_pools_connection\r\n  ON quota_pools(connection_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_quota_schedules_pool",
+      "sql": "CREATE INDEX idx_quota_schedules_pool\r\n  ON quota_schedules(pool_id, enabled)"
+    },
+    {
+      "type": "index",
+      "name": "idx_quota_snapshots_connection_time",
+      "sql": "CREATE INDEX idx_quota_snapshots_connection_time ON quota_snapshots(connection_id, created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_quota_snapshots_created_at",
+      "sql": "CREATE INDEX idx_quota_snapshots_created_at ON quota_snapshots(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_quota_snapshots_provider_time",
+      "sql": "CREATE INDEX idx_quota_snapshots_provider_time ON quota_snapshots(provider, created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_rcl_api_key_timestamp",
+      "sql": "CREATE INDEX idx_rcl_api_key_timestamp ON request_cost_ledger(api_key_id, timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_rcl_timestamp",
+      "sql": "CREATE INDEX idx_rcl_timestamp ON request_cost_ledger(timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_rd_combo",
+      "sql": "CREATE INDEX idx_rd_combo ON routing_decisions(combo_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_rd_created",
+      "sql": "CREATE INDEX idx_rd_created ON routing_decisions(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_rd_provider",
+      "sql": "CREATE INDEX idx_rd_provider ON routing_decisions(provider_selected)"
+    },
+    {
+      "type": "index",
+      "name": "idx_rd_request",
+      "sql": "CREATE INDEX idx_rd_request ON routing_decisions(request_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_rdl_call_log_id",
+      "sql": "CREATE INDEX idx_rdl_call_log_id ON request_detail_logs(call_log_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_rdl_timestamp",
+      "sql": "CREATE INDEX idx_rdl_timestamp ON request_detail_logs(timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_reasoning_cache_created",
+      "sql": "CREATE INDEX idx_reasoning_cache_created\r\n  ON reasoning_cache(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_reasoning_cache_expires",
+      "sql": "CREATE INDEX idx_reasoning_cache_expires\r\n  ON reasoning_cache(expires_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_reasoning_cache_model",
+      "sql": "CREATE INDEX idx_reasoning_cache_model\r\n  ON reasoning_cache(model)"
+    },
+    {
+      "type": "index",
+      "name": "idx_reasoning_cache_provider",
+      "sql": "CREATE INDEX idx_reasoning_cache_provider\r\n  ON reasoning_cache(provider)"
+    },
+    {
+      "type": "index",
+      "name": "idx_reasoning_rules_api_key",
+      "sql": "CREATE INDEX idx_reasoning_rules_api_key ON reasoning_routing_rules(api_key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_reasoning_rules_combo",
+      "sql": "CREATE INDEX idx_reasoning_rules_combo ON reasoning_routing_rules(combo_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_reasoning_rules_connection",
+      "sql": "CREATE INDEX idx_reasoning_rules_connection ON reasoning_routing_rules(connection_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_reasoning_rules_enabled",
+      "sql": "CREATE INDEX idx_reasoning_rules_enabled\r\n  ON reasoning_routing_rules(enabled, scope, priority DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_registered_keys_account",
+      "sql": "CREATE INDEX idx_registered_keys_account   ON registered_keys(account_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_registered_keys_active",
+      "sql": "CREATE INDEX idx_registered_keys_active    ON registered_keys(is_active)"
+    },
+    {
+      "type": "index",
+      "name": "idx_registered_keys_idempotency",
+      "sql": "CREATE INDEX idx_registered_keys_idempotency ON registered_keys(idempotency_key)"
+    },
+    {
+      "type": "index",
+      "name": "idx_registered_keys_provider",
+      "sql": "CREATE INDEX idx_registered_keys_provider  ON registered_keys(provider)"
+    },
+    {
+      "type": "index",
+      "name": "idx_relay_logs_created",
+      "sql": "CREATE INDEX idx_relay_logs_created ON relay_logs(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_relay_logs_token",
+      "sql": "CREATE INDEX idx_relay_logs_token ON relay_logs(token_id, created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_relay_rate_limits_window",
+      "sql": "CREATE INDEX idx_relay_rate_limits_window ON relay_rate_limits(token_id, window_start)"
+    },
+    {
+      "type": "index",
+      "name": "idx_relay_tokens_prefix",
+      "sql": "CREATE INDEX idx_relay_tokens_prefix ON relay_tokens(token_prefix)"
+    },
+    {
+      "type": "index",
+      "name": "idx_saa_last_seen",
+      "sql": "CREATE INDEX idx_saa_last_seen ON session_account_affinity(last_seen_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_saa_provider",
+      "sql": "CREATE INDEX idx_saa_provider ON session_account_affinity(provider)"
+    },
+    {
+      "type": "index",
+      "name": "idx_sc_model",
+      "sql": "CREATE INDEX idx_sc_model ON semantic_cache(model)"
+    },
+    {
+      "type": "index",
+      "name": "idx_sc_sig",
+      "sql": "CREATE INDEX idx_sc_sig ON semantic_cache(signature)"
+    },
+    {
+      "type": "index",
+      "name": "idx_server_tool_executions_created",
+      "sql": "CREATE INDEX idx_server_tool_executions_created\r\n  ON server_tool_executions(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_server_tool_executions_status_expiry",
+      "sql": "CREATE INDEX idx_server_tool_executions_status_expiry\r\n  ON server_tool_executions(status, claim_expires_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_session_model_history_cleanup",
+      "sql": "CREATE INDEX idx_session_model_history_cleanup\r\nON session_model_history(used_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_session_model_history_lookup",
+      "sql": "CREATE INDEX idx_session_model_history_lookup\r\nON session_model_history(session_id, combo_name, used_at DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_skill_executions_api_key",
+      "sql": "CREATE INDEX idx_skill_executions_api_key ON skill_executions(api_key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_skill_executions_created",
+      "sql": "CREATE INDEX idx_skill_executions_created ON skill_executions(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_skill_executions_skill",
+      "sql": "CREATE INDEX idx_skill_executions_skill ON skill_executions(skill_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_skill_executions_status",
+      "sql": "CREATE INDEX idx_skill_executions_status ON skill_executions(status)"
+    },
+    {
+      "type": "index",
+      "name": "idx_skills_api_key",
+      "sql": "CREATE INDEX idx_skills_api_key ON skills(api_key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_skills_mode",
+      "sql": "CREATE INDEX idx_skills_mode ON skills(mode)"
+    },
+    {
+      "type": "index",
+      "name": "idx_skills_name",
+      "sql": "CREATE INDEX idx_skills_name ON skills(name)"
+    },
+    {
+      "type": "index",
+      "name": "idx_skills_source_provider",
+      "sql": "CREATE INDEX idx_skills_source_provider ON skills(source_provider)"
+    },
+    {
+      "type": "index",
+      "name": "idx_sync_tokens_created_at",
+      "sql": "CREATE INDEX idx_sync_tokens_created_at ON sync_tokens(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_sync_tokens_last_used_at",
+      "sql": "CREATE INDEX idx_sync_tokens_last_used_at ON sync_tokens(last_used_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_sync_tokens_revoked_at",
+      "sql": "CREATE INDEX idx_sync_tokens_revoked_at ON sync_tokens(revoked_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_sync_tokens_sync_api_key_id",
+      "sql": "CREATE INDEX idx_sync_tokens_sync_api_key_id ON sync_tokens(sync_api_key_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_tier_assignments_provider",
+      "sql": "CREATE INDEX idx_tier_assignments_provider ON tier_assignments(provider)"
+    },
+    {
+      "type": "index",
+      "name": "idx_tier_assignments_tier",
+      "sql": "CREATE INDEX idx_tier_assignments_tier ON tier_assignments(tier)"
+    },
+    {
+      "type": "index",
+      "name": "idx_turn_nodes_content_hash",
+      "sql": "CREATE INDEX idx_turn_nodes_content_hash\r\n  ON conversation_turn_nodes(conversation_id, content_hash)"
+    },
+    {
+      "type": "index",
+      "name": "idx_turn_nodes_conversation",
+      "sql": "CREATE INDEX idx_turn_nodes_conversation\r\n  ON conversation_turn_nodes(conversation_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_turn_nodes_last_seen",
+      "sql": "CREATE INDEX idx_turn_nodes_last_seen\r\n  ON conversation_turn_nodes(last_seen_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_turn_nodes_parent",
+      "sql": "CREATE INDEX idx_turn_nodes_parent\r\n  ON conversation_turn_nodes(parent_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_uh_combo_strategy",
+      "sql": "CREATE INDEX idx_uh_combo_strategy ON usage_history(combo_strategy)"
+    },
+    {
+      "type": "index",
+      "name": "idx_uh_endpoint",
+      "sql": "CREATE INDEX idx_uh_endpoint ON usage_history(endpoint)"
+    },
+    {
+      "type": "index",
+      "name": "idx_uh_key_provider_model_ts",
+      "sql": "CREATE INDEX idx_uh_key_provider_model_ts\r\n  ON usage_history (api_key_id, provider, model, timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_uh_model",
+      "sql": "CREATE INDEX idx_uh_model ON usage_history(model)"
+    },
+    {
+      "type": "index",
+      "name": "idx_uh_provider",
+      "sql": "CREATE INDEX idx_uh_provider ON usage_history(provider)"
+    },
+    {
+      "type": "index",
+      "name": "idx_uh_service_tier",
+      "sql": "CREATE INDEX idx_uh_service_tier ON usage_history(service_tier)"
+    },
+    {
+      "type": "index",
+      "name": "idx_uh_timestamp",
+      "sql": "CREATE INDEX idx_uh_timestamp ON usage_history(timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_upc_mode",
+      "sql": "CREATE INDEX idx_upc_mode ON upstream_proxy_config(mode)"
+    },
+    {
+      "type": "index",
+      "name": "idx_upc_provider",
+      "sql": "CREATE INDEX idx_upc_provider ON upstream_proxy_config(provider_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_usage_history_api_key_id_timestamp",
+      "sql": "CREATE INDEX idx_usage_history_api_key_id_timestamp\r\n  ON usage_history(api_key_id, timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_usage_history_api_key_name_timestamp",
+      "sql": "CREATE INDEX idx_usage_history_api_key_name_timestamp\r\n  ON usage_history(api_key_name, timestamp)"
+    },
+    {
+      "type": "index",
+      "name": "idx_user_badges_badge_id",
+      "sql": "CREATE INDEX idx_user_badges_badge_id\r\n  ON user_badges (badge_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_vm_status",
+      "sql": "CREATE INDEX idx_vm_status ON version_manager(status)"
+    },
+    {
+      "type": "index",
+      "name": "idx_vm_tool",
+      "sql": "CREATE INDEX idx_vm_tool ON version_manager(tool)"
+    },
+    {
+      "type": "index",
+      "name": "idx_webhook_deliveries_webhook_created",
+      "sql": "CREATE INDEX idx_webhook_deliveries_webhook_created\r\n  ON webhook_deliveries(webhook_id, created_at DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_xp_audit_log_api_key_created",
+      "sql": "CREATE INDEX idx_xp_audit_log_api_key_created\r\n  ON xp_audit_log (api_key_id, created_at)"
+    },
+    {
+      "type": "table",
+      "name": "inspector_custom_hosts",
+      "sql": "CREATE TABLE inspector_custom_hosts (\r\n  host TEXT PRIMARY KEY,\r\n  enabled INTEGER NOT NULL DEFAULT 1,\r\n  label TEXT,\r\n  kind TEXT NOT NULL DEFAULT 'custom' CHECK (kind IN ('llm','app','custom')),\r\n  added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\r\n  last_seen_at TEXT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "inspector_session_requests",
+      "sql": "CREATE TABLE inspector_session_requests (\r\n  session_id TEXT NOT NULL REFERENCES inspector_sessions(id) ON DELETE CASCADE,\r\n  seq INTEGER NOT NULL,\r\n  payload TEXT NOT NULL,\r\n  PRIMARY KEY (session_id, seq)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "inspector_sessions",
+      "sql": "CREATE TABLE inspector_sessions (\r\n  id TEXT PRIMARY KEY,\r\n  name TEXT,\r\n  started_at TEXT NOT NULL,\r\n  ended_at TEXT,\r\n  request_count INTEGER NOT NULL DEFAULT 0,\r\n  profile TEXT CHECK (profile IN ('llm','custom','all'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "invite_tokens",
+      "sql": "CREATE TABLE invite_tokens (\r\n  id TEXT PRIMARY KEY,\r\n  code TEXT NOT NULL UNIQUE,\r\n  token_hash TEXT NOT NULL UNIQUE,\r\n  created_by TEXT NOT NULL,\r\n  used_by TEXT,\r\n  server_url TEXT,\r\n  max_uses INTEGER NOT NULL DEFAULT 1,\r\n  use_count INTEGER NOT NULL DEFAULT 0,\r\n  expires_at TEXT,\r\n  revoked_at TEXT,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "job_runs",
+      "sql": "CREATE TABLE job_runs (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,\r\n  started_at TEXT NOT NULL,                  -- ISO-8601, written explicitly by recordRun (no DB default)\r\n  finished_at TEXT,                          -- ISO-8601; NULL while running\r\n  status TEXT NOT NULL DEFAULT 'running',    -- 'running' | 'success' | 'failure'\r\n  error_message TEXT,                        -- sanitized error message (no stack trace)\r\n  records_affected INTEGER DEFAULT 0,        -- job-specific meaning (see below)\r\n  duration_ms INTEGER,                       -- execution duration in ms\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "jobs",
+      "sql": "CREATE TABLE jobs (\r\n  id TEXT PRIMARY KEY,\r\n  type TEXT NOT NULL DEFAULT 'interval' CHECK(type IN ('interval', 'cron')),\r\n  cron TEXT,                                 -- cron expression (type='cron'); NULL for interval jobs\r\n  interval_ms INTEGER,                       -- interval in ms (type='interval'); NULL for cron jobs\r\n  enabled INTEGER NOT NULL DEFAULT 1,        -- 0=disabled, 1=enabled\r\n  env_flag TEXT,                             -- env var name (boolean gate), e.g. 'OMNIROUTE_WARMUP_ENABLED'; NULL = no gate\r\n  config TEXT NOT NULL DEFAULT '{}',         -- JSON config (concurrency, timezone, envDefault, ...)\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "key_group_members",
+      "sql": "CREATE TABLE key_group_members (\r\n  key_id TEXT NOT NULL,\r\n  group_id TEXT NOT NULL,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  PRIMARY KEY (key_id, group_id),\r\n  FOREIGN KEY (group_id) REFERENCES key_groups(id) ON DELETE CASCADE,\r\n  FOREIGN KEY (key_id) REFERENCES api_keys(id) ON DELETE CASCADE\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "key_groups",
+      "sql": "CREATE TABLE key_groups (\r\n  id TEXT PRIMARY KEY NOT NULL,\r\n  name TEXT NOT NULL,\r\n  description TEXT NOT NULL DEFAULT '',\r\n  is_active INTEGER NOT NULL DEFAULT 1,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "key_value",
+      "sql": "CREATE TABLE key_value (\r\n  namespace TEXT NOT NULL,\r\n  key TEXT NOT NULL,\r\n  value TEXT NOT NULL,\r\n  PRIMARY KEY (namespace, key)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "leaderboard",
+      "sql": "CREATE TABLE leaderboard (\r\n  api_key_id TEXT NOT NULL,\r\n  scope TEXT NOT NULL DEFAULT 'global',\r\n  score INTEGER NOT NULL DEFAULT 0,\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  PRIMARY KEY (api_key_id, scope)\r\n) WITHOUT ROWID"
+    },
+    {
+      "type": "table",
+      "name": "log_export_destinations",
+      "sql": "CREATE TABLE log_export_destinations (\r\n  id TEXT PRIMARY KEY,\r\n  name TEXT NOT NULL,\r\n  type TEXT NOT NULL,\r\n  enabled INTEGER NOT NULL DEFAULT 0,\r\n  config TEXT NOT NULL DEFAULT '{}',\r\n  batch_size INTEGER NOT NULL DEFAULT 500,\r\n  include_bodies INTEGER NOT NULL DEFAULT 0,\r\n  max_body_bytes INTEGER NOT NULL DEFAULT 262144,\r\n  max_rows_per_run INTEGER NOT NULL DEFAULT 10000,\r\n  cursor_row_id INTEGER NOT NULL DEFAULT 0,\r\n  exported_total INTEGER NOT NULL DEFAULT 0,\r\n  last_run_at TEXT,\r\n  last_status TEXT,\r\n  last_error TEXT,\r\n  created_at TEXT NOT NULL,\r\n  updated_at TEXT NOT NULL\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "mcp_tool_audit",
+      "sql": "CREATE TABLE mcp_tool_audit (\r\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n    tool_name TEXT NOT NULL,\r\n    input_hash TEXT,\r\n    output_summary TEXT,\r\n    duration_ms INTEGER,\r\n    api_key_id TEXT,\r\n    success INTEGER DEFAULT 1,\r\n    error_code TEXT,\r\n    created_at TEXT DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "memories",
+      "sql": "CREATE TABLE memories (\r\n  id TEXT PRIMARY KEY,\r\n  api_key_id TEXT NOT NULL,\r\n  session_id TEXT,\r\n  type TEXT NOT NULL CHECK(type IN ('factual', 'episodic', 'procedural', 'semantic')),\r\n  key TEXT,\r\n  content TEXT NOT NULL,\r\n  metadata TEXT,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  expires_at TEXT\r\n, memory_id INTEGER, needs_reindex INTEGER NOT NULL DEFAULT 0, access_count INTEGER NOT NULL DEFAULT 0, last_accessed_at TEXT)"
+    },
+    {
+      "type": "table",
+      "name": "memory_fts",
+      "sql": "CREATE VIRTUAL TABLE memory_fts USING fts5(\r\n  content,\r\n  key,\r\n  content='memories'\r\n)"
+    },
+    {
+      "type": "trigger",
+      "name": "memory_fts_ad",
+      "sql": "CREATE TRIGGER memory_fts_ad AFTER DELETE ON memories BEGIN\r\n  INSERT INTO memory_fts(memory_fts, rowid, content, key) VALUES('delete', old.memory_id, old.content, old.key);\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "memory_fts_ai",
+      "sql": "CREATE TRIGGER memory_fts_ai AFTER INSERT ON memories BEGIN\r\n  INSERT INTO memory_fts(rowid, content, key) VALUES (new.memory_id, new.content, new.key);\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "memory_fts_au",
+      "sql": "CREATE TRIGGER memory_fts_au AFTER UPDATE ON memories\r\nWHEN old.content IS DISTINCT FROM new.content OR old.key IS DISTINCT FROM new.key\r\nBEGIN\r\n  INSERT INTO memory_fts(memory_fts, rowid, content, key)\r\n    VALUES('delete', old.memory_id, old.content, old.key);\r\n  INSERT INTO memory_fts(rowid, content, key)\r\n    VALUES (new.memory_id, new.content, new.key);\r\nEND"
+    },
+    {
+      "type": "table",
+      "name": "memory_fts_config",
+      "sql": "CREATE TABLE 'memory_fts_config'(k PRIMARY KEY, v) WITHOUT ROWID"
+    },
+    {
+      "type": "table",
+      "name": "memory_fts_data",
+      "sql": "CREATE TABLE 'memory_fts_data'(id INTEGER PRIMARY KEY, block BLOB)"
+    },
+    {
+      "type": "table",
+      "name": "memory_fts_docsize",
+      "sql": "CREATE TABLE 'memory_fts_docsize'(id INTEGER PRIMARY KEY, sz BLOB)"
+    },
+    {
+      "type": "table",
+      "name": "memory_fts_idx",
+      "sql": "CREATE TABLE 'memory_fts_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID"
+    },
+    {
+      "type": "table",
+      "name": "memory_vec_meta",
+      "sql": "CREATE TABLE memory_vec_meta (\r\n  id INTEGER PRIMARY KEY CHECK (id = 1),\r\n  active_dim INTEGER,\r\n  embedding_signature TEXT,\r\n  last_reset_at TEXT,\r\n  vec_loaded INTEGER NOT NULL DEFAULT 0\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "middleware_hooks",
+      "sql": "CREATE TABLE middleware_hooks (\r\n  name TEXT PRIMARY KEY NOT NULL,\r\n  description TEXT NOT NULL DEFAULT '',\r\n  priority INTEGER NOT NULL DEFAULT 200,\r\n  scope_type TEXT NOT NULL DEFAULT 'global' CHECK(scope_type IN ('global', 'combo')),\r\n  combo_id TEXT,\r\n  enabled INTEGER NOT NULL DEFAULT 1,\r\n  code TEXT NOT NULL DEFAULT '',\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  run_count INTEGER NOT NULL DEFAULT 0,\r\n  last_error TEXT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "middleware_logs",
+      "sql": "CREATE TABLE middleware_logs (\r\n  id TEXT PRIMARY KEY NOT NULL,\r\n  hook_name TEXT NOT NULL,\r\n  request_id TEXT NOT NULL,\r\n  duration_ms INTEGER NOT NULL DEFAULT 0,\r\n  mutated INTEGER NOT NULL DEFAULT 0,\r\n  skipped INTEGER NOT NULL DEFAULT 0,\r\n  error TEXT,\r\n  timestamp TEXT NOT NULL DEFAULT (datetime('now')),\r\n  FOREIGN KEY (hook_name) REFERENCES middleware_hooks(name) ON DELETE CASCADE\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "model_capabilities",
+      "sql": "CREATE TABLE model_capabilities (\r\n  provider TEXT NOT NULL,\r\n  model_id TEXT NOT NULL,\r\n  tool_call BOOLEAN,\r\n  reasoning BOOLEAN,\r\n  attachment BOOLEAN,\r\n  structured_output BOOLEAN,\r\n  temperature BOOLEAN,\r\n  modalities_input TEXT,\r\n  modalities_output TEXT,\r\n  knowledge_cutoff TEXT,\r\n  release_date TEXT,\r\n  last_updated TEXT,\r\n  status TEXT,\r\n  family TEXT,\r\n  open_weights BOOLEAN,\r\n  limit_context INTEGER,\r\n  limit_input INTEGER,\r\n  limit_output INTEGER,\r\n  interleaved_field TEXT,\r\n  last_synced TEXT,\r\n  PRIMARY KEY (provider, model_id)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "model_capability_overrides",
+      "sql": "CREATE TABLE model_capability_overrides (\r\n  provider TEXT NOT NULL,\r\n  model_id TEXT NOT NULL,\r\n  override_key TEXT NOT NULL,\r\n  override_value TEXT NOT NULL,\r\n  refreshed_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  PRIMARY KEY (provider, model_id, override_key)\r\n) WITHOUT ROWID"
+    },
+    {
+      "type": "table",
+      "name": "model_combo_mappings",
+      "sql": "CREATE TABLE model_combo_mappings (\r\n  id TEXT PRIMARY KEY,\r\n  pattern TEXT NOT NULL,           -- glob pattern, e.g. 'claude-*-opus*'\r\n  combo_id TEXT NOT NULL,          -- references combos.id\r\n  priority INTEGER DEFAULT 0,     -- higher = checked first\r\n  enabled INTEGER DEFAULT 1,      -- 0 = disabled, 1 = enabled\r\n  description TEXT DEFAULT '',     -- optional human-readable label\r\n  created_at TEXT NOT NULL,\r\n  updated_at TEXT NOT NULL,\r\n  FOREIGN KEY (combo_id) REFERENCES combos(id) ON DELETE CASCADE\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "model_context_overrides",
+      "sql": "CREATE TABLE model_context_overrides (\r\n  provider TEXT NOT NULL,\r\n  model_id TEXT NOT NULL,\r\n  real_context INTEGER NOT NULL,          -- the corrected context window (tokens), > 0\r\n  source TEXT NOT NULL DEFAULT 'manual',  -- 'manual' | 'auto:discovery'\r\n  refreshed_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  PRIMARY KEY (provider, model_id)\r\n) WITHOUT ROWID"
+    },
+    {
+      "type": "table",
+      "name": "model_intelligence",
+      "sql": "CREATE TABLE model_intelligence (\r\n  model TEXT NOT NULL,\r\n  source TEXT NOT NULL,           -- 'arena_elo' | 'models_dev_tier' | 'user_override'\r\n  category TEXT NOT NULL,         -- 'coding' | 'review' | 'planning' | 'analysis' | 'debugging' | 'documentation' | 'default'\r\n  score REAL NOT NULL,            -- [0..1] normalized fitness score\r\n  elo_raw INTEGER,                -- original ELO if source='arena_elo'\r\n  confidence TEXT,                -- 'high' | 'medium' | 'low' or CI string like '+10/-8'\r\n  synced_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  expires_at TEXT,                -- TTL for auto-invalidated scores (NULL = never expires)\r\n  PRIMARY KEY (model, source, category)\r\n) WITHOUT ROWID"
+    },
+    {
+      "type": "table",
+      "name": "playground_presets",
+      "sql": "CREATE TABLE playground_presets (\r\n  id TEXT PRIMARY KEY,\r\n  name TEXT NOT NULL,\r\n  endpoint TEXT NOT NULL,\r\n  model TEXT NOT NULL,\r\n  system TEXT,\r\n  params_json TEXT NOT NULL DEFAULT '{}',\r\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "plugin_analytics",
+      "sql": "CREATE TABLE plugin_analytics (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  plugin_name TEXT NOT NULL,\r\n  hook TEXT NOT NULL,\r\n  duration_ms INTEGER NOT NULL DEFAULT 0,\r\n  success INTEGER NOT NULL DEFAULT 1,\r\n  error_message TEXT,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "plugin_metrics",
+      "sql": "CREATE TABLE plugin_metrics (\r\n  plugin_name TEXT NOT NULL,\r\n  event TEXT NOT NULL,\r\n  calls INTEGER NOT NULL DEFAULT 0,\r\n  errors INTEGER NOT NULL DEFAULT 0,\r\n  total_duration_ms REAL NOT NULL DEFAULT 0,\r\n  last_called_at TEXT,\r\n  PRIMARY KEY (plugin_name, event)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "plugins",
+      "sql": "CREATE TABLE plugins (\r\n  id TEXT PRIMARY KEY,\r\n  name TEXT NOT NULL UNIQUE,\r\n  version TEXT NOT NULL DEFAULT '1.0.0',\r\n  description TEXT,\r\n  author TEXT,\r\n  license TEXT DEFAULT 'MIT',\r\n  main TEXT NOT NULL DEFAULT 'index.js',\r\n  source TEXT NOT NULL DEFAULT 'local',\r\n  tags TEXT DEFAULT '[]',\r\n  status TEXT NOT NULL DEFAULT 'installed'\r\n    CHECK (status IN ('installed', 'active', 'inactive', 'error')),\r\n  enabled INTEGER NOT NULL DEFAULT 0,\r\n  manifest TEXT NOT NULL,\r\n  config TEXT DEFAULT '{}',\r\n  config_schema TEXT DEFAULT '{}',\r\n  hooks TEXT DEFAULT '[]',\r\n  permissions TEXT DEFAULT '[]',\r\n  plugin_dir TEXT NOT NULL,\r\n  error_message TEXT,\r\n  installed_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  activated_at TEXT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "provider_connections",
+      "sql": "CREATE TABLE provider_connections (\r\n  id TEXT PRIMARY KEY,\r\n  provider TEXT NOT NULL,\r\n  auth_type TEXT,\r\n  name TEXT,\r\n  email TEXT,\r\n  priority INTEGER DEFAULT 0,\r\n  is_active INTEGER DEFAULT 1,\r\n  access_token TEXT,\r\n  refresh_token TEXT,\r\n  expires_at TEXT,\r\n  token_expires_at TEXT,\r\n  scope TEXT,\r\n  project_id TEXT,\r\n  test_status TEXT,\r\n  error_code TEXT,\r\n  last_error TEXT,\r\n  last_error_at TEXT,\r\n  last_error_type TEXT,\r\n  last_error_source TEXT,\r\n  backoff_level INTEGER DEFAULT 0,\r\n  rate_limited_until TEXT,\r\n  health_check_interval INTEGER,\r\n  last_health_check_at TEXT,\r\n  last_tested TEXT,\r\n  api_key TEXT,\r\n  id_token TEXT,\r\n  provider_specific_data TEXT,\r\n  expires_in INTEGER,\r\n  display_name TEXT,\r\n  global_priority INTEGER,\r\n  default_model TEXT,\r\n  token_type TEXT,\r\n  consecutive_use_count INTEGER DEFAULT 0,\r\n  rate_limit_protection INTEGER DEFAULT 0,\r\n  created_at TEXT NOT NULL,\r\n  updated_at TEXT NOT NULL\r\n, max_concurrent INTEGER, quota_window_thresholds_json TEXT, proxy_enabled INTEGER NOT NULL DEFAULT 1, per_key_proxy_enabled INTEGER NOT NULL DEFAULT 0, last_ping_at TEXT, last_pinged_reset_key TEXT, quota_visible INTEGER NOT NULL DEFAULT 1, synced_models_at TEXT)"
+    },
+    {
+      "type": "trigger",
+      "name": "provider_connections_preserve_chatgpt_web_identity_insert",
+      "sql": "CREATE TRIGGER provider_connections_preserve_chatgpt_web_identity_insert\r\nBEFORE INSERT ON provider_connections\r\nWHEN EXISTS (\r\n    SELECT 1\r\n    FROM provider_connections\r\n    WHERE id = NEW.id\r\n      AND lower(trim(provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n        IN ('chatgpt-web', 'cgpt-web')\r\n  )\r\n  AND lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n    NOT IN ('chatgpt-web', 'cgpt-web')\r\nBEGIN\r\n  SELECT RAISE(ABORT, 'Retired provider connection identity cannot be changed');\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "provider_connections_preserve_chatgpt_web_identity_update",
+      "sql": "CREATE TRIGGER provider_connections_preserve_chatgpt_web_identity_update\r\nBEFORE UPDATE OF provider ON provider_connections\r\nWHEN lower(trim(OLD.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n    IN ('chatgpt-web', 'cgpt-web')\r\n  AND lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n    NOT IN ('chatgpt-web', 'cgpt-web')\r\nBEGIN\r\n  SELECT RAISE(ABORT, 'Retired provider connection identity cannot be changed');\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "provider_connections_preserve_felo_web_identity_insert",
+      "sql": "CREATE TRIGGER provider_connections_preserve_felo_web_identity_insert\r\nBEFORE INSERT ON provider_connections\r\nWHEN EXISTS (\r\n    SELECT 1\r\n    FROM provider_connections\r\n    WHERE id = NEW.id\r\n      AND lower(trim(provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n        IN ('felo-web', 'felo')\r\n  )\r\n  AND lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n    NOT IN ('felo-web', 'felo')\r\nBEGIN\r\n  SELECT RAISE(ABORT, 'Retired provider connection identity cannot be changed');\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "provider_connections_preserve_felo_web_identity_update",
+      "sql": "CREATE TRIGGER provider_connections_preserve_felo_web_identity_update\r\nBEFORE UPDATE OF provider ON provider_connections\r\nWHEN lower(trim(OLD.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n    IN ('felo-web', 'felo')\r\n  AND lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n    NOT IN ('felo-web', 'felo')\r\nBEGIN\r\n  SELECT RAISE(ABORT, 'Retired provider connection identity cannot be changed');\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "provider_connections_retire_chatgpt_web_insert",
+      "sql": "CREATE TRIGGER provider_connections_retire_chatgpt_web_insert\r\nAFTER INSERT ON provider_connections\r\nWHEN lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n    = 'cgpt-web'\r\nBEGIN\r\n  UPDATE provider_connections\r\n  SET is_active = 0,\r\n      test_status = 'unavailable',\r\n      error_code = 'PROVIDER_REMOVED',\r\n      last_error = 'Provider integration retired from OmniRoute v3.8.51',\r\n      last_error_type = 'provider_removed',\r\n      last_error_source = 'migration:retire-chatgpt-web',\r\n      last_error_at = datetime('now'),\r\n      updated_at = datetime('now')\r\n  WHERE id = NEW.id\r\n    AND (\r\n      is_active IS NOT 0\r\n      OR test_status IS NOT 'unavailable'\r\n      OR error_code IS NOT 'PROVIDER_REMOVED'\r\n      OR last_error IS NOT 'Provider integration retired from OmniRoute v3.8.51'\r\n      OR last_error_type IS NOT 'provider_removed'\r\n      OR last_error_source IS NOT 'migration:retire-chatgpt-web'\r\n      OR last_error_at IS NULL\r\n    );\r\n\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = datetime('now'),\r\n      end_reason = 'CONNECTION_INELIGIBLE'\r\n  WHERE state = 'ACTIVE'\r\n    AND connection_id = NEW.id;\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "provider_connections_retire_chatgpt_web_update",
+      "sql": "CREATE TRIGGER provider_connections_retire_chatgpt_web_update\r\nAFTER UPDATE OF provider, is_active, test_status, error_code, last_error,\r\n  last_error_type, last_error_source, last_error_at ON provider_connections\r\nWHEN lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n    = 'cgpt-web'\r\nBEGIN\r\n  UPDATE provider_connections\r\n  SET is_active = 0,\r\n      test_status = 'unavailable',\r\n      error_code = 'PROVIDER_REMOVED',\r\n      last_error = 'Provider integration retired from OmniRoute v3.8.51',\r\n      last_error_type = 'provider_removed',\r\n      last_error_source = 'migration:retire-chatgpt-web',\r\n      last_error_at = datetime('now'),\r\n      updated_at = datetime('now')\r\n  WHERE id = NEW.id\r\n    AND (\r\n      is_active IS NOT 0\r\n      OR test_status IS NOT 'unavailable'\r\n      OR error_code IS NOT 'PROVIDER_REMOVED'\r\n      OR last_error IS NOT 'Provider integration retired from OmniRoute v3.8.51'\r\n      OR last_error_type IS NOT 'provider_removed'\r\n      OR last_error_source IS NOT 'migration:retire-chatgpt-web'\r\n      OR last_error_at IS NULL\r\n    );\r\n\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = datetime('now'),\r\n      end_reason = 'CONNECTION_INELIGIBLE'\r\n  WHERE state = 'ACTIVE'\r\n    AND connection_id = NEW.id;\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "provider_connections_retire_felo_web_insert",
+      "sql": "CREATE TRIGGER provider_connections_retire_felo_web_insert\r\nAFTER INSERT ON provider_connections\r\nWHEN lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n    IN ('felo-web', 'felo')\r\nBEGIN\r\n  UPDATE provider_connections\r\n  SET is_active = 0,\r\n      test_status = 'unavailable',\r\n      error_code = 'PROVIDER_REMOVED',\r\n      last_error = 'Provider integration retired from OmniRoute v3.8.50',\r\n      last_error_type = 'provider_removed',\r\n      last_error_source = 'migration:retire-felo-web',\r\n      last_error_at = datetime('now'),\r\n      updated_at = datetime('now')\r\n  WHERE id = NEW.id\r\n    AND (\r\n      is_active IS NOT 0\r\n      OR test_status IS NOT 'unavailable'\r\n      OR error_code IS NOT 'PROVIDER_REMOVED'\r\n      OR last_error IS NOT 'Provider integration retired from OmniRoute v3.8.50'\r\n      OR last_error_type IS NOT 'provider_removed'\r\n      OR last_error_source IS NOT 'migration:retire-felo-web'\r\n      OR last_error_at IS NULL\r\n    );\r\n\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = datetime('now'),\r\n      end_reason = 'CONNECTION_INELIGIBLE'\r\n  WHERE state = 'ACTIVE'\r\n    AND connection_id = NEW.id;\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "provider_connections_retire_felo_web_update",
+      "sql": "CREATE TRIGGER provider_connections_retire_felo_web_update\r\nAFTER UPDATE OF provider, is_active, test_status, error_code, last_error,\r\n  last_error_type, last_error_source, last_error_at ON provider_connections\r\nWHEN lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n    IN ('felo-web', 'felo')\r\nBEGIN\r\n  UPDATE provider_connections\r\n  SET is_active = 0,\r\n      test_status = 'unavailable',\r\n      error_code = 'PROVIDER_REMOVED',\r\n      last_error = 'Provider integration retired from OmniRoute v3.8.50',\r\n      last_error_type = 'provider_removed',\r\n      last_error_source = 'migration:retire-felo-web',\r\n      last_error_at = datetime('now'),\r\n      updated_at = datetime('now')\r\n  WHERE id = NEW.id\r\n    AND (\r\n      is_active IS NOT 0\r\n      OR test_status IS NOT 'unavailable'\r\n      OR error_code IS NOT 'PROVIDER_REMOVED'\r\n      OR last_error IS NOT 'Provider integration retired from OmniRoute v3.8.50'\r\n      OR last_error_type IS NOT 'provider_removed'\r\n      OR last_error_source IS NOT 'migration:retire-felo-web'\r\n      OR last_error_at IS NULL\r\n    );\r\n\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = datetime('now'),\r\n      end_reason = 'CONNECTION_INELIGIBLE'\r\n  WHERE state = 'ACTIVE'\r\n    AND connection_id = NEW.id;\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "provider_connections_retire_qwen_web_insert",
+      "sql": "CREATE TRIGGER provider_connections_retire_qwen_web_insert\r\nAFTER INSERT ON provider_connections\r\nWHEN lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n    IN ('qwen-web', 'qw')\r\nBEGIN\r\n  UPDATE provider_connections\r\n  SET is_active = 0,\r\n      test_status = 'unavailable',\r\n      error_code = 'PROVIDER_REMOVED',\r\n      last_error = 'Provider integration retired from OmniRoute v3.8.51',\r\n      last_error_type = 'provider_removed',\r\n      last_error_source = 'migration:retire-qwen-web',\r\n      last_error_at = datetime('now'),\r\n      updated_at = datetime('now')\r\n  WHERE id = NEW.id\r\n    AND (\r\n      is_active IS NOT 0\r\n      OR test_status IS NOT 'unavailable'\r\n      OR error_code IS NOT 'PROVIDER_REMOVED'\r\n      OR last_error IS NOT 'Provider integration retired from OmniRoute v3.8.51'\r\n      OR last_error_type IS NOT 'provider_removed'\r\n      OR last_error_source IS NOT 'migration:retire-qwen-web'\r\n      OR last_error_at IS NULL\r\n    );\r\n\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = COALESCE(ended_at, datetime('now')),\r\n      end_reason = 'CONNECTION_INELIGIBLE'\r\n  WHERE state = 'ACTIVE'\r\n    AND connection_id = NEW.id;\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "provider_connections_retire_qwen_web_update",
+      "sql": "CREATE TRIGGER provider_connections_retire_qwen_web_update\r\nAFTER UPDATE OF provider, is_active, test_status, error_code, last_error,\r\n  last_error_type, last_error_source, last_error_at ON provider_connections\r\nWHEN lower(trim(NEW.provider, char(9,10,11,12,13,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288,65279)))\r\n    IN ('qwen-web', 'qw')\r\nBEGIN\r\n  UPDATE provider_connections\r\n  SET is_active = 0,\r\n      test_status = 'unavailable',\r\n      error_code = 'PROVIDER_REMOVED',\r\n      last_error = 'Provider integration retired from OmniRoute v3.8.51',\r\n      last_error_type = 'provider_removed',\r\n      last_error_source = 'migration:retire-qwen-web',\r\n      last_error_at = datetime('now'),\r\n      updated_at = datetime('now')\r\n  WHERE id = NEW.id\r\n    AND (\r\n      is_active IS NOT 0\r\n      OR test_status IS NOT 'unavailable'\r\n      OR error_code IS NOT 'PROVIDER_REMOVED'\r\n      OR last_error IS NOT 'Provider integration retired from OmniRoute v3.8.51'\r\n      OR last_error_type IS NOT 'provider_removed'\r\n      OR last_error_source IS NOT 'migration:retire-qwen-web'\r\n      OR last_error_at IS NULL\r\n    );\r\n\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = COALESCE(ended_at, datetime('now')),\r\n      end_reason = 'CONNECTION_INELIGIBLE'\r\n  WHERE state = 'ACTIVE'\r\n    AND connection_id = NEW.id;\r\nEND"
+    },
+    {
+      "type": "table",
+      "name": "provider_key_limits",
+      "sql": "CREATE TABLE provider_key_limits (\r\n  provider         TEXT PRIMARY KEY,\r\n  max_active_keys  INTEGER,   -- null = unlimited\r\n  daily_issue_limit  INTEGER, -- max keys per day\r\n  hourly_issue_limit INTEGER, -- max keys per hour\r\n  daily_issued     INTEGER NOT NULL DEFAULT 0,\r\n  hourly_issued    INTEGER NOT NULL DEFAULT 0,\r\n  last_reset_day   TEXT NOT NULL DEFAULT '',\r\n  last_reset_hour  TEXT NOT NULL DEFAULT '',\r\n  updated_at       TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "provider_nodes",
+      "sql": "CREATE TABLE provider_nodes (\r\n  id TEXT PRIMARY KEY,\r\n  type TEXT NOT NULL,\r\n  name TEXT NOT NULL,\r\n  prefix TEXT,\r\n  api_type TEXT,\r\n  base_url TEXT,\r\n  created_at TEXT NOT NULL,\r\n  updated_at TEXT NOT NULL\r\n, chat_path TEXT, models_path TEXT, custom_headers_json TEXT, icon_url TEXT, daily_quota_reset_timezone TEXT, daily_quota_reset_hour INTEGER)"
+    },
+    {
+      "type": "table",
+      "name": "provider_plans",
+      "sql": "CREATE TABLE provider_plans (\r\n  connection_id TEXT PRIMARY KEY,           -- 1:1 with provider_connections; NULL not allowed since it is PK\r\n  provider TEXT NOT NULL,\r\n  dimensions_json TEXT NOT NULL,            -- JSON array of QuotaDimension\r\n  source TEXT NOT NULL CHECK (source IN ('auto','manual')) DEFAULT 'manual',\r\n  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "provider_quota_reset_events",
+      "sql": "CREATE TABLE provider_quota_reset_events (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  provider TEXT NOT NULL,\r\n  connection_id TEXT NOT NULL,\r\n  window_key TEXT NOT NULL,\r\n  window_started_at TEXT NOT NULL,\r\n  window_resets_at TEXT NOT NULL,\r\n  observed_at TEXT NOT NULL,\r\n  previous_remaining_percentage REAL,\r\n  new_remaining_percentage REAL,\r\n  previous_used_percentage REAL,\r\n  new_used_percentage REAL,\r\n  raw_data TEXT,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  UNIQUE(connection_id, window_key, window_started_at, window_resets_at)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "provider_quota_state",
+      "sql": "CREATE TABLE provider_quota_state (\r\n  connection_id TEXT NOT NULL,\r\n  model TEXT NOT NULL,\r\n  tokens_used INTEGER NOT NULL DEFAULT 0,\r\n  token_limit INTEGER NOT NULL DEFAULT 0,\r\n  window_start INTEGER NOT NULL,\r\n  window_reset INTEGER NOT NULL,\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  PRIMARY KEY (connection_id, model)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "proxy_assignments",
+      "sql": "CREATE TABLE proxy_assignments (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  proxy_id TEXT NOT NULL,\r\n  scope TEXT NOT NULL,\r\n  scope_id TEXT,\r\n  position INTEGER NOT NULL DEFAULT 0,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  UNIQUE(scope, scope_id, proxy_id),\r\n  FOREIGN KEY (proxy_id) REFERENCES proxy_registry(id) ON DELETE RESTRICT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "proxy_logs",
+      "sql": "CREATE TABLE proxy_logs (\r\n  id TEXT PRIMARY KEY,\r\n  timestamp TEXT NOT NULL,\r\n  status TEXT,\r\n  proxy_type TEXT,\r\n  proxy_host TEXT,\r\n  proxy_port INTEGER,\r\n  level TEXT,\r\n  level_id TEXT,\r\n  provider TEXT,\r\n  target_url TEXT,\r\n  public_ip TEXT,\r\n  latency_ms INTEGER DEFAULT 0,\r\n  error TEXT,\r\n  connection_id TEXT,\r\n  combo_id TEXT,\r\n  account TEXT,\r\n  tls_fingerprint INTEGER DEFAULT 0\r\n, egress_ip TEXT, upstream_status INTEGER, proxy_name TEXT, rotation_account TEXT, correlation_id TEXT, attempt_number INTEGER, attempt_issue TEXT, headers_ms INTEGER DEFAULT NULL, first_chunk_ms INTEGER DEFAULT NULL)"
+    },
+    {
+      "type": "table",
+      "name": "proxy_registry",
+      "sql": "CREATE TABLE proxy_registry (\r\n  id TEXT PRIMARY KEY,\r\n  name TEXT NOT NULL,\r\n  type TEXT NOT NULL,\r\n  host TEXT NOT NULL,\r\n  port INTEGER NOT NULL,\r\n  username TEXT,\r\n  password TEXT,\r\n  region TEXT,\r\n  notes TEXT,\r\n  status TEXT NOT NULL DEFAULT 'active',\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n, source TEXT NOT NULL DEFAULT 'manual', quality_score INTEGER, latency_ms INTEGER, anonymity TEXT, google_access INTEGER DEFAULT 0, last_validated TEXT, country_code TEXT, family TEXT NOT NULL DEFAULT 'auto', subscription_id TEXT)"
+    },
+    {
+      "type": "table",
+      "name": "proxy_scope_rotation",
+      "sql": "CREATE TABLE proxy_scope_rotation (\r\n  scope TEXT NOT NULL,\r\n  scope_id TEXT NOT NULL,\r\n  strategy TEXT NOT NULL DEFAULT 'round-robin',\r\n  cursor INTEGER NOT NULL DEFAULT 0,\r\n  sticky_window_minutes INTEGER NOT NULL DEFAULT 30,\r\n  rotated_at TEXT,\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  PRIMARY KEY (scope, scope_id)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "proxy_subscriptions",
+      "sql": "CREATE TABLE proxy_subscriptions (\r\n  id TEXT PRIMARY KEY,\r\n  name TEXT NOT NULL,\r\n  url TEXT NOT NULL,\r\n  enabled INTEGER NOT NULL DEFAULT 0,\r\n  mode TEXT NOT NULL DEFAULT 'global',\r\n  rule_providers TEXT,\r\n  local_core_endpoint TEXT,\r\n  update_interval_minutes INTEGER NOT NULL DEFAULT 60,\r\n  last_fetched_at TEXT,\r\n  status TEXT NOT NULL DEFAULT 'empty',\r\n  error TEXT,\r\n  last_nodes TEXT,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n, last_error_at TEXT, consecutive_failures INTEGER NOT NULL DEFAULT 0, control_url TEXT, control_secret_enc TEXT, selector_min_gap_seconds INTEGER NOT NULL DEFAULT 60, selector_last_switch_at TEXT, selector_last_switch_result TEXT, selector_last_switch_member TEXT)"
+    },
+    {
+      "type": "table",
+      "name": "quota_allocation_model_caps",
+      "sql": "CREATE TABLE quota_allocation_model_caps (\r\n  pool_id    TEXT NOT NULL,\r\n  api_key_id TEXT NOT NULL,\r\n  model      TEXT NOT NULL,\r\n  cap_value  REAL NOT NULL CHECK (cap_value > 0),\r\n  cap_unit   TEXT NOT NULL CHECK (cap_unit IN ('percent','requests','tokens','usd')),\r\n  PRIMARY KEY (pool_id, api_key_id, model)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "quota_allocations",
+      "sql": "CREATE TABLE quota_allocations (\r\n  pool_id TEXT NOT NULL REFERENCES quota_pools(id) ON DELETE CASCADE,\r\n  api_key_id TEXT NOT NULL,\r\n  weight REAL NOT NULL CHECK (weight >= 0 AND weight <= 100),\r\n  cap_value REAL,\r\n  cap_unit TEXT CHECK (cap_unit IN ('percent','requests','tokens','usd')),\r\n  policy TEXT NOT NULL CHECK (policy IN ('hard','soft','burst')) DEFAULT 'hard',\r\n  PRIMARY KEY (pool_id, api_key_id)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "quota_consumption",
+      "sql": "CREATE TABLE quota_consumption (\r\n  api_key_id TEXT NOT NULL,\r\n  dimension_key TEXT NOT NULL,\r\n  bucket_index INTEGER NOT NULL,\r\n  consumed REAL NOT NULL DEFAULT 0,\r\n  updated_at INTEGER NOT NULL,            -- epoch ms\r\n  PRIMARY KEY (api_key_id, dimension_key, bucket_index)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "quota_groups",
+      "sql": "CREATE TABLE quota_groups (\r\n  id         TEXT PRIMARY KEY,\r\n  name       TEXT NOT NULL,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "quota_pool_connections",
+      "sql": "CREATE TABLE quota_pool_connections (\r\n  pool_id       TEXT NOT NULL,\r\n  connection_id TEXT NOT NULL,\r\n  created_at    TEXT NOT NULL DEFAULT (datetime('now')),\r\n  PRIMARY KEY (pool_id, connection_id)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "quota_pools",
+      "sql": "CREATE TABLE quota_pools (\r\n  id TEXT PRIMARY KEY,\r\n  connection_id TEXT NOT NULL,\r\n  name TEXT NOT NULL,\r\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\r\n, group_id TEXT)"
+    },
+    {
+      "type": "table",
+      "name": "quota_schedules",
+      "sql": "CREATE TABLE quota_schedules (\r\n  id             TEXT    PRIMARY KEY,\r\n  pool_id        TEXT    NOT NULL,\r\n  label          TEXT,\r\n  days           TEXT    NOT NULL,\r\n  start_minute   INTEGER NOT NULL CHECK (start_minute >= 0 AND start_minute < 1440),\r\n  end_minute     INTEGER NOT NULL CHECK (end_minute > 0 AND end_minute <= 1440),\r\n  timezone       TEXT,\r\n  mode           TEXT    NOT NULL DEFAULT 'allow' CHECK (mode IN ('allow','block')),\r\n  reserves       TEXT,\r\n  budget_value   REAL             CHECK (budget_value IS NULL OR budget_value > 0),\r\n  budget_unit    TEXT             CHECK (budget_unit IS NULL OR budget_unit IN ('requests','tokens','usd')),\r\n  budget_window  TEXT    NOT NULL DEFAULT 'daily' CHECK (budget_window IN ('hourly','5h','daily','weekly','monthly')),\r\n  priority       INTEGER NOT NULL DEFAULT 0,\r\n  enabled        INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0,1)),\r\n  created_at     TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "quota_snapshots",
+      "sql": "CREATE TABLE quota_snapshots (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  provider TEXT NOT NULL,\r\n  connection_id TEXT NOT NULL,\r\n  window_key TEXT NOT NULL,\r\n  remaining_percentage REAL,\r\n  is_exhausted INTEGER DEFAULT 0,\r\n  next_reset_at TEXT,\r\n  window_duration_ms INTEGER,\r\n  raw_data TEXT,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "radar_feed_cache",
+      "sql": "CREATE TABLE radar_feed_cache (\r\n  id         INTEGER PRIMARY KEY CHECK (id = 1),\r\n  version    TEXT,\r\n  tier       TEXT,\r\n  payload    TEXT,\r\n  signature  TEXT,\r\n  fetched_at TEXT\r\n, generated_at TEXT DEFAULT NULL)"
+    },
+    {
+      "type": "table",
+      "name": "radar_intel_cache",
+      "sql": "CREATE TABLE radar_intel_cache (\r\n  id INTEGER PRIMARY KEY CHECK (id = 1),\r\n  version TEXT NOT NULL,\r\n  tier TEXT NOT NULL CHECK (tier = 'live'),\r\n  payload TEXT NOT NULL,\r\n  signature TEXT NOT NULL,\r\n  supporter_identity TEXT NOT NULL,\r\n  fetched_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "radar_local_model_state",
+      "sql": "CREATE TABLE radar_local_model_state (\r\n  provider     TEXT NOT NULL,\r\n  model_id     TEXT NOT NULL,\r\n  display_name TEXT,\r\n  enabled      INTEGER CHECK (enabled IS NULL OR enabled IN (0, 1)),\r\n  tombstoned   INTEGER NOT NULL DEFAULT 0 CHECK (tombstoned IN (0, 1)),\r\n  updated_at   TEXT NOT NULL DEFAULT (datetime('now')),\r\n  PRIMARY KEY (provider, model_id)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "radar_offers_cache",
+      "sql": "CREATE TABLE radar_offers_cache (\r\n  id         INTEGER PRIMARY KEY CHECK (id = 1),\r\n  version    TEXT NOT NULL,\r\n  tier       TEXT NOT NULL CHECK (tier = 'live'),\r\n  payload    TEXT NOT NULL,\r\n  signature  TEXT NOT NULL,\r\n  fetched_at TEXT NOT NULL\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "radar_referrals_cache",
+      "sql": "CREATE TABLE radar_referrals_cache (\r\n  id           INTEGER PRIMARY KEY CHECK (id = 1),\r\n  generated_at TEXT,\r\n  tier         TEXT,\r\n  payload      TEXT,\r\n  signature    TEXT,\r\n  fetched_at   TEXT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "radar_settings",
+      "sql": "CREATE TABLE radar_settings (\r\n  id                      INTEGER PRIMARY KEY CHECK (id = 1),\r\n  opt_in                  INTEGER NOT NULL DEFAULT 0,\r\n  supporter_key_encrypted TEXT,\r\n  updated_at              TEXT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "reasoning_cache",
+      "sql": "CREATE TABLE reasoning_cache (\r\n  tool_call_id   TEXT PRIMARY KEY,\r\n  provider       TEXT NOT NULL,\r\n  model          TEXT NOT NULL,\r\n  reasoning      TEXT NOT NULL,\r\n  char_count     INTEGER NOT NULL DEFAULT 0,\r\n  created_at     TEXT NOT NULL DEFAULT (datetime('now')),\r\n  expires_at     INTEGER NOT NULL\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "reasoning_routing_rules",
+      "sql": "CREATE TABLE reasoning_routing_rules (\r\n  id TEXT PRIMARY KEY,\r\n  name TEXT NOT NULL,\r\n  description TEXT NOT NULL DEFAULT '',\r\n  scope TEXT NOT NULL CHECK (scope IN ('global', 'apiKey', 'combo', 'model', 'connection')),\r\n  api_key_id TEXT REFERENCES api_keys(id) ON DELETE CASCADE,\r\n  combo_id TEXT REFERENCES combos(id) ON DELETE CASCADE,\r\n  connection_id TEXT REFERENCES provider_connections(id) ON DELETE CASCADE,\r\n  model_pattern TEXT,\r\n  source_effort TEXT NOT NULL DEFAULT 'any'\r\n    CHECK (source_effort IN ('any', 'missing', 'none', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra')),\r\n  request_tags TEXT NOT NULL DEFAULT '[]',\r\n  tag_match_mode TEXT NOT NULL DEFAULT 'any' CHECK (tag_match_mode IN ('any', 'all')),\r\n  effort_mode TEXT NOT NULL DEFAULT 'inherit' CHECK (effort_mode IN ('inherit', 'default', 'force')),\r\n  target_effort TEXT CHECK (target_effort IN ('none', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra')),\r\n  target_kind TEXT NOT NULL DEFAULT 'keep' CHECK (target_kind IN ('keep', 'model', 'combo')),\r\n  target_model TEXT,\r\n  target_combo_id TEXT REFERENCES combos(id) ON DELETE CASCADE,\r\n  budget_action TEXT NOT NULL DEFAULT 'preserve' CHECK (budget_action IN ('preserve', 'remove', 'set')),\r\n  budget_tokens INTEGER,\r\n  priority INTEGER NOT NULL DEFAULT 0,\r\n  enabled INTEGER NOT NULL DEFAULT 1,\r\n  created_at TEXT NOT NULL,\r\n  updated_at TEXT NOT NULL,\r\n  CHECK (scope != 'apiKey' OR api_key_id IS NOT NULL),\r\n  CHECK (scope != 'combo' OR combo_id IS NOT NULL),\r\n  CHECK (scope != 'model' OR model_pattern IS NOT NULL),\r\n  CHECK (scope != 'connection' OR connection_id IS NOT NULL),\r\n  CHECK (target_kind != 'model' OR target_model IS NOT NULL),\r\n  CHECK (target_kind != 'combo' OR target_combo_id IS NOT NULL),\r\n  CHECK (effort_mode = 'inherit' OR target_effort IS NOT NULL),\r\n  CHECK (budget_action != 'set' OR budget_tokens > 0),\r\n  CHECK (NOT (target_effort = 'none' AND budget_action = 'set'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "registered_keys",
+      "sql": "CREATE TABLE registered_keys (\r\n  id            TEXT PRIMARY KEY,           -- UUID\r\n  key           TEXT NOT NULL UNIQUE,       -- hashed key material (sha256)\r\n  key_prefix    TEXT NOT NULL,              -- first 8 chars for display (e.g. \"ork_abc1\")\r\n  name          TEXT NOT NULL,\r\n  provider      TEXT NOT NULL DEFAULT '',   -- associated provider (optional)\r\n  account_id    TEXT NOT NULL DEFAULT '',   -- account/tenant identifier\r\n  is_active     INTEGER NOT NULL DEFAULT 1,\r\n  revoked_at    TEXT,                       -- ISO timestamp, null if active\r\n  expires_at    TEXT,                       -- ISO timestamp, null = no expiry\r\n  idempotency_key TEXT UNIQUE,             -- prevents duplicate issue requests\r\n  daily_budget  INTEGER,                   -- max requests per day (null = unlimited)\r\n  hourly_budget INTEGER,                   -- max requests per hour (null = unlimited)\r\n  daily_used    INTEGER NOT NULL DEFAULT 0,\r\n  hourly_used   INTEGER NOT NULL DEFAULT 0,\r\n  last_reset_day  TEXT NOT NULL DEFAULT '',  -- YYYY-MM-DD for daily reset tracking\r\n  last_reset_hour TEXT NOT NULL DEFAULT '',  -- YYYY-MM-DDTHH for hourly reset tracking\r\n  created_at    TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "relay_logs",
+      "sql": "CREATE TABLE relay_logs (\r\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n    token_id TEXT NOT NULL,\r\n    request_id TEXT,                            -- X-Request-Id\r\n    model TEXT,\r\n    prompt_tokens INTEGER DEFAULT 0,\r\n    completion_tokens INTEGER DEFAULT 0,\r\n    cost REAL DEFAULT 0,\r\n    status TEXT DEFAULT 'success',              -- success, rate_limited, auth_failed, error\r\n    status_code INTEGER DEFAULT 200,\r\n    latency_ms INTEGER DEFAULT 0,\r\n    client_ip TEXT,\r\n    user_agent TEXT,\r\n    created_at INTEGER NOT NULL,\r\n    FOREIGN KEY (token_id) REFERENCES relay_tokens(id) ON DELETE CASCADE\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "relay_rate_limits",
+      "sql": "CREATE TABLE relay_rate_limits (\r\n    token_id TEXT NOT NULL,\r\n    window_start INTEGER NOT NULL,              -- unix timestamp of window start\r\n    request_count INTEGER DEFAULT 0,\r\n    cost REAL DEFAULT 0,\r\n    PRIMARY KEY (token_id, window_start),\r\n    FOREIGN KEY (token_id) REFERENCES relay_tokens(id) ON DELETE CASCADE\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "relay_tokens",
+      "sql": "CREATE TABLE relay_tokens (\r\n    id TEXT PRIMARY KEY,\r\n    name TEXT NOT NULL,\r\n    token_hash TEXT NOT NULL UNIQUE,           -- bcrypt hash of the token\r\n    token_prefix TEXT NOT NULL,                 -- first 8 chars for display (e.g., \"rl_abc123\")\r\n    description TEXT DEFAULT '',\r\n    combo_id TEXT,                              -- optional: restrict to a specific combo\r\n    allowed_models TEXT DEFAULT '[]',           -- JSON array of model patterns (e.g., [\"claude-*\", \"gpt-*\"])\r\n    max_tokens_per_request INTEGER DEFAULT 128000,\r\n    max_requests_per_minute INTEGER DEFAULT 60,\r\n    max_requests_per_day INTEGER DEFAULT 10000,\r\n    max_cost_per_day REAL DEFAULT 0,            -- 0 = unlimited\r\n    enabled INTEGER DEFAULT 1,\r\n    created_at INTEGER NOT NULL,\r\n    updated_at INTEGER NOT NULL,\r\n    expires_at INTEGER,                         -- optional TTL\r\n    last_used_at INTEGER,\r\n    metadata TEXT DEFAULT '{}'\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "request_cost_ledger",
+      "sql": "CREATE TABLE request_cost_ledger (\r\n  id                INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  api_key_id        TEXT NOT NULL,\r\n  provider          TEXT NOT NULL,\r\n  model             TEXT NOT NULL,\r\n  tokens_input      INTEGER NOT NULL DEFAULT 0,\r\n  tokens_output     INTEGER NOT NULL DEFAULT 0,\r\n  tokens_cache_read INTEGER NOT NULL DEFAULT 0,\r\n  tokens_cache_creation INTEGER NOT NULL DEFAULT 0,\r\n  tokens_reasoning  INTEGER NOT NULL DEFAULT 0,\r\n  unit_price_input  REAL NOT NULL DEFAULT 0,\r\n  unit_price_output REAL NOT NULL DEFAULT 0,\r\n  amount_usd        REAL NOT NULL DEFAULT 0,\r\n  service_tier      TEXT NOT NULL DEFAULT 'standard',\r\n  success           INTEGER NOT NULL DEFAULT 1,\r\n  timestamp         TEXT NOT NULL,\r\n  request_id        TEXT\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "request_detail_logs",
+      "sql": "CREATE TABLE request_detail_logs (\r\n  id TEXT PRIMARY KEY,\r\n  call_log_id TEXT,                  -- FK to call_logs.id (optional, nullable)\r\n  timestamp TEXT NOT NULL,\r\n  -- The 4 pipeline stages (all nullable — only populated when available)\r\n  client_request TEXT,               -- Raw body received from the client (JSON)\r\n  translated_request TEXT,           -- Body after format translation (JSON)\r\n  provider_response TEXT,            -- Raw body from the provider (JSON)\r\n  client_response TEXT,              -- Final body sent to the client (JSON)\r\n  -- Metadata\r\n  provider TEXT,\r\n  model TEXT,\r\n  source_format TEXT,\r\n  target_format TEXT,\r\n  duration_ms INTEGER DEFAULT 0\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "routing_decisions",
+      "sql": "CREATE TABLE routing_decisions (\r\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n    request_id TEXT,\r\n    task_type TEXT,\r\n    combo_id TEXT,\r\n    provider_selected TEXT,\r\n    model_selected TEXT,\r\n    score REAL,\r\n    factors_json TEXT,\r\n    fallbacks_triggered INTEGER DEFAULT 0,\r\n    success INTEGER DEFAULT 1,\r\n    latency_ms INTEGER,\r\n    cost REAL,\r\n    source TEXT DEFAULT 'api',\r\n    created_at TEXT DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "semantic_cache",
+      "sql": "CREATE TABLE semantic_cache (\r\n  id TEXT PRIMARY KEY,\r\n  signature TEXT NOT NULL UNIQUE,\r\n  model TEXT NOT NULL,\r\n  prompt_hash TEXT NOT NULL,\r\n  response TEXT NOT NULL,\r\n  tokens_saved INTEGER DEFAULT 0,\r\n  hit_count INTEGER DEFAULT 0,\r\n  created_at TEXT NOT NULL,\r\n  expires_at TEXT NOT NULL\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "server_tool_executions",
+      "sql": "CREATE TABLE server_tool_executions (\r\n  id TEXT PRIMARY KEY,\r\n  api_key_id TEXT NOT NULL,\r\n  request_identity TEXT NOT NULL,\r\n  tool_call_id TEXT NOT NULL,\r\n  tool_name TEXT NOT NULL,\r\n  input_digest TEXT NOT NULL,\r\n  output TEXT,\r\n  status TEXT NOT NULL CHECK(status IN ('running', 'success', 'error', 'timeout')),\r\n  error_message TEXT,\r\n  duration_ms INTEGER,\r\n  claim_expires_at TEXT NOT NULL,\r\n  completed_at TEXT,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  UNIQUE(api_key_id, request_identity, tool_call_id)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "session_account_affinity",
+      "sql": "CREATE TABLE session_account_affinity (\r\n  session_key TEXT NOT NULL,\r\n  provider TEXT NOT NULL,\r\n  connection_id TEXT NOT NULL,\r\n  created_at INTEGER NOT NULL,\r\n  last_seen_at INTEGER NOT NULL,\r\n  PRIMARY KEY (session_key, provider)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "session_model_history",
+      "sql": "CREATE TABLE session_model_history (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  session_id TEXT NOT NULL,\r\n  combo_name TEXT NOT NULL,\r\n  model_str TEXT NOT NULL,\r\n  provider TEXT NOT NULL,\r\n  connection_id TEXT,\r\n  used_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "skill_executions",
+      "sql": "CREATE TABLE skill_executions (\r\n  id TEXT PRIMARY KEY,\r\n  skill_id TEXT NOT NULL,\r\n  api_key_id TEXT NOT NULL,\r\n  session_id TEXT,\r\n  input TEXT NOT NULL,\r\n  output TEXT,\r\n  status TEXT NOT NULL CHECK(status IN ('pending', 'running', 'success', 'error', 'timeout')),\r\n  error_message TEXT,\r\n  duration_ms INTEGER,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "skills",
+      "sql": "CREATE TABLE skills (\r\n  id TEXT PRIMARY KEY,\r\n  api_key_id TEXT NOT NULL,\r\n  name TEXT NOT NULL,\r\n  version TEXT NOT NULL DEFAULT '1.0.0',\r\n  description TEXT,\r\n  schema TEXT NOT NULL,\r\n  handler TEXT NOT NULL,\r\n  enabled INTEGER NOT NULL DEFAULT 1,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n, mode TEXT NOT NULL DEFAULT 'auto', source_provider TEXT, tags TEXT, install_count INTEGER NOT NULL DEFAULT 0)"
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_a2a_tasks_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_account_key_limits_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_agent_bridge_bypass_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_agent_bridge_mappings_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_agent_bridge_state_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_agentic_conversations_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_api_key_context_sources_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_api_key_quota_counters_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_api_key_quota_limits_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_api_key_token_counters_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_api_key_token_limits_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_api_key_token_limits_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_api_keys_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_api_keys_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_auto_candidate_overrides_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_auto_candidate_overrides_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_badge_definitions_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_batch_item_checkpoints_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_batches_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_call_logs_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_call_logs_v1_legacy_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_ccr_blocks_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_cli_access_tokens_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_cli_access_tokens_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_cloud_agent_credentials_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_combo_adaptation_state_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_combos_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_combos_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_command_code_auth_sessions_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_command_code_auth_sessions_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_community_servers_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_compression_combo_assignments_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_compression_combo_assignments_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_compression_combos_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_config_audit_log_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_connection_runtime_state_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_context_handoffs_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_conversation_turn_nodes_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_db_meta_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_discovery_results_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_domain_budgets_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_domain_circuit_breakers_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_domain_fallback_chains_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_domain_lockout_state_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_eval_cases_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_eval_runs_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_eval_suites_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_files_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_free_proxies_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_free_proxies_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_free_proxy_sync_errors_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_group_model_permissions_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_inspector_custom_hosts_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_inspector_session_requests_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_inspector_sessions_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_invite_tokens_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_invite_tokens_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_invite_tokens_3",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_jobs_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_key_group_members_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_key_groups_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_key_value_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_log_export_destinations_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_memories_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_middleware_hooks_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_middleware_logs_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_model_capabilities_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_model_combo_mappings_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_playground_presets_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_plugin_metrics_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_plugins_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_plugins_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_provider_connections_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_provider_key_limits_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_provider_nodes_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_provider_plans_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_provider_quota_reset_events_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_provider_quota_state_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_proxy_assignments_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_proxy_logs_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_proxy_registry_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_proxy_scope_rotation_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_proxy_subscriptions_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_quota_allocation_model_caps_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_quota_allocations_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_quota_consumption_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_quota_groups_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_quota_pool_connections_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_quota_pools_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_quota_schedules_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_radar_local_model_state_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_reasoning_cache_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_reasoning_routing_rules_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_registered_keys_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_registered_keys_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_registered_keys_3",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_relay_rate_limits_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_relay_tokens_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_relay_tokens_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_request_detail_logs_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_semantic_cache_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_semantic_cache_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_server_tool_executions_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_server_tool_executions_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_session_account_affinity_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_skill_executions_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_skills_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_sync_tokens_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_sync_tokens_2",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_tier_assignments_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_tier_config_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_token_ledger_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_upstream_proxy_config_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_version_manager_1",
+      "sql": null
+    },
+    {
+      "type": "index",
+      "name": "sqlite_autoindex_webhooks_1",
+      "sql": null
+    },
+    {
+      "type": "table",
+      "name": "sqlite_sequence",
+      "sql": "CREATE TABLE sqlite_sequence(name,seq)"
+    },
+    {
+      "type": "table",
+      "name": "sync_tokens",
+      "sql": "CREATE TABLE sync_tokens (\r\n  id TEXT PRIMARY KEY,\r\n  name TEXT NOT NULL,\r\n  token_hash TEXT NOT NULL UNIQUE,\r\n  sync_api_key_id TEXT,\r\n  revoked_at TEXT,\r\n  last_used_at TEXT,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "tier_assignments",
+      "sql": "CREATE TABLE tier_assignments (\r\n  provider TEXT NOT NULL,\r\n  model TEXT NOT NULL,\r\n  tier TEXT NOT NULL CHECK (tier IN ('free', 'cheap', 'premium')),\r\n  cost_per_1m_input REAL DEFAULT 0,\r\n  cost_per_1m_output REAL DEFAULT 0,\r\n  has_free_tier INTEGER DEFAULT 0,\r\n  free_quota_limit INTEGER,\r\n  reason TEXT,\r\n  updated_at TEXT DEFAULT (datetime('now')),\r\n  PRIMARY KEY (provider, model)\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "tier_config",
+      "sql": "CREATE TABLE tier_config (\r\n  key TEXT PRIMARY KEY,\r\n  value TEXT NOT NULL,\r\n  updated_at TEXT DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "token_ledger",
+      "sql": "CREATE TABLE token_ledger (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  from_api_key_id TEXT NOT NULL,\r\n  to_api_key_id TEXT NOT NULL,\r\n  amount INTEGER NOT NULL CHECK (amount > 0),\r\n  reason TEXT,\r\n  idempotency_key TEXT UNIQUE,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    },
+    {
+      "type": "trigger",
+      "name": "trg_free_proxies_clear_pool_proxy_id",
+      "sql": "CREATE TRIGGER trg_free_proxies_clear_pool_proxy_id\r\nAFTER DELETE ON proxy_registry\r\nFOR EACH ROW\r\nBEGIN\r\n  UPDATE free_proxies\r\n  SET pool_proxy_id = NULL,\r\n      in_pool = 0,\r\n      updated_at = datetime('now')\r\n  WHERE pool_proxy_id = OLD.id;\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "trg_rdl_ring_buffer",
+      "sql": "CREATE TRIGGER trg_rdl_ring_buffer\r\nAFTER INSERT ON request_detail_logs\r\nBEGIN\r\n  DELETE FROM request_detail_logs\r\n  WHERE id IN (\r\n    SELECT id FROM request_detail_logs\r\n    ORDER BY timestamp ASC\r\n    LIMIT MAX(0, (SELECT COUNT(*) FROM request_detail_logs) - 500)\r\n  );\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "trg_reasoning_rules_api_key_delete",
+      "sql": "CREATE TRIGGER trg_reasoning_rules_api_key_delete\r\nAFTER DELETE ON api_keys BEGIN\r\n  DELETE FROM reasoning_routing_rules WHERE api_key_id = OLD.id;\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "trg_reasoning_rules_combo_delete",
+      "sql": "CREATE TRIGGER trg_reasoning_rules_combo_delete\r\nAFTER DELETE ON combos BEGIN\r\n  DELETE FROM reasoning_routing_rules WHERE combo_id = OLD.id OR target_combo_id = OLD.id;\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "trg_reasoning_rules_connection_delete",
+      "sql": "CREATE TRIGGER trg_reasoning_rules_connection_delete\r\nAFTER DELETE ON provider_connections BEGIN\r\n  DELETE FROM reasoning_routing_rules WHERE connection_id = OLD.id;\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "trg_retire_microsoft_designer_web_lease_insert",
+      "sql": "CREATE TRIGGER trg_retire_microsoft_designer_web_lease_insert\r\nAFTER INSERT ON exclusive_connection_leases\r\nWHEN NEW.state = 'ACTIVE'\r\n  AND (\r\n    lower(trim(NEW.provider, ' ' || char(9) || char(10) || char(11) || char(12) || char(13)))\r\n      IN ('microsoft-designer-web', 'msdesigner')\r\n    OR EXISTS (\r\n      SELECT 1\r\n      FROM provider_connections\r\n      WHERE id = NEW.connection_id\r\n        AND lower(trim(provider, ' ' || char(9) || char(10) || char(11) || char(12) || char(13)))\r\n          IN ('microsoft-designer-web', 'msdesigner')\r\n    )\r\n  )\r\nBEGIN\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = COALESCE(ended_at, CURRENT_TIMESTAMP),\r\n      end_reason = 'AUTHORIZATION_CHANGED'\r\n  WHERE id = NEW.id AND state = 'ACTIVE';\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "trg_retire_microsoft_designer_web_lease_update",
+      "sql": "CREATE TRIGGER trg_retire_microsoft_designer_web_lease_update\r\nAFTER UPDATE OF provider, connection_id, state ON exclusive_connection_leases\r\nWHEN NEW.state = 'ACTIVE'\r\n  AND (\r\n    lower(trim(NEW.provider, ' ' || char(9) || char(10) || char(11) || char(12) || char(13)))\r\n      IN ('microsoft-designer-web', 'msdesigner')\r\n    OR EXISTS (\r\n      SELECT 1\r\n      FROM provider_connections\r\n      WHERE id = NEW.connection_id\r\n        AND lower(trim(provider, ' ' || char(9) || char(10) || char(11) || char(12) || char(13)))\r\n          IN ('microsoft-designer-web', 'msdesigner')\r\n    )\r\n  )\r\nBEGIN\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = COALESCE(ended_at, CURRENT_TIMESTAMP),\r\n      end_reason = 'AUTHORIZATION_CHANGED'\r\n  WHERE id = NEW.id AND state = 'ACTIVE';\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "trg_retire_microsoft_designer_web_provider_insert",
+      "sql": "CREATE TRIGGER trg_retire_microsoft_designer_web_provider_insert\r\nAFTER INSERT ON provider_connections\r\nWHEN lower(trim(NEW.provider, ' ' || char(9) || char(10) || char(11) || char(12) || char(13)))\r\n  IN ('microsoft-designer-web', 'msdesigner')\r\nBEGIN\r\n  UPDATE provider_connections\r\n  SET is_active = 0,\r\n      test_status = 'unavailable',\r\n      last_error = 'Provider retired from OmniRoute runtime.',\r\n      last_error_at = COALESCE(last_error_at, CURRENT_TIMESTAMP),\r\n      last_error_type = 'provider_retired',\r\n      last_error_source = 'migration:retire-microsoft-designer-web'\r\n  WHERE id = NEW.id;\r\n\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = COALESCE(ended_at, CURRENT_TIMESTAMP),\r\n      end_reason = 'AUTHORIZATION_CHANGED'\r\n  WHERE connection_id = NEW.id AND state = 'ACTIVE';\r\nEND"
+    },
+    {
+      "type": "trigger",
+      "name": "trg_retire_microsoft_designer_web_provider_update",
+      "sql": "CREATE TRIGGER trg_retire_microsoft_designer_web_provider_update\r\nAFTER UPDATE OF provider, is_active, test_status, last_error, last_error_type, last_error_source\r\nON provider_connections\r\nWHEN lower(trim(NEW.provider, ' ' || char(9) || char(10) || char(11) || char(12) || char(13)))\r\n       IN ('microsoft-designer-web', 'msdesigner')\r\n  AND (\r\n    COALESCE(NEW.is_active, 0) <> 0\r\n    OR COALESCE(NEW.test_status, '') <> 'unavailable'\r\n    OR COALESCE(NEW.last_error, '') <> 'Provider retired from OmniRoute runtime.'\r\n    OR COALESCE(NEW.last_error_type, '') <> 'provider_retired'\r\n    OR COALESCE(NEW.last_error_source, '') <> 'migration:retire-microsoft-designer-web'\r\n  )\r\nBEGIN\r\n  UPDATE provider_connections\r\n  SET is_active = 0,\r\n      test_status = 'unavailable',\r\n      last_error = 'Provider retired from OmniRoute runtime.',\r\n      last_error_at = COALESCE(last_error_at, CURRENT_TIMESTAMP),\r\n      last_error_type = 'provider_retired',\r\n      last_error_source = 'migration:retire-microsoft-designer-web'\r\n  WHERE id = NEW.id;\r\n\r\n  UPDATE exclusive_connection_leases\r\n  SET state = 'INVALIDATED',\r\n      ended_at = COALESCE(ended_at, CURRENT_TIMESTAMP),\r\n      end_reason = 'AUTHORIZATION_CHANGED'\r\n  WHERE connection_id = NEW.id AND state = 'ACTIVE';\r\nEND"
+    },
+    {
+      "type": "table",
+      "name": "upstream_proxy_config",
+      "sql": "CREATE TABLE upstream_proxy_config (\r\n  id                        INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  provider_id               TEXT NOT NULL UNIQUE,          -- e.g., 'antigravity', 'claude', 'codex'\r\n  mode                      TEXT NOT NULL DEFAULT 'native', -- 'native' | 'cliproxyapi' | 'fallback'\r\n  cliproxyapi_model_mapping TEXT,                           -- JSON: { \"ag/gemini-3-pro\": \"gemini-3-pro-high\", ... }\r\n  native_priority           INTEGER NOT NULL DEFAULT 1,    -- order in fallback chain (1 = first)\r\n  cliproxyapi_priority      INTEGER NOT NULL DEFAULT 2,    -- order in fallback chain\r\n  enabled                   INTEGER NOT NULL DEFAULT 1,\r\n  created_at                TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at                TEXT NOT NULL DEFAULT (datetime('now'))\r\n, family TEXT NOT NULL DEFAULT 'auto', fallback_backend TEXT NOT NULL DEFAULT 'cliproxyapi')"
+    },
+    {
+      "type": "table",
+      "name": "usage_history",
+      "sql": "CREATE TABLE usage_history (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  provider TEXT,\r\n  model TEXT,\r\n  connection_id TEXT,\r\n  api_key_id TEXT,\r\n  api_key_name TEXT,\r\n  tokens_input INTEGER DEFAULT 0,\r\n  tokens_output INTEGER DEFAULT 0,\r\n  tokens_cache_read INTEGER DEFAULT 0,\r\n  tokens_cache_creation INTEGER DEFAULT 0,\r\n  tokens_reasoning INTEGER DEFAULT 0,\r\n  service_tier TEXT DEFAULT 'standard',\r\n  status TEXT,\r\n  success INTEGER DEFAULT 1,\r\n  latency_ms INTEGER DEFAULT 0,\r\n  ttft_ms INTEGER DEFAULT 0,\r\n  error_code TEXT,\r\n  timestamp TEXT NOT NULL\r\n, combo_strategy TEXT DEFAULT 'direct', endpoint TEXT, cpa_auth_index TEXT)"
+    },
+    {
+      "type": "table",
+      "name": "user_badges",
+      "sql": "CREATE TABLE user_badges (\r\n  api_key_id TEXT NOT NULL,\r\n  badge_id TEXT NOT NULL,\r\n  unlocked_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  PRIMARY KEY (api_key_id, badge_id)\r\n) WITHOUT ROWID"
+    },
+    {
+      "type": "table",
+      "name": "user_levels",
+      "sql": "CREATE TABLE user_levels (\r\n  api_key_id TEXT PRIMARY KEY,\r\n  total_xp INTEGER NOT NULL DEFAULT 0,\r\n  current_level INTEGER NOT NULL DEFAULT 1,\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n) WITHOUT ROWID"
+    },
+    {
+      "type": "table",
+      "name": "version_manager",
+      "sql": "CREATE TABLE version_manager (\r\n  id                INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  tool              TEXT NOT NULL UNIQUE,           -- 'cliproxyapi' | 'omniroute'\r\n  current_version   TEXT,                           -- latest known release version\r\n  installed_version TEXT,                           -- currently installed version\r\n  pinned_version    TEXT,                           -- user-pinned version (null = auto)\r\n  binary_path       TEXT,                           -- absolute path to binary\r\n  status            TEXT NOT NULL DEFAULT 'not_installed',  -- not_installed | installed | running | stopped | error\r\n  pid               INTEGER,                        -- process ID when running\r\n  port              INTEGER DEFAULT 8317,           -- managed tool's port\r\n  api_key           TEXT,                           -- API key for CLIProxyAPI (from its config)\r\n  management_key    TEXT,                           -- CLIProxyAPI management secret key\r\n  auto_update       INTEGER NOT NULL DEFAULT 1,    -- 1 = auto-update enabled\r\n  auto_start        INTEGER NOT NULL DEFAULT 0,    -- 1 = start with OmniRoute\r\n  last_health_check TEXT,                           -- ISO timestamp\r\n  last_update_check TEXT,                           -- ISO timestamp\r\n  health_status     TEXT DEFAULT 'unknown',         -- unknown | healthy | unhealthy | timeout\r\n  config_overrides  TEXT,                           -- JSON blob for CLIProxyAPI config overrides\r\n  error_message     TEXT,                           -- last error message\r\n  created_at        TEXT NOT NULL DEFAULT (datetime('now')),\r\n  updated_at        TEXT NOT NULL DEFAULT (datetime('now'))\r\n, logs_buffer_path TEXT, provider_expose INTEGER NOT NULL DEFAULT 0, last_sync_at TEXT, auto_restart_adopted INTEGER NOT NULL DEFAULT 0)"
+    },
+    {
+      "type": "table",
+      "name": "webhook_deliveries",
+      "sql": "CREATE TABLE webhook_deliveries (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  webhook_id TEXT NOT NULL,\r\n  event_type TEXT NOT NULL,\r\n  status TEXT NOT NULL,\r\n  http_status INTEGER,\r\n  latency_ms INTEGER,\r\n  error TEXT,\r\n  payload_snapshot TEXT,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  FOREIGN KEY (webhook_id) REFERENCES webhooks(id) ON DELETE CASCADE\r\n)"
+    },
+    {
+      "type": "table",
+      "name": "webhooks",
+      "sql": "CREATE TABLE webhooks (\r\n  id TEXT PRIMARY KEY,\r\n  url TEXT NOT NULL,\r\n  events TEXT NOT NULL DEFAULT '[\"*\"]',\r\n  secret TEXT,\r\n  enabled INTEGER DEFAULT 1,\r\n  description TEXT DEFAULT '',\r\n  created_at TEXT DEFAULT (datetime('now')),\r\n  last_triggered_at TEXT,\r\n  last_status INTEGER,\r\n  failure_count INTEGER DEFAULT 0\r\n, kind TEXT NOT NULL DEFAULT 'custom', metadata_encrypted BLOB)"
+    },
+    {
+      "type": "table",
+      "name": "xp_action_counts",
+      "sql": "CREATE TABLE xp_action_counts (\r\n  api_key_id TEXT NOT NULL,\r\n  action TEXT NOT NULL,\r\n  count INTEGER NOT NULL DEFAULT 0,\r\n  updated_at TEXT NOT NULL DEFAULT (datetime('now')),\r\n  PRIMARY KEY (api_key_id, action)\r\n) WITHOUT ROWID"
+    },
+    {
+      "type": "table",
+      "name": "xp_audit_log",
+      "sql": "CREATE TABLE xp_audit_log (\r\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\r\n  api_key_id TEXT NOT NULL,\r\n  action TEXT NOT NULL,\r\n  xp_earned INTEGER NOT NULL,\r\n  metadata TEXT,\r\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\r\n)"
+    }
+  ]
+}

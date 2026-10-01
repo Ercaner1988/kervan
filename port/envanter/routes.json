@@ -1,0 +1,5544 @@
+[
+  {
+    "dosya": "src/app/(dashboard)/dashboard/providers/services/[name]/embed/[[...path]]/route.ts",
+    "url": "/(dashboard)/dashboard/providers/services/[name]/embed/[[...path]]",
+    "metotlar": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "PATCH",
+      "HEAD",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/.well-known/agent-card.json/route.ts",
+    "url": "/.well-known/agent-card.json",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/.well-known/agent.json/route.ts",
+    "url": "/.well-known/agent.json",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/a2a/route.ts",
+    "url": "/a2a",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/a2a/status/route.ts",
+    "url": "/api/a2a/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/a2a/tasks/history/route.ts",
+    "url": "/api/a2a/tasks/history",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/a2a/tasks/route.ts",
+    "url": "/api/a2a/tasks",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/a2a/tasks/[id]/cancel/route.ts",
+    "url": "/api/a2a/tasks/[id]/cancel",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/a2a/tasks/[id]/route.ts",
+    "url": "/api/a2a/tasks/[id]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/acp/agents/route.ts",
+    "url": "/api/acp/agents",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/admin/concurrency/route.ts",
+    "url": "/api/admin/concurrency",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/admin/proxy-pool-visibility/route.ts",
+    "url": "/api/admin/proxy-pool-visibility",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/agent-skills/coverage/route.ts",
+    "url": "/api/agent-skills/coverage",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/agent-skills/generate/route.ts",
+    "url": "/api/agent-skills/generate",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/agent-skills/route.ts",
+    "url": "/api/agent-skills",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/agent-skills/[id]/raw/route.ts",
+    "url": "/api/agent-skills/[id]/raw",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/agent-skills/[id]/route.ts",
+    "url": "/api/agent-skills/[id]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/analytics/auto-routing/route.ts",
+    "url": "/api/analytics/auto-routing",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/analytics/compression/route.ts",
+    "url": "/api/analytics/compression",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/analytics/diversity/route.ts",
+    "url": "/api/analytics/diversity",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/assess/route.ts",
+    "url": "/api/assess",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/auth/csrf/route.ts",
+    "url": "/api/auth/csrf",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/auth/login/route.ts",
+    "url": "/api/auth/login",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/auth/logout/route.ts",
+    "url": "/api/auth/logout",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/auth/oidc/callback/route.ts",
+    "url": "/api/auth/oidc/callback",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/auth/oidc/login/route.ts",
+    "url": "/api/auth/oidc/login",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/auth/status/route.ts",
+    "url": "/api/auth/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/batches/route.ts",
+    "url": "/api/batches",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/batches/[id]/route.ts",
+    "url": "/api/batches/[id]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cache/entries/route.ts",
+    "url": "/api/cache/entries",
+    "metotlar": [
+      "GET",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cache/reasoning/route.ts",
+    "url": "/api/cache/reasoning",
+    "metotlar": [
+      "GET",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cache/route.ts",
+    "url": "/api/cache",
+    "metotlar": [
+      "GET",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cache/stats/route.ts",
+    "url": "/api/cache/stats",
+    "metotlar": [
+      "GET",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/chaos/config/route.ts",
+    "url": "/api/chaos/config",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/chaos/run/route.ts",
+    "url": "/api/chaos/run",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli/connect/route.ts",
+    "url": "/api/cli/connect",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli/tokens/route.ts",
+    "url": "/api/cli/tokens",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli/tokens/[id]/route.ts",
+    "url": "/api/cli/tokens/[id]",
+    "metotlar": [
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli/whoami/route.ts",
+    "url": "/api/cli/whoami",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/all-statuses/route.ts",
+    "url": "/api/cli-tools/all-statuses",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/antigravity-mitm/alias/route.ts",
+    "url": "/api/cli-tools/antigravity-mitm/alias",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/antigravity-mitm/route.ts",
+    "url": "/api/cli-tools/antigravity-mitm",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/apply/route.ts",
+    "url": "/api/cli-tools/apply",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/backups/route.ts",
+    "url": "/api/cli-tools/backups",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/claude-settings/route.ts",
+    "url": "/api/cli-tools/claude-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/cline-settings/route.ts",
+    "url": "/api/cli-tools/cline-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/codewhale-settings/route.ts",
+    "url": "/api/cli-tools/codewhale-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/codex-profiles/route.ts",
+    "url": "/api/cli-tools/codex-profiles",
+    "metotlar": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/codex-settings/route.ts",
+    "url": "/api/cli-tools/codex-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/config/route.ts",
+    "url": "/api/cli-tools/config",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/crush-settings/route.ts",
+    "url": "/api/cli-tools/crush-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/deepseek-tui-settings/route.ts",
+    "url": "/api/cli-tools/deepseek-tui-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/detect/route.ts",
+    "url": "/api/cli-tools/detect",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/droid-settings/route.ts",
+    "url": "/api/cli-tools/droid-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/forge-settings/route.ts",
+    "url": "/api/cli-tools/forge-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/grok-build-settings/route.ts",
+    "url": "/api/cli-tools/grok-build-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/guide-settings/[toolId]/route.ts",
+    "url": "/api/cli-tools/guide-settings/[toolId]",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/hermes-agent-settings/route.ts",
+    "url": "/api/cli-tools/hermes-agent-settings",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/jcode-settings/route.ts",
+    "url": "/api/cli-tools/jcode-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/keys/route.ts",
+    "url": "/api/cli-tools/keys",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/kilo-settings/route.ts",
+    "url": "/api/cli-tools/kilo-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/letta-settings/route.ts",
+    "url": "/api/cli-tools/letta-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/logs/route.ts",
+    "url": "/api/cli-tools/logs",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/omp-settings/route.ts",
+    "url": "/api/cli-tools/omp-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/openclaw/auto-order/route.ts",
+    "url": "/api/cli-tools/openclaw/auto-order",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/openclaw-settings/route.ts",
+    "url": "/api/cli-tools/openclaw-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/pi-settings/route.ts",
+    "url": "/api/cli-tools/pi-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/qwen-settings/route.ts",
+    "url": "/api/cli-tools/qwen-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/runtime/[toolId]/route.ts",
+    "url": "/api/cli-tools/runtime/[toolId]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/smelt-settings/route.ts",
+    "url": "/api/cli-tools/smelt-settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cli-tools/status/route.ts",
+    "url": "/api/cli-tools/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cloud/auth/route.ts",
+    "url": "/api/cloud/auth",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cloud/credentials/update/route.ts",
+    "url": "/api/cloud/credentials/update",
+    "metotlar": [
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cloud/model/resolve/route.ts",
+    "url": "/api/cloud/model/resolve",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cloud/models/alias/route.ts",
+    "url": "/api/cloud/models/alias",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/codex/connect/[token]/route.ts",
+    "url": "/api/codex/connect/[token]",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/combos/auto/route.ts",
+    "url": "/api/combos/auto",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/combos/builder/options/route.ts",
+    "url": "/api/combos/builder/options",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/combos/duplicate/route.ts",
+    "url": "/api/combos/duplicate",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/combos/metrics/route.ts",
+    "url": "/api/combos/metrics",
+    "metotlar": [
+      "GET",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/combos/reorder/route.ts",
+    "url": "/api/combos/reorder",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/combos/route.ts",
+    "url": "/api/combos",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/combos/test/route.ts",
+    "url": "/api/combos/test",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/combos/[id]/route.ts",
+    "url": "/api/combos/[id]",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/compliance/audit-log/route.ts",
+    "url": "/api/compliance/audit-log",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/compression/compare/route.ts",
+    "url": "/api/compression/compare",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/compression/compare/verify/route.ts",
+    "url": "/api/compression/compare/verify",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/compression/engines/route.ts",
+    "url": "/api/compression/engines",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/compression/language-packs/route.ts",
+    "url": "/api/compression/language-packs",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/compression/preview/route.ts",
+    "url": "/api/compression/preview",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/compression/retrieve/route.ts",
+    "url": "/api/compression/retrieve",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/compression/rules/route.ts",
+    "url": "/api/compression/rules",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/conductor/ask/route.ts",
+    "url": "/api/conductor/ask",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/conductor/fleet/route.ts",
+    "url": "/api/conductor/fleet",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/conductor/tasks/route.ts",
+    "url": "/api/conductor/tasks",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/conductor/tasks/[id]/cancel/route.ts",
+    "url": "/api/conductor/tasks/[id]/cancel",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/conductor/tasks/[id]/route.ts",
+    "url": "/api/conductor/tasks/[id]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/context/analytics/engine/route.ts",
+    "url": "/api/context/analytics/engine",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/context/analytics/route.ts",
+    "url": "/api/context/analytics",
+    "metotlar": []
+  },
+  {
+    "dosya": "src/app/api/context/caveman/config/route.ts",
+    "url": "/api/context/caveman/config",
+    "metotlar": []
+  },
+  {
+    "dosya": "src/app/api/context/combos/default/route.ts",
+    "url": "/api/context/combos/default",
+    "metotlar": [
+      "GET",
+      "POST",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/context/combos/route.ts",
+    "url": "/api/context/combos",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/context/combos/[id]/assignments/route.ts",
+    "url": "/api/context/combos/[id]/assignments",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/context/combos/[id]/route.ts",
+    "url": "/api/context/combos/[id]",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/context/rtk/config/route.ts",
+    "url": "/api/context/rtk/config",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/context/rtk/discover/route.ts",
+    "url": "/api/context/rtk/discover",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/context/rtk/filters/route.ts",
+    "url": "/api/context/rtk/filters",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/context/rtk/import/route.ts",
+    "url": "/api/context/rtk/import",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/context/rtk/learn/route.ts",
+    "url": "/api/context/rtk/learn",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/context/rtk/raw-output/[id]/route.ts",
+    "url": "/api/context/rtk/raw-output/[id]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/context/rtk/test/route.ts",
+    "url": "/api/context/rtk/test",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/conversations/route.ts",
+    "url": "/api/conversations",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/conversations/[id]/route.ts",
+    "url": "/api/conversations/[id]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/conversations/[id]/tree/route.ts",
+    "url": "/api/conversations/[id]/tree",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/copilot/chat/route.ts",
+    "url": "/api/copilot/chat",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/cursor-cli/[...path]/route.ts",
+    "url": "/api/cursor-cli/[...path]",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/dahl/tokens/route.ts",
+    "url": "/api/dahl/tokens",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/db/health/route.ts",
+    "url": "/api/db/health",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/db-backups/export/route.ts",
+    "url": "/api/db-backups/export",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/db-backups/exportAll/route.ts",
+    "url": "/api/db-backups/exportAll",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/db-backups/import/route.ts",
+    "url": "/api/db-backups/import",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/db-backups/route.ts",
+    "url": "/api/db-backups",
+    "metotlar": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/discovery/results/route.ts",
+    "url": "/api/discovery/results",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/discovery/results/[id]/route.ts",
+    "url": "/api/discovery/results/[id]",
+    "metotlar": [
+      "GET",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/discovery/scan/route.ts",
+    "url": "/api/discovery/scan",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/discovery/verify/[id]/route.ts",
+    "url": "/api/discovery/verify/[id]",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/docs/codex-cli/route.ts",
+    "url": "/api/docs/codex-cli",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/docs/route.ts",
+    "url": "/api/docs",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/evals/route.ts",
+    "url": "/api/evals",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/evals/suites/route.ts",
+    "url": "/api/evals/suites",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/evals/suites/[suiteId]/route.ts",
+    "url": "/api/evals/suites/[suiteId]",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/evals/[suiteId]/route.ts",
+    "url": "/api/evals/[suiteId]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/fallback/chains/route.ts",
+    "url": "/api/fallback/chains",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/files/route.ts",
+    "url": "/api/files",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/files/[id]/content/route.ts",
+    "url": "/api/files/[id]/content",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/free-models/route.ts",
+    "url": "/api/free-models",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/free-provider-rankings/route.ts",
+    "url": "/api/free-provider-rankings",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/free-tier/summary/route.ts",
+    "url": "/api/free-tier/summary",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/gamification/anomalies/route.ts",
+    "url": "/api/gamification/anomalies",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/gamification/badges/earned/route.ts",
+    "url": "/api/gamification/badges/earned",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/gamification/badges/route.ts",
+    "url": "/api/gamification/badges",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/gamification/federation/leaderboard/route.ts",
+    "url": "/api/gamification/federation/leaderboard",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/gamification/federation/score/route.ts",
+    "url": "/api/gamification/federation/score",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/gamification/invite/redeem/route.ts",
+    "url": "/api/gamification/invite/redeem",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/gamification/invite/route.ts",
+    "url": "/api/gamification/invite",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/gamification/leaderboard/route.ts",
+    "url": "/api/gamification/leaderboard",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/gamification/level/route.ts",
+    "url": "/api/gamification/level",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/gamification/notifications/route.ts",
+    "url": "/api/gamification/notifications",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/gamification/rotate/route.ts",
+    "url": "/api/gamification/rotate",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/gamification/servers/route.ts",
+    "url": "/api/gamification/servers",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/gamification/stream/route.ts",
+    "url": "/api/gamification/stream",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/gamification/transfer/route.ts",
+    "url": "/api/gamification/transfer",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/github-skills/route.ts",
+    "url": "/api/github-skills",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/guardrails/route.ts",
+    "url": "/api/guardrails",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/guardrails/test/route.ts",
+    "url": "/api/guardrails/test",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/headroom/start/route.ts",
+    "url": "/api/headroom/start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/headroom/status/route.ts",
+    "url": "/api/headroom/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/headroom/stop/route.ts",
+    "url": "/api/headroom/stop",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/health/degradation/route.ts",
+    "url": "/api/health/degradation",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/health/ping/route.ts",
+    "url": "/api/health/ping",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/health/route.ts",
+    "url": "/api/health",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/init/route.ts",
+    "url": "/api/init",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/intelligence/sync/route.ts",
+    "url": "/api/intelligence/sync",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/internal/codex-responses-ws/route.ts",
+    "url": "/api/internal/codex-responses-ws",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/issue-agent/runs/route.ts",
+    "url": "/api/issue-agent/runs",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/jobs/route.ts",
+    "url": "/api/jobs",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/jobs/[id]/disable/route.ts",
+    "url": "/api/jobs/[id]/disable",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/jobs/[id]/enable/route.ts",
+    "url": "/api/jobs/[id]/enable",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/jobs/[id]/run-now/route.ts",
+    "url": "/api/jobs/[id]/run-now",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/jobs/[id]/runs/route.ts",
+    "url": "/api/jobs/[id]/runs",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/keys/groups/route.ts",
+    "url": "/api/keys/groups",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/keys/groups/[id]/keys/route.ts",
+    "url": "/api/keys/groups/[id]/keys",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/keys/groups/[id]/permissions/route.ts",
+    "url": "/api/keys/groups/[id]/permissions",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/keys/groups/[id]/route.ts",
+    "url": "/api/keys/groups/[id]",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/keys/route.ts",
+    "url": "/api/keys",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/keys/[id]/devices/route.ts",
+    "url": "/api/keys/[id]/devices",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/keys/[id]/regenerate/route.ts",
+    "url": "/api/keys/[id]/regenerate",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/keys/[id]/reveal/route.ts",
+    "url": "/api/keys/[id]/reveal",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/keys/[id]/route.ts",
+    "url": "/api/keys/[id]",
+    "metotlar": [
+      "GET",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/keys/[id]/usage-limits/route.ts",
+    "url": "/api/keys/[id]/usage-limits",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/local/redis/start/route.ts",
+    "url": "/api/local/redis/start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/local/redis/status/route.ts",
+    "url": "/api/local/redis/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/local/redis/stop/route.ts",
+    "url": "/api/local/redis/stop",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/log-export/destinations/route.ts",
+    "url": "/api/log-export/destinations",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/log-export/destinations/[id]/route.ts",
+    "url": "/api/log-export/destinations/[id]",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/log-export/destinations/[id]/run/route.ts",
+    "url": "/api/log-export/destinations/[id]/run",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/log-export/destinations/[id]/test/route.ts",
+    "url": "/api/log-export/destinations/[id]/test",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/log-export/status/route.ts",
+    "url": "/api/log-export/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/log-export/types/route.ts",
+    "url": "/api/log-export/types",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/logs/console/route.ts",
+    "url": "/api/logs/console",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/logs/detail/route.ts",
+    "url": "/api/logs/detail",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/logs/export/route.ts",
+    "url": "/api/logs/export",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/logs/[id]/route.ts",
+    "url": "/api/logs/[id]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/mcp/audit/route.ts",
+    "url": "/api/mcp/audit",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/mcp/audit/stats/route.ts",
+    "url": "/api/mcp/audit/stats",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/mcp/restart/route.ts",
+    "url": "/api/mcp/restart",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/mcp/sse/route.ts",
+    "url": "/api/mcp/sse",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/mcp/status/route.ts",
+    "url": "/api/mcp/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/mcp/stream/route.ts",
+    "url": "/api/mcp/stream",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/mcp/tools/route.ts",
+    "url": "/api/mcp/tools",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/memory/embedding-providers/route.ts",
+    "url": "/api/memory/embedding-providers",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/memory/engine-status/route.ts",
+    "url": "/api/memory/engine-status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/memory/health/route.ts",
+    "url": "/api/memory/health",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/memory/reindex/route.ts",
+    "url": "/api/memory/reindex",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/memory/rerank-providers/route.ts",
+    "url": "/api/memory/rerank-providers",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/memory/retrieve-preview/route.ts",
+    "url": "/api/memory/retrieve-preview",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/memory/route.ts",
+    "url": "/api/memory",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/memory/summarize/route.ts",
+    "url": "/api/memory/summarize",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/memory/[id]/route.ts",
+    "url": "/api/memory/[id]",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/middleware/hooks/route.ts",
+    "url": "/api/middleware/hooks",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/middleware/hooks/[name]/route.ts",
+    "url": "/api/middleware/hooks/[name]",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/modality-bridge/stats/route.ts",
+    "url": "/api/modality-bridge/stats",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/modality-bridge/video/drilldown/route.ts",
+    "url": "/api/modality-bridge/video/drilldown",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/modality-bridge/video/extract/route.ts",
+    "url": "/api/modality-bridge/video/extract",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/modality-bridge/video/runtime/route.ts",
+    "url": "/api/modality-bridge/video/runtime",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/model-capability-overrides/route.ts",
+    "url": "/api/model-capability-overrides",
+    "metotlar": [
+      "GET",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/model-combo-mappings/route.ts",
+    "url": "/api/model-combo-mappings",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/model-combo-mappings/[id]/route.ts",
+    "url": "/api/model-combo-mappings/[id]",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/models/alias/route.ts",
+    "url": "/api/models/alias",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/models/catalog/route.ts",
+    "url": "/api/models/catalog",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/models/openrouter-catalog/route.ts",
+    "url": "/api/models/openrouter-catalog",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/models/route.ts",
+    "url": "/api/models",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/models/test/route.ts",
+    "url": "/api/models/test",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/models/test-all/route.ts",
+    "url": "/api/models/test-all",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/monitoring/compression/route.ts",
+    "url": "/api/monitoring/compression",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/monitoring/health/route.ts",
+    "url": "/api/monitoring/health",
+    "metotlar": [
+      "GET",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/network/info/route.ts",
+    "url": "/api/network/info",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/cliproxy-import/route.ts",
+    "url": "/api/oauth/cliproxy-import",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/codex/import/route.ts",
+    "url": "/api/oauth/codex/import",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/codex/import-token/route.ts",
+    "url": "/api/oauth/codex/import-token",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/cursor/auto-import/route.ts",
+    "url": "/api/oauth/cursor/auto-import",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/cursor/import/route.ts",
+    "url": "/api/oauth/cursor/import",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/cursor/login/cancel/route.ts",
+    "url": "/api/oauth/cursor/login/cancel",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/cursor/login/poll/route.ts",
+    "url": "/api/oauth/cursor/login/poll",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/cursor/login/start/route.ts",
+    "url": "/api/oauth/cursor/login/start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/kiro/api-key/route.ts",
+    "url": "/api/oauth/kiro/api-key",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/kiro/auto-import/route.ts",
+    "url": "/api/oauth/kiro/auto-import",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/kiro/import/route.ts",
+    "url": "/api/oauth/kiro/import",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/kiro/social-authorize/route.ts",
+    "url": "/api/oauth/kiro/social-authorize",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/kiro/social-exchange/route.ts",
+    "url": "/api/oauth/kiro/social-exchange",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/trae/authorize-state/route.ts",
+    "url": "/api/oauth/trae/authorize-state",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/trae/import/route.ts",
+    "url": "/api/oauth/trae/import",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/[provider]/paste-credentials/route.ts",
+    "url": "/api/oauth/[provider]/paste-credentials",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/oauth/[provider]/[action]/route.ts",
+    "url": "/api/oauth/[provider]/[action]",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/omniroute/route/preview/route.ts",
+    "url": "/api/omniroute/route/preview",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/omniroute/status/route.ts",
+    "url": "/api/omniroute/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/openapi/spec/route.ts",
+    "url": "/api/openapi/spec",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/openapi/try/route.ts",
+    "url": "/api/openapi/try",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/playground/improve-prompt/route.ts",
+    "url": "/api/playground/improve-prompt",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/playground/presets/route.ts",
+    "url": "/api/playground/presets",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/playground/presets/[id]/route.ts",
+    "url": "/api/playground/presets/[id]",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/playground/simulate-route/route.ts",
+    "url": "/api/playground/simulate-route",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/plugins/marketplace/install/route.ts",
+    "url": "/api/plugins/marketplace/install",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/plugins/marketplace/route.ts",
+    "url": "/api/plugins/marketplace",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/plugins/route.ts",
+    "url": "/api/plugins",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/plugins/scan/route.ts",
+    "url": "/api/plugins/scan",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/plugins/[name]/activate/route.ts",
+    "url": "/api/plugins/[name]/activate",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/plugins/[name]/config/route.ts",
+    "url": "/api/plugins/[name]/config",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/plugins/[name]/deactivate/route.ts",
+    "url": "/api/plugins/[name]/deactivate",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/plugins/[name]/route.ts",
+    "url": "/api/plugins/[name]",
+    "metotlar": [
+      "GET",
+      "DELETE",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/policies/route.ts",
+    "url": "/api/policies",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/pricing/defaults/route.ts",
+    "url": "/api/pricing/defaults",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/pricing/models/route.ts",
+    "url": "/api/pricing/models",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/pricing/route.ts",
+    "url": "/api/pricing",
+    "metotlar": [
+      "GET",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/pricing/sync/route.ts",
+    "url": "/api/pricing/sync",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/provider-metrics/route.ts",
+    "url": "/api/provider-metrics",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/provider-models/route.ts",
+    "url": "/api/provider-models",
+    "metotlar": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/provider-nodes/route.ts",
+    "url": "/api/provider-nodes",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/provider-nodes/validate/route.ts",
+    "url": "/api/provider-nodes/validate",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/provider-nodes/[id]/route.ts",
+    "url": "/api/provider-nodes/[id]",
+    "metotlar": [
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/provider-stats/route.ts",
+    "url": "/api/provider-stats",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/agy-auth/apply-local/route.ts",
+    "url": "/api/providers/agy-auth/apply-local",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/agy-auth/import/route.ts",
+    "url": "/api/providers/agy-auth/import",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/agy-auth/import-bulk/route.ts",
+    "url": "/api/providers/agy-auth/import-bulk",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/agy-auth/zip-extract/route.ts",
+    "url": "/api/providers/agy-auth/zip-extract",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/bulk/route.ts",
+    "url": "/api/providers/bulk",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/bulk-web-session/route.ts",
+    "url": "/api/providers/bulk-web-session",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/claude-auth/import/route.ts",
+    "url": "/api/providers/claude-auth/import",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/claude-auth/import-bulk/route.ts",
+    "url": "/api/providers/claude-auth/import-bulk",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/claude-auth/zip-extract/route.ts",
+    "url": "/api/providers/claude-auth/zip-extract",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/client/route.ts",
+    "url": "/api/providers/client",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/codex-auth/import/route.ts",
+    "url": "/api/providers/codex-auth/import",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/codex-auth/import-bulk/route.ts",
+    "url": "/api/providers/codex-auth/import-bulk",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/codex-auth/zip-extract/route.ts",
+    "url": "/api/providers/codex-auth/zip-extract",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/codex-cooldown/route.ts",
+    "url": "/api/providers/codex-cooldown",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/command-code/auth/apply/route.ts",
+    "url": "/api/providers/command-code/auth/apply",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/command-code/auth/callback/route.ts",
+    "url": "/api/providers/command-code/auth/callback",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/command-code/auth/start/route.ts",
+    "url": "/api/providers/command-code/auth/start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/command-code/auth/status/route.ts",
+    "url": "/api/providers/command-code/auth/status",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/cursor/agent-availability/route.ts",
+    "url": "/api/providers/cursor/agent-availability",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/deprecated/route.ts",
+    "url": "/api/providers/deprecated",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/expiration/route.ts",
+    "url": "/api/providers/expiration",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/free-onboarding/route.ts",
+    "url": "/api/providers/free-onboarding",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/health-autopilot/actions/route.ts",
+    "url": "/api/providers/health-autopilot/actions",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/health-autopilot/route.ts",
+    "url": "/api/providers/health-autopilot",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/health-matrix/route.ts",
+    "url": "/api/providers/health-matrix",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/import/route.ts",
+    "url": "/api/providers/import",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/openrouter-stats/route.ts",
+    "url": "/api/providers/openrouter-stats",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/quota-windows/route.ts",
+    "url": "/api/providers/quota-windows",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/route.ts",
+    "url": "/api/providers",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/test-batch/route.ts",
+    "url": "/api/providers/test-batch",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/validate/route.ts",
+    "url": "/api/providers/validate",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/volcengine-plan/connect/route.ts",
+    "url": "/api/providers/volcengine-plan/connect",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/volcengine-plan/connect/[sessionId]/cancel/route.ts",
+    "url": "/api/providers/volcengine-plan/connect/[sessionId]/cancel",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/volcengine-plan/connect/[sessionId]/code/route.ts",
+    "url": "/api/providers/volcengine-plan/connect/[sessionId]/code",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/volcengine-plan/connect/[sessionId]/identity/route.ts",
+    "url": "/api/providers/volcengine-plan/connect/[sessionId]/identity",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/volcengine-plan/connect/[sessionId]/resend/route.ts",
+    "url": "/api/providers/volcengine-plan/connect/[sessionId]/resend",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/volcengine-plan/connect/[sessionId]/status/route.ts",
+    "url": "/api/providers/volcengine-plan/connect/[sessionId]/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/web-session-contract/route.ts",
+    "url": "/api/providers/web-session-contract",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/zed/discover/route.ts",
+    "url": "/api/providers/zed/discover",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/zed/import/route.ts",
+    "url": "/api/providers/zed/import",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/zed/manual-import/route.ts",
+    "url": "/api/providers/zed/manual-import",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/cc-alias/route.ts",
+    "url": "/api/providers/[id]/cc-alias",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/chatgpt-web-codex-doctor/route.ts",
+    "url": "/api/providers/[id]/chatgpt-web-codex-doctor",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/claude-auth/apply-local/route.ts",
+    "url": "/api/providers/[id]/claude-auth/apply-local",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/claude-auth/export/route.ts",
+    "url": "/api/providers/[id]/claude-auth/export",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/codex-auth/apply-local/route.ts",
+    "url": "/api/providers/[id]/codex-auth/apply-local",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/codex-auth/export/route.ts",
+    "url": "/api/providers/[id]/codex-auth/export",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/interception-rules/route.ts",
+    "url": "/api/providers/[id]/interception-rules",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/login/route.ts",
+    "url": "/api/providers/[id]/login",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/models/route.ts",
+    "url": "/api/providers/[id]/models",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/param-filters/route.ts",
+    "url": "/api/providers/[id]/param-filters",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/refresh/route.ts",
+    "url": "/api/providers/[id]/refresh",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/refresh-cursor/route.ts",
+    "url": "/api/providers/[id]/refresh-cursor",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/refresh-token/route.ts",
+    "url": "/api/providers/[id]/refresh-token",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/route.ts",
+    "url": "/api/providers/[id]",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/sync-models/route.ts",
+    "url": "/api/providers/[id]/sync-models",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/providers/[id]/test/route.ts",
+    "url": "/api/providers/[id]/test",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/proxy-fallback/test/route.ts",
+    "url": "/api/proxy-fallback/test",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/quota/groups/route.ts",
+    "url": "/api/quota/groups",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/quota/groups/[id]/route.ts",
+    "url": "/api/quota/groups/[id]",
+    "metotlar": [
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/quota/keys/[id]/models/route.ts",
+    "url": "/api/quota/keys/[id]/models",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/quota/plans/route.ts",
+    "url": "/api/quota/plans",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/quota/plans/[connectionId]/route.ts",
+    "url": "/api/quota/plans/[connectionId]",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/quota/pools/route.ts",
+    "url": "/api/quota/pools",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/quota/pools/[id]/log/route.ts",
+    "url": "/api/quota/pools/[id]/log",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/quota/pools/[id]/route.ts",
+    "url": "/api/quota/pools/[id]",
+    "metotlar": [
+      "GET",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/quota/pools/[id]/schedules/route.ts",
+    "url": "/api/quota/pools/[id]/schedules",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/quota/pools/[id]/usage/route.ts",
+    "url": "/api/quota/pools/[id]/usage",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/quota/preview/route.ts",
+    "url": "/api/quota/preview",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/radar/catalog/route.ts",
+    "url": "/api/radar/catalog",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/radar/intel/route.ts",
+    "url": "/api/radar/intel",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/radar/intel/sync/route.ts",
+    "url": "/api/radar/intel/sync",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/radar/local-model-state/route.ts",
+    "url": "/api/radar/local-model-state",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE",
+      "PATCH",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/radar/offers/route.ts",
+    "url": "/api/radar/offers",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/radar/offers/sync/route.ts",
+    "url": "/api/radar/offers/sync",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/radar/referrals/route.ts",
+    "url": "/api/radar/referrals",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/radar/settings/route.ts",
+    "url": "/api/radar/settings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/radar/status/route.ts",
+    "url": "/api/radar/status",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/radar/sync/route.ts",
+    "url": "/api/radar/sync",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/radar/sync-all/route.ts",
+    "url": "/api/radar/sync-all",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/rate-limit/route.ts",
+    "url": "/api/rate-limit",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/rate-limits/route.ts",
+    "url": "/api/rate-limits",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/relay/tokens/route.ts",
+    "url": "/api/relay/tokens",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/relay/tokens/[id]/route.ts",
+    "url": "/api/relay/tokens/[id]",
+    "metotlar": [
+      "GET",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/resilience/connections/route.ts",
+    "url": "/api/resilience/connections",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/resilience/model-cooldowns/route.ts",
+    "url": "/api/resilience/model-cooldowns",
+    "metotlar": [
+      "GET",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/resilience/reset/route.ts",
+    "url": "/api/resilience/reset",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/resilience/route.ts",
+    "url": "/api/resilience",
+    "metotlar": [
+      "GET",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/restart/route.ts",
+    "url": "/api/restart",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/routing/decisions/[requestId]/route.ts",
+    "url": "/api/routing/decisions/[requestId]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/search/providers/route.ts",
+    "url": "/api/search/providers",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/search/stats/route.ts",
+    "url": "/api/search/stats",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/9router/auto-restart-adopted/route.ts",
+    "url": "/api/services/9router/auto-restart-adopted",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/9router/auto-start/route.ts",
+    "url": "/api/services/9router/auto-start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/9router/install/route.ts",
+    "url": "/api/services/9router/install",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/9router/models/route.ts",
+    "url": "/api/services/9router/models",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/9router/provider-expose/route.ts",
+    "url": "/api/services/9router/provider-expose",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/9router/restart/route.ts",
+    "url": "/api/services/9router/restart",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/9router/rotate-key/route.ts",
+    "url": "/api/services/9router/rotate-key",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/9router/start/route.ts",
+    "url": "/api/services/9router/start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/9router/status/route.ts",
+    "url": "/api/services/9router/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/9router/stop/route.ts",
+    "url": "/api/services/9router/stop",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/9router/update/route.ts",
+    "url": "/api/services/9router/update",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/bifrost/auto-restart-adopted/route.ts",
+    "url": "/api/services/bifrost/auto-restart-adopted",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/bifrost/auto-start/route.ts",
+    "url": "/api/services/bifrost/auto-start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/bifrost/install/route.ts",
+    "url": "/api/services/bifrost/install",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/bifrost/restart/route.ts",
+    "url": "/api/services/bifrost/restart",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/bifrost/start/route.ts",
+    "url": "/api/services/bifrost/start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/bifrost/status/route.ts",
+    "url": "/api/services/bifrost/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/bifrost/stop/route.ts",
+    "url": "/api/services/bifrost/stop",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/bifrost/update/route.ts",
+    "url": "/api/services/bifrost/update",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/cliproxy/accounts/route.ts",
+    "url": "/api/services/cliproxy/accounts",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/cliproxy/auto-restart-adopted/route.ts",
+    "url": "/api/services/cliproxy/auto-restart-adopted",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/cliproxy/auto-start/route.ts",
+    "url": "/api/services/cliproxy/auto-start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/cliproxy/install/route.ts",
+    "url": "/api/services/cliproxy/install",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/cliproxy/provider-expose/route.ts",
+    "url": "/api/services/cliproxy/provider-expose",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/cliproxy/restart/route.ts",
+    "url": "/api/services/cliproxy/restart",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/cliproxy/start/route.ts",
+    "url": "/api/services/cliproxy/start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/cliproxy/status/route.ts",
+    "url": "/api/services/cliproxy/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/cliproxy/stop/route.ts",
+    "url": "/api/services/cliproxy/stop",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/cliproxy/update/route.ts",
+    "url": "/api/services/cliproxy/update",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/dario/admin/accounts/route.ts",
+    "url": "/api/services/dario/admin/accounts",
+    "metotlar": [
+      "GET",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/dario/admin/import-from-omniroute/route.ts",
+    "url": "/api/services/dario/admin/import-from-omniroute",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/dario/admin/login-complete/route.ts",
+    "url": "/api/services/dario/admin/login-complete",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/dario/admin/login-start/route.ts",
+    "url": "/api/services/dario/admin/login-start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/dario/auto-restart-adopted/route.ts",
+    "url": "/api/services/dario/auto-restart-adopted",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/dario/auto-start/route.ts",
+    "url": "/api/services/dario/auto-start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/dario/install/route.ts",
+    "url": "/api/services/dario/install",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/dario/restart/route.ts",
+    "url": "/api/services/dario/restart",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/dario/start/route.ts",
+    "url": "/api/services/dario/start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/dario/status/route.ts",
+    "url": "/api/services/dario/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/dario/stop/route.ts",
+    "url": "/api/services/dario/stop",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/dario/update/route.ts",
+    "url": "/api/services/dario/update",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/mux/auto-restart-adopted/route.ts",
+    "url": "/api/services/mux/auto-restart-adopted",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/mux/auto-start/route.ts",
+    "url": "/api/services/mux/auto-start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/mux/install/route.ts",
+    "url": "/api/services/mux/install",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/mux/restart/route.ts",
+    "url": "/api/services/mux/restart",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/mux/start/route.ts",
+    "url": "/api/services/mux/start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/mux/status/route.ts",
+    "url": "/api/services/mux/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/mux/stop/route.ts",
+    "url": "/api/services/mux/stop",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/mux/update/route.ts",
+    "url": "/api/services/mux/update",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/openwa/auto-restart-adopted/route.ts",
+    "url": "/api/services/openwa/auto-restart-adopted",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/openwa/auto-start/route.ts",
+    "url": "/api/services/openwa/auto-start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/openwa/install/route.ts",
+    "url": "/api/services/openwa/install",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/openwa/restart/route.ts",
+    "url": "/api/services/openwa/restart",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/openwa/start/route.ts",
+    "url": "/api/services/openwa/start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/openwa/status/route.ts",
+    "url": "/api/services/openwa/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/openwa/stop/route.ts",
+    "url": "/api/services/openwa/stop",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/openwa/update/route.ts",
+    "url": "/api/services/openwa/update",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/services/[name]/logs/route.ts",
+    "url": "/api/services/[name]/logs",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/session-pools/route.ts",
+    "url": "/api/session-pools",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/session-pools/[provider]/route.ts",
+    "url": "/api/session-pools/[provider]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/sessions/route.ts",
+    "url": "/api/sessions",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/authz-inventory/route.ts",
+    "url": "/api/settings/authz-inventory",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/auto-disable-accounts/route.ts",
+    "url": "/api/settings/auto-disable-accounts",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/background-degradation/route.ts",
+    "url": "/api/settings/background-degradation",
+    "metotlar": [
+      "GET",
+      "POST",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/cache-config/embedding-options/route.ts",
+    "url": "/api/settings/cache-config/embedding-options",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/cache-config/route.ts",
+    "url": "/api/settings/cache-config",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/cache-config/test-embedding/route.ts",
+    "url": "/api/settings/cache-config/test-embedding",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/cache-metrics/route.ts",
+    "url": "/api/settings/cache-metrics",
+    "metotlar": [
+      "GET",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/cc-discovery-metrics/route.ts",
+    "url": "/api/settings/cc-discovery-metrics",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/combo-defaults/route.ts",
+    "url": "/api/settings/combo-defaults",
+    "metotlar": [
+      "GET",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/compression/mcp-accessibility/route.ts",
+    "url": "/api/settings/compression/mcp-accessibility",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/compression/route.ts",
+    "url": "/api/settings/compression",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/compression/rules/route.ts",
+    "url": "/api/settings/compression/rules",
+    "metotlar": []
+  },
+  {
+    "dosya": "src/app/api/settings/compression/run-telemetry/route.ts",
+    "url": "/api/settings/compression/run-telemetry",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/database/refresh-stats/route.ts",
+    "url": "/api/settings/database/refresh-stats",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/database/route.ts",
+    "url": "/api/settings/database",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/database/vacuum/route.ts",
+    "url": "/api/settings/database/vacuum",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/export-json/route.ts",
+    "url": "/api/settings/export-json",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/favicon/route.ts",
+    "url": "/api/settings/favicon",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/feature-flags/route.ts",
+    "url": "/api/settings/feature-flags",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/free-proxies/bulk-add-to-pool/route.ts",
+    "url": "/api/settings/free-proxies/bulk-add-to-pool",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/free-proxies/route.ts",
+    "url": "/api/settings/free-proxies",
+    "metotlar": [
+      "GET",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/free-proxies/stats/route.ts",
+    "url": "/api/settings/free-proxies/stats",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/free-proxies/sync/route.ts",
+    "url": "/api/settings/free-proxies/sync",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/free-proxies/[id]/add-to-pool/route.ts",
+    "url": "/api/settings/free-proxies/[id]/add-to-pool",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/import-json/route.ts",
+    "url": "/api/settings/import-json",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/ip-filter/route.ts",
+    "url": "/api/settings/ip-filter",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/lkgp-cache/route.ts",
+    "url": "/api/settings/lkgp-cache",
+    "metotlar": [
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/local-corpus/route.ts",
+    "url": "/api/settings/local-corpus",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/memory/route.ts",
+    "url": "/api/settings/memory",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/mitm/route.ts",
+    "url": "/api/settings/mitm",
+    "metotlar": [
+      "GET",
+      "POST",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/model-aliases/route.ts",
+    "url": "/api/settings/model-aliases",
+    "metotlar": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/models-dev/route.ts",
+    "url": "/api/settings/models-dev",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/notion/route.ts",
+    "url": "/api/settings/notion",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/obsidian/route.ts",
+    "url": "/api/settings/obsidian",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/obsidian/webdav/route.ts",
+    "url": "/api/settings/obsidian/webdav",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/oneproxy/rotate/route.ts",
+    "url": "/api/settings/oneproxy/rotate",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/oneproxy/route.ts",
+    "url": "/api/settings/oneproxy",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/payload-rules/route.ts",
+    "url": "/api/settings/payload-rules",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxies/assignments/route.ts",
+    "url": "/api/settings/proxies/assignments",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxies/auto-test/route.ts",
+    "url": "/api/settings/proxies/auto-test",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxies/batch-activate/route.ts",
+    "url": "/api/settings/proxies/batch-activate",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxies/batch-delete/route.ts",
+    "url": "/api/settings/proxies/batch-delete",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxies/bulk-assign/route.ts",
+    "url": "/api/settings/proxies/bulk-assign",
+    "metotlar": [
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxies/bulk-import/route.ts",
+    "url": "/api/settings/proxies/bulk-import",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxies/egress/route.ts",
+    "url": "/api/settings/proxies/egress",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxies/health/route.ts",
+    "url": "/api/settings/proxies/health",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxies/migrate/route.ts",
+    "url": "/api/settings/proxies/migrate",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxies/pool/egress-observation/route.ts",
+    "url": "/api/settings/proxies/pool/egress-observation",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxies/pool/member-egress/route.ts",
+    "url": "/api/settings/proxies/pool/member-egress",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxies/pool/route.ts",
+    "url": "/api/settings/proxies/pool",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxies/route.ts",
+    "url": "/api/settings/proxies",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxies/[id]/repair-relay/route.ts",
+    "url": "/api/settings/proxies/[id]/repair-relay",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxy/cloudflare-deploy/route.ts",
+    "url": "/api/settings/proxy/cloudflare-deploy",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxy/deno-deploy/route.ts",
+    "url": "/api/settings/proxy/deno-deploy",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxy/route.ts",
+    "url": "/api/settings/proxy",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxy/test/route.ts",
+    "url": "/api/settings/proxy/test",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/proxy/vercel-deploy/route.ts",
+    "url": "/api/settings/proxy/vercel-deploy",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/purge-call-logs/route.ts",
+    "url": "/api/settings/purge-call-logs",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/purge-detailed-logs/route.ts",
+    "url": "/api/settings/purge-detailed-logs",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/purge-logs/route.ts",
+    "url": "/api/settings/purge-logs",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/purge-quota-snapshots/route.ts",
+    "url": "/api/settings/purge-quota-snapshots",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/purge-request-history/route.ts",
+    "url": "/api/settings/purge-request-history",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/purge-usage-history/route.ts",
+    "url": "/api/settings/purge-usage-history",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/qdrant/cleanup/route.ts",
+    "url": "/api/settings/qdrant/cleanup",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/qdrant/embedding-models/route.ts",
+    "url": "/api/settings/qdrant/embedding-models",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/qdrant/health/route.ts",
+    "url": "/api/settings/qdrant/health",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/qdrant/route.ts",
+    "url": "/api/settings/qdrant",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/qdrant/search/route.ts",
+    "url": "/api/settings/qdrant/search",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/quota/state/route.ts",
+    "url": "/api/settings/quota/state",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/quota-store/route.ts",
+    "url": "/api/settings/quota-store",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/reasoning-routing-rules/route.ts",
+    "url": "/api/settings/reasoning-routing-rules",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/reasoning-routing-rules/simulate/route.ts",
+    "url": "/api/settings/reasoning-routing-rules/simulate",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/reasoning-routing-rules/[id]/route.ts",
+    "url": "/api/settings/reasoning-routing-rules/[id]",
+    "metotlar": [
+      "GET",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/require-login/route.ts",
+    "url": "/api/settings/require-login",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/route.ts",
+    "url": "/api/settings",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/system-prompt/route.ts",
+    "url": "/api/settings/system-prompt",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/task-routing/route.ts",
+    "url": "/api/settings/task-routing",
+    "metotlar": [
+      "GET",
+      "POST",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/thinking-budget/route.ts",
+    "url": "/api/settings/thinking-budget",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/settings/tier-config/route.ts",
+    "url": "/api/settings/tier-config",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/shutdown/route.ts",
+    "url": "/api/shutdown",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/skills/collect/chaos/route.ts",
+    "url": "/api/skills/collect/chaos",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/skills/collect/detect/route.ts",
+    "url": "/api/skills/collect/detect",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/skills/collect/install/route.ts",
+    "url": "/api/skills/collect/install",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/skills/executions/route.ts",
+    "url": "/api/skills/executions",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/skills/install/route.ts",
+    "url": "/api/skills/install",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/skills/marketplace/install/route.ts",
+    "url": "/api/skills/marketplace/install",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/skills/marketplace/route.ts",
+    "url": "/api/skills/marketplace",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/skills/route.ts",
+    "url": "/api/skills",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/skills/skillssh/install/route.ts",
+    "url": "/api/skills/skillssh/install",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/skills/skillssh/route.ts",
+    "url": "/api/skills/skillssh",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/skills/[id]/route.ts",
+    "url": "/api/skills/[id]",
+    "metotlar": [
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/storage/health/route.ts",
+    "url": "/api/storage/health",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/sync/bundle/route.ts",
+    "url": "/api/sync/bundle",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/sync/cloud/route.ts",
+    "url": "/api/sync/cloud",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/sync/initialize/route.ts",
+    "url": "/api/sync/initialize",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/sync/tokens/route.ts",
+    "url": "/api/sync/tokens",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/sync/tokens/[id]/route.ts",
+    "url": "/api/sync/tokens/[id]",
+    "metotlar": [
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/synced-available-models/route.ts",
+    "url": "/api/synced-available-models",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/system/env/repair/route.ts",
+    "url": "/api/system/env/repair",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/system/version/route.ts",
+    "url": "/api/system/version",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tags/route.ts",
+    "url": "/api/tags",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/telegram/update/route.ts",
+    "url": "/api/telegram/update",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/telemetry/summary/route.ts",
+    "url": "/api/telemetry/summary",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/token-health/route.ts",
+    "url": "/api/token-health",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/agents/route.ts",
+    "url": "/api/tools/agent-bridge/agents",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/agents/[id]/detect/route.ts",
+    "url": "/api/tools/agent-bridge/agents/[id]/detect",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/agents/[id]/detected-models/route.ts",
+    "url": "/api/tools/agent-bridge/agents/[id]/detected-models",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/agents/[id]/dns/route.ts",
+    "url": "/api/tools/agent-bridge/agents/[id]/dns",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/agents/[id]/mappings/route.ts",
+    "url": "/api/tools/agent-bridge/agents/[id]/mappings",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/agents/[id]/reset/route.ts",
+    "url": "/api/tools/agent-bridge/agents/[id]/reset",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/agents/[id]/route.ts",
+    "url": "/api/tools/agent-bridge/agents/[id]",
+    "metotlar": [
+      "GET",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/bypass/route.ts",
+    "url": "/api/tools/agent-bridge/bypass",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/cert/download/route.ts",
+    "url": "/api/tools/agent-bridge/cert/download",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/cert/regenerate/route.ts",
+    "url": "/api/tools/agent-bridge/cert/regenerate",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/cert/route.ts",
+    "url": "/api/tools/agent-bridge/cert",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/config/route.ts",
+    "url": "/api/tools/agent-bridge/config",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/diagnose/route.ts",
+    "url": "/api/tools/agent-bridge/diagnose",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/repair/route.ts",
+    "url": "/api/tools/agent-bridge/repair",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/server/route.ts",
+    "url": "/api/tools/agent-bridge/server",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/state/route.ts",
+    "url": "/api/tools/agent-bridge/state",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/tproxy/route.ts",
+    "url": "/api/tools/agent-bridge/tproxy",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/upstream-ca/route.ts",
+    "url": "/api/tools/agent-bridge/upstream-ca",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/agent-bridge/upstream-ca/test/route.ts",
+    "url": "/api/tools/agent-bridge/upstream-ca/test",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/capture-modes/http-proxy/route.ts",
+    "url": "/api/tools/traffic-inspector/capture-modes/http-proxy",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/capture-modes/route.ts",
+    "url": "/api/tools/traffic-inspector/capture-modes",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/capture-modes/system-proxy/route.ts",
+    "url": "/api/tools/traffic-inspector/capture-modes/system-proxy",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/capture-modes/tls-intercept/route.ts",
+    "url": "/api/tools/traffic-inspector/capture-modes/tls-intercept",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/export.har/route.ts",
+    "url": "/api/tools/traffic-inspector/export.har",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/hosts/route.ts",
+    "url": "/api/tools/traffic-inspector/hosts",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/hosts/[host]/route.ts",
+    "url": "/api/tools/traffic-inspector/hosts/[host]",
+    "metotlar": [
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/internal/ingest/route.ts",
+    "url": "/api/tools/traffic-inspector/internal/ingest",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/requests/route.ts",
+    "url": "/api/tools/traffic-inspector/requests",
+    "metotlar": [
+      "GET",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/requests/[id]/annotation/route.ts",
+    "url": "/api/tools/traffic-inspector/requests/[id]/annotation",
+    "metotlar": [
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/requests/[id]/replay/route.ts",
+    "url": "/api/tools/traffic-inspector/requests/[id]/replay",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/requests/[id]/route.ts",
+    "url": "/api/tools/traffic-inspector/requests/[id]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/sessions/route.ts",
+    "url": "/api/tools/traffic-inspector/sessions",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/sessions/[id]/export.har/route.ts",
+    "url": "/api/tools/traffic-inspector/sessions/[id]/export.har",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/sessions/[id]/requests/route.ts",
+    "url": "/api/tools/traffic-inspector/sessions/[id]/requests",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/sessions/[id]/route.ts",
+    "url": "/api/tools/traffic-inspector/sessions/[id]",
+    "metotlar": [
+      "GET",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tools/traffic-inspector/ws/route.ts",
+    "url": "/api/tools/traffic-inspector/ws",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/translator/detect/route.ts",
+    "url": "/api/translator/detect",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/translator/history/route.ts",
+    "url": "/api/translator/history",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/translator/send/route.ts",
+    "url": "/api/translator/send",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/translator/transform-stream/route.ts",
+    "url": "/api/translator/transform-stream",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/translator/translate/route.ts",
+    "url": "/api/translator/translate",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tunnels/cloudflared/route.ts",
+    "url": "/api/tunnels/cloudflared",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tunnels/ngrok/route.ts",
+    "url": "/api/tunnels/ngrok",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tunnels/tailscale/check/route.ts",
+    "url": "/api/tunnels/tailscale/check",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tunnels/tailscale/disable/route.ts",
+    "url": "/api/tunnels/tailscale/disable",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tunnels/tailscale/enable/route.ts",
+    "url": "/api/tunnels/tailscale/enable",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tunnels/tailscale/install/route.ts",
+    "url": "/api/tunnels/tailscale/install",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tunnels/tailscale/login/route.ts",
+    "url": "/api/tunnels/tailscale/login",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tunnels/tailscale/route.ts",
+    "url": "/api/tunnels/tailscale",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/tunnels/tailscale/start-daemon/route.ts",
+    "url": "/api/tunnels/tailscale/start-daemon",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/upstream-proxy/[providerId]/route.ts",
+    "url": "/api/upstream-proxy/[providerId]",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/analytics/route.ts",
+    "url": "/api/usage/analytics",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/budget/bulk/route.ts",
+    "url": "/api/usage/budget/bulk",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/budget/route.ts",
+    "url": "/api/usage/budget",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/cache-health/route.ts",
+    "url": "/api/usage/cache-health",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/call-logs/route.ts",
+    "url": "/api/usage/call-logs",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/call-logs/[id]/route.ts",
+    "url": "/api/usage/call-logs/[id]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/codex-reset-credit/route.ts",
+    "url": "/api/usage/codex-reset-credit",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/combo-forecast/route.ts",
+    "url": "/api/usage/combo-forecast",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/combo-health/route.ts",
+    "url": "/api/usage/combo-health",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/combo-health-autopilot/route.ts",
+    "url": "/api/usage/combo-health-autopilot",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/combo-health-dashboard/route.ts",
+    "url": "/api/usage/combo-health-dashboard",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/combo-scoring-inspector/route.ts",
+    "url": "/api/usage/combo-scoring-inspector",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/combo-trace/[id]/route.ts",
+    "url": "/api/usage/combo-trace/[id]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/glm-reset-card/route.ts",
+    "url": "/api/usage/glm-reset-card",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/history/route.ts",
+    "url": "/api/usage/history",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/key-quota/route.ts",
+    "url": "/api/usage/key-quota",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/logs/route.ts",
+    "url": "/api/usage/logs",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/model-latency-stats/route.ts",
+    "url": "/api/usage/model-latency-stats",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/om-usage/route.ts",
+    "url": "/api/usage/om-usage",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/provider-limits/route.ts",
+    "url": "/api/usage/provider-limits",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/provider-window-costs/route.ts",
+    "url": "/api/usage/provider-window-costs",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/proxy-logs/route.ts",
+    "url": "/api/usage/proxy-logs",
+    "metotlar": [
+      "GET",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/quota/route.ts",
+    "url": "/api/usage/quota",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/request-logs/route.ts",
+    "url": "/api/usage/request-logs",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/requests-by-provider-date/route.ts",
+    "url": "/api/usage/requests-by-provider-date",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/route-explain/[id]/route.ts",
+    "url": "/api/usage/route-explain/[id]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/token-limits/route.ts",
+    "url": "/api/usage/token-limits",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/utilization/route.ts",
+    "url": "/api/usage/utilization",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/usage/[connectionId]/route.ts",
+    "url": "/api/usage/[connectionId]",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/accounts/[id]/limits/route.ts",
+    "url": "/api/v1/accounts/[id]/limits",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/agents/credentials/route.ts",
+    "url": "/api/v1/agents/credentials",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/agents/health/route.ts",
+    "url": "/api/v1/agents/health",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/agents/tasks/route.ts",
+    "url": "/api/v1/agents/tasks",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/agents/tasks/[id]/route.ts",
+    "url": "/api/v1/agents/tasks/[id]",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/antigravity/route.ts",
+    "url": "/api/v1/antigravity",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/api/chat/route.ts",
+    "url": "/api/v1/api/chat",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/audio/speech/route.ts",
+    "url": "/api/v1/audio/speech",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/audio/transcriptions/route.ts",
+    "url": "/api/v1/audio/transcriptions",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/audio/translations/route.ts",
+    "url": "/api/v1/audio/translations",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/auto-combo/[channel]/candidates/route.ts",
+    "url": "/api/v1/auto-combo/[channel]/candidates",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/batches/delete-completed/route.ts",
+    "url": "/api/v1/batches/delete-completed",
+    "metotlar": [
+      "DELETE",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/batches/route.ts",
+    "url": "/api/v1/batches",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/batches/[id]/cancel/route.ts",
+    "url": "/api/v1/batches/[id]/cancel",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/batches/[id]/route.ts",
+    "url": "/api/v1/batches/[id]",
+    "metotlar": [
+      "GET",
+      "DELETE",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/chat/completions/route.ts",
+    "url": "/api/v1/chat/completions",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/classify/route.ts",
+    "url": "/api/v1/classify",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/combos/route.ts",
+    "url": "/api/v1/combos",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/completions/route.ts",
+    "url": "/api/v1/completions",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/embeddings/route.ts",
+    "url": "/api/v1/embeddings",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/explain/routing/route.ts",
+    "url": "/api/v1/explain/routing",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/files/route.ts",
+    "url": "/api/v1/files",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/files/[id]/content/route.ts",
+    "url": "/api/v1/files/[id]/content",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/files/[id]/route.ts",
+    "url": "/api/v1/files/[id]",
+    "metotlar": [
+      "GET",
+      "DELETE",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/images/edits/route.ts",
+    "url": "/api/v1/images/edits",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/images/generations/route.ts",
+    "url": "/api/v1/images/generations",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/images/upscale/route.ts",
+    "url": "/api/v1/images/upscale",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/issues/report/route.ts",
+    "url": "/api/v1/issues/report",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/management/proxies/assignments/route.ts",
+    "url": "/api/v1/management/proxies/assignments",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/management/proxies/bulk-assign/route.ts",
+    "url": "/api/v1/management/proxies/bulk-assign",
+    "metotlar": [
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/management/proxies/health/route.ts",
+    "url": "/api/v1/management/proxies/health",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/management/proxies/route.ts",
+    "url": "/api/v1/management/proxies",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/management/proxy-subscriptions/route.ts",
+    "url": "/api/v1/management/proxy-subscriptions",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/management/proxy-subscriptions/[id]/nodes/route.ts",
+    "url": "/api/v1/management/proxy-subscriptions/[id]/nodes",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/management/proxy-subscriptions/[id]/refresh/route.ts",
+    "url": "/api/v1/management/proxy-subscriptions/[id]/refresh",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/management/proxy-subscriptions/[id]/route.ts",
+    "url": "/api/v1/management/proxy-subscriptions/[id]",
+    "metotlar": [
+      "GET",
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/me/status/route.ts",
+    "url": "/api/v1/me/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/messages/count_tokens/route.ts",
+    "url": "/api/v1/messages/count_tokens",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/messages/route.ts",
+    "url": "/api/v1/messages",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/models/route.ts",
+    "url": "/api/v1/models",
+    "metotlar": [
+      "GET",
+      "HEAD",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/models/[...model]/route.ts",
+    "url": "/api/v1/models/[...model]",
+    "metotlar": [
+      "GET",
+      "HEAD",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/moderations/route.ts",
+    "url": "/api/v1/moderations",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/multimodal-embeddings/route.ts",
+    "url": "/api/v1/multimodal-embeddings",
+    "metotlar": []
+  },
+  {
+    "dosya": "src/app/api/v1/muse-code/models/route.ts",
+    "url": "/api/v1/muse-code/models",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/music/generations/route.ts",
+    "url": "/api/v1/music/generations",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/ocr/route.ts",
+    "url": "/api/v1/ocr",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/provider-plugin-manifest/route.ts",
+    "url": "/api/v1/provider-plugin-manifest",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/providers/suggested-models/route.ts",
+    "url": "/api/v1/providers/suggested-models",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/providers/[provider]/chat/completions/route.ts",
+    "url": "/api/v1/providers/[provider]/chat/completions",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/providers/[provider]/embeddings/route.ts",
+    "url": "/api/v1/providers/[provider]/embeddings",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/providers/[provider]/images/generations/route.ts",
+    "url": "/api/v1/providers/[provider]/images/generations",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/providers/[provider]/limits/route.ts",
+    "url": "/api/v1/providers/[provider]/limits",
+    "metotlar": [
+      "GET",
+      "PUT"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/providers/[provider]/models/route.ts",
+    "url": "/api/v1/providers/[provider]/models",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/providers/[provider]/voices/route.ts",
+    "url": "/api/v1/providers/[provider]/voices",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/providers/[provider]/voices/[voiceId]/route.ts",
+    "url": "/api/v1/providers/[provider]/voices/[voiceId]",
+    "metotlar": [
+      "GET",
+      "DELETE",
+      "PATCH",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/quotas/check/route.ts",
+    "url": "/api/v1/quotas/check",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/registered-keys/route.ts",
+    "url": "/api/v1/registered-keys",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/registered-keys/[id]/revoke/route.ts",
+    "url": "/api/v1/registered-keys/[id]/revoke",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/registered-keys/[id]/route.ts",
+    "url": "/api/v1/registered-keys/[id]",
+    "metotlar": [
+      "GET",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/relay/chat/completions/bifrost/route.ts",
+    "url": "/api/v1/relay/chat/completions/bifrost",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/relay/chat/completions/route.ts",
+    "url": "/api/v1/relay/chat/completions",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/rerank/route.ts",
+    "url": "/api/v1/rerank",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/responses/input_tokens/route.ts",
+    "url": "/api/v1/responses/input_tokens",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/responses/route.ts",
+    "url": "/api/v1/responses",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/responses/[...path]/route.ts",
+    "url": "/api/v1/responses/[...path]",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/route.ts",
+    "url": "/api/v1",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/search/analytics/route.ts",
+    "url": "/api/v1/search/analytics",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/search/route.ts",
+    "url": "/api/v1/search",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/segment/route.ts",
+    "url": "/api/v1/segment",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/session-leases/route.ts",
+    "url": "/api/v1/session-leases",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/speech-to-text/route.ts",
+    "url": "/api/v1/speech-to-text",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/text-to-speech/[voiceId]/route.ts",
+    "url": "/api/v1/text-to-speech/[voiceId]",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/video-bridge/drilldown/route.ts",
+    "url": "/api/v1/video-bridge/drilldown",
+    "metotlar": [
+      "GET",
+      "DELETE",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/videos/generations/route.ts",
+    "url": "/api/v1/videos/generations",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/voices/route.ts",
+    "url": "/api/v1/voices",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/combos/[token]/[[...slug]]/route.ts",
+    "url": "/api/v1/vscode/combos/[token]/[[...slug]]",
+    "metotlar": [
+      "GET",
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/raw/[token]/api/chat/route.ts",
+    "url": "/api/v1/vscode/raw/[token]/api/chat",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/raw/[token]/api/show/route.ts",
+    "url": "/api/v1/vscode/raw/[token]/api/show",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/raw/[token]/api/tags/route.ts",
+    "url": "/api/v1/vscode/raw/[token]/api/tags",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/raw/[token]/api/version/route.ts",
+    "url": "/api/v1/vscode/raw/[token]/api/version",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/raw/[token]/chat/completions/route.ts",
+    "url": "/api/v1/vscode/raw/[token]/chat/completions",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/raw/[token]/combos/route.ts",
+    "url": "/api/v1/vscode/raw/[token]/combos",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/raw/[token]/models/route.ts",
+    "url": "/api/v1/vscode/raw/[token]/models",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/raw/[token]/responses/route.ts",
+    "url": "/api/v1/vscode/raw/[token]/responses",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/raw/[token]/route.ts",
+    "url": "/api/v1/vscode/raw/[token]",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/raw/[token]/v1/chat/completions/route.ts",
+    "url": "/api/v1/vscode/raw/[token]/v1/chat/completions",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/raw/[token]/v1/models/route.ts",
+    "url": "/api/v1/vscode/raw/[token]/v1/models",
+    "metotlar": []
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/[token]/api/chat/route.ts",
+    "url": "/api/v1/vscode/[token]/api/chat",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/[token]/api/show/route.ts",
+    "url": "/api/v1/vscode/[token]/api/show",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/[token]/api/tags/route.ts",
+    "url": "/api/v1/vscode/[token]/api/tags",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/[token]/api/version/route.ts",
+    "url": "/api/v1/vscode/[token]/api/version",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/[token]/chat/completions/route.ts",
+    "url": "/api/v1/vscode/[token]/chat/completions",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/[token]/combos/route.ts",
+    "url": "/api/v1/vscode/[token]/combos",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/[token]/models/route.ts",
+    "url": "/api/v1/vscode/[token]/models",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/[token]/responses/route.ts",
+    "url": "/api/v1/vscode/[token]/responses",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/[token]/route.ts",
+    "url": "/api/v1/vscode/[token]",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/[token]/v1/chat/completions/route.ts",
+    "url": "/api/v1/vscode/[token]/v1/chat/completions",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/vscode/[token]/v1/models/route.ts",
+    "url": "/api/v1/vscode/[token]/v1/models",
+    "metotlar": []
+  },
+  {
+    "dosya": "src/app/api/v1/web/fetch/route.ts",
+    "url": "/api/v1/web/fetch",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/ws/route.ts",
+    "url": "/api/v1/ws",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1/[...omnirouteCatchAll]/route.ts",
+    "url": "/api/v1/[...omnirouteCatchAll]",
+    "metotlar": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "PATCH",
+      "HEAD",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1beta/models/route.ts",
+    "url": "/api/v1beta/models",
+    "metotlar": [
+      "GET",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/v1beta/models/[...path]/route.ts",
+    "url": "/api/v1beta/models/[...path]",
+    "metotlar": [
+      "POST",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/api/version-manager/check-update/route.ts",
+    "url": "/api/version-manager/check-update",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/version-manager/install/route.ts",
+    "url": "/api/version-manager/install",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/version-manager/restart/route.ts",
+    "url": "/api/version-manager/restart",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/version-manager/start/route.ts",
+    "url": "/api/version-manager/start",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/version-manager/status/route.ts",
+    "url": "/api/version-manager/status",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/version-manager/stop/route.ts",
+    "url": "/api/version-manager/stop",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/vnc-session/route.ts",
+    "url": "/api/vnc-session",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/vnc-session/[...params]/route.ts",
+    "url": "/api/vnc-session/[...params]",
+    "metotlar": [
+      "GET",
+      "POST",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/webhooks/route.ts",
+    "url": "/api/webhooks",
+    "metotlar": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/webhooks/validate-url/route.ts",
+    "url": "/api/webhooks/validate-url",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/webhooks/[id]/deliveries/route.ts",
+    "url": "/api/webhooks/[id]/deliveries",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/api/webhooks/[id]/route.ts",
+    "url": "/api/webhooks/[id]",
+    "metotlar": [
+      "GET",
+      "PUT",
+      "DELETE"
+    ]
+  },
+  {
+    "dosya": "src/app/api/webhooks/[id]/test/route.ts",
+    "url": "/api/webhooks/[id]/test",
+    "metotlar": [
+      "POST"
+    ]
+  },
+  {
+    "dosya": "src/app/api/[...omnirouteApiCatchAll]/route.ts",
+    "url": "/api/[...omnirouteApiCatchAll]",
+    "metotlar": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "PATCH",
+      "HEAD",
+      "OPTIONS"
+    ]
+  },
+  {
+    "dosya": "src/app/authorize/route.ts",
+    "url": "/authorize",
+    "metotlar": [
+      "GET"
+    ]
+  },
+  {
+    "dosya": "src/app/docs/api/search/route.ts",
+    "url": "/docs/api/search",
+    "metotlar": []
+  },
+  {
+    "dosya": "src/app/healthz/route.ts",
+    "url": "/healthz",
+    "metotlar": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  {
+    "dosya": "src/app/livez/route.ts",
+    "url": "/livez",
+    "metotlar": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  {
+    "dosya": "src/app/readyz/route.ts",
+    "url": "/readyz",
+    "metotlar": []
+  }
+]

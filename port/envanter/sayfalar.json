@@ -1,0 +1,737 @@
+[
+  {
+    "dosya": "src/app/(dashboard)/dashboard/a2a/page.tsx",
+    "url": "/dashboard/a2a",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/acp-agents/page.tsx",
+    "url": "/dashboard/acp-agents",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/activity/page.tsx",
+    "url": "/dashboard/activity",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/agent-skills/page.tsx",
+    "url": "/dashboard/agent-skills",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/analytics/combo-health/page.tsx",
+    "url": "/dashboard/analytics/combo-health",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/analytics/compression/page.tsx",
+    "url": "/dashboard/analytics/compression",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/analytics/evals/page.tsx",
+    "url": "/dashboard/analytics/evals",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/analytics/page.tsx",
+    "url": "/dashboard/analytics",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/analytics/search/page.tsx",
+    "url": "/dashboard/analytics/search",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/analytics/utilization/page.tsx",
+    "url": "/dashboard/analytics/utilization",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/api-endpoints/page.tsx",
+    "url": "/dashboard/api-endpoints",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/api-manager/page.tsx",
+    "url": "/dashboard/api-manager",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/api-manager/routing/page.tsx",
+    "url": "/dashboard/api-manager/routing",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/audit/a2a/page.tsx",
+    "url": "/dashboard/audit/a2a",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/audit/mcp/page.tsx",
+    "url": "/dashboard/audit/mcp",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/audit/page.tsx",
+    "url": "/dashboard/audit",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/auto-combo/page.tsx",
+    "url": "/dashboard/auto-combo",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/batch/files/page.tsx",
+    "url": "/dashboard/batch/files",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/batch/page.tsx",
+    "url": "/dashboard/batch",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/cache/media/page.tsx",
+    "url": "/dashboard/cache/media",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/cache/page.tsx",
+    "url": "/dashboard/cache",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/changelog/page.tsx",
+    "url": "/dashboard/changelog",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/chaos/page.tsx",
+    "url": "/dashboard/chaos",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/cli-agents/page.tsx",
+    "url": "/dashboard/cli-agents",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/cli-agents/[id]/page.tsx",
+    "url": "/dashboard/cli-agents/[id]",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/cli-code/page.tsx",
+    "url": "/dashboard/cli-code",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/cli-code/[id]/page.tsx",
+    "url": "/dashboard/cli-code/[id]",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/cloud-agents/page.tsx",
+    "url": "/dashboard/cloud-agents",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/combos/live/page.tsx",
+    "url": "/dashboard/combos/live",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/combos/page.tsx",
+    "url": "/dashboard/combos",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/combos/playground/page.tsx",
+    "url": "/dashboard/combos/playground",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/combos/[id]/page.tsx",
+    "url": "/dashboard/combos/[id]",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/compression/exclusions/page.tsx",
+    "url": "/dashboard/compression/exclusions",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/compression/live/page.tsx",
+    "url": "/dashboard/compression/live",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/compression/page.tsx",
+    "url": "/dashboard/compression",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/compression/studio/page.tsx",
+    "url": "/dashboard/compression/studio",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/conductor/page.tsx",
+    "url": "/dashboard/conductor",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/context/aggressive/page.tsx",
+    "url": "/dashboard/context/aggressive",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/context/caveman/page.tsx",
+    "url": "/dashboard/context/caveman",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/context/ccr/page.tsx",
+    "url": "/dashboard/context/ccr",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/context/combos/page.tsx",
+    "url": "/dashboard/context/combos",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/context/headroom/page.tsx",
+    "url": "/dashboard/context/headroom",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/context/lite/page.tsx",
+    "url": "/dashboard/context/lite",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/context/llmlingua/page.tsx",
+    "url": "/dashboard/context/llmlingua",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/context/omniglyph/page.tsx",
+    "url": "/dashboard/context/omniglyph",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/context/page.tsx",
+    "url": "/dashboard/context",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/context/rtk/page.tsx",
+    "url": "/dashboard/context/rtk",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/context/session-dedup/page.tsx",
+    "url": "/dashboard/context/session-dedup",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/context/settings/page.tsx",
+    "url": "/dashboard/context/settings",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/context/ultra/page.tsx",
+    "url": "/dashboard/context/ultra",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/conversations/page.tsx",
+    "url": "/dashboard/conversations",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/costs/budget/page.tsx",
+    "url": "/dashboard/costs/budget",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/costs/page.tsx",
+    "url": "/dashboard/costs",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/costs/pricing/page.tsx",
+    "url": "/dashboard/costs/pricing",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/costs/quota-share/page.tsx",
+    "url": "/dashboard/costs/quota-share",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/discovery/page.tsx",
+    "url": "/dashboard/discovery",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/endpoint/page.tsx",
+    "url": "/dashboard/endpoint",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/free-provider-rankings/page.tsx",
+    "url": "/dashboard/free-provider-rankings",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/free-tiers/page.tsx",
+    "url": "/dashboard/free-tiers",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/gamification/admin/page.tsx",
+    "url": "/dashboard/gamification/admin",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/health/page.tsx",
+    "url": "/dashboard/health",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/leaderboard/page.tsx",
+    "url": "/dashboard/leaderboard",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/limits/page.tsx",
+    "url": "/dashboard/limits",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/log-export/page.tsx",
+    "url": "/dashboard/log-export",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/logs/activity/page.tsx",
+    "url": "/dashboard/logs/activity",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/logs/console/page.tsx",
+    "url": "/dashboard/logs/console",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/logs/page.tsx",
+    "url": "/dashboard/logs",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/logs/proxy/page.tsx",
+    "url": "/dashboard/logs/proxy",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/logs/timeline/page.tsx",
+    "url": "/dashboard/logs/timeline",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/mcp/page.tsx",
+    "url": "/dashboard/mcp",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/media-providers/page.tsx",
+    "url": "/dashboard/media-providers",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/media-providers/[kind]/page.tsx",
+    "url": "/dashboard/media-providers/[kind]",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/media-providers/[kind]/[id]/page.tsx",
+    "url": "/dashboard/media-providers/[kind]/[id]",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/memory/page.tsx",
+    "url": "/dashboard/memory",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/models/page.tsx",
+    "url": "/dashboard/models",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/omni-skills/page.tsx",
+    "url": "/dashboard/omni-skills",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/onboarding/page.tsx",
+    "url": "/dashboard/onboarding",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/orchestration/page.tsx",
+    "url": "/dashboard/orchestration",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/page.tsx",
+    "url": "/dashboard",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/playground/page.tsx",
+    "url": "/dashboard/playground",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/plugins/page.tsx",
+    "url": "/dashboard/plugins",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/plugins/[name]/config/page.tsx",
+    "url": "/dashboard/plugins/[name]/config",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/profile/page.tsx",
+    "url": "/dashboard/profile",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/provider-stats/page.tsx",
+    "url": "/dashboard/provider-stats",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/providers/new/page.tsx",
+    "url": "/dashboard/providers/new",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/providers/page.tsx",
+    "url": "/dashboard/providers",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/providers/services/page.tsx",
+    "url": "/dashboard/providers/services",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/providers/[id]/page.tsx",
+    "url": "/dashboard/providers/[id]",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/quota/page.tsx",
+    "url": "/dashboard/quota",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/radar/combos/page.tsx",
+    "url": "/dashboard/radar/combos",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/radar/intel/page.tsx",
+    "url": "/dashboard/radar/intel",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/radar/offers/page.tsx",
+    "url": "/dashboard/radar/offers",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/radar/page.tsx",
+    "url": "/dashboard/radar",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/radar/setup/page.tsx",
+    "url": "/dashboard/radar/setup",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/relay/page.tsx",
+    "url": "/dashboard/relay",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/resilience/connections/page.tsx",
+    "url": "/dashboard/resilience/connections",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/runtime/page.tsx",
+    "url": "/dashboard/runtime",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/search-tools/page.tsx",
+    "url": "/dashboard/search-tools",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/settings/access-tokens/page.tsx",
+    "url": "/dashboard/settings/access-tokens",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/settings/advanced/page.tsx",
+    "url": "/dashboard/settings/advanced",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/settings/ai/page.tsx",
+    "url": "/dashboard/settings/ai",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/settings/appearance/page.tsx",
+    "url": "/dashboard/settings/appearance",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/settings/cache/page.tsx",
+    "url": "/dashboard/settings/cache",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/settings/feature-flags/page.tsx",
+    "url": "/dashboard/settings/feature-flags",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/settings/general/page.tsx",
+    "url": "/dashboard/settings/general",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/settings/modality-bridge/page.tsx",
+    "url": "/dashboard/settings/modality-bridge",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/settings/page.tsx",
+    "url": "/dashboard/settings",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/settings/pricing/page.tsx",
+    "url": "/dashboard/settings/pricing",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/settings/resilience/page.tsx",
+    "url": "/dashboard/settings/resilience",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/settings/routing/page.tsx",
+    "url": "/dashboard/settings/routing",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/settings/security/page.tsx",
+    "url": "/dashboard/settings/security",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/settings/sidebar/page.tsx",
+    "url": "/dashboard/settings/sidebar",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/system/1proxy/page.tsx",
+    "url": "/dashboard/system/1proxy",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/system/mitm-proxy/page.tsx",
+    "url": "/dashboard/system/mitm-proxy",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/system/proxy/page.tsx",
+    "url": "/dashboard/system/proxy",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/tokens/page.tsx",
+    "url": "/dashboard/tokens",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/tools/agent-bridge/page.tsx",
+    "url": "/dashboard/tools/agent-bridge",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/tools/traffic-inspector/page.tsx",
+    "url": "/dashboard/tools/traffic-inspector",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/translator/page.tsx",
+    "url": "/dashboard/translator",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/usage/page.tsx",
+    "url": "/dashboard/usage",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/dashboard/webhooks/page.tsx",
+    "url": "/dashboard/webhooks",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/(dashboard)/home/page.tsx",
+    "url": "/home",
+    "kategori": "dashboard"
+  },
+  {
+    "dosya": "src/app/400/page.tsx",
+    "url": "/400",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/401/page.tsx",
+    "url": "/401",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/403/page.tsx",
+    "url": "/403",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/408/page.tsx",
+    "url": "/408",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/429/page.tsx",
+    "url": "/429",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/500/page.tsx",
+    "url": "/500",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/502/page.tsx",
+    "url": "/502",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/503/page.tsx",
+    "url": "/503",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/auth/callback/page.tsx",
+    "url": "/auth/callback",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/callback/page.tsx",
+    "url": "/callback",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/connect/codex/[token]/page.tsx",
+    "url": "/connect/codex/[token]",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/docs/api-explorer/page.tsx",
+    "url": "/docs/api-explorer",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/docs/page.tsx",
+    "url": "/docs",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/docs/[...slug]/page.tsx",
+    "url": "/docs/[...slug]",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/forbidden/page.tsx",
+    "url": "/forbidden",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/forgot-password/page.tsx",
+    "url": "/forgot-password",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/landing/page.tsx",
+    "url": "/landing",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/login/page.tsx",
+    "url": "/login",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/maintenance/page.tsx",
+    "url": "/maintenance",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/miniapp/page.tsx",
+    "url": "/miniapp",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/offline/page.tsx",
+    "url": "/offline",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/page.tsx",
+    "url": "/page.tsx",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/privacy/page.tsx",
+    "url": "/privacy",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/status/page.tsx",
+    "url": "/status",
+    "kategori": "genel"
+  },
+  {
+    "dosya": "src/app/terms/page.tsx",
+    "url": "/terms",
+    "kategori": "genel"
+  }
+]

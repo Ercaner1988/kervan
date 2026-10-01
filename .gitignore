@@ -18,3 +18,10 @@
 
 # Calisma zamani gunlukleri
 *.log
+
+# Gecici worktree alani
+/.w
+
+# Node/Bun bagimliliklari
+node_modules/
+
