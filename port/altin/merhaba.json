@@ -1,0 +1,35 @@
+{
+  "id": "parite-merhaba-001",
+  "ad": "Temel Merhaba Sohbet Tamamlama Paritesi",
+  "istek": {
+    "yontem": "POST",
+    "yol": "/v1/chat/completions",
+    "basliklar": {
+      "content-type": "application/json"
+    },
+    "govde": {
+      "model": "gemini-3.8-flash",
+      "messages": [
+        {
+          "role": "user",
+          "content": "merhaba"
+        }
+      ]
+    }
+  },
+  "beklenen": {
+    "durumKodu": 200,
+    "govdeSablon": {
+      "object": "chat.completion",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant"
+          },
+          "finish_reason": "stop"
+        }
+      ]
+    }
+  }
+}
