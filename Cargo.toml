@@ -22,7 +22,7 @@ license = "MIT"
 katla = { git = "https://github.com/Ercaner1988/katla", rev = "450d13f85e4ab74d9e2d646f6417c768ce56f32c" }
 anyhow = "1.0.104"
 axum = { version = "0.8.9", features = ["ws"] }
-eframe = { version = "0.30", features = ["wgpu"] }
+eframe = { version = "0.36", features = ["wgpu"] }
 fantoccini = "0.22.1"
 futures-util = "0.3.34"
 log = "0.4"

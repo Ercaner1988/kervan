@@ -348,7 +348,6 @@ impl KervanApp {
                 .with_transparent(false)
                 .with_decorations(true)
                 .with_active(true),
-            vsync: true,
             multisampling: 0,
             depth_buffer: 0,
             stencil_buffer: 0,
@@ -376,13 +375,14 @@ impl KervanApp {
 }
 
 impl eframe::App for KervanApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = &ui.ctx().clone();
         self.kare_sayisi += 1;
         if self.kare_sayisi <= 3 || self.kare_sayisi.is_multiple_of(120) {
             log_yaz(&format!(
                 "Kare #{:<5} | Alan: {:?} | DPI: {:.2}",
                 self.kare_sayisi,
-                ctx.screen_rect(),
+                ctx.content_rect(),
                 ctx.pixels_per_point()
             ));
         }
@@ -409,15 +409,13 @@ impl eframe::App for KervanApp {
         // Sürükle-bırak desteği: pencereye dosya bırakıldığında otomatik ekle
         ctx.input(|i| {
             for f in &i.raw.dropped_files {
-                if let Some(path) = &f.path {
-                    let yol_str = path.to_string_lossy().to_string();
-                    self.dosya_ekle(&yol_str);
-                }
+                let yol_str = f.path().to_string_lossy().to_string();
+                self.dosya_ekle(&yol_str);
             }
         });
 
         // ─── 1. ÜST ÇUBUK (HEADER) ──────────────────────────────────────────────
-        egui::TopBottomPanel::top("header_bar").show(ctx, |ui| {
+        egui::Panel::top("header_bar").show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.label(
                     egui::RichText::new("KERVAN")
@@ -433,7 +431,7 @@ impl eframe::App for KervanApp {
         });
 
         // ─── 2. ALT ÇUBUK (STATUS BAR) ──────────────────────────────────────────
-        egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
+        egui::Panel::bottom("status_bar").show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.label(
                     egui::RichText::new("● Kervan Gateway 127.0.0.1:20129")
@@ -479,12 +477,12 @@ impl eframe::App for KervanApp {
         });
 
         // ─── 3. SOL PANEL (SAĞLAYICILAR VE AJANLAR) ─────────────────────────────
-        egui::SidePanel::left("providers_panel")
+        egui::Panel::left("providers_panel")
             .resizable(true)
-            .default_width(220.0)
-            .min_width(160.0)
-            .max_width(320.0)
-            .show(ctx, |ui| {
+            .default_size(220.0)
+            .min_size(160.0)
+            .max_size(320.0)
+            .show(ui, |ui| {
                 ui.heading("Sağlayıcılar");
                 ui.separator();
 
@@ -555,12 +553,12 @@ impl eframe::App for KervanApp {
             });
 
         // ─── 4. SAĞ PANEL (ZCODE TARZI DİNAMİK BAKİYE VE HEDİYE ÖĞRENİCİ) ───────
-        egui::SidePanel::right("balance_panel")
+        egui::Panel::right("balance_panel")
             .resizable(true)
-            .default_width(240.0)
-            .min_width(180.0)
-            .max_width(320.0)
-            .show(ctx, |ui| {
+            .default_size(240.0)
+            .min_size(180.0)
+            .max_size(320.0)
+            .show(ui, |ui| {
                 ui.heading("Bakiye & Limit Öğrenici");
                 ui.separator();
 
@@ -596,7 +594,7 @@ impl eframe::App for KervanApp {
             });
 
         // ─── 5. ORTA ALAN (ÇALIŞMA ALANI & TEST KONSOLU) ─────────────────────────
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             // A) Sağlayıcı ve Model Seçimi Toolbarı
             ui.horizontal_wrapped(|ui| {
                 ui.heading(format!("Çalışma Alanı: {}", self.secili_saglayici));
@@ -961,7 +959,7 @@ impl eframe::App for KervanApp {
                                         }
                                         if ui.button("📋 URL Kopyala").clicked() {
                                             let url = medya.url.clone();
-                                            ui.output_mut(|o| o.copied_text = url.clone());
+                                            ui.copy_text(url.clone());
                                         }
                                     });
                                 }
@@ -991,7 +989,7 @@ impl eframe::App for KervanApp {
                                         }
                                         if ui.button("📋 Video URL Kopyala").clicked() {
                                             let url = medya.url.clone();
-                                            ui.output_mut(|o| o.copied_text = url.clone());
+                                            ui.copy_text(url.clone());
                                         }
                                     });
                                 }
