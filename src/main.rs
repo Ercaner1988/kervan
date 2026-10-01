@@ -34,11 +34,11 @@ async fn main() -> Result<()> {
         let stdin = std::io::stdin();
         let mut stdout = std::io::stdout();
         for satir in stdin.lock().lines() {
-            if let Ok(line) = satir {
-                if let Some(yanit) = mcp.isle_istek(&line) {
-                    writeln!(stdout, "{}", yanit)?;
-                    stdout.flush()?;
-                }
+            if let Ok(line) = satir
+                && let Some(yanit) = mcp.isle_istek(&line)
+            {
+                writeln!(stdout, "{}", yanit)?;
+                stdout.flush()?;
             }
         }
         return Ok(());
@@ -175,7 +175,9 @@ async fn main() -> Result<()> {
             }
             #[cfg(not(feature = "gui"))]
             {
-                eprintln!("uyari: Kervan GUI ozelligi olmadan derlenmis. '--features gui' ile derleyin.");
+                eprintln!(
+                    "uyari: Kervan GUI ozelligi olmadan derlenmis. '--features gui' ile derleyin."
+                );
             }
         }
 

@@ -2135,17 +2135,109 @@ dependencies = [
 ]
 
 [[package]]
+name = "katla"
+version = "0.1.0"
+source = "git+https://github.com/Ercaner1988/katla?rev=450d13f85e4ab74d9e2d646f6417c768ce56f32c#450d13f85e4ab74d9e2d646f6417c768ce56f32c"
+dependencies = [
+ "unicode-normalization",
+]
+
+[[package]]
 name = "kervan"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
  "codspeed-divan-compat",
+ "kervan-akis",
+ "kervan-gui",
+ "kervan-havuz",
+ "kervan-mcp",
+ "kervan-saglayici",
+ "kervan-sunucu",
+ "kervan-tarayici",
+ "serde_json",
+ "tokio",
+ "toml",
+]
+
+[[package]]
+name = "kervan-akis"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "kervan-gui"
+version = "0.1.0"
+dependencies = [
  "eframe",
- "fantoccini",
- "futures-util",
+ "kervan-sunucu",
  "log",
+ "tokio",
+]
+
+[[package]]
+name = "kervan-havuz"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "fantoccini",
+ "kervan-saglayici",
+ "kervan-tarayici",
  "rand 0.10.2",
+ "serde_json",
+ "tokio",
+ "toml",
+]
+
+[[package]]
+name = "kervan-mcp"
+version = "0.1.0"
+dependencies = [
+ "katla",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "kervan-saglayici"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "katla",
+ "kervan-tarayici",
+ "serde",
+ "serde_json",
+ "tokio",
+ "toml",
+]
+
+[[package]]
+name = "kervan-sunucu"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "futures-util",
+ "kervan-havuz",
+ "kervan-mcp",
+ "kervan-saglayici",
+ "kervan-tarayici",
+ "rand 0.10.2",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "kervan-tarayici"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "fantoccini",
  "serde",
  "serde_json",
  "tokio",
@@ -3812,6 +3904,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "tinyvec"
+version = "1.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd3ca314f692efd6c868f8408f53fe444634a845f96c028b97d35f6a1f79f0ee"
+
+[[package]]
 name = "tokio"
 version = "1.53.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4031,6 +4129,15 @@ name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
+
+[[package]]
+name = "unicode-normalization"
+version = "0.1.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fd4f6878c9cb28d874b009da9e8d183b5abc80117c40bbd187a1fde336be6e8"
+dependencies = [
+ "tinyvec",
+]
 
 [[package]]
 name = "unicode-segmentation"

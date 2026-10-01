@@ -1,0 +1,19 @@
+[package]
+name = "kervan-sunucu"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Kervan HTTP/WebSocket sunucusu ve tarayıcı eklentisi köprüsü"
+
+[dependencies]
+kervan-tarayici = { path = "../tarayici" }
+kervan-saglayici = { path = "../saglayici" }
+kervan-havuz = { path = "../havuz" }
+kervan-mcp = { path = "../mcp" }
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+axum.workspace = true
+futures-util.workspace = true
+rand.workspace = true

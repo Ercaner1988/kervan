@@ -6,12 +6,23 @@ license = "MIT"
 
 [features]
 default = []
-gui = ["dep:eframe"]
+gui = ["dep:kervan-gui"]
 
-[dependencies]
+[workspace]
+members = ["crates/tarayici", "crates/saglayici", "crates/havuz", "crates/mcp", "crates/akis", "crates/sunucu", "crates/gui"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]
+# Ortak Türkçe katlama (altin-kapi ADR 0002); git + rev: kardeş depo yolu CI'da yok.
+katla = { git = "https://github.com/Ercaner1988/katla", rev = "450d13f85e4ab74d9e2d646f6417c768ce56f32c" }
 anyhow = "1.0.104"
 axum = { version = "0.8.9", features = ["ws"] }
-eframe = { version = "0.30", features = ["wgpu"], optional = true }
+eframe = { version = "0.30", features = ["wgpu"] }
 fantoccini = "0.22.1"
 futures-util = "0.3.34"
 log = "0.4"
@@ -22,7 +33,21 @@ tokio = { version = "1.53.1", features = ["full"] }
 toml = "1.1.4"
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_JobObjects", "Win32_System_Threading"] }
 
+[dependencies]
+kervan-tarayici = { path = "crates/tarayici" }
+kervan-saglayici = { path = "crates/saglayici" }
+kervan-havuz = { path = "crates/havuz" }
+kervan-mcp = { path = "crates/mcp" }
+kervan-akis = { path = "crates/akis" }
+kervan-sunucu = { path = "crates/sunucu" }
+kervan-gui = { path = "crates/gui", optional = true }
+anyhow.workspace = true
+axum.workspace = true
+tokio.workspace = true
+toml.workspace = true
+
 [dev-dependencies]
+serde_json.workspace = true
 divan = { version = "5.0.2", package = "codspeed-divan-compat" }
 
 [[bench]]

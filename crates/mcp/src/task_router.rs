@@ -68,7 +68,8 @@ impl Default for GorevRotaYapilandirmasi {
             RotaHedefi {
                 saglayici: "deepseek".to_string(),
                 model: "deepseek-r1".to_string(),
-                aciklama: "Karmaşık mantık, matematik ve CoT akıl yürütme için DeepSeek-R1".to_string(),
+                aciklama: "Karmaşık mantık, matematik ve CoT akıl yürütme için DeepSeek-R1"
+                    .to_string(),
             },
         );
         ozel.insert(
@@ -133,7 +134,8 @@ pub struct GorevSiniflandirici;
 impl GorevSiniflandirici {
     /// İstem metnini analiz ederek en yüksek olasılıklı görev türünü belirler.
     pub fn siniflandir(istem: &str) -> GorevTuru {
-        let kucuk = istem.to_lowercase();
+        // Karışık dilli istem: kucult "İ"yi "i̇" yapmaz, "IMAGE"ı "ımage" yapmaz.
+        let kucuk = katla::kucult(istem);
 
         // 1. Görsel & Video Üretimi (Yüksek öncelikli spesifik eylemler)
         if kucuk.contains("video oluştur")
@@ -156,43 +158,121 @@ impl GorevSiniflandirici {
         }
 
         // 2. Kodlama & Yazılım Geliştirme Kalıpları
-        let kodlama_puani = Self::puanla(&kucuk, &[
-            "kod", "fn ", "def ", "function", "class ", "struct ", "impl ", "import ",
-            "const ", "let mut", "pub fn", "rust", "python", "javascript", "typescript",
-            "```", "bug ", "hata", "düzelt", "refactor", "unit test", "derleme",
-            "cargo ", "npm ", "compiler error", "syntax error", "sql query",
-            "endpoint", "api route", "git commit", "yazılım"
-        ]);
+        let kodlama_puani = Self::puanla(
+            &kucuk,
+            &[
+                "kod",
+                "fn ",
+                "def ",
+                "function",
+                "class ",
+                "struct ",
+                "impl ",
+                "import ",
+                "const ",
+                "let mut",
+                "pub fn",
+                "rust",
+                "python",
+                "javascript",
+                "typescript",
+                "```",
+                "bug ",
+                "hata",
+                "düzelt",
+                "refactor",
+                "unit test",
+                "derleme",
+                "cargo ",
+                "npm ",
+                "compiler error",
+                "syntax error",
+                "sql query",
+                "endpoint",
+                "api route",
+                "git commit",
+                "yazılım",
+            ],
+        );
 
         // 3. Derin Akıl Yürütme & Mantık Kalıpları
-        let dusunme_puani = Self::puanla(&kucuk, &[
-            "adım adım düşün", "kanıtla", "mantıksal çıkarım", "akıl yürüt",
-            "ispatla", "felsefi argüman", "matematiksel model", "neden-sonuç",
-            "diyalektik", "analiz et", "eleştirel bakış", "teoremi", "derin düşün",
-            "r1", "thinking", "cot", "reasoning"
-        ]);
+        let dusunme_puani = Self::puanla(
+            &kucuk,
+            &[
+                "adım adım düşün",
+                "kanıtla",
+                "mantıksal çıkarım",
+                "akıl yürüt",
+                "ispatla",
+                "felsefi argüman",
+                "matematiksel model",
+                "neden-sonuç",
+                "diyalektik",
+                "analiz et",
+                "eleştirel bakış",
+                "teoremi",
+                "derin düşün",
+                "r1",
+                "thinking",
+                "cot",
+                "reasoning",
+            ],
+        );
 
         // 4. Akademik Yazım & Tez Kalıpları
-        let akademik_puani = Self::puanla(&kucuk, &[
-            "tez ", "literatür taraması", "akademik kaynak", "dipnot", "atıf",
-            "kaynakça", "makale özeti", "weber", "sosyolojik", "metodoloji",
-            "araştırma yöntemi", "hipotez", "epistemoloji", "ontoloji", "akademik üslup"
-        ]);
+        let akademik_puani = Self::puanla(
+            &kucuk,
+            &[
+                "tez ",
+                "literatür taraması",
+                "akademik kaynak",
+                "dipnot",
+                "atıf",
+                "kaynakça",
+                "makale özeti",
+                "weber",
+                "sosyolojik",
+                "metodoloji",
+                "araştırma yöntemi",
+                "hipotez",
+                "epistemoloji",
+                "ontoloji",
+                "akademik üslup",
+            ],
+        );
 
         // 5. Çeviri Kalıpları
-        let ceviri_puani = Self::puanla(&kucuk, &[
-            "türkçeye çevir", "ingilizceye çevir", "tercüme et", "translate to",
-            "çevirisini yap", "anlamı nedir", "osmanlıca", "arapça", "fransızca"
-        ]);
+        let ceviri_puani = Self::puanla(
+            &kucuk,
+            &[
+                "türkçeye çevir",
+                "ingilizceye çevir",
+                "tercüme et",
+                "translate to",
+                "çevirisini yap",
+                "anlamı nedir",
+                "osmanlıca",
+                "arapça",
+                "fransızca",
+            ],
+        );
 
         // 6. Hızlı Özetleme Kalıpları
-        let ozet_puani = Self::puanla(&kucuk, &[
-            "kısaca özetle", "özet çıkar", "maddeler halinde özetle", "tl;dr",
-            "kısa yanıt ver", "hızlıca açıkla", "özetle:"
-        ]);
+        let ozet_puani = Self::puanla(
+            &kucuk,
+            &[
+                "kısaca özetle",
+                "özet çıkar",
+                "maddeler halinde özetle",
+                "tl;dr",
+                "kısa yanıt ver",
+                "hızlıca açıkla",
+                "özetle:",
+            ],
+        );
 
         // Puanları karşılaştır ve en yükseğe karar ver
-        let mut puanlar = vec![
+        let mut puanlar = [
             (GorevTuru::Kodlama, kodlama_puani),
             (GorevTuru::DerinDusunme, dusunme_puani),
             (GorevTuru::AkademikYazim, akademik_puani),
@@ -200,12 +280,12 @@ impl GorevSiniflandirici {
             (GorevTuru::HizliOzet, ozet_puani),
         ];
 
-        puanlar.sort_by(|a, b| b.1.cmp(&a.1));
+        puanlar.sort_by_key(|p| std::cmp::Reverse(p.1));
 
-        if let Some((gorev, puan)) = puanlar.first() {
-            if *puan > 0 {
-                return *gorev;
-            }
+        if let Some((gorev, puan)) = puanlar.first()
+            && *puan > 0
+        {
+            return *gorev;
         }
 
         GorevTuru::GenelSohbet
@@ -239,7 +319,11 @@ impl AkilliRota {
             || talep_saglayici == "auto"
             || talep_saglayici == "otomatik";
 
-        if !otomatik_mi && !talep_model.is_empty() && talep_model != "auto" && talep_model != "otomatik" {
+        if !otomatik_mi
+            && !talep_model.is_empty()
+            && talep_model != "auto"
+            && talep_model != "otomatik"
+        {
             return RotaHedefi {
                 saglayici: talep_saglayici.to_string(),
                 model: talep_model.to_string(),
@@ -296,10 +380,16 @@ mod tests {
     #[test]
     fn test_gorsel_ve_video_tespiti() {
         let istem_gorsel = "Bana geleceğin kütüphanesini fotogerçekçi bir görsel üret.";
-        assert_eq!(GorevSiniflandirici::siniflandir(istem_gorsel), GorevTuru::GorselUretim);
+        assert_eq!(
+            GorevSiniflandirici::siniflandir(istem_gorsel),
+            GorevTuru::GorselUretim
+        );
 
         let istem_video = "Bu sahne için sinematik kalitede akıcı bir video oluştur.";
-        assert_eq!(GorevSiniflandirici::siniflandir(istem_video), GorevTuru::VideoUretim);
+        assert_eq!(
+            GorevSiniflandirici::siniflandir(istem_video),
+            GorevTuru::VideoUretim
+        );
     }
 
     #[test]
@@ -313,7 +403,11 @@ mod tests {
     #[test]
     fn test_akilli_rota_kullanici_secimini_ezmez() {
         let rota = AkilliRota::yeni(GorevRotaYapilandirmasi::default());
-        let hedef = rota.cozumle("copilot", "copilot-pro-creative", "Rust kodundaki hatayı düzelt");
+        let hedef = rota.cozumle(
+            "copilot",
+            "copilot-pro-creative",
+            "Rust kodundaki hatayı düzelt",
+        );
         assert_eq!(hedef.saglayici, "copilot");
         assert_eq!(hedef.model, "copilot-pro-creative");
         assert_eq!(hedef.aciklama, "Kullanıcı tercihi korundu");

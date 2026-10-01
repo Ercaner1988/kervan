@@ -7,10 +7,10 @@
 //!
 //! Standart: JSON-RPC 2.0 (stdio & SSE uyumlu).
 
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 use crate::compressor::{Compressor, SikistirmaSeviyesi};
 use crate::task_router::{AkilliRota, GorevRotaYapilandirmasi};
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 
 /// MCP JSON-RPC 2.0 İstek Modeli.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -262,7 +262,10 @@ impl McpSunucusu {
             }
             "kervan_sikistir" => {
                 let metin = args.get("metin").and_then(|m| m.as_str()).unwrap_or("");
-                let seviye_str = args.get("seviye").and_then(|s| s.as_str()).unwrap_or("orta");
+                let seviye_str = args
+                    .get("seviye")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("orta");
                 let seviye = match seviye_str {
                     "hafif" => SikistirmaSeviyesi::Hafif,
                     "agresif" => SikistirmaSeviyesi::Agresif,
@@ -272,7 +275,11 @@ impl McpSunucusu {
                 let sonuc = comp.akilli_sikistir(metin, seviye);
                 format!(
                     "Sıkıştırılmış Metin:\n{}\n\n[Telemetri: {} -> {} karakter, %{:.1} tasarruf, ~{} token]",
-                    sonuc.metin, sonuc.orijinal_uzunluk, sonuc.yeni_uzunluk, sonuc.tasarruf_yuzdesi, sonuc.tahmini_tasarruf_token
+                    sonuc.metin,
+                    sonuc.orijinal_uzunluk,
+                    sonuc.yeni_uzunluk,
+                    sonuc.tasarruf_yuzdesi,
+                    sonuc.tahmini_tasarruf_token
                 )
             }
             "kervan_yerel_dosya" => {

@@ -19,7 +19,10 @@ pub enum AracCagrisi {
     /// Yerel çalışma dizinini listeleme isteği: `[KERVAN_DIZIN: c:\yol]`
     DizinListele { dizin_yolu: String },
     /// Standart JSON biçimli fonksiyon çağrısı
-    GenelFonksiyon { ad: String, parametreler_json: String },
+    GenelFonksiyon {
+        ad: String,
+        parametreler_json: String,
+    },
 }
 
 /// JSON fonksiyon çağrısı şeması (OpenAI / Gemini uyumlu)
@@ -48,16 +51,17 @@ impl AracCagrisiAyiklayici {
         while let Some(baslangic) = temiz_metin.find("[KERVAN_YAZ:") {
             if let Some(yol_sonu) = temiz_metin[baslangic..].find(']') {
                 let mutlak_yol_sonu = baslangic + yol_sonu;
-                let dosya_yolu = temiz_metin[baslangic + 12..mutlak_yol_sonu].trim().to_string();
+                let dosya_yolu = temiz_metin[baslangic + 12..mutlak_yol_sonu]
+                    .trim()
+                    .to_string();
 
                 if let Some(bitis) = temiz_metin[mutlak_yol_sonu..].find("[/KERVAN_YAZ]") {
                     let mutlak_bitis = mutlak_yol_sonu + bitis;
-                    let icerik = temiz_metin[mutlak_yol_sonu + 1..mutlak_bitis].trim().to_string();
+                    let icerik = temiz_metin[mutlak_yol_sonu + 1..mutlak_bitis]
+                        .trim()
+                        .to_string();
 
-                    cagrilar.push(AracCagrisi::DosyaYaz {
-                        dosya_yolu,
-                        icerik,
-                    });
+                    cagrilar.push(AracCagrisi::DosyaYaz { dosya_yolu, icerik });
 
                     // Blok temiz metinden çıkarılır
                     let son_nokta = mutlak_bitis + 14;
@@ -95,15 +99,15 @@ impl AracCagrisiAyiklayici {
         }
 
         // 4. Standart ```json { "name": ... } kod bloklarında araç çağrısı arama
-        if let Some(json_baslangic) = temiz_metin.find("```json") {
-            if let Some(json_son) = temiz_metin[json_baslangic..].find("```") {
-                let govde = &temiz_metin[json_baslangic + 7..json_baslangic + json_son];
-                if let Ok(jtc) = serde_json::from_str::<JsonToolCall>(govde.trim()) {
-                    cagrilar.push(AracCagrisi::GenelFonksiyon {
-                        ad: jtc.name,
-                        parametreler_json: jtc.arguments.to_string(),
-                    });
-                }
+        if let Some(json_baslangic) = temiz_metin.find("```json")
+            && let Some(json_son) = temiz_metin[json_baslangic..].find("```")
+        {
+            let govde = &temiz_metin[json_baslangic + 7..json_baslangic + json_son];
+            if let Ok(jtc) = serde_json::from_str::<JsonToolCall>(govde.trim()) {
+                cagrilar.push(AracCagrisi::GenelFonksiyon {
+                    ad: jtc.name,
+                    parametreler_json: jtc.arguments.to_string(),
+                });
             }
         }
 
@@ -135,7 +139,10 @@ impl AracCagrisiAyiklayici {
                 )
             }
             AracCagrisi::GenelFonksiyon { ad, .. } => {
-                format!("[SİSTEM YANITI — FONKSİYON SONUCU ({}):]\n{}", ad, sonuc_metni)
+                format!(
+                    "[SİSTEM YANITI — FONKSİYON SONUCU ({}):]\n{}",
+                    ad, sonuc_metni
+                )
             }
         }
     }
@@ -180,7 +187,8 @@ mod tests {
         let cagri = AracCagrisi::DosyaOku {
             dosya_yolu: "weber.docx".to_string(),
         };
-        let bildirim = AracCagrisiAyiklayici::sistem_geri_bildirimi_uret(&cagri, "Örnek tez metni...");
+        let bildirim =
+            AracCagrisiAyiklayici::sistem_geri_bildirimi_uret(&cagri, "Örnek tez metni...");
         assert!(bildirim.contains("[SİSTEM YANITI — DOSYA OKUNDU: weber.docx]"));
         assert!(bildirim.contains("Örnek tez metni..."));
     }

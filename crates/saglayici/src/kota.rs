@@ -207,7 +207,10 @@ impl Defter {
 
     pub async fn bakiye_kaydet(&self, b: &HesapBakiyesi) -> Result<()> {
         let mut hepsi = self.tum_bakiyeler().await;
-        if let Some(pos) = hepsi.iter().position(|x| x.hesap == b.hesap && x.saglayici == b.saglayici) {
+        if let Some(pos) = hepsi
+            .iter()
+            .position(|x| x.hesap == b.hesap && x.saglayici == b.saglayici)
+        {
             hepsi[pos] = b.clone();
         } else {
             hepsi.push(b.clone());
@@ -219,7 +222,10 @@ impl Defter {
 
     pub async fn hediye_ekle(&self, hesap: &str, saglayici: &str, miktar: u64) -> Result<()> {
         let mut hepsi = self.tum_bakiyeler().await;
-        if let Some(pos) = hepsi.iter().position(|x| x.hesap == hesap && x.saglayici == saglayici) {
+        if let Some(pos) = hepsi
+            .iter()
+            .position(|x| x.hesap == hesap && x.saglayici == saglayici)
+        {
             hepsi[pos].hediye_token_bakiyesi += miktar;
         } else {
             hepsi.push(HesapBakiyesi {
@@ -239,12 +245,11 @@ impl Defter {
 
     pub async fn tum_bakiyeler(&self) -> Vec<HesapBakiyesi> {
         let p = self.bakiye_yolu();
-        if p.exists() {
-            if let Ok(s) = std::fs::read_to_string(&p) {
-                if let Ok(liste) = serde_json::from_str::<Vec<HesapBakiyesi>>(&s) {
-                    return liste;
-                }
-            }
+        if p.exists()
+            && let Ok(s) = std::fs::read_to_string(&p)
+            && let Ok(liste) = serde_json::from_str::<Vec<HesapBakiyesi>>(&s)
+        {
+            return liste;
         }
         Vec::new()
     }
@@ -351,8 +356,9 @@ pub fn kota_sinyali(metin: &str, isaretler: &[String]) -> bool {
     if metin.chars().count() > EN_UZUN_LIMIT_MESAJI {
         return false;
     }
-    let m = metin.to_lowercase();
-    isaretler.iter().any(|i| m.contains(&i.to_lowercase()))
+    // İşaretler ve yanıt Türkçe olabilir ("kotanız doldu"): iki taraf da katlanır.
+    let m = katla::katla(metin);
+    isaretler.iter().any(|i| m.contains(&katla::katla(i)))
 }
 
 pub fn varsayilan_yol() -> PathBuf {
@@ -383,6 +389,13 @@ pub fn yol_goster(d: &Defter) -> &Path {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn turkce_kota_isareti_buyuk_harfle_de_yakalanir() {
+        // to_lowercase "KOTANIZ" → "kotaniz" yapıp "kotanız"ı kaçırıyordu.
+        let isaretler = vec!["kotanız doldu".to_string()];
+        assert!(kota_sinyali("KOTANIZ DOLDU, yarın deneyin.", &isaretler));
+    }
 
     fn o(t: u64, sonuc: Sonuc) -> Olay {
         Olay {

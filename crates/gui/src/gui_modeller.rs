@@ -155,11 +155,7 @@ pub static CHATGPT_MODELLERI: &[ModelTanimi] = &[
         "DALL·E 3 (Görsel Üretimi)",
         "Hassas detaylı görsel çizimi",
     ),
-    ModelTanimi::new(
-        "sora",
-        "Sora (Video Üretimi)",
-        "Video oluşturma motoru",
-    ),
+    ModelTanimi::new("sora", "Sora (Video Üretimi)", "Video oluşturma motoru"),
 ];
 
 pub static QWEN_MODELLERI: &[ModelTanimi] = &[
@@ -320,13 +316,11 @@ pub static ZAI_MODELLERI: &[ModelTanimi] = &[
     ),
 ];
 
-pub static AUTO_MODELLERI: &[ModelTanimi] = &[
-    ModelTanimi::new(
-        "otomatik",
-        "Otomatik (Akıllı Rota)",
-        "İsteminize göre en uygun sağlayıcı ve modeli otomatik seçer",
-    ),
-];
+pub static AUTO_MODELLERI: &[ModelTanimi] = &[ModelTanimi::new(
+    "otomatik",
+    "Otomatik (Akıllı Rota)",
+    "İsteminize göre en uygun sağlayıcı ve modeli otomatik seçer",
+)];
 
 /// Sağlayıcı adına göre model listesini döndürür
 pub fn saglayici_modelleri(saglayici: &str) -> &'static [ModelTanimi] {
@@ -478,7 +472,7 @@ pub fn medya_ayikla(metin: &str) -> Vec<MedyaOgesi> {
                 if url.starts_with("http://") || url.starts_with("https://") {
                     let tip = if is_gorsel {
                         MedyaTipi::Gorsel
-                    } else if baslik.to_lowercase().contains("video") {
+                    } else if baslik.to_ascii_lowercase().contains("video") {
                         MedyaTipi::Video
                     } else {
                         MedyaTipi::Gorsel
@@ -515,7 +509,7 @@ pub fn dosya_mime_belirle(yol: &str) -> &'static str {
     let uzanti = yol
         .rsplit('.')
         .next()
-        .map(|s| s.to_lowercase())
+        .map(|s| s.to_ascii_lowercase())
         .unwrap_or_default();
 
     match uzanti.as_str() {
@@ -545,7 +539,7 @@ pub fn dosya_mime_belirle(yol: &str) -> &'static str {
 /// Harici bağımlılık gerektirmeyen hafif ve saf Base64 kodlayıcı.
 pub fn base64_encode(data: &[u8]) -> String {
     const TABLO: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut sonuc = String::with_capacity((data.len() + 2) / 3 * 4);
+    let mut sonuc = String::with_capacity(data.len().div_ceil(3) * 4);
 
     for chunk in data.chunks(3) {
         let b0 = chunk[0] as usize;

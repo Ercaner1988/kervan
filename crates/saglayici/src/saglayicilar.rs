@@ -279,7 +279,7 @@ pub fn bul(defter: &HashMap<String, Arc<Provider>>, ad: &str) -> Result<Arc<Prov
 /// (`kervan/gemini-3.1-pro`). Boylece yeni saglayicilar eklenirken var olan
 /// yapilandirmalar — ornegin Hermes'inki — kirilmiyor.
 pub fn model_saglayicisi(model: &str, defter: &HashMap<String, Arc<Provider>>) -> Option<String> {
-    let m = model.to_lowercase();
+    let m = model.to_ascii_lowercase();
     let mut eslesen: Vec<&String> = defter.keys().filter(|ad| m.contains(ad.as_str())).collect();
     // En uzun ad kazansin: ileride "claude" ve "claude-code" gibi adlar olursa
     // kisa olan uzunu calmasin.

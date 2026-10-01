@@ -1,0 +1,15 @@
+[package]
+name = "kervan-tarayici"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Kervan tarayıcı katmanı: WebDriver oturumu, süreç, tarama, kurulum ve yapılandırma"
+
+[dependencies]
+fantoccini.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+anyhow.workspace = true
+windows-sys.workspace = true

@@ -1,0 +1,10 @@
+[package]
+name = "kervan-akis"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Kervan akış işlevleri: akış kurtarma, oturum havuzu kayıtları, çeviri, ses/görüntü (arayüze bağlanacak)"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true

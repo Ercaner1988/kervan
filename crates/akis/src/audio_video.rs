@@ -108,17 +108,26 @@ pub struct VideoUretimIstegi {
     pub negatif_istem: Option<String>,
     pub en_boy_orani: VideoEnBoyOrani,
     pub sure_saniye: u32,
-    pub cozunurluk: &'static str, // "720p", "1080p"
+    pub cozunurluk: &'static str,        // "720p", "1080p"
     pub kamera_hareketi: Option<String>, // "Pan Left", "Slow Zoom In"
 }
 
 /// Asenkron video üretim durum yaşam döngüsü
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VideoDurumu {
-    Kuyrukta { sira: u32 },
-    Uretiliyor { ilerleme_yuzdesi: u8 },
-    Tamamlandi { video_url: String, yerel_dosya_yolu: Option<String> },
-    Basarisiz { hata_mesaji: String },
+    Kuyrukta {
+        sira: u32,
+    },
+    Uretiliyor {
+        ilerleme_yuzdesi: u8,
+    },
+    Tamamlandi {
+        video_url: String,
+        yerel_dosya_yolu: Option<String>,
+    },
+    Basarisiz {
+        hata_mesaji: String,
+    },
 }
 
 /// Takip edilen bir video üretim görevi
@@ -231,7 +240,10 @@ mod tests {
             ("rasyonalleşme".to_string(), "aklîleşme".to_string()),
         ];
         let duzeltilmis = kavram_sozlugu_filtresi_uygula(ham_transkript, &duzeltmeler);
-        assert_eq!(duzeltilmis, "Weber sosyolojisinde aklîleşme süreci bürokrasinin temelidir.");
+        assert_eq!(
+            duzeltilmis,
+            "Weber sosyolojisinde aklîleşme süreci bürokrasinin temelidir."
+        );
     }
 
     #[test]
@@ -249,11 +261,22 @@ mod tests {
         assert_eq!(gorev.durum, VideoDurumu::Kuyrukta { sira: 1 });
 
         gorev.ilerleme_guncelle(45);
-        assert_eq!(gorev.durum, VideoDurumu::Uretiliyor { ilerleme_yuzdesi: 45 });
+        assert_eq!(
+            gorev.durum,
+            VideoDurumu::Uretiliyor {
+                ilerleme_yuzdesi: 45
+            }
+        );
 
-        gorev.tamamla("https://example.com/video.mp4", Some("C:/output/video.mp4".to_string()));
+        gorev.tamamla(
+            "https://example.com/video.mp4",
+            Some("C:/output/video.mp4".to_string()),
+        );
         match gorev.durum {
-            VideoDurumu::Tamamlandi { video_url, yerel_dosya_yolu } => {
+            VideoDurumu::Tamamlandi {
+                video_url,
+                yerel_dosya_yolu,
+            } => {
                 assert_eq!(video_url, "https://example.com/video.mp4");
                 assert_eq!(yerel_dosya_yolu, Some("C:/output/video.mp4".to_string()));
             }

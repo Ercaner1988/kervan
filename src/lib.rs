@@ -6,23 +6,13 @@
 //! kullaniyor), ama `benches/` altindaki olcumlerin gercek kodu cagirmasini
 //! saglar: olculen sey kopyasi degil kendisi olur.
 
-pub mod audio_video;
-pub mod browser;
-pub mod compressor;
-pub mod config;
-pub mod eklenti;
-pub mod gui;
-pub mod gui_modeller;
-pub mod kota;
-pub mod kurulum;
-pub mod pool;
-pub mod router;
-pub mod saglayicilar;
-pub mod server;
-pub mod session_pool;
-pub mod surec;
-pub mod tara;
-pub mod mcp_server;
-pub mod stream_recovery;
-pub mod task_router;
-pub mod translator;
+// İşlevsel bölme (2026-10-01): modüller kendi sandıklarında; cephe aynı adları
+// dışa aktarır, `main.rs` ve `benches/` değişmez.
+pub use kervan_akis::{audio_video, session_pool, stream_recovery, translator};
+#[cfg(feature = "gui")]
+pub use kervan_gui::{gui, gui_modeller};
+pub use kervan_havuz::{pool, router};
+pub use kervan_mcp::{compressor, mcp_server, task_router};
+pub use kervan_saglayici::{kota, saglayicilar};
+pub use kervan_sunucu::{eklenti, server};
+pub use kervan_tarayici::{browser, config, kurulum, surec, tara};

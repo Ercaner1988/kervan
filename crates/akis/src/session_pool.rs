@@ -43,7 +43,7 @@ impl Saglayici {
     }
 
     pub fn parse(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
+        match s.to_ascii_lowercase().as_str() {
             "gemini" => Self::Gemini,
             "chatgpt" => Self::ChatGpt,
             "mistral" => Self::Mistral,
@@ -99,7 +99,12 @@ pub struct HesapOturumu {
 }
 
 impl HesapOturumu {
-    pub fn yeni(id: impl Into<String>, saglayici: Saglayici, cookie_store_id: impl Into<String>, tab_id: u32) -> Self {
+    pub fn yeni(
+        id: impl Into<String>,
+        saglayici: Saglayici,
+        cookie_store_id: impl Into<String>,
+        tab_id: u32,
+    ) -> Self {
         Self {
             id: id.into(),
             saglayici,
@@ -127,14 +132,16 @@ impl HesapOturumu {
         match &self.durum {
             OturumDurumu::Hazir => {
                 // Saatlik tavan kontrolü
-                if self.saatlik_tavan > 0 && self.son_bir_saatteki_istekler.len() as u32 >= self.saatlik_tavan {
+                if self.saatlik_tavan > 0
+                    && self.son_bir_saatteki_istekler.len() as u32 >= self.saatlik_tavan
+                {
                     return false;
                 }
                 // Hız bütçesi (pacing) kontrolü
-                if let Some(son) = self.son_istek_zamani {
-                    if simdi.duration_since(son) < self.asgari_bekleme {
-                        return false;
-                    }
+                if let Some(son) = self.son_istek_zamani
+                    && simdi.duration_since(son) < self.asgari_bekleme
+                {
+                    return false;
                 }
                 true
             }
@@ -159,7 +166,9 @@ impl HesapOturumu {
             _ => 1,
         };
 
-        if hata_mesaji.to_lowercase().contains("captcha") || hata_mesaji.to_lowercase().contains("verify") {
+        if hata_mesaji.to_ascii_lowercase().contains("captcha")
+            || hata_mesaji.to_ascii_lowercase().contains("verify")
+        {
             self.durum = OturumDurumu::InsanKapisi {
                 aciklama: hata_mesaji.to_string(),
             };
@@ -207,7 +216,11 @@ impl OturumHavuzu {
 
     /// Belirli bir sağlayıcı için en uygun, müsait hesabı seçer.
     /// Eğer ilk hesap meşgul veya kotalıysa, rotasyonla bir sonraki hesaba geçer (OmniRoute fallback mantığı).
-    pub fn en_uygun_hesabi_sec(&mut self, saglayici: &Saglayici, simdi: Instant) -> Option<HesapOturumu> {
+    pub fn en_uygun_hesabi_sec(
+        &mut self,
+        saglayici: &Saglayici,
+        simdi: Instant,
+    ) -> Option<HesapOturumu> {
         // Bu sağlayıcıya ait tüm oturumları listele
         let mut aday_idleri: Vec<String> = self
             .oturumlar
@@ -223,18 +236,21 @@ impl OturumHavuzu {
         aday_idleri.sort();
 
         // Round-robin rotasyon başlangıç noktası
-        let sayac = self.rotasyon_sayaclari.entry(saglayici.clone()).or_insert(0);
+        let sayac = self
+            .rotasyon_sayaclari
+            .entry(saglayici.clone())
+            .or_insert(0);
         let toplam_aday = aday_idleri.len();
 
         for i in 0..toplam_aday {
             let indeks = (*sayac + i) % toplam_aday;
             let id = &aday_idleri[indeks];
 
-            if let Some(oturum) = self.oturumlar.get_mut(id) {
-                if oturum.musait_mi(simdi) {
-                    *sayac = (indeks + 1) % toplam_aday;
-                    return Some(oturum.clone());
-                }
+            if let Some(oturum) = self.oturumlar.get_mut(id)
+                && oturum.musait_mi(simdi)
+            {
+                *sayac = (indeks + 1) % toplam_aday;
+                return Some(oturum.clone());
             }
         }
 
@@ -311,7 +327,9 @@ mod tests {
         assert_eq!(havuz.saglayici_hesap_sayisi(&Saglayici::Gemini), 3);
 
         // İlk seçim: hesap-1 gelmeli
-        let secilen1 = havuz.en_uygun_hesabi_sec(&Saglayici::Gemini, simdi).unwrap();
+        let secilen1 = havuz
+            .en_uygun_hesabi_sec(&Saglayici::Gemini, simdi)
+            .unwrap();
         assert_eq!(secilen1.id, "gemini-hesap-1");
 
         // Hesap-1'e istek kaydet (artık tavanı doldu)
@@ -320,11 +338,15 @@ mod tests {
         }
 
         // İkinci seçim: hesap-1 dolu olduğu için otomatik hesap-2'ye geçmeli (Fallback)
-        let secilen2 = havuz.en_uygun_hesabi_sec(&Saglayici::Gemini, simdi).unwrap();
+        let secilen2 = havuz
+            .en_uygun_hesabi_sec(&Saglayici::Gemini, simdi)
+            .unwrap();
         assert_eq!(secilen2.id, "gemini-hesap-2");
 
         // Üçüncü seçim: hesap-3 gelmeli (Round-robin)
-        let secilen3 = havuz.en_uygun_hesabi_sec(&Saglayici::Gemini, simdi).unwrap();
+        let secilen3 = havuz
+            .en_uygun_hesabi_sec(&Saglayici::Gemini, simdi)
+            .unwrap();
         assert_eq!(secilen3.id, "gemini-hesap-3");
     }
 

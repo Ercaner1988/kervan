@@ -1,0 +1,31 @@
+# kervan'ın altin-kapi beyanı. Değer: "uygulanir" ya da "uygulanmaz".
+# Anahtarlar altin-kapi CONTEXT.md'deki on altı boyuttur.
+
+# Taban çizgilerindeki ad: klasör adı klonlayana göre değişir, bu değişmez.
+repo = "kervan"
+
+[boyut]
+arkayuz = "uygulanir"                  # yönlendirici sunucu + MCP
+onyuz = "uygulanir"                    # egui arayüzü + tarayıcı eklentisi
+veritabani = "uygulanmaz"              # veri deposu yok
+makine_zararsizligi = "uygulanir"      # tarayıcı ve alt süreç başlatır
+tedarik_guvenligi = "uygulanir"
+bellek_guvenligi = "uygulanir"
+kimlik_yolu = "uygulanir"              # sağlayıcı oturumları, çerezler
+yayina_hazirlik = "uygulanir"
+kaynak_tuketimi = "uygulanir"          # oturum havuzu, tarayıcı süreçleri
+birlikte_calisabilirlik = "uygulanir"  # eklenti ↔ sunucu köprüsü
+karakter_yazimi = "uygulanir"
+hata_disiplini = "uygulanir"
+test_gercekciligi = "uygulanir"
+veri_dayanikliligi = "uygulanir"       # yapılandırma ve kota kayıtları
+surum_izi = "uygulanir"
+belge_dogrulugu = "uygulanir"
+
+[temel]
+# kervan'ın CI iş akışı yok (yalnız CodSpeed): temel denetimler buradan.
+ek_cargo = [
+  ["fmt", "--all", "--", "--check"],
+  ["clippy", "--workspace", "--all-targets", "--all-features", "--", "-D", "warnings"],
+  ["test", "--workspace", "--all-features"],
+]

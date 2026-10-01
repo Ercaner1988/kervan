@@ -811,7 +811,7 @@ const UST_USTE_SINIR: u32 = 5;
 /// ("dogrulama duvari cikmis olabilir") — bir yavas yanit saglam bir hesabi
 /// duraklatirdi. Belirsiz haller `UST_USTE_SINIR` ile zaten yakalaniyor.
 pub fn insan_kapisi_gerekir(hata: &str) -> bool {
-    let h = hata.to_lowercase();
+    let h = hata.to_ascii_lowercase();
     [
         "captcha",
         "unusual traffic",

@@ -185,10 +185,10 @@ impl HizBekcisi {
         }
 
         // Metin içeriği evresine geçiş tespiti
-        if metin.contains("</think>") || metin.contains("\"content\":") {
-            if metin.contains("</think>") {
-                self.korumali_evre = false;
-            }
+        if (metin.contains("</think>") || metin.contains("\"content\":"))
+            && metin.contains("</think>")
+        {
+            self.korumali_evre = false;
         }
 
         // Basit faydalı veri hacmi artışı
@@ -257,18 +257,15 @@ impl AkisTarayici {
             return None;
         }
 
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(veri) {
-            if let Some(choices) = json.get("choices").and_then(|c| c.as_array()) {
-                if let Some(first) = choices.first() {
-                    if let Some(content) = first
-                        .get("delta")
-                        .and_then(|d| d.get("content"))
-                        .and_then(|c| c.as_str())
-                    {
-                        return Some(content.to_string());
-                    }
-                }
-            }
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(veri)
+            && let Some(choices) = json.get("choices").and_then(|c| c.as_array())
+            && let Some(first) = choices.first()
+            && let Some(content) = first
+                .get("delta")
+                .and_then(|d| d.get("content"))
+                .and_then(|c| c.as_str())
+        {
+            return Some(content.to_string());
         }
         None
     }
@@ -391,9 +388,7 @@ mod tests {
     #[test]
     fn test_akis_tarayici_terminal_isaretleri() {
         assert!(AkisTarayici::sonlandi_mi("data: [DONE]"));
-        assert!(AkisTarayici::sonlandi_mi(
-            "event: message_stop\ndata: {}"
-        ));
+        assert!(AkisTarayici::sonlandi_mi("event: message_stop\ndata: {}"));
         assert!(AkisTarayici::sonlandi_mi("{\"finish_reason\":\"stop\"}"));
         assert!(!AkisTarayici::sonlandi_mi(
             "data: {\"delta\": {\"content\": \"merhaba\"}}"

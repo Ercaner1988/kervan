@@ -10,11 +10,11 @@
 //! İstemler bu WebSocket üzerinden güvenle iletilir, DOM gözlemcisi (MutationObserver)
 //! ile yanıtlar canlı olarak Kervan'a geri akar.
 
+use anyhow::{Result, bail};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{Mutex, mpsc, oneshot};
-use serde::{Deserialize, Serialize};
-use anyhow::{Result, bail};
 
 /// Eklentiden Kervan'a gelen mesaj tipleri.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,10 +33,7 @@ pub enum GelenMesaj {
         done: bool,
     },
     /// Sayfa içinde karşılaşılan bir hata.
-    Hata {
-        id: String,
-        mesaj: String,
-    },
+    Hata { id: String, mesaj: String },
     /// İnsan kapısı / güvenlik uyarısı durumu (Turnstile, Cloudflare, vb.)
     Durum {
         provider: String,
@@ -68,9 +65,7 @@ pub enum GidenMesaj {
         dosyalar: Vec<DosyaEki>,
     },
     /// Devam eden üretimi durdur.
-    Durdur {
-        id: String,
-    },
+    Durdur { id: String },
     /// Nabız sorusu.
     Ping,
 }
@@ -204,7 +199,11 @@ impl EklentiHub {
     /// Eklentiden gelen bir mesajı işler.
     pub async fn mesaji_isle(&self, mesaj: GelenMesaj) {
         match mesaj {
-            GelenMesaj::Kayit { provider, profile, url: _ } => {
+            GelenMesaj::Kayit {
+                provider,
+                profile,
+                url: _,
+            } => {
                 // Kayıt işi genelde WS el sıkışmasında atanır, ancak dinamik güncelleme de desteklenir.
                 let prof = profile.unwrap_or_else(|| "varsayilan".into());
                 let mut durumlar = self.durumlar.lock().await;
@@ -240,7 +239,11 @@ impl EklentiHub {
                     let _ = tx.send(Err(anyhow::anyhow!("Eklenti hatası: {mesaj}")));
                 }
             }
-            GelenMesaj::Durum { provider, durum, detay } => {
+            GelenMesaj::Durum {
+                provider,
+                durum,
+                detay,
+            } => {
                 let text = match detay {
                     Some(d) => format!("{durum}: {d}"),
                     None => durum,
@@ -270,7 +273,12 @@ mod tests {
         let json = r#"{"action":"sor","id":"req-1","provider":"gemini","istem":"Merhaba"}"#;
         let msg: GidenMesaj = serde_json::from_str(json).expect("deserialize edilmeli");
         match msg {
-            GidenMesaj::Sor { id, provider, istem, dosyalar } => {
+            GidenMesaj::Sor {
+                id,
+                provider,
+                istem,
+                dosyalar,
+            } => {
                 assert_eq!(id, "req-1");
                 assert_eq!(provider, "gemini");
                 assert_eq!(istem, "Merhaba");
@@ -309,4 +317,3 @@ mod tests {
         }
     }
 }
-

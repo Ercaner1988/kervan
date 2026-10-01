@@ -1,0 +1,11 @@
+[package]
+name = "kervan-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Kervan MCP sunucusu, görev sınıflandırıcı ve istem sıkıştırıcı"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+katla.workspace = true

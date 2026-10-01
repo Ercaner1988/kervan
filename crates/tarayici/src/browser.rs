@@ -888,7 +888,7 @@ fn cevabi_ayikla(metin: &str) -> &str {
         let hepsi_isaret = satir.split_whitespace().all(|k| {
             let s = k
                 .trim_matches(|c: char| !c.is_alphanumeric())
-                .to_lowercase();
+                .to_ascii_lowercase();
             DUSUNME_KELIMELERI.contains(&s.as_str())
         });
         if !hepsi_isaret {
@@ -906,7 +906,7 @@ fn cevabi_ayikla(metin: &str) -> &str {
 /// yolunda hicbir hata denetimi YOKTU, yani bu metin modelin cevabi olarak
 /// donuyordu. Projenin kurali sessiz basarisizligi yasakliyor: cevap degil HATA.
 fn dogrulama_duvari_mi(metin: &str) -> bool {
-    let m = metin.to_lowercase();
+    let m = metin.to_ascii_lowercase();
     ["verification failed", "no response, please try again"]
         .iter()
         .any(|k| m.contains(k))
@@ -1025,7 +1025,7 @@ pub async fn sayfada_eposta(c: &Client) -> Option<String> {
                 None => false,
             }
         })
-        .map(|s| s.to_lowercase())
+        .map(|s| s.to_ascii_lowercase())
 }
 
 /// Bir secicinin esledigi ogeleri TEK TEK doker: sinif, data-testid ve metin basi.

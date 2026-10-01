@@ -118,8 +118,10 @@ impl Compressor {
         let nihai = sonuc.trim_end().to_string();
         let yeni_uzunluk = nihai.len();
 
-        self.toplam_giren_karakter.fetch_add(orijinal_uzunluk, Ordering::Relaxed);
-        self.toplam_cikan_karakter.fetch_add(yeni_uzunluk, Ordering::Relaxed);
+        self.toplam_giren_karakter
+            .fetch_add(orijinal_uzunluk, Ordering::Relaxed);
+        self.toplam_cikan_karakter
+            .fetch_add(yeni_uzunluk, Ordering::Relaxed);
 
         let tasarruf_yuzdesi = if orijinal_uzunluk > yeni_uzunluk {
             ((orijinal_uzunluk - yeni_uzunluk) as f32 / orijinal_uzunluk as f32) * 100.0

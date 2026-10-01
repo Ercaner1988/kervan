@@ -91,32 +91,39 @@ async fn ws_eklenti_handler(
 
 async fn handle_eklenti_socket(socket: WebSocket, hub: crate::eklenti::EklentiHub) {
     let (mut ws_tx, mut ws_rx) = socket.split();
-    let (tx_giden, mut rx_giden) = tokio::sync::mpsc::unbounded_channel::<crate::eklenti::GidenMesaj>();
+    let (tx_giden, mut rx_giden) =
+        tokio::sync::mpsc::unbounded_channel::<crate::eklenti::GidenMesaj>();
 
     let mut provider_kayitli: Option<String> = None;
 
     // Kervan'dan gelen komutları eklenti WebSocket'ine basan arka plan görevi
     let giden_gorev = tokio::spawn(async move {
         while let Some(msg) = rx_giden.recv().await {
-            if let Ok(json) = serde_json::to_string(&msg) {
-                if ws_tx.send(WsMessage::Text(json.into())).await.is_err() {
-                    break;
-                }
+            if let Ok(json) = serde_json::to_string(&msg)
+                && ws_tx.send(WsMessage::Text(json.into())).await.is_err()
+            {
+                break;
             }
         }
     });
 
     // Eklentiden gelen mesajları okuyan döngü
     while let Some(Ok(msg)) = ws_rx.next().await {
-        if let WsMessage::Text(text) = msg {
-            if let Ok(gelen) = serde_json::from_str::<crate::eklenti::GelenMesaj>(&text) {
-                if let crate::eklenti::GelenMesaj::Kayit { ref provider, ref profile, .. } = gelen {
-                    let prof = profile.clone().unwrap_or_else(|| "varsayilan".into());
-                    provider_kayitli = Some(provider.clone());
-                    hub.sekme_kaydet(provider.clone(), prof, tx_giden.clone()).await;
-                }
-                hub.mesaji_isle(gelen).await;
+        if let WsMessage::Text(text) = msg
+            && let Ok(gelen) = serde_json::from_str::<crate::eklenti::GelenMesaj>(&text)
+        {
+            if let crate::eklenti::GelenMesaj::Kayit {
+                ref provider,
+                ref profile,
+                ..
+            } = gelen
+            {
+                let prof = profile.clone().unwrap_or_else(|| "varsayilan".into());
+                provider_kayitli = Some(provider.clone());
+                hub.sekme_kaydet(provider.clone(), prof, tx_giden.clone())
+                    .await;
             }
+            hub.mesaji_isle(gelen).await;
         }
     }
 
@@ -431,7 +438,9 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
             }
         }
         if let Some(secilen) = st.router.select_provider(&adaylar).await {
-            println!("akilli-rota   : 'auto' isteği için en uygun sağlayıcı seçildi -> [{secilen}]");
+            println!(
+                "akilli-rota   : 'auto' isteği için en uygun sağlayıcı seçildi -> [{secilen}]"
+            );
             secilen
         } else {
             st.varsayilan_saglayici.clone()
@@ -486,13 +495,25 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
     // EKLENTİ KONTROLÜ: Eğer ilgili sağlayıcı için eklenti sekmesi bağlıysa,
     // WebDriver havuzuna hiç bulaşmadan doğrudan eklenti üzerinden sorulur!
     if st.eklenti_hub.sekme_var_mi(&saglayici).await {
-        println!("[{}] istek Kervan Eklentisi uzerinden iletiliyor ({} karakter)", saglayici, gonderilecek_istem.len());
+        println!(
+            "[{}] istek Kervan Eklentisi uzerinden iletiliyor ({} karakter)",
+            saglayici,
+            gonderilecek_istem.len()
+        );
         let t = std::time::Instant::now();
-        match st.eklenti_hub.sor(&saglayici, gonderilecek_istem, st.timeout).await {
+        match st
+            .eklenti_hub
+            .sor(&saglayici, gonderilecek_istem, st.timeout)
+            .await
+        {
             Ok(yanit) => {
                 let latency = t.elapsed().as_millis() as u64;
                 st.router.record_success(&saglayici, latency).await;
-                println!("[{}] eklenti yaniti alindi ({:.1} sn)", saglayici, t.elapsed().as_secs_f32());
+                println!(
+                    "[{}] eklenti yaniti alindi ({:.1} sn)",
+                    saglayici,
+                    t.elapsed().as_secs_f32()
+                );
                 let model_res = model_kimligi(&saglayici);
                 if req.stream {
                     return sse_yanit(&yanit, &model_res);
@@ -515,12 +536,16 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
                         completion_tokens: 0,
                         total_tokens: 0,
                     },
-                }).into_response();
+                })
+                .into_response();
             }
             Err(e) => {
                 st.router.record_failure(&saglayici).await;
                 println!("[{}] eklenti hatasi: {e:#}", saglayici);
-                return hata(StatusCode::INTERNAL_SERVER_ERROR, &format!("Eklenti hatası: {e:#}"));
+                return hata(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &format!("Eklenti hatası: {e:#}"),
+                );
             }
         }
     }

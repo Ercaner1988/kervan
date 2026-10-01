@@ -19,7 +19,7 @@ pub enum RoutingStrategy {
     RoundRobin,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ProviderMetrics {
     pub total_requests: u64,
     pub successful_requests: u64,
@@ -27,19 +27,6 @@ pub struct ProviderMetrics {
     pub consecutive_errors: u32,
     pub last_latency_ms: u64,
     pub circuit_open_until: Option<Instant>,
-}
-
-impl Default for ProviderMetrics {
-    fn default() -> Self {
-        Self {
-            total_requests: 0,
-            successful_requests: 0,
-            failed_requests: 0,
-            consecutive_errors: 0,
-            last_latency_ms: 0,
-            circuit_open_until: None,
-        }
-    }
 }
 
 pub struct SmartRouter {
@@ -68,12 +55,11 @@ impl SmartRouter {
     /// Bir sağlayıcının şu an devre kesicide (kilitli) olup olmadığını denetler.
     pub async fn is_available(&self, provider: &str) -> bool {
         let metrics = self.metrics.read().await;
-        if let Some(m) = metrics.get(provider) {
-            if let Some(until) = m.circuit_open_until {
-                if Instant::now() < until {
-                    return false; // Devre kesici açık (soğumada)
-                }
-            }
+        if let Some(m) = metrics.get(provider)
+            && let Some(until) = m.circuit_open_until
+            && Instant::now() < until
+        {
+            return false; // Devre kesici açık (soğumada)
         }
         true
     }
@@ -92,16 +78,20 @@ impl SmartRouter {
             }
         }
 
-        let pool = if healthy.is_empty() { candidates } else { &healthy };
+        let pool = if healthy.is_empty() {
+            candidates
+        } else {
+            &healthy
+        };
 
         let strat = *self.strategy.read().await;
         match strat {
             RoutingStrategy::Lkgp => {
                 let lkgp = self.last_known_good.read().await;
-                if let Some(ref last) = *lkgp {
-                    if pool.contains(last) {
-                        return Some(last.clone());
-                    }
+                if let Some(ref last) = *lkgp
+                    && pool.contains(last)
+                {
+                    return Some(last.clone());
                 }
                 // LKGP yoksa veya devre dışıysa ilk sağlıklı adaya düş
                 pool.first().cloned()
@@ -115,7 +105,8 @@ impl SmartRouter {
                 for c in pool {
                     if let Some(m) = metrics.get(c) {
                         // Skor = Gecikme (ms) + (Ardışık Hata * 5000ms ceza)
-                        let score = (m.last_latency_ms as f64) + ((m.consecutive_errors as f64) * 5000.0);
+                        let score =
+                            (m.last_latency_ms as f64) + ((m.consecutive_errors as f64) * 5000.0);
                         if score < best_score {
                             best_score = score;
                             selected = c.clone();
@@ -128,12 +119,12 @@ impl SmartRouter {
                 Some(selected)
             }
             RoutingStrategy::RoundRobin => {
-                let idx = self.round_robin_counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                let idx = self
+                    .round_robin_counter
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 Some(pool[idx % pool.len()].clone())
             }
-            RoutingStrategy::Priority => {
-                pool.first().cloned()
-            }
+            RoutingStrategy::Priority => pool.first().cloned(),
         }
     }
 
@@ -161,7 +152,9 @@ impl SmartRouter {
 
         // 3 ardışık hatada devre kesici 30 saniye devreye girer
         if m.consecutive_errors >= 3 {
-            println!("devre-kesici : [{provider}] 3 ardışık hata nedeniyle 30 sn devre dışı bırakıldı");
+            println!(
+                "devre-kesici : [{provider}] 3 ardışık hata nedeniyle 30 sn devre dışı bırakıldı"
+            );
             m.circuit_open_until = Some(Instant::now() + Duration::from_secs(30));
         }
 
@@ -182,13 +175,22 @@ mod tests {
         let router = SmartRouter::new(RoutingStrategy::Lkgp);
         let adaylar = vec!["gemini".to_string(), "kimi".to_string()];
 
-        assert_eq!(router.select_provider(&adaylar).await.as_deref(), Some("gemini"));
+        assert_eq!(
+            router.select_provider(&adaylar).await.as_deref(),
+            Some("gemini")
+        );
 
         router.record_success("kimi", 200).await;
-        assert_eq!(router.select_provider(&adaylar).await.as_deref(), Some("kimi"));
+        assert_eq!(
+            router.select_provider(&adaylar).await.as_deref(),
+            Some("kimi")
+        );
 
         router.record_failure("kimi").await;
-        assert_eq!(router.select_provider(&adaylar).await.as_deref(), Some("gemini"));
+        assert_eq!(
+            router.select_provider(&adaylar).await.as_deref(),
+            Some("gemini")
+        );
     }
 
     #[tokio::test]
@@ -204,7 +206,10 @@ mod tests {
         assert!(!router.is_available("gemini").await);
 
         // Devre kesici açıldığında sonraki sağlıklı adaya geçer
-        assert_eq!(router.select_provider(&adaylar).await.as_deref(), Some("kimi"));
+        assert_eq!(
+            router.select_provider(&adaylar).await.as_deref(),
+            Some("kimi")
+        );
     }
 
     #[tokio::test]

@@ -11,16 +11,11 @@
 //! - Alt Çubuk: Yönlendirme Stratejisi (Auto/LKGP) ve Canlı Token Tasarrufu
 //! - Log Defteri: Tüm GUI, OpenGL ve panik olaylarını `kervan_gui.log` dosyasına yazar.
 
-#[cfg(feature = "gui")]
-use eframe::egui;
-#[cfg(feature = "gui")]
-use std::sync::Arc;
-#[cfg(feature = "gui")]
-use std::io::Write;
-#[cfg(feature = "gui")]
 use crate::server::AppState;
+use eframe::egui;
+use std::io::Write;
+use std::sync::Arc;
 
-#[cfg(feature = "gui")]
 fn simdi_tarih() -> String {
     let now = std::time::SystemTime::now();
     let sec = now
@@ -30,7 +25,6 @@ fn simdi_tarih() -> String {
     format!("{sec}")
 }
 
-#[cfg(feature = "gui")]
 pub fn log_yaz(mesaj: &str) {
     eprintln!("{mesaj}");
     if let Ok(mut f) = std::fs::OpenOptions::new()
@@ -42,10 +36,8 @@ pub fn log_yaz(mesaj: &str) {
     }
 }
 
-#[cfg(feature = "gui")]
 struct FileLogger;
 
-#[cfg(feature = "gui")]
 impl log::Log for FileLogger {
     fn enabled(&self, _metadata: &log::Metadata) -> bool {
         true
@@ -53,24 +45,31 @@ impl log::Log for FileLogger {
 
     fn log(&self, record: &log::Record) {
         let t = record.target();
-        if t.starts_with("egui") || t.starts_with("eframe") || t.starts_with("glutin") || t.starts_with("glow") || t.starts_with("winit") {
-            log_yaz(&format!("[LOG {}] {}: {}", record.level(), record.target(), record.args()));
+        if t.starts_with("egui")
+            || t.starts_with("eframe")
+            || t.starts_with("glutin")
+            || t.starts_with("glow")
+            || t.starts_with("winit")
+        {
+            log_yaz(&format!(
+                "[LOG {}] {}: {}",
+                record.level(),
+                record.target(),
+                record.args()
+            ));
         }
     }
 
     fn flush(&self) {}
 }
 
-#[cfg(feature = "gui")]
 static LOGGER: FileLogger = FileLogger;
 
 /// Egui Ui üzerinde `output_mut` çağrısını doğrudan sağlayan genişletme özelliği.
-#[cfg(feature = "gui")]
 pub trait UiExt {
     fn output_mut<R>(&self, f: impl FnOnce(&mut egui::PlatformOutput) -> R) -> R;
 }
 
-#[cfg(feature = "gui")]
 impl UiExt for egui::Ui {
     fn output_mut<R>(&self, f: impl FnOnce(&mut egui::PlatformOutput) -> R) -> R {
         self.ctx().output_mut(f)
@@ -134,7 +133,6 @@ impl DusunmeSeviyesi {
 
 pub use crate::gui_modeller::*;
 
-#[cfg(feature = "gui")]
 pub struct KervanApp {
     state: Arc<AppState>,
     secili_saglayici: String,
@@ -157,7 +155,6 @@ pub struct KervanApp {
     dosya_secici_rx: std::sync::mpsc::Receiver<String>,
 }
 
-#[cfg(feature = "gui")]
 impl KervanApp {
     pub fn new(state: Arc<AppState>) -> Self {
         let (yanit_tx, yanit_rx) = std::sync::mpsc::channel();
@@ -186,7 +183,8 @@ impl KervanApp {
             istem_metni: String::new(),
             manuel_dosya_yolu: String::new(),
             ekli_dosyalar: Vec::new(),
-            son_yanit: "Henüz bir istek gönderilmedi. Buradan canlı test yapabilirsiniz.".to_string(),
+            son_yanit: "Henüz bir istek gönderilmedi. Buradan canlı test yapabilirsiniz."
+                .to_string(),
             istek_gonderiliyor: false,
             hediye_ekleme_miktari: "3000000".to_string(),
             bagli_sekmeler: Vec::new(),
@@ -258,7 +256,9 @@ impl KervanApp {
             ..Default::default()
         };
 
-        log_yaz("Pencere seçenekleri: renderer=Wgpu (DirectX 12), vsync=true, multisampling=0, transparent=false");
+        log_yaz(
+            "Pencere seçenekleri: renderer=Wgpu (DirectX 12), vsync=true, multisampling=0, transparent=false",
+        );
 
         eframe::run_native(
             "kervan_gui",
@@ -275,11 +275,10 @@ impl KervanApp {
     }
 }
 
-#[cfg(feature = "gui")]
 impl eframe::App for KervanApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.kare_sayisi += 1;
-        if self.kare_sayisi <= 3 || self.kare_sayisi % 120 == 0 {
+        if self.kare_sayisi <= 3 || self.kare_sayisi.is_multiple_of(120) {
             log_yaz(&format!(
                 "Kare #{:<5} | Alan: {:?} | DPI: {:.2}",
                 self.kare_sayisi,
@@ -329,7 +328,10 @@ impl eframe::App for KervanApp {
         // ─── 2. ALT ÇUBUK (STATUS BAR) ──────────────────────────────────────────
         egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("● Kervan Gateway 127.0.0.1:20129").color(egui::Color32::from_rgb(80, 220, 120)));
+                ui.label(
+                    egui::RichText::new("● Kervan Gateway 127.0.0.1:20129")
+                        .color(egui::Color32::from_rgb(80, 220, 120)),
+                );
                 ui.separator();
 
                 let tasarruf = self.state.compressor.toplam_tasarruf_orani();
@@ -376,24 +378,31 @@ impl eframe::App for KervanApp {
 
                         ui.horizontal(|ui| {
                             let dur_isareti = if bagli {
-                                egui::RichText::new("●").color(egui::Color32::from_rgb(80, 220, 120))
+                                egui::RichText::new("●")
+                                    .color(egui::Color32::from_rgb(80, 220, 120))
                             } else {
-                                egui::RichText::new("○").color(egui::Color32::from_rgb(120, 120, 120))
+                                egui::RichText::new("○")
+                                    .color(egui::Color32::from_rgb(120, 120, 120))
                             };
                             ui.label(dur_isareti);
 
                             let mut etiket = egui::RichText::new(baslik);
                             if secili {
-                                etiket = etiket.strong().color(egui::Color32::from_rgb(100, 180, 255));
+                                etiket = etiket
+                                    .strong()
+                                    .color(egui::Color32::from_rgb(100, 180, 255));
                             }
                             if ui.selectable_label(secili, etiket).clicked() {
                                 self.secili_saglayici = kod.to_string();
-                                if let Some(amiral) = amiral_model(&self.secili_saglayici, self.uretim_modu) {
+                                if let Some(amiral) =
+                                    amiral_model(&self.secili_saglayici, self.uretim_modu)
+                                {
                                     self.secili_model = amiral.to_string();
                                 } else {
                                     let modeller = saglayici_modelleri(&self.secili_saglayici);
                                     if !modeller.iter().any(|m| m.kod == self.secili_model) {
-                                        self.secili_model = varsayilan_model(&self.secili_saglayici).to_string();
+                                        self.secili_model =
+                                            varsayilan_model(&self.secili_saglayici).to_string();
                                     }
                                 }
                                 self.ozel_model_metni.clear();
@@ -418,20 +427,23 @@ impl eframe::App for KervanApp {
                 ui.add_space(8.0);
 
                 ui.group(|ui| {
-                    ui.label(egui::RichText::new("🎁 Hafta Sonu Bonusu").color(egui::Color32::from_rgb(255, 215, 0)));
+                    ui.label(
+                        egui::RichText::new("🎁 Hafta Sonu Bonusu")
+                            .color(egui::Color32::from_rgb(255, 215, 0)),
+                    );
                     ui.label("Tanımlı Bonus: +3.000.000 Token");
                     ui.horizontal(|ui| {
                         ui.label("Miktar:");
                         ui.text_edit_singleline(&mut self.hediye_ekleme_miktari);
                     });
-                    if ui.button("Bonus Token Yükle").clicked() {
-                        if let Ok(m) = self.hediye_ekleme_miktari.parse::<u64>() {
-                            let state = self.state.clone();
-                            let s = self.secili_saglayici.clone();
-                            tokio::spawn(async move {
-                                let _ = state.defter.hediye_ekle("varsayilan", &s, m).await;
-                            });
-                        }
+                    if ui.button("Bonus Token Yükle").clicked()
+                        && let Ok(m) = self.hediye_ekleme_miktari.parse::<u64>()
+                    {
+                        let state = self.state.clone();
+                        let s = self.secili_saglayici.clone();
+                        tokio::spawn(async move {
+                            let _ = state.defter.hediye_ekle("varsayilan", &s, m).await;
+                        });
                     }
                 });
 
@@ -869,8 +881,16 @@ mod tests {
         let gemini_modeller = saglayici_modelleri("gemini");
         assert!(gemini_modeller.iter().any(|m| m.kod == "gemini-2.5-pro"));
         assert!(gemini_modeller.iter().any(|m| m.kod == "gemini-2.5-flash"));
-        assert!(gemini_modeller.iter().any(|m| m.kod == "gemini-2.0-flash-thinking"));
-        assert!(gemini_modeller.iter().any(|m| m.kod == "gemini-deep-research"));
+        assert!(
+            gemini_modeller
+                .iter()
+                .any(|m| m.kod == "gemini-2.0-flash-thinking")
+        );
+        assert!(
+            gemini_modeller
+                .iter()
+                .any(|m| m.kod == "gemini-deep-research")
+        );
         assert!(gemini_modeller.iter().any(|m| m.kod == "imagen-3"));
         assert!(gemini_modeller.iter().any(|m| m.kod == "veo-2"));
         assert!(gemini_modeller.iter().any(|m| m.kod == "gemini-1.5-pro"));
@@ -879,7 +899,11 @@ mod tests {
         let deepseek_modeller = saglayici_modelleri("deepseek");
         assert!(deepseek_modeller.iter().any(|m| m.kod == "deepseek-r1"));
         assert!(deepseek_modeller.iter().any(|m| m.kod == "deepseek-v3"));
-        assert!(deepseek_modeller.iter().any(|m| m.kod == "deepseek-r1-search"));
+        assert!(
+            deepseek_modeller
+                .iter()
+                .any(|m| m.kod == "deepseek-r1-search")
+        );
         assert!(deepseek_modeller.iter().any(|m| m.kod == "deepseek-coder"));
 
         let chatgpt_modeller = saglayici_modelleri("chatgpt");
@@ -908,16 +932,40 @@ mod tests {
         assert!(kimi_modeller.iter().any(|m| m.kod == "moonshot-v1-128k"));
 
         let copilot_modeller = saglayici_modelleri("copilot");
-        assert!(copilot_modeller.iter().any(|m| m.kod == "copilot-think-deeper"));
-        assert!(copilot_modeller.iter().any(|m| m.kod == "copilot-pro-creative"));
-        assert!(copilot_modeller.iter().any(|m| m.kod == "copilot-pro-precise"));
+        assert!(
+            copilot_modeller
+                .iter()
+                .any(|m| m.kod == "copilot-think-deeper")
+        );
+        assert!(
+            copilot_modeller
+                .iter()
+                .any(|m| m.kod == "copilot-pro-creative")
+        );
+        assert!(
+            copilot_modeller
+                .iter()
+                .any(|m| m.kod == "copilot-pro-precise")
+        );
         assert!(copilot_modeller.iter().any(|m| m.kod == "designer-dalle3"));
 
         let perplexity_modeller = saglayici_modelleri("perplexity");
-        assert!(perplexity_modeller.iter().any(|m| m.kod == "sonar-deep-research"));
-        assert!(perplexity_modeller.iter().any(|m| m.kod == "sonar-reasoning-pro"));
+        assert!(
+            perplexity_modeller
+                .iter()
+                .any(|m| m.kod == "sonar-deep-research")
+        );
+        assert!(
+            perplexity_modeller
+                .iter()
+                .any(|m| m.kod == "sonar-reasoning-pro")
+        );
         assert!(perplexity_modeller.iter().any(|m| m.kod == "sonar-pro"));
-        assert!(perplexity_modeller.iter().any(|m| m.kod == "claude-3-5-sonnet"));
+        assert!(
+            perplexity_modeller
+                .iter()
+                .any(|m| m.kod == "claude-3-5-sonnet")
+        );
 
         let mistral_modeller = saglayici_modelleri("mistral");
         assert!(mistral_modeller.iter().any(|m| m.kod == "mistral-large-2"));
@@ -949,55 +997,166 @@ mod tests {
 
     #[test]
     fn test_amiral_model() {
-        assert_eq!(amiral_model("gemini", UretimModu::GorselUretimi), Some("imagen-3"));
-        assert_eq!(amiral_model("gemini", UretimModu::VideoHazirlama), Some("veo-2"));
-        assert_eq!(amiral_model("gemini", UretimModu::Dusunme), Some("gemini-3.1-pro"));
-        assert_eq!(amiral_model("gemini", UretimModu::DerinArastirma), Some("gemini-deep-research"));
-        assert_eq!(amiral_model("gemini", UretimModu::Sohbet), Some("gemini-3.8-flash"));
+        assert_eq!(
+            amiral_model("gemini", UretimModu::GorselUretimi),
+            Some("imagen-3")
+        );
+        assert_eq!(
+            amiral_model("gemini", UretimModu::VideoHazirlama),
+            Some("veo-2")
+        );
+        assert_eq!(
+            amiral_model("gemini", UretimModu::Dusunme),
+            Some("gemini-3.1-pro")
+        );
+        assert_eq!(
+            amiral_model("gemini", UretimModu::DerinArastirma),
+            Some("gemini-deep-research")
+        );
+        assert_eq!(
+            amiral_model("gemini", UretimModu::Sohbet),
+            Some("gemini-3.8-flash")
+        );
 
-        assert_eq!(amiral_model("deepseek", UretimModu::Dusunme), Some("deepseek-r1"));
-        assert_eq!(amiral_model("deepseek", UretimModu::DerinArastirma), Some("deepseek-r1-search"));
-        assert_eq!(amiral_model("deepseek", UretimModu::Sohbet), Some("deepseek-v3"));
+        assert_eq!(
+            amiral_model("deepseek", UretimModu::Dusunme),
+            Some("deepseek-r1")
+        );
+        assert_eq!(
+            amiral_model("deepseek", UretimModu::DerinArastirma),
+            Some("deepseek-r1-search")
+        );
+        assert_eq!(
+            amiral_model("deepseek", UretimModu::Sohbet),
+            Some("deepseek-v3")
+        );
 
-        assert_eq!(amiral_model("chatgpt", UretimModu::GorselUretimi), Some("dall-e-3"));
-        assert_eq!(amiral_model("chatgpt", UretimModu::VideoHazirlama), Some("sora"));
-        assert_eq!(amiral_model("chatgpt", UretimModu::Dusunme), Some("o3-mini-high"));
-        assert_eq!(amiral_model("chatgpt", UretimModu::DerinArastirma), Some("searchgpt"));
+        assert_eq!(
+            amiral_model("chatgpt", UretimModu::GorselUretimi),
+            Some("dall-e-3")
+        );
+        assert_eq!(
+            amiral_model("chatgpt", UretimModu::VideoHazirlama),
+            Some("sora")
+        );
+        assert_eq!(
+            amiral_model("chatgpt", UretimModu::Dusunme),
+            Some("o3-mini-high")
+        );
+        assert_eq!(
+            amiral_model("chatgpt", UretimModu::DerinArastirma),
+            Some("searchgpt")
+        );
         assert_eq!(amiral_model("chatgpt", UretimModu::Sohbet), Some("gpt-4o"));
 
-        assert_eq!(amiral_model("qwen", UretimModu::GorselUretimi), Some("wanx-2.1"));
-        assert_eq!(amiral_model("qwen", UretimModu::VideoHazirlama), Some("wanx-2.1"));
-        assert_eq!(amiral_model("qwen", UretimModu::Dusunme), Some("qwq-32b-preview"));
-        assert_eq!(amiral_model("qwen", UretimModu::DerinArastirma), Some("qwen-deepsearch"));
-        assert_eq!(amiral_model("qwen", UretimModu::Sohbet), Some("qwen-2.5-max"));
+        assert_eq!(
+            amiral_model("qwen", UretimModu::GorselUretimi),
+            Some("wanx-2.1")
+        );
+        assert_eq!(
+            amiral_model("qwen", UretimModu::VideoHazirlama),
+            Some("wanx-2.1")
+        );
+        assert_eq!(
+            amiral_model("qwen", UretimModu::Dusunme),
+            Some("qwq-32b-preview")
+        );
+        assert_eq!(
+            amiral_model("qwen", UretimModu::DerinArastirma),
+            Some("qwen-deepsearch")
+        );
+        assert_eq!(
+            amiral_model("qwen", UretimModu::Sohbet),
+            Some("qwen-2.5-max")
+        );
 
-        assert_eq!(amiral_model("kimi", UretimModu::Dusunme), Some("kimi-k1.5-thinking"));
-        assert_eq!(amiral_model("kimi", UretimModu::DerinArastirma), Some("kimi-explore"));
+        assert_eq!(
+            amiral_model("kimi", UretimModu::Dusunme),
+            Some("kimi-k1.5-thinking")
+        );
+        assert_eq!(
+            amiral_model("kimi", UretimModu::DerinArastirma),
+            Some("kimi-explore")
+        );
         assert_eq!(amiral_model("kimi", UretimModu::Sohbet), Some("kimi-k1.5"));
 
-        assert_eq!(amiral_model("copilot", UretimModu::GorselUretimi), Some("designer-dalle3"));
-        assert_eq!(amiral_model("copilot", UretimModu::Dusunme), Some("copilot-think-deeper"));
-        assert_eq!(amiral_model("copilot", UretimModu::DerinArastirma), Some("copilot-pro-precise"));
-        assert_eq!(amiral_model("copilot", UretimModu::Sohbet), Some("copilot-pro-creative"));
+        assert_eq!(
+            amiral_model("copilot", UretimModu::GorselUretimi),
+            Some("designer-dalle3")
+        );
+        assert_eq!(
+            amiral_model("copilot", UretimModu::Dusunme),
+            Some("copilot-think-deeper")
+        );
+        assert_eq!(
+            amiral_model("copilot", UretimModu::DerinArastirma),
+            Some("copilot-pro-precise")
+        );
+        assert_eq!(
+            amiral_model("copilot", UretimModu::Sohbet),
+            Some("copilot-pro-creative")
+        );
 
-        assert_eq!(amiral_model("perplexity", UretimModu::Dusunme), Some("sonar-reasoning-pro"));
-        assert_eq!(amiral_model("perplexity", UretimModu::DerinArastirma), Some("sonar-deep-research"));
-        assert_eq!(amiral_model("perplexity", UretimModu::Sohbet), Some("sonar-pro"));
+        assert_eq!(
+            amiral_model("perplexity", UretimModu::Dusunme),
+            Some("sonar-reasoning-pro")
+        );
+        assert_eq!(
+            amiral_model("perplexity", UretimModu::DerinArastirma),
+            Some("sonar-deep-research")
+        );
+        assert_eq!(
+            amiral_model("perplexity", UretimModu::Sohbet),
+            Some("sonar-pro")
+        );
 
-        assert_eq!(amiral_model("mistral", UretimModu::GorselUretimi), Some("pixtral-large"));
-        assert_eq!(amiral_model("mistral", UretimModu::Dusunme), Some("mistral-large-2"));
-        assert_eq!(amiral_model("mistral", UretimModu::DerinArastirma), Some("mistral-research"));
-        assert_eq!(amiral_model("mistral", UretimModu::Sohbet), Some("mistral-large-2"));
+        assert_eq!(
+            amiral_model("mistral", UretimModu::GorselUretimi),
+            Some("pixtral-large")
+        );
+        assert_eq!(
+            amiral_model("mistral", UretimModu::Dusunme),
+            Some("mistral-large-2")
+        );
+        assert_eq!(
+            amiral_model("mistral", UretimModu::DerinArastirma),
+            Some("mistral-research")
+        );
+        assert_eq!(
+            amiral_model("mistral", UretimModu::Sohbet),
+            Some("mistral-large-2")
+        );
 
-        assert_eq!(amiral_model("z.ai", UretimModu::VideoHazirlama), Some("cogvideox"));
-        assert_eq!(amiral_model("z.ai", UretimModu::Dusunme), Some("glm-4-plus"));
-        assert_eq!(amiral_model("z.ai", UretimModu::DerinArastirma), Some("glm-4-alltools"));
+        assert_eq!(
+            amiral_model("z.ai", UretimModu::VideoHazirlama),
+            Some("cogvideox")
+        );
+        assert_eq!(
+            amiral_model("z.ai", UretimModu::Dusunme),
+            Some("glm-4-plus")
+        );
+        assert_eq!(
+            amiral_model("z.ai", UretimModu::DerinArastirma),
+            Some("glm-4-alltools")
+        );
         assert_eq!(amiral_model("z.ai", UretimModu::Sohbet), Some("glm-4-plus"));
 
-        assert_eq!(amiral_model("auto", UretimModu::GorselUretimi), Some("imagen-3"));
-        assert_eq!(amiral_model("auto", UretimModu::VideoHazirlama), Some("veo-2"));
-        assert_eq!(amiral_model("auto", UretimModu::Dusunme), Some("gemini-3.1-pro"));
-        assert_eq!(amiral_model("auto", UretimModu::DerinArastirma), Some("gemini-deep-research"));
+        assert_eq!(
+            amiral_model("auto", UretimModu::GorselUretimi),
+            Some("imagen-3")
+        );
+        assert_eq!(
+            amiral_model("auto", UretimModu::VideoHazirlama),
+            Some("veo-2")
+        );
+        assert_eq!(
+            amiral_model("auto", UretimModu::Dusunme),
+            Some("gemini-3.1-pro")
+        );
+        assert_eq!(
+            amiral_model("auto", UretimModu::DerinArastirma),
+            Some("gemini-deep-research")
+        );
         assert_eq!(amiral_model("auto", UretimModu::Sohbet), Some("otomatik"));
     }
 
@@ -1010,7 +1169,9 @@ mod tests {
         assert!(gorsel.contains(istem));
 
         let video = istem_cercevele(istem, UretimModu::VideoHazirlama, DusunmeSeviyesi::Orta);
-        assert!(video.starts_with("Lütfen şu sahne için sinematik kalitede akıcı bir video oluştur (Generate Video):"));
+        assert!(video.starts_with(
+            "Lütfen şu sahne için sinematik kalitede akıcı bir video oluştur (Generate Video):"
+        ));
         assert!(video.contains(istem));
 
         let dusunme = istem_cercevele(istem, UretimModu::Dusunme, DusunmeSeviyesi::Derin);
@@ -1040,11 +1201,17 @@ Animasyon videosu:
 
         assert_eq!(medyalar[0].tip, MedyaTipi::Gorsel);
         assert_eq!(medyalar[0].baslik, "Üretilen Görsel");
-        assert_eq!(medyalar[0].url, "https://lh3.googleusercontent.com/test-image-123.jpg");
+        assert_eq!(
+            medyalar[0].url,
+            "https://lh3.googleusercontent.com/test-image-123.jpg"
+        );
 
         assert_eq!(medyalar[1].tip, MedyaTipi::Video);
         assert_eq!(medyalar[1].baslik, "Üretilen Video");
-        assert_eq!(medyalar[1].url, "https://storage.googleapis.com/veo2/sample-video.mp4");
+        assert_eq!(
+            medyalar[1].url,
+            "https://storage.googleapis.com/veo2/sample-video.mp4"
+        );
     }
 
     #[test]
@@ -1084,6 +1251,9 @@ Animasyon videosu:
         assert_eq!(dosya_mime_belirle("dokuman.md"), "text/markdown");
         assert_eq!(dosya_mime_belirle("tablo.csv"), "text/csv");
         assert_eq!(dosya_mime_belirle("arsiv.zip"), "application/zip");
-        assert_eq!(dosya_mime_belirle("bilinmeyen.xyz"), "application/octet-stream");
+        assert_eq!(
+            dosya_mime_belirle("bilinmeyen.xyz"),
+            "application/octet-stream"
+        );
     }
 }

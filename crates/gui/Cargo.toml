@@ -1,0 +1,12 @@
+[package]
+name = "kervan-gui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Kervan masaüstü arayüzü (egui)"
+
+[dependencies]
+kervan-sunucu = { path = "../sunucu" }
+tokio.workspace = true
+log.workspace = true
+eframe.workspace = true
