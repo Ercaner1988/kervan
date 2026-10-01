@@ -10,6 +10,7 @@ kervan-tarayici = { path = "../tarayici" }
 kervan-saglayici = { path = "../saglayici" }
 kervan-havuz = { path = "../havuz" }
 kervan-mcp = { path = "../mcp" }
+kervan-akis = { path = "../akis" }
 tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true

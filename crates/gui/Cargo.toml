@@ -7,6 +7,7 @@ description = "Kervan masaüstü arayüzü (egui)"
 
 [dependencies]
 kervan-sunucu = { path = "../sunucu" }
+kervan-akis-gui = { path = "../akis-gui" }
 tokio.workspace = true
 log.workspace = true
 eframe.workspace = true

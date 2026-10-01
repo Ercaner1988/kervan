@@ -436,6 +436,8 @@ pub fn istem_cercevele(ham_istem: &str, mod_: UretimModu, seviye: DusunmeSeviyes
             "Lütfen şu sahne için sinematik kalitede akıcı bir video oluştur (Generate Video): {}",
             ham
         ),
+        // Ses panelinin istemi zaten kendi yönergesini taşır.
+        UretimModu::Ses => ham.to_string(),
     }
 }
 

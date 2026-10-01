@@ -1,0 +1,11 @@
+[package]
+name = "kervan-akis-gui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Kervan akış panelleri (egui): hesap havuzu, ses ve video laboratuvarı, medya arşivi"
+
+[dependencies]
+kervan-akis = { path = "../akis" }
+kervan-havuz = { path = "../havuz" }
+eframe.workspace = true

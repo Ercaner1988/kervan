@@ -89,6 +89,8 @@ pub enum UretimModu {
     GorselUretimi,
     /// Gemini Veo 2 video oluşturma (animasyon, sinematik video)
     VideoHazirlama,
+    /// Ses dosyasını yazıya dökme ve metni seslendirme (kervan-akis-gui)
+    Ses,
 }
 
 impl UretimModu {
@@ -99,6 +101,7 @@ impl UretimModu {
             Self::DerinArastirma => "🔍 Derin Araştırma",
             Self::GorselUretimi => "🎨 Görsel Üretimi",
             Self::VideoHazirlama => "🎬 Video Hazırlama",
+            Self::Ses => "🎙 Ses",
         }
     }
 
@@ -109,6 +112,7 @@ impl UretimModu {
             Self::DerinArastirma => "Kapsamlı araştırma, detaylı analiz ve raporlama",
             Self::GorselUretimi => "Gemini Imagen 3 ile yüksek kalitede fotogerçekçi görsel",
             Self::VideoHazirlama => "Gemini Veo 2 ile sinematik kalitede akıcı video",
+            Self::Ses => "Ses dosyasını yazıya dök, metni seslendir",
         }
     }
 }
@@ -133,6 +137,26 @@ impl DusunmeSeviyesi {
 
 pub use crate::gui_modeller::*;
 
+/// "auto" seçiliyse akıllı rota bağlı sekmeler (yoksa havuz) arasından seçer.
+async fn saglayici_sec(state: &AppState, secili: String) -> String {
+    if secili != "auto" {
+        return secili;
+    }
+    let mut adaylar = state.eklenti_hub.bagli_sekmeler().await;
+    if adaylar.is_empty() {
+        for slot in &state.pool.slots {
+            if !adaylar.contains(&slot.provider.ad) {
+                adaylar.push(slot.provider.ad.clone());
+            }
+        }
+    }
+    state
+        .router
+        .select_provider(&adaylar)
+        .await
+        .unwrap_or_else(|| state.varsayilan_saglayici.clone())
+}
+
 pub struct KervanApp {
     state: Arc<AppState>,
     secili_saglayici: String,
@@ -153,6 +177,11 @@ pub struct KervanApp {
     sekmeler_rx: std::sync::mpsc::Receiver<Vec<String>>,
     dosya_secici_tx: std::sync::mpsc::Sender<String>,
     dosya_secici_rx: std::sync::mpsc::Receiver<String>,
+    akis: kervan_akis_gui::Akis,
+    akis_tx: std::sync::mpsc::Sender<(kervan_akis_gui::Is, Result<String, String>)>,
+    akis_rx: std::sync::mpsc::Receiver<(kervan_akis_gui::Is, Result<String, String>)>,
+    hesaplar: Vec<kervan_akis_gui::havuz::HesapSatiri>,
+    hesaplar_rx: std::sync::mpsc::Receiver<Vec<kervan_akis_gui::havuz::HesapSatiri>>,
 }
 
 impl KervanApp {
@@ -160,13 +189,16 @@ impl KervanApp {
         let (yanit_tx, yanit_rx) = std::sync::mpsc::channel();
         let (sekmeler_tx, sekmeler_rx) = std::sync::mpsc::channel();
         let (dosya_secici_tx, dosya_secici_rx) = std::sync::mpsc::channel();
+        let (akis_tx, akis_rx) = std::sync::mpsc::channel();
+        let (hesaplar_tx, hesaplar_rx) = std::sync::mpsc::channel();
 
         // Arka planda bağlı eklenti sekmelerini periyodik tarayan iş parçacığı
         let st_clone = state.clone();
         tokio::spawn(async move {
             loop {
                 let tabs = st_clone.eklenti_hub.bagli_sekmeler().await;
-                if sekmeler_tx.send(tabs).is_err() {
+                let hesaplar = kervan_akis_gui::havuz::goruntu(&st_clone.pool).await;
+                if sekmeler_tx.send(tabs).is_err() || hesaplar_tx.send(hesaplar).is_err() {
                     break;
                 }
                 tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
@@ -194,6 +226,74 @@ impl KervanApp {
             sekmeler_rx,
             dosya_secici_tx,
             dosya_secici_rx,
+            akis: Default::default(),
+            akis_tx,
+            akis_rx,
+            hesaplar: Vec::new(),
+            hesaplar_rx,
+        }
+    }
+
+    /// Akış panelinin istediği işi yürütür: istemi sağlayıcı sekmesine sorar, yanıtı
+    /// panele geri verir.
+    fn akis_eylemi(&mut self, eylem: kervan_akis_gui::Eylem) {
+        use kervan_akis_gui::Eylem;
+        match eylem {
+            Eylem::SohbeteEkle(metin) => {
+                self.istem_metni = metin;
+                self.uretim_modu = UretimModu::Sohbet;
+            }
+            Eylem::Gonder {
+                is,
+                istem,
+                dosya,
+                video,
+            } => {
+                let mut dosyalar = Vec::new();
+                if let Some(yol) = dosya {
+                    match std::fs::read(&yol) {
+                        Ok(bytes) => dosyalar.push(crate::eklenti::DosyaEki {
+                            ad: std::path::Path::new(&yol)
+                                .file_name()
+                                .map_or(yol.clone(), |n| n.to_string_lossy().into_owned()),
+                            mime_tipi: dosya_mime_belirle(&yol).to_string(),
+                            veri_base64: base64_encode(&bytes),
+                        }),
+                        Err(e) => {
+                            self.akis
+                                .sonuc(is, Err(format!("dosya okunamadı ({yol}): {e}")));
+                            return;
+                        }
+                    }
+                }
+                let istem = if video {
+                    istem_cercevele(&istem, UretimModu::VideoHazirlama, self.dusunme_seviyesi)
+                } else {
+                    istem
+                };
+                let (state, secili, tx) = (
+                    self.state.clone(),
+                    self.secili_saglayici.clone(),
+                    self.akis_tx.clone(),
+                );
+                log_yaz(&format!(
+                    "Akış isteği: {is:?}, sağlayıcı={secili}, dosya={}",
+                    dosyalar.len()
+                ));
+                tokio::spawn(async move {
+                    let saglayici = saglayici_sec(&state, secili).await;
+                    let sonuc = state
+                        .eklenti_hub
+                        .sor_ekli(&saglayici, &istem, dosyalar, state.timeout)
+                        .await;
+                    if tx
+                        .send((is, sonuc.map_err(|e| format!("{saglayici}: {e:#}"))))
+                        .is_err()
+                    {
+                        log_yaz("Akış yanıtı geldi ama pencere kapanmış; yanıt atıldı.");
+                    }
+                });
+            }
         }
     }
 
@@ -298,6 +398,13 @@ impl eframe::App for KervanApp {
         while let Ok(yol) = self.dosya_secici_rx.try_recv() {
             self.dosya_ekle(&yol);
         }
+        while let Ok((is, yanit)) = self.akis_rx.try_recv() {
+            self.akis.sonuc(is, yanit);
+        }
+        while let Ok(h) = self.hesaplar_rx.try_recv() {
+            self.hesaplar = h;
+        }
+        self.akis.guncelle();
 
         // Sürükle-bırak desteği: pencereye dosya bırakıldığında otomatik ekle
         ctx.input(|i| {
@@ -345,6 +452,29 @@ impl eframe::App for KervanApp {
                 ui.separator();
 
                 ui.label(format!("Bağlı Sekme: {}", self.bagli_sekmeler.len()));
+                ui.separator();
+
+                use std::sync::atomic::Ordering::Relaxed;
+                let s = &self.state.sayaclar;
+                ui.label(
+                    egui::RichText::new(format!(
+                        "↻ Kurtarılan yanıt: {}",
+                        s.kurtarilan_yanit.load(Relaxed)
+                    ))
+                    .strong()
+                    .color(kervan_akis_gui::renk::UYARI),
+                )
+                .on_hover_text("Yarıda kesilip devam istemiyle tamamlanan yanıtlar");
+                ui.separator();
+                ui.label(
+                    egui::RichText::new(format!(
+                        "🛠 Araç çağrısı: {}",
+                        s.arac_cagrisi.load(Relaxed)
+                    ))
+                    .strong()
+                    .color(kervan_akis_gui::renk::VURGU),
+                )
+                .on_hover_text("Yanıtlardan ayıklanıp istemciye tool_calls olarak dönen çağrılar");
             });
         });
 
@@ -408,6 +538,18 @@ impl eframe::App for KervanApp {
                                 self.ozel_model_metni.clear();
                             }
                         });
+                        if secili
+                            && let Some(i) = kervan_akis_gui::havuz::ciz(ui, &self.hesaplar, kod)
+                        {
+                            let state = self.state.clone();
+                            tokio::spawn(async move {
+                                if !crate::server::hesabi_goster(state, i).await {
+                                    log_yaz(&format!(
+                                        "{i} numaralı hesabın penceresi gösterilemedi"
+                                    ));
+                                }
+                            });
+                        }
                     }
                 });
             });
@@ -526,6 +668,7 @@ impl eframe::App for KervanApp {
                     (UretimModu::DerinArastirma, "🔍 Derin Araştırma"),
                     (UretimModu::GorselUretimi, "🎨 Görsel Üretimi"),
                     (UretimModu::VideoHazirlama, "🎬 Video Hazırlama"),
+                    (UretimModu::Ses, "🎙 Ses"),
                 ];
 
                 for (mod_tipi, etiket) in modlar {
@@ -543,6 +686,21 @@ impl eframe::App for KervanApp {
                     }
                 }
             });
+
+            // Ses ve Video modu: akış panelleri sohbet konsolunun yerini alır.
+            if matches!(self.uretim_modu, UretimModu::Ses | UretimModu::VideoHazirlama) {
+                ui.label(egui::RichText::new(self.uretim_modu.aciklama()).weak());
+                let eylem = egui::ScrollArea::vertical()
+                    .show(ui, |ui| match self.uretim_modu {
+                        UretimModu::Ses => self.akis.ses_ciz(ui),
+                        _ => self.akis.video_ciz(ui),
+                    })
+                    .inner;
+                if let Some(e) = eylem {
+                    self.akis_eylemi(e);
+                }
+                return;
+            }
 
             // C) Düşünme Modu Seçiliyse Düşünme Seviyesi Seçicisi
             if self.uretim_modu == UretimModu::Dusunme {
@@ -742,19 +900,7 @@ impl eframe::App for KervanApp {
 
                     // Arka planda asenkron istek
                     tokio::spawn(async move {
-                        let saglayici = if secili == "auto" {
-                            let mut adaylar = state.eklenti_hub.bagli_sekmeler().await;
-                            if adaylar.is_empty() {
-                                for slot in &state.pool.slots {
-                                    if !adaylar.contains(&slot.provider.ad) {
-                                        adaylar.push(slot.provider.ad.clone());
-                                    }
-                                }
-                            }
-                            state.router.select_provider(&adaylar).await.unwrap_or_else(|| state.varsayilan_saglayici.clone())
-                        } else {
-                            secili
-                        };
+                        let saglayici = saglayici_sec(&state, secili).await;
                         let sonuc = match state.eklenti_hub.sor_ekli(&saglayici, &son_istem, dosyalar, state.timeout).await {
                             Ok(y) => format!("[{saglayici} / {secili_mod}]:\n\n{y}"),
                             Err(e) => format!("Hata ({saglayici} / {secili_mod}): {e:#}"),

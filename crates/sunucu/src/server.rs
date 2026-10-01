@@ -39,6 +39,16 @@ pub struct AppState {
     pub eklenti_hub: crate::eklenti::EklentiHub,
     pub compressor: crate::compressor::Compressor,
     pub router: crate::router::SmartRouter,
+    pub sayaclar: Sayaclar,
+}
+
+/// Durum çubuğunun okuduğu akış sayaçları (süreç ömrü boyunca).
+#[derive(Default)]
+pub struct Sayaclar {
+    /// Yarıda kesilip devam istemiyle dikilen yanıtlar (`stream_recovery`).
+    pub kurtarilan_yanit: std::sync::atomic::AtomicU64,
+    /// Yanıtlardan ayıklanıp `tool_calls` olarak dönen araç çağrıları (`translator`).
+    pub arac_cagrisi: std::sync::atomic::AtomicU64,
 }
 
 /// `kervan/<saglayici>` — `/v1/models` bunu listeler, istemci bunu ister.
@@ -235,6 +245,11 @@ async fn devam(State(st): State<Arc<AppState>>, Path(i): Path<usize>) -> Respons
     Json(serde_json::json!({ "ok": true, "name": st.pool.slots[i].hesap_adi })).into_response()
 }
 
+/// Arayüzün "Göster" düğmesi: `i` numaralı hesabın penceresini öne getirir.
+pub async fn hesabi_goster(st: Arc<AppState>, i: usize) -> bool {
+    goster(State(st), Path(i)).await.status().is_success()
+}
+
 async fn goster(State(st): State<Arc<AppState>>, Path(i): Path<usize>) -> Response {
     let Some(slot) = st.pool.slots.get(i) else {
         return hata(StatusCode::NOT_FOUND, &format!("{i} numarali hesap yok"));
@@ -342,12 +357,26 @@ pub struct ChatRequest {
     /// bir uc, istemci tarafinda "empty stream" olarak gorunur ve sessizce yedege duser.
     #[serde(default)]
     pub stream: bool,
+    /// OpenAI araç tanımları. Tarayıcı modeli bunları bilmez: istemine biçim
+    /// yönergesi eklenir, yanıttaki ```json bloğu `tool_calls`'a çevrilir.
+    #[serde(default)]
+    pub tools: Vec<serde_json::Value>,
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Default)]
 pub struct Message {
     pub role: String,
+    /// Araç çağrısı taşıyan asistan mesajında OpenAI `null` gönderir.
+    #[serde(default, deserialize_with = "bos_olabilir")]
     pub content: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
+fn bos_olabilir<'de, D: serde::Deserializer<'de>>(d: D) -> Result<String, D::Error> {
+    Ok(Option::<String>::deserialize(d)?.unwrap_or_default())
 }
 
 #[derive(Serialize)]
@@ -482,15 +511,18 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
 
     // TOKEN SIKIŞTIRMA (RTK + Caveman): Gelen istemi göndermeden önce gereksiz boşluk ve kalıplardan arındır
     let sikistirma = st.compressor.rtk_sikistir(&istem);
-    let gonderilecek_istem = if sikistirma.tasarruf_yuzdesi > 3.0 {
+    let mut gonderilecek_istem = if sikistirma.tasarruf_yuzdesi > 3.0 {
         println!(
             "sıkıştırma   : %{:.1} token tasarrufu sağlandı ({} -> {} karakter)",
             sikistirma.tasarruf_yuzdesi, sikistirma.orijinal_uzunluk, sikistirma.yeni_uzunluk
         );
-        &sikistirma.metin
+        sikistirma.metin.clone()
     } else {
-        &istem
+        istem.clone()
     };
+    // Yönerge sıkıştırmadan SONRA eklenir: biçim örneği bozulmamalı.
+    let yonerge = arac_yonergesi(&req.tools);
+    gonderilecek_istem.push_str(&yonerge);
 
     // EKLENTİ KONTROLÜ: Eğer ilgili sağlayıcı için eklenti sekmesi bağlıysa,
     // WebDriver havuzuna hiç bulaşmadan doğrudan eklenti üzerinden sorulur!
@@ -501,11 +533,18 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
             gonderilecek_istem.len()
         );
         let t = std::time::Instant::now();
-        match st
+        let sonuc = match st
             .eklenti_hub
-            .sor(&saglayici, gonderilecek_istem, st.timeout)
+            .sor(&saglayici, &gonderilecek_istem, st.timeout)
             .await
         {
+            Err(e) => match e.downcast::<crate::eklenti::YarimYanit>() {
+                Ok(crate::eklenti::YarimYanit(yarim)) => kurtar(&st, &saglayici, yarim).await,
+                Err(e) => Err(e),
+            },
+            tamam => tamam,
+        };
+        match sonuc {
             Ok(yanit) => {
                 let latency = t.elapsed().as_millis() as u64;
                 st.router.record_success(&saglayici, latency).await;
@@ -514,30 +553,7 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
                     saglayici,
                     t.elapsed().as_secs_f32()
                 );
-                let model_res = model_kimligi(&saglayici);
-                if req.stream {
-                    return sse_yanit(&yanit, &model_res);
-                }
-                return Json(ChatResponse {
-                    id: format!("chatcmpl-{}", simdi()),
-                    object: "chat.completion",
-                    created: simdi(),
-                    model: model_res,
-                    choices: vec![Choice {
-                        index: 0,
-                        message: Message {
-                            role: "assistant".into(),
-                            content: yanit,
-                        },
-                        finish_reason: "stop",
-                    }],
-                    usage: Usage {
-                        prompt_tokens: 0,
-                        completion_tokens: 0,
-                        total_tokens: 0,
-                    },
-                })
-                .into_response();
+                return yanit_olustur(&st, &req, yanit, model_kimligi(&saglayici));
             }
             Err(e) => {
                 st.router.record_failure(&saglayici).await;
@@ -563,9 +579,9 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
     // Dizi bossa gecmisi TOHUMLA. Devam eden dizide tohumlamak gecmisi ikinci kez
     // yazmak olurdu; bos dizide tohumlamamak ise modele gecmissiz cevap verdirir.
     let gonderilecek = if lease.yeni_dizi {
-        tohum_istemi(&req.messages, TOHUM_AZAMI)
+        tohum_istemi(&req.messages, TOHUM_AZAMI) + &yonerge
     } else {
-        gonderilecek_istem.to_string()
+        gonderilecek_istem
     };
     println!(
         "[{}/{}] istek ({} karakter{})",
@@ -657,37 +673,133 @@ async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> 
         req.model.clone()
     };
 
-    if req.stream {
-        return match sonuc {
-            Ok(metin) => sse_yanit(&metin, &model_adi),
-            Err(e) => hata(StatusCode::BAD_GATEWAY, &format!("{e:#}")),
-        };
-    }
-
     match sonuc {
-        Ok(metin) => Json(ChatResponse {
-            id: format!("chatcmpl-kervan-{}", simdi()),
-            object: "chat.completion",
-            created: simdi(),
-            model: model_adi,
-            choices: vec![Choice {
-                index: 0,
-                message: Message {
-                    role: "assistant".into(),
-                    content: metin,
-                },
-                finish_reason: "stop",
-            }],
-            usage: Usage {
-                prompt_tokens: 0,
-                completion_tokens: 0,
-                total_tokens: 0,
-            },
-        })
-        .into_response(),
+        Ok(metin) => yanit_olustur(&st, &req, metin, model_adi),
         // Ham neden zinciri ({e:#}) istemciye gider. Hatayi maskelemek, OmniRoute'un
         // gemini-web'de yaptigi ve teshisi imkansizlastiran seydi.
         Err(e) => hata(StatusCode::BAD_GATEWAY, &format!("{e:#}")),
+    }
+}
+
+/// Eklenti zaman aşımında kesilen yanıtı bir kez devam istemiyle sürdürür ve diker.
+/// Devam da gelmezse yarım metni yanıt diye vermek yerine hata döner.
+async fn kurtar(st: &AppState, saglayici: &str, yarim: String) -> Result<String> {
+    use kervan_akis::stream_recovery::DikisBirlestirici as Dikis;
+    println!(
+        "[{saglayici}] yanit yarida kesildi ({} karakter), devam isteniyor",
+        yarim.len()
+    );
+    let devam = st
+        .eklenti_hub
+        .sor(saglayici, &Dikis::devam_istemi_olustur(&yarim), st.timeout)
+        .await
+        .map_err(|e| anyhow::anyhow!("yanit yarida kesildi, devami da alinamadi: {e:#}"))?;
+    st.sayaclar
+        .kurtarilan_yanit
+        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    Ok(Dikis::dikis_ekle(&yarim, &devam))
+}
+
+/// Başarılı yanıtı istemcinin istediği biçimde (akış ya da tek parça) kurar; araç
+/// tanımı geldiyse yanıttaki çağrıları `tool_calls`'a çevirir.
+fn yanit_olustur(st: &AppState, req: &ChatRequest, metin: String, model: String) -> Response {
+    let (icerik, cagrilar) = arac_cagrilarini_ayikla(&req.tools, metin);
+    st.sayaclar
+        .arac_cagrisi
+        .fetch_add(cagrilar.len() as u64, std::sync::atomic::Ordering::Relaxed);
+    let bitis = if cagrilar.is_empty() {
+        "stop"
+    } else {
+        "tool_calls"
+    };
+    if req.stream {
+        return sse_yanit(&icerik, &cagrilar, bitis, &model);
+    }
+    Json(ChatResponse {
+        id: format!("chatcmpl-kervan-{}", simdi()),
+        object: "chat.completion",
+        created: simdi(),
+        model,
+        choices: vec![Choice {
+            index: 0,
+            message: Message {
+                role: "assistant".into(),
+                content: icerik,
+                tool_calls: (!cagrilar.is_empty()).then_some(serde_json::Value::Array(cagrilar)),
+                ..Default::default()
+            },
+            finish_reason: bitis,
+        }],
+        usage: Usage {
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            total_tokens: 0,
+        },
+    })
+    .into_response()
+}
+
+fn arac_adlari(tools: &[serde_json::Value]) -> Vec<&str> {
+    tools
+        .iter()
+        .filter_map(|t| t["function"]["name"].as_str())
+        .collect()
+}
+
+/// Araç tanımlarını tarayıcı modelinin anlayacağı düz yönergeye çevirir.
+pub fn arac_yonergesi(tools: &[serde_json::Value]) -> String {
+    if arac_adlari(tools).is_empty() {
+        return String::new();
+    }
+    let mut y = String::from(
+        "\n\n[ARAÇLAR] Bir aracı çağırman gerekirse yanıtına YALNIZCA şu biçimde bir blok koy, \
+         sonucu bir sonraki mesajda alacaksın:\n```json\n{\"name\": \"ARAÇ_ADI\", \"arguments\": {}}\n```\n\
+         Kullanılabilir araçlar:\n",
+    );
+    for t in tools {
+        let f = &t["function"];
+        if let Some(ad) = f["name"].as_str() {
+            let aciklama = f["description"].as_str().unwrap_or("");
+            y.push_str(&format!(
+                "- {ad}: {aciklama} (parametreler: {})\n",
+                f["parameters"]
+            ));
+        }
+    }
+    y
+}
+
+/// Yanıttaki ```json çağrılarından YALNIZ istemcinin tanımladığı araçları `tool_calls`
+/// biçimine çevirir. Eşleşme yoksa metin olduğu gibi kalır.
+pub fn arac_cagrilarini_ayikla(
+    tools: &[serde_json::Value],
+    metin: String,
+) -> (String, Vec<serde_json::Value>) {
+    use kervan_akis::translator::{AracCagrisi, AracCagrisiAyiklayici};
+    let adlar = arac_adlari(tools);
+    if adlar.is_empty() {
+        return (metin, Vec::new());
+    }
+    let sonuc = AracCagrisiAyiklayici::ayikla(&metin);
+    let cagrilar: Vec<_> = sonuc
+        .cagrilar
+        .into_iter()
+        .filter_map(|c| match c {
+            AracCagrisi::GenelFonksiyon {
+                ad,
+                parametreler_json,
+            } if adlar.contains(&ad.as_str()) => Some(serde_json::json!({
+                "id": format!("call_{:08x}", rand::random::<u32>()),
+                "type": "function",
+                "function": { "name": ad, "arguments": parametreler_json },
+            })),
+            _ => None,
+        })
+        .collect();
+    if cagrilar.is_empty() {
+        (metin, cagrilar)
+    } else {
+        (sonuc.temiz_metin, cagrilar)
     }
 }
 
@@ -713,16 +825,30 @@ fn hata(kod: StatusCode, mesaj: &str) -> Response {
 /// Yukseltme yolu: `ask` icindeki yoklama dongusu zaten metnin BUYUDUGUNU goruyor —
 /// oradan bir kanal acilirsa gercek artimli akis neredeyse bedava gelir. Ihtiyac
 /// olunca yap; su an tek parca yeterli ve yanlis degil.
-fn sse_yanit(metin: &str, model: &str) -> Response {
+fn sse_yanit(metin: &str, cagrilar: &[serde_json::Value], neden: &str, model: &str) -> Response {
     let id = format!("chatcmpl-kervan-{}", simdi());
     let olustu = simdi();
+    let mut delta = serde_json::json!({ "role": "assistant", "content": metin });
+    if !cagrilar.is_empty() {
+        // Akışta her çağrı sırasını `index` ile taşır.
+        let sirali: Vec<_> = cagrilar
+            .iter()
+            .enumerate()
+            .map(|(i, c)| {
+                let mut c = c.clone();
+                c["index"] = i.into();
+                c
+            })
+            .collect();
+        delta["tool_calls"] = sirali.into();
+    }
     let parca = serde_json::json!({
         "id": id, "object": "chat.completion.chunk", "created": olustu, "model": model,
-        "choices": [{ "index": 0, "delta": { "role": "assistant", "content": metin } }]
+        "choices": [{ "index": 0, "delta": delta }]
     });
     let bitis = serde_json::json!({
         "id": id, "object": "chat.completion.chunk", "created": olustu, "model": model,
-        "choices": [{ "index": 0, "delta": {}, "finish_reason": "stop" }]
+        "choices": [{ "index": 0, "delta": {}, "finish_reason": neden }]
     });
     let govde = format!("data: {parca}\n\ndata: {bitis}\n\ndata: [DONE]\n\n");
     (
@@ -759,6 +885,25 @@ pub fn konusma_izi(msgs: &[Message]) -> Option<u64> {
 
 /// Yalnizca son `user` mesaji — gerekcesi dosya basindaki durum gerilimi notunda.
 pub fn son_kullanici_mesaji(msgs: &[Message]) -> Option<String> {
+    // Araç turu: istemci çağrıları çalıştırıp sonuçlarını `tool` mesajı olarak geri
+    // yolladı. Modele giden, son kullanıcı sorusu değil bu sonuçlardır.
+    let sonuclar: Vec<_> = msgs.iter().rev().take_while(|m| m.role == "tool").collect();
+    if !sonuclar.is_empty() {
+        use kervan_akis::translator::{AracCagrisi, AracCagrisiAyiklayici as A};
+        let parcalar: Vec<String> = sonuclar
+            .iter()
+            .rev()
+            .map(|m| {
+                let ad = m.name.clone().unwrap_or_else(|| "arac".into());
+                let cagri = AracCagrisi::GenelFonksiyon {
+                    ad,
+                    parametreler_json: String::new(),
+                };
+                A::sistem_geri_bildirimi_uret(&cagri, &m.content)
+            })
+            .collect();
+        return Some(parcalar.join("\n\n"));
+    }
     msgs.iter()
         .rev()
         .find(|m| m.role == "user")
@@ -858,7 +1003,63 @@ mod tests {
         Message {
             role: role.into(),
             content: content.into(),
+            ..Default::default()
         }
+    }
+
+    fn hava_araci() -> Vec<serde_json::Value> {
+        vec![serde_json::json!({"type": "function", "function": {
+            "name": "hava", "description": "Hava durumu",
+            "parameters": {"type": "object", "properties": {"il": {"type": "string"}}}}})]
+    }
+
+    /// Yalnız istemcinin tanımladığı araç `tool_calls` olur; blok metinden çıkar.
+    #[test]
+    fn tanimli_arac_tool_calls_olur() {
+        let metin =
+            "Bakayım.\n```json\n{\"name\": \"hava\", \"arguments\": {\"il\": \"İzmir\"}}\n```"
+                .to_string();
+        let (icerik, cagrilar) = arac_cagrilarini_ayikla(&hava_araci(), metin);
+        assert_eq!(cagrilar.len(), 1);
+        assert_eq!(cagrilar[0]["function"]["name"], "hava");
+        assert_eq!(cagrilar[0]["function"]["arguments"], r#"{"il":"İzmir"}"#);
+        assert_eq!(icerik, "Bakayım.");
+    }
+
+    /// Tanımsız araç adı ya da araç tanımı yoksa metin hiç değişmez.
+    #[test]
+    fn tanimsiz_arac_metne_dokunmaz() {
+        let metin = "```json\n{\"name\": \"sil\", \"arguments\": {}}\n```".to_string();
+        assert!(
+            arac_cagrilarini_ayikla(&hava_araci(), metin.clone())
+                .1
+                .is_empty()
+        );
+        assert_eq!(arac_cagrilarini_ayikla(&[], metin.clone()), (metin, vec![]));
+        assert_eq!(arac_yonergesi(&[]), "");
+        assert!(arac_yonergesi(&hava_araci()).contains("- hava: Hava durumu"));
+    }
+
+    /// Araç turunda modele son kullanıcı sorusu değil araç sonuçları gider.
+    #[test]
+    fn arac_sonucu_turu_geri_bildirim_gonderir() {
+        let mut sonuc = m("tool", "22°C güneşli");
+        sonuc.name = Some("hava".into());
+        let msgs = vec![m("user", "İzmir'de hava?"), m("assistant", ""), sonuc];
+        let istem = son_kullanici_mesaji(&msgs).unwrap();
+        assert!(
+            istem.contains("22°C güneşli") && istem.contains("hava"),
+            "{istem}"
+        );
+        assert!(!istem.contains("İzmir'de hava?"));
+    }
+
+    /// OpenAI araç çağrılı asistan mesajında `content: null` gönderir; reddedilmemeli.
+    #[test]
+    fn null_icerik_kabul_edilir() {
+        let m: Message =
+            serde_json::from_str(r#"{"role":"assistant","content":null,"tool_calls":[]}"#).unwrap();
+        assert_eq!(m.content, "");
     }
 
     /// Gecmisin tamami degil SON kullanici mesaji gitmeli; ayrica araya asistan

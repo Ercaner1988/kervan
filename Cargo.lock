@@ -2170,10 +2170,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "kervan-akis-gui"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "kervan-akis",
+ "kervan-havuz",
+]
+
+[[package]]
 name = "kervan-gui"
 version = "0.1.0"
 dependencies = [
  "eframe",
+ "kervan-akis-gui",
  "kervan-sunucu",
  "log",
  "tokio",
@@ -2222,6 +2232,7 @@ dependencies = [
  "anyhow",
  "axum",
  "futures-util",
+ "kervan-akis",
  "kervan-havuz",
  "kervan-mcp",
  "kervan-saglayici",

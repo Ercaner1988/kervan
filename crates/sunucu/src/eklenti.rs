@@ -85,6 +85,19 @@ pub struct BagliSekme {
     pub gonderici: mpsc::UnboundedSender<GidenMesaj>,
 }
 
+/// Zaman aşımında elde kalan yarım yanıt. Üretim `Durdur` ile kesildiği için
+/// çağıran devam istemiyle sürdürüp dikebilir (`stream_recovery`).
+#[derive(Debug)]
+pub struct YarimYanit(pub String);
+
+impl std::fmt::Display for YarimYanit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "yanıt yarıda kesildi ({} karakter alındı)", self.0.len())
+    }
+}
+
+impl std::error::Error for YarimYanit {}
+
 /// Tüm bağlı eklenti sekmelerini ve bekleyen istekleri yöneten merkezi hub.
 #[derive(Clone, Default)]
 pub struct EklentiHub {
@@ -178,10 +191,13 @@ impl EklentiHub {
             }
             Err(_) => {
                 self.bekleyen_istekler.lock().await.remove(&id);
-                self.biriken_metinler.lock().await.remove(&id);
-                // Eklentiye iptal emri ilet
+                let yarim = self.biriken_metinler.lock().await.remove(&id);
+                // Eklentiye iptal emri ilet: üretim durur, devam istemi güvenle gönderilebilir.
                 let _ = tx_giden.send(GidenMesaj::Durdur { id });
-                bail!("{timeout:?} süre içinde yanıt tamamlanamadı (zaman aşımı)")
+                match yarim.filter(|m| !m.trim().is_empty()) {
+                    Some(m) => Err(anyhow::Error::new(YarimYanit(m))),
+                    None => bail!("{timeout:?} süre içinde yanıt tamamlanamadı (zaman aşımı)"),
+                }
             }
         }
     }
@@ -315,5 +331,38 @@ mod tests {
             }
             _ => panic!("GidenMesaj::Sor bekleniyordu"),
         }
+    }
+
+    /// Zaman aşımında biriken metin atılmaz: `YarimYanit` olarak döner ve üretim durdurulur.
+    #[tokio::test]
+    async fn zaman_asiminda_yarim_metin_doner() {
+        let hub = EklentiHub::new();
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        hub.sekme_kaydet("gemini".into(), "p".into(), tx).await;
+        let h = hub.clone();
+        let besleyici = tokio::spawn(async move {
+            let Some(GidenMesaj::Sor { id, .. }) = rx.recv().await else {
+                panic!("önce Sor gelmeli")
+            };
+            let parca = GelenMesaj::Parca {
+                id,
+                delta: "Yarım cümle".into(),
+                done: false,
+            };
+            h.mesaji_isle(parca).await;
+            rx.recv().await
+        });
+        let hata = hub
+            .sor("gemini", "soru", std::time::Duration::from_millis(300))
+            .await
+            .unwrap_err();
+        let yarim = hata
+            .downcast::<YarimYanit>()
+            .expect("YarimYanit bekleniyordu");
+        assert_eq!(yarim.0, "Yarım cümle");
+        assert!(matches!(
+            besleyici.await.unwrap(),
+            Some(GidenMesaj::Durdur { .. })
+        ));
     }
 }

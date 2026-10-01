@@ -24,6 +24,7 @@ fn mesaj(rol: &str, icerik: &str) -> Message {
     Message {
         role: rol.to_string(),
         content: icerik.to_string(),
+        ..Default::default()
     }
 }
 

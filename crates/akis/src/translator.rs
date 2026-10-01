@@ -99,15 +99,23 @@ impl AracCagrisiAyiklayici {
         }
 
         // 4. Standart ```json { "name": ... } kod bloklarında araç çağrısı arama
-        if let Some(json_baslangic) = temiz_metin.find("```json")
-            && let Some(json_son) = temiz_metin[json_baslangic..].find("```")
-        {
-            let govde = &temiz_metin[json_baslangic + 7..json_baslangic + json_son];
-            if let Ok(jtc) = serde_json::from_str::<JsonToolCall>(govde.trim()) {
-                cagrilar.push(AracCagrisi::GenelFonksiyon {
-                    ad: jtc.name,
-                    parametreler_json: jtc.arguments.to_string(),
-                });
+        // Kapanış açılıştan SONRA aranır (eskiden açılışın kendisini bulup panikliyordu).
+        // Araç çağrısı olan blok metinden çıkarılır; olmayan blok (sıradan JSON) kalır.
+        let mut ara = 0;
+        while let Some(b) = temiz_metin[ara..].find("```json").map(|i| ara + i) {
+            let Some(s) = temiz_metin[b + 7..].find("```").map(|i| b + 7 + i) else {
+                break;
+            };
+            match serde_json::from_str::<JsonToolCall>(temiz_metin[b + 7..s].trim()) {
+                Ok(jtc) => {
+                    cagrilar.push(AracCagrisi::GenelFonksiyon {
+                        ad: jtc.name,
+                        parametreler_json: jtc.arguments.to_string(),
+                    });
+                    temiz_metin.replace_range(b..s + 3, "");
+                    ara = b;
+                }
+                Err(_) => ara = s + 3,
             }
         }
 
@@ -191,5 +199,24 @@ mod tests {
             AracCagrisiAyiklayici::sistem_geri_bildirimi_uret(&cagri, "Örnek tez metni...");
         assert!(bildirim.contains("[SİSTEM YANITI — DOSYA OKUNDU: weber.docx]"));
         assert!(bildirim.contains("Örnek tez metni..."));
+    }
+
+    /// Eskiden kapanış açılışın kendisinde bulunuyor, dilim tersine dönüp panikliyordu.
+    #[test]
+    fn json_blogu_ayiklanir_ve_metinden_cikar() {
+        let ham = "Bakıyorum.\n```json\n{\"name\": \"hava\", \"arguments\": {\"il\": \"İzmir\"}}\n```\nSonra\n```json\n[1, 2]\n```";
+        let res = AracCagrisiAyiklayici::ayikla(ham);
+        assert_eq!(
+            res.cagrilar,
+            vec![AracCagrisi::GenelFonksiyon {
+                ad: "hava".into(),
+                parametreler_json: r#"{"il":"İzmir"}"#.into()
+            }]
+        );
+        assert!(!res.temiz_metin.contains("hava"), "{}", res.temiz_metin);
+        assert!(
+            res.temiz_metin.contains("[1, 2]"),
+            "araç olmayan JSON kalmalı"
+        );
     }
 }

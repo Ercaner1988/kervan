@@ -140,6 +140,7 @@ async fn main() -> Result<()> {
             eklenti_hub: kervan::eklenti::EklentiHub::new(),
             compressor: kervan::compressor::Compressor::new(),
             router: kervan::router::SmartRouter::new(kervan::router::RoutingStrategy::Lkgp),
+            sayaclar: Default::default(),
         });
 
         // Bosta tarayici supurucusu. Havuzun buyuyebilmesini saglayan sey bu:
