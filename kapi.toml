@@ -7,7 +7,7 @@ repo = "kervan"
 [boyut]
 arkayuz = "uygulanir"                  # yönlendirici sunucu + MCP
 onyuz = "uygulanir"                    # egui arayüzü + tarayıcı eklentisi
-veritabani = "uygulanmaz"              # veri deposu yok
+veritabani = "uygulanir"                # SQLite veri katmanı (crates/depo: rusqlite + 193 göç)
 makine_zararsizligi = "uygulanir"      # tarayıcı ve alt süreç başlatır
 tedarik_guvenligi = "uygulanir"
 bellek_guvenligi = "uygulanir"

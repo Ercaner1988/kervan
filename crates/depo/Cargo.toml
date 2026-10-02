@@ -1,0 +1,16 @@
+[package]
+name = "kervan-depo"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rusqlite = { version = "0.33", features = ["bundled", "backup"] }
+aes-gcm = "0.10"
+scrypt = { version = "0.11", default-features = false }
+hex = "0.4"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+rand = { workspace = true }

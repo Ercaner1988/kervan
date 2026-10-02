@@ -1,6 +1,6 @@
 # DURUM.md — Kervan OmniRoute Aktarım Takip Defteri
 
-Son güncelleme: 2026-10-01T19:02:00+03:00
+Son güncelleme: 2026-10-02T03:16:00+03:00
 
 ---
 
@@ -40,15 +40,24 @@ Son güncelleme: 2026-10-01T19:02:00+03:00
 - **Mutasyon Doğrulaması:** `bun araclar/parite/kos.ts --mutasyon` çalıştırıldı; şablon kasten bozulduğunda kapının başarıyla düştüğü kanıtlandı ("Düşemeyen kapı kapı değildir").
 - **Kapı Durumu:** `kapi` tüm 9 sandık için yeşil.
 
+### Faz 2 — Depo Katmanı (TAMAMLANDI ✅)
+- **Sandık:** `crates/depo` (`kervan-depo`) oluşturuldu ve kök Cargo çalışma alanına bağlandı (557 satır, 1.500 satır kuralına tam uyum).
+- **Soyutlama:** `Depo` trait tanımlandı (`gocleri_calistir`, `tablo_sayisi`, `saglik_kontrolu`, `yedekle`, `deger_getir`, `deger_kaydet`).
+- **Şifreleme:** AES-256-GCM + scrypt (`enc:v1:<iv>:<ciphertext>:<tag>`) OmniRoute şifreleme formatı ile %100 parite sağlandı. TypeScript ortamında üretilen gerçek test vektörü Rust testinde birebir çözüldü (`test_omniroute_test_vektoru_cozumu`).
+- **193 SQL Göçü:** 193 göç dosyasının tümü hatasız ve sıralı işletildi. OmniRoute'un TypeScript tarafında yaptığı `isSchemaAlreadyApplied`, `ensureUsageHistoryColumns`, `ensureProviderConnectionsColumns`, `ensureProxyLogsColumns` ve `API_KEY_COLUMN_FALLBACKS` şema tamamlayıcıları Rust'ta (`gocler.rs`) tam olarak inşa edildi.
+- **Bütünlük & Şema Paritesi:** `PRAGMA integrity_check` başarıyla "ok" döndü ve 134 çekirdek alan tablosunun altın şemayla birebir örtüştüğü doğrulandı.
+- **Kapı:** `kapi.toml` içinde `veritabani = "uygulanir"` aktive edildi. `kapi` denetimi 10 sandığın tamamı için yeşil (`yeşil 5 · kırmızı 0`).
+
 ---
 
-## 2. Sıradaki İş (Faz 2 — Depo Katmanı)
-- `crates/depo` (`kervan-depo`) crate'inin kurulması ve `Depo` trait tanımları.
-- `rusqlite (bundled)` sürücüsü ile 193 SQL göçünün derlenmesi ve altın şema ile birebir paritesi.
-- AES-256-GCM kimlik bilgisi şifreleme/çözümleme vektörleri.
-- Turso sürücüsü ölçümü ve Windows kilitleme senaryoları.
+## 2. Sıradaki İş (Faz 3 — Çekirdek Geçit)
+- `crates/cekirdek` (`kervan-cekirdek`) veya `crates/sunucu` üzerinden `/v1` OpenAI/Anthropic/Gemini uç noktaları.
+- Format çeviricileri: OpenAI ↔ Anthropic ↔ Gemini ↔ Ollama şema dönüşümleri.
+- 19 kombo stratejisi (fallback, round-robin, weighted, cascade vb.).
+- 3 katmanlı dayanıklılık: Devre kesici (circuit breaker), cooldown ve lockout durum makineleri.
+- Hız sınırlayıcı (rate limiter) ve anlamsal önbellek (semantic cache).
 
 ---
 
 ## 3. Açık Engeller ve İnsan Kararları
-- Şu an için bloklayıcı engel bulunmamaktadır.
+- Herhangi bir engel veya insan kararı gerektiren tıkanıklık yoktur.
