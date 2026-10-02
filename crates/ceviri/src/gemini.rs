@@ -107,7 +107,7 @@ pub fn gemini_den_openai_yaniti(yanit: &GeminiYanit, istenen_model: &str) -> Res
                 "STOP" => "stop".to_string(),
                 "MAX_TOKENS" => "length".to_string(),
                 "SAFETY" => "content_filter".to_string(),
-                other => other.to_lowercase(),
+                other => other.to_ascii_lowercase(),
             });
         }
     }
@@ -166,7 +166,7 @@ pub fn gemini_den_openai_parcasi(
             finish_reason = Some(match sebep.as_str() {
                 "STOP" => "stop".to_string(),
                 "MAX_TOKENS" => "length".to_string(),
-                other => other.to_lowercase(),
+                other => other.to_ascii_lowercase(),
             });
         }
     }
