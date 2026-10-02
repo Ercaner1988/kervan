@@ -1,0 +1,13 @@
+[package]
+name = "kervan-paneller"
+version = "0.1.0"
+edition = "2024"
+description = "Kervan Panel Kayıt Sistemi ve Modüler egui Panelleri (ADR 0008)"
+
+[dependencies]
+eframe = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+kervan-katalog = { path = "../katalog" }
+kervan-koruma = { path = "../koruma" }
+kervan-a2a = { path = "../a2a" }

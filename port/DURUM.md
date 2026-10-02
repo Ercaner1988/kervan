@@ -78,9 +78,17 @@ Son güncelleme: 2026-10-02T03:16:00+03:00
 
 ---
 
-## 2. Sıradaki İş (Faz 6 — egui Arayüzü & Paneller)
-- egui 0.36 + eframe wgpu mimarisinde panel kayıt sistemi (ADR 0008).
-- OmniRoute'un temel panellerinin (Gösterge paneli, Model seçici, Sağlayıcı ayarları, Oturum geçmişi) Kervan masaüstü penceresine aktarımı.
+### Faz 6 — egui Masaüstü Panelleri ve Panel Kayıt Sistemi (TAMAMLANDI ✅)
+- **Sandıklar:**
+  - `crates/paneller` (`kervan-paneller`, 258 satır): ADR 0008 uyarınca modüler panel kayıt sistemi (`PanelKayit`), `KervanPaneli` temel arayüzü, `GostergePaneli` (sistem metrikleri, aktif bağlantılar), `ModelYonetimPaneli` (276 sağlayıcı ve yüzlerce modelin filtrelenip aranması) ve `GuvenlikPaneli` (Sert Kural #20 PII opt-in kontrolü, kimlik maskeleme durumu).
+  - `crates/gui` (`kervan-gui`, 1399 satır) ile kusursuz uyum ve modüler ayrıştırma sağlandı.
+- **Test ve Kapı:** `cargo test --workspace --all-features` (100% başarılı). `kapi` denetimi tüm 18 sandık için yeşil (`yeşil 5 · kırmızı 0`).
+
+---
+
+## 2. Sıradaki İş (Faz 7 — CLI, İşletim ve Göç Araçları)
+- `kervan` CLI alt komutları: `kervan baslat`, `kervan durdur`, `kervan goc` (OmniRoute veri dizininden içe aktarım), `kervan yedekle`, `kervan dogrula`.
+- OmniRoute'un `%USERPROFILE%\.omniroute\` veri dizininden kuru koşu (dry-run) varsayılan göç motoru.
 
 ---
 

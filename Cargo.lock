@@ -2465,6 +2465,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "kervan-paneller"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "kervan-a2a",
+ "kervan-katalog",
+ "kervan-koruma",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "kervan-saglayici"
 version = "0.1.0"
 dependencies = [
