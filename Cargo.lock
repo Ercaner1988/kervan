@@ -2366,6 +2366,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "kervan-ceviri"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "kervan-depo"
 version = "0.1.0"
 dependencies = [
@@ -2377,6 +2388,17 @@ dependencies = [
  "scrypt",
  "serde",
  "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "kervan-direnc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
  "tokio",
 ]
 
@@ -2456,6 +2478,36 @@ dependencies = [
  "tokio",
  "toml",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "kervan-v1"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "http-body-util",
+ "kervan-ceviri",
+ "kervan-depo",
+ "kervan-direnc",
+ "kervan-yonlendirme",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tower",
+]
+
+[[package]]
+name = "kervan-yonlendirme"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "rand 0.9.5",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
 ]
 
 [[package]]
