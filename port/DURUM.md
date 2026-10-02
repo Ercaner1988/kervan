@@ -50,12 +50,20 @@ Son güncelleme: 2026-10-02T03:16:00+03:00
 
 ---
 
-## 2. Sıradaki İş (Faz 3 — Çekirdek Geçit)
-- `crates/cekirdek` (`kervan-cekirdek`) veya `crates/sunucu` üzerinden `/v1` OpenAI/Anthropic/Gemini uç noktaları.
-- Format çeviricileri: OpenAI ↔ Anthropic ↔ Gemini ↔ Ollama şema dönüşümleri.
-- 19 kombo stratejisi (fallback, round-robin, weighted, cascade vb.).
-- 3 katmanlı dayanıklılık: Devre kesici (circuit breaker), cooldown ve lockout durum makineleri.
-- Hız sınırlayıcı (rate limiter) ve anlamsal önbellek (semantic cache).
+### Faz 3 — Çekirdek Geçit, Çeviri, Direnç ve Yönlendirme (TAMAMLANDI ✅)
+- **Sandıklar:**
+  - `crates/ceviri` (`kervan-ceviri`, 515 satır): OpenAI ↔ Anthropic Claude ↔ Google Gemini çift yönlü istek, yanıt ve SSE akış parçacığı çeviricileri.
+  - `crates/direnc` (`kervan-direnc`, 258 satır): 3 katmanlı dayanıklılık; `DevreKesici` (CLOSED/DEGRADED/OPEN/HALF_OPEN), `SogumaTakipcisi` (üstel geri çekilme + `Retry-After`), `ModelKilidi` (geçici/kalıcı engelleme).
+  - `crates/yonlendirme` (`kervan-yonlendirme`, 361 satır): OmniRoute 19 kanonik kombo yönlendirme stratejisi (`priority`, `round-robin`, `weighted`, `random`, `strict-random`, `least-used`, `lkgp`, `p2c`, `auto`, `cost-optimized`, `context-optimized`, `context-relay`, `cache-optimized`, `quota-share`, `quota-weighted`, `fill-first`, `reset-aware`, `reset-window`, `headroom`), belirteç kovası hız sınırlayıcı ve anlamsal/istem önbelleği (TTL + LRU).
+  - `crates/v1` (`kervan-v1`, 448 satır): Axum HTTP uçları (`/v1/chat/completions`, `/v1/models`, `/v1/embeddings`), loopback-only koruması (`127.0.0.1` guard), API anahtarı denetimi, PII ve ham hata sanitizasyonu (Sert Kural #12, #15, #17).
+- **Test ve Kapı:** `cargo test --workspace --all-features` (100% başarılı). `kapi` denetimi tüm 14 sandık için yeşil (`yeşil 5 · kırmızı 0`).
+
+---
+
+## 2. Sıradaki İş (Faz 4 — Sağlayıcı Kataloğu ve Yürütücüler)
+- Bun tabanlı katalog derleyicisi (`araclar/katalog-derle.ts`) ile ~360 OmniRoute sağlayıcısının Rust veri yapılarına aktarımı (`crates/katalog`).
+- Genel yürütücüler (OpenAI-uyumlu, Anthropic-uyumlu, Gemini-uyumlu) ve özel yürütücüler.
+- Web-oturum sağlayıcıları için Kervan'ın yerel `crates/tarayici` ve `crates/havuz` köprüsünün bağlanması.
 
 ---
 
