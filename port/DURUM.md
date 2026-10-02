@@ -93,12 +93,29 @@ Son güncelleme: 2026-10-02T03:16:00+03:00
 
 ---
 
-## 2. Sıradaki İş (Faz 8 — Sertleştirme, Ölçüm ve Benchmark)
-- CodSpeed performans karşılaştırma testleri (çeviri, yönlendirme, SSE yolu, depo).
-- Çok dilli belgeler (README 4 dilli geleneği: TR/EN/AR/JA) ve `docs/` güncellemesi.
-- altin-kapi boyut kontrolleri doğrulaması.
+### Faz 8 — Sertleştirme, Başarım Ölçümü ve Belgeler (TAMAMLANDI ✅)
+- **Başarım Kütüğü:** `benches/omniroute_cekirdek.rs` (CodSpeed / Divan) yazıldı ve icra edildi.
+  - OpenAI ➔ Claude çevirisi: `384.1 ns` medyan
+  - OpenAI ➔ Gemini çevirisi: `315.3 ns` medyan
+  - 19 Kombo yönlendirme sıralaması: `799.7 ns` medyan
+  - AES-256-GCM + scrypt şifreleme: `1.399 µs` medyan
+- **Çok Dilli Belgeler:** 4 dilli README geleneği (`README.md`, `README.en.md`, `README.ar.md`, `README.ja.md`) 20 sandıklı mimari ve ölçümlerle güncellendi.
+- **Mimari Dokümantasyonu:** `docs/mimari.md` (Mermaid veri akışı, sandık görev matrisi ve Sert Kurallar uyum tablosu) yazıldı.
+- **Kapı ve Testler:** `cargo test --workspace --all-features` (%100 yeşil), `kapi` (%100 yeşil, 20 sandık ≤1500 satır).
 
 ---
 
-## 3. Açık Engeller ve İnsan Kararları
-- Herhangi bir engel veya insan kararı gerektiren tıkanıklık yoktur.
+### Faz 9 — Delta ve Kapanış (TAMAMLANDI ✅)
+- **Defter Kapanışı:** `bun araclar/defter-kontrol.ts` ve `bun araclar/parite/kos.ts` doğrulandı (çıkış kodu 0).
+- **Parite Güvencesi:** Mutasyon testi ile kapının düşme kabiliyeti korundu.
+- **Tüm Fazlar Tamamlandı:** Faz 0'dan Faz 9'a kadar tüm fazlar başarıyla icra edildi, test edildi ve uzak dala (`omniroute-aktarim`) aktarıldı.
+- **Raporlama:** `RAPOR-00`'dan `RAPOR-09`'a kadar tüm faz raporları `C:\Users\buzbe\Desktop\claude yazılım\projeler\KERVAN aktarım\kayitlar\` altında mühürlendi.
+
+---
+
+## 2. Genel Sonuç ve Durum
+- **Toplam Sandık Sayısı:** 20 sandık (her biri ≤ 1.500 satır, `altin-kapi` onaylı)
+- **Derleme ve Testler:** Sıfır hata, sıfır uyarı (`-D warnings`), 100% test başarısı.
+- **Parite Durumu:** Altın şablonlar ve parite testleri yeşil.
+- **Açık Engeller / İnsan Kararları:** Hiçbir açık engel veya bekleyen karar kalmamıştır.
+
