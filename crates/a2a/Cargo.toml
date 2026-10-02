@@ -1,0 +1,11 @@
+[package]
+name = "kervan-a2a"
+version = "0.1.0"
+edition = "2024"
+description = "Kervan Agent-to-Agent (A2A Protocol v0.3) JSON-RPC 2.0 Sunucusu ve Ajan Kartı"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = "2.0"
+tokio = { workspace = true }
