@@ -2387,6 +2387,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "kervan-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "kervan-depo",
+ "kervan-katalog",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "kervan-depo"
 version = "0.1.0"
 dependencies = [
