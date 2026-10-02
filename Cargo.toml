@@ -50,6 +50,9 @@ toml.workspace = true
 [dev-dependencies]
 serde_json.workspace = true
 divan = { version = "5.0.2", package = "codspeed-divan-compat" }
+kervan-ceviri = { path = "crates/ceviri" }
+kervan-yonlendirme = { path = "crates/yonlendirme" }
+rand = "0.9"
 
 [[bench]]
 name = "kota"
@@ -61,4 +64,8 @@ harness = false
 
 [[bench]]
 name = "yapilandirma"
+harness = false
+
+[[bench]]
+name = "omniroute_cekirdek"
 harness = false
