@@ -1,0 +1,13 @@
+[package]
+name = "kervan-cli"
+version = "0.1.0"
+edition = "2024"
+description = "Kervan CLI komutları: göç, yedekleme, doğrulama ve işletim (Faz 7)"
+
+[dependencies]
+kervan-depo = { path = "../depo" }
+kervan-katalog = { path = "../katalog" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = "2.0"

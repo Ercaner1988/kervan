@@ -86,9 +86,17 @@ Son güncelleme: 2026-10-02T03:16:00+03:00
 
 ---
 
-## 2. Sıradaki İş (Faz 7 — CLI, İşletim ve Göç Araçları)
-- `kervan` CLI alt komutları: `kervan baslat`, `kervan durdur`, `kervan goc` (OmniRoute veri dizininden içe aktarım), `kervan yedekle`, `kervan dogrula`.
-- OmniRoute'un `%USERPROFILE%\.omniroute\` veri dizininden kuru koşu (dry-run) varsayılan göç motoru.
+### Faz 7 — CLI, İşletim ve Göç Araçları (TAMAMLANDI ✅)
+- **Sandıklar:**
+  - `crates/cli` (`kervan-cli`, 171 satır): `kervan goc` (Sert Kural §5-4 uyarınca kuru koşu / dry-run varsayılan; `--uygula` ile gerçek göç), `kervan yedekle` (`VACUUM INTO` güvenli sıcak yedekleme), `kervan dogrula` (PRAGMA integrity_check + 134 tablo altın şema ve 276 sağlayıcı bütünlük denetimi).
+- **Test ve Kapı:** `cargo test --workspace --all-features` (100% başarılı). `kapi` denetimi tüm 19 sandık için yeşil (`yeşil 5 · kırmızı 0`).
+
+---
+
+## 2. Sıradaki İş (Faz 8 — Sertleştirme, Ölçüm ve Benchmark)
+- CodSpeed performans karşılaştırma testleri (çeviri, yönlendirme, SSE yolu, depo).
+- Çok dilli belgeler (README 4 dilli geleneği: TR/EN/AR/JA) ve `docs/` güncellemesi.
+- altin-kapi boyut kontrolleri doğrulaması.
 
 ---
 
