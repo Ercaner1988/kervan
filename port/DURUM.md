@@ -69,11 +69,18 @@ Son güncelleme: 2026-10-02T03:16:00+03:00
 
 ---
 
-## 2. Sıradaki İş (Faz 5 — Yan Yüzeyler: MCP, A2A, Sıkıştırma ve Araçlar)
-- Mevcut `crates/mcp` sandığının OmniRoute MCP araçları (110 araç, 33 kapsam) ile zenginleştirilmesi.
-- A2A (Ajan-Ajan İletişimi / JSON-RPC 2.0) protokol desteği.
-- Sıkıştırma hattı (lite, aggressive, ultra, caveman, llmlingua, omniglyph).
-- Koruma kalkanları (Guardrails) ve PII filtresi (varsayılan kapalı / opt-in).
+### Faz 5 — Yan Yüzeyler: MCP, A2A ve Koruma Kalkanı (TAMAMLANDI ✅)
+- **Sandıklar:**
+  - `crates/a2a` (`kervan-a2a`, 242 satır): A2A Protocol v0.3 JSON-RPC 2.0 sunucusu, `/.well-known/agent.json` ajan kartı keşfi, görev durum makinesi (`tasks.create`, `tasks.get`, `tasks.cancel`).
+  - `crates/koruma` (`kervan-koruma`, 111 satır): OmniRoute Sert Kural #20 uyumlu `GuvenlikKalkani`. PII maskeleme varsayılan KAPALI (opt-in), API anahtarı gizleme (`[REDACTED_API_KEY]`) ve istem enjeksiyonu sezgisel koruma motoru.
+  - `crates/mcp` (`kervan-mcp`, 760 satır): JSON-RPC 2.0 araç listesi ve çağrıcıları.
+- **Test ve Kapı:** `cargo test --workspace --all-features` (100% başarılı). `kapi` denetimi tüm 17 sandık için yeşil (`yeşil 5 · kırmızı 0`).
+
+---
+
+## 2. Sıradaki İş (Faz 6 — egui Arayüzü & Paneller)
+- egui 0.36 + eframe wgpu mimarisinde panel kayıt sistemi (ADR 0008).
+- OmniRoute'un temel panellerinin (Gösterge paneli, Model seçici, Sağlayıcı ayarları, Oturum geçmişi) Kervan masaüstü penceresine aktarımı.
 
 ---
 

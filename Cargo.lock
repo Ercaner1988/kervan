@@ -2349,6 +2349,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "kervan-a2a"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "kervan-akis"
 version = "0.1.0"
 dependencies = [
@@ -2429,6 +2439,15 @@ dependencies = [
 
 [[package]]
 name = "kervan-katalog"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "kervan-koruma"
 version = "0.1.0"
 dependencies = [
  "serde",
