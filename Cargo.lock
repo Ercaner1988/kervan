@@ -2428,6 +2428,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "kervan-katalog"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "kervan-mcp"
 version = "0.1.0"
 dependencies = [
@@ -2504,6 +2513,21 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "rand 0.9.5",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
+name = "kervan-yurutucu"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "kervan-ceviri",
+ "kervan-katalog",
  "serde",
  "serde_json",
  "thiserror 2.0.21",

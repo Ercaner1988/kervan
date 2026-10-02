@@ -60,10 +60,20 @@ Son güncelleme: 2026-10-02T03:16:00+03:00
 
 ---
 
-## 2. Sıradaki İş (Faz 4 — Sağlayıcı Kataloğu ve Yürütücüler)
-- Bun tabanlı katalog derleyicisi (`araclar/katalog-derle.ts`) ile ~360 OmniRoute sağlayıcısının Rust veri yapılarına aktarımı (`crates/katalog`).
-- Genel yürütücüler (OpenAI-uyumlu, Anthropic-uyumlu, Gemini-uyumlu) ve özel yürütücüler.
-- Web-oturum sağlayıcıları için Kervan'ın yerel `crates/tarayici` ve `crates/havuz` köprüsünün bağlanması.
+### Faz 4 — Sağlayıcı Kataloğu ve Yürütücüler (TAMAMLANDI ✅)
+- **Katalog Derleyicisi:** `araclar/katalog-derle.ts` yazılarak OmniRoute'un kayıt defterindeki 276 sağlayıcı ve yüzlerce model `port/katalog/saglayicilar.json` altın dosyasına derlendi.
+- **Sandıklar:**
+  - `crates/katalog` (`kervan-katalog`, 80 satır): 276 sağlayıcının format, yetkilendirme, model listesi ve bağlam limitlerini içeren veri-güdümlü katalog kütüphanesi (ADR 0003).
+  - `crates/yurutucu` (`kervan-yurutucu`, 266 satır): 233 bireysel yürütücü sınıfını indirgeyen 5 birleşik yürütücü motoru (`StandartRestYurutucu`, `ClaudeRestYurutucu`, `GeminiRestYurutucu`, `TarayiciOturumYurutucu`, `OAuthIstemcisi`). Sentetik mock testleriyle sahte OAuth ve API doğrulamaları yapıldı.
+- **Test ve Kapı:** `cargo test --workspace --all-features` (100% başarılı). `kapi` denetimi tüm 15 sandık için yeşil (`yeşil 5 · kırmızı 0`).
+
+---
+
+## 2. Sıradaki İş (Faz 5 — Yan Yüzeyler: MCP, A2A, Sıkıştırma ve Araçlar)
+- Mevcut `crates/mcp` sandığının OmniRoute MCP araçları (110 araç, 33 kapsam) ile zenginleştirilmesi.
+- A2A (Ajan-Ajan İletişimi / JSON-RPC 2.0) protokol desteği.
+- Sıkıştırma hattı (lite, aggressive, ultra, caveman, llmlingua, omniglyph).
+- Koruma kalkanları (Guardrails) ve PII filtresi (varsayılan kapalı / opt-in).
 
 ---
 
