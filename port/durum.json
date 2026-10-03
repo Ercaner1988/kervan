@@ -1,95 +1,79 @@
 {
   "uretici_ozeti": "araclar/kapilar/hepsi.ts",
-  "uretim_zamani": "2026-10-03T11:55:26.925Z",
-  "faz": "P3",
+  "uretim_zamani": "2026-10-03T12:32:58.247Z",
+  "faz": "P4",
   "kapilar": [
     {
       "ad": "makine-sakin",
       "komut": "bun araclar/kapilar/makine-sakin.ts --min-ram-gb 0.1 --max-cpu-pct 100 ",
       "cikis": 0,
-      "sure_ms": 580,
-      "log": "port\\kayit\\P3\\makine-sakin.log",
-      "zaman": "2026-10-03T11:54:56.161Z"
+      "sure_ms": 717,
+      "log": "port\\kayit\\P4\\makine-sakin.log",
+      "zaman": "2026-10-03T12:32:35.124Z"
     },
     {
       "ad": "kabul-haritasi",
-      "komut": "bun araclar/kapilar/kabul-haritasi.ts P3 ",
+      "komut": "bun araclar/kapilar/kabul-haritasi.ts P4 --test-list-dosyasi port/testler.txt ",
       "cikis": 0,
-      "sure_ms": 14829,
-      "log": "port\\kayit\\P3\\kabul-haritasi.log",
-      "zaman": "2026-10-03T11:55:10.990Z"
+      "sure_ms": 195,
+      "log": "port\\kayit\\P4\\kabul-haritasi.log",
+      "zaman": "2026-10-03T12:32:35.319Z"
     },
     {
       "ad": "ulasilabilirlik",
       "komut": "bun araclar/kapilar/ulasilabilirlik.ts ",
       "cikis": 0,
-      "sure_ms": 2809,
-      "log": "port\\kayit\\P3\\ulasilabilirlik.log",
-      "zaman": "2026-10-03T11:55:13.799Z"
+      "sure_ms": 5891,
+      "log": "port\\kayit\\P4\\ulasilabilirlik.log",
+      "zaman": "2026-10-03T12:32:41.210Z"
     },
     {
       "ad": "sabit-yanit",
       "komut": "bun araclar/kapilar/sabit-yanit.ts ",
       "cikis": 0,
-      "sure_ms": 388,
-      "log": "port\\kayit\\P3\\sabit-yanit.log",
-      "zaman": "2026-10-03T11:55:14.187Z"
+      "sure_ms": 479,
+      "log": "port\\kayit\\P4\\sabit-yanit.log",
+      "zaman": "2026-10-03T12:32:41.689Z"
     },
     {
       "ad": "uc-kaydi",
       "komut": "bun araclar/kapilar/uc-kaydi.ts ",
       "cikis": 0,
-      "sure_ms": 3987,
-      "log": "port\\kayit\\P3\\uc-kaydi.log",
-      "zaman": "2026-10-03T11:55:18.174Z"
+      "sure_ms": 5089,
+      "log": "port\\kayit\\P4\\uc-kaydi.log",
+      "zaman": "2026-10-03T12:32:46.778Z"
     },
     {
       "ad": "muhur-kontrol",
-      "komut": "bun araclar/kapilar/muhur-kontrol.ts --faz P3 ",
+      "komut": "bun araclar/kapilar/muhur-kontrol.ts --faz P4 --ref HEAD ",
       "cikis": 0,
-      "sure_ms": 212,
-      "log": "port\\kayit\\P3\\muhur-kontrol.log",
-      "zaman": "2026-10-03T11:55:18.386Z"
-    },
-    {
-      "ad": "rapor-kontrol",
-      "komut": "bun araclar/kapilar/rapor-kontrol.ts P2 ",
-      "cikis": 0,
-      "sure_ms": 158,
-      "log": "port\\kayit\\P3\\rapor-kontrol.log",
-      "zaman": "2026-10-03T11:55:18.545Z"
-    },
-    {
-      "ad": "kulliyat-tara",
-      "komut": "bun araclar/kapilar/kulliyat-tara.ts omniroute-aktarim ",
-      "cikis": 0,
-      "sure_ms": 939,
-      "log": "port\\kayit\\P3\\kulliyat-tara.log",
-      "zaman": "2026-10-03T11:55:19.484Z"
+      "sure_ms": 360,
+      "log": "port\\kayit\\P4\\muhur-kontrol.log",
+      "zaman": "2026-10-03T12:32:47.138Z"
     },
     {
       "ad": "mutasyon-kontrol",
       "komut": "bun araclar/kapilar/mutasyon-kontrol.ts ",
       "cikis": 0,
-      "sure_ms": 7083,
-      "log": "port\\kayit\\P3\\mutasyon-kontrol.log",
-      "zaman": "2026-10-03T11:55:26.568Z"
+      "sure_ms": 10750,
+      "log": "port\\kayit\\P4\\mutasyon-kontrol.log",
+      "zaman": "2026-10-03T12:32:57.890Z"
     },
     {
       "ad": "durum-kontrol",
       "komut": "bun araclar/kapilar/durum-kontrol.ts ",
       "cikis": 0,
-      "sure_ms": 211,
-      "log": "port\\kayit\\P3\\durum-kontrol.log",
-      "zaman": "2026-10-03T11:55:26.779Z"
+      "sure_ms": 213,
+      "log": "port\\kayit\\P4\\durum-kontrol.log",
+      "zaman": "2026-10-03T12:32:58.103Z"
     },
     {
       "ad": "defter-kontrol",
       "komut": "bun araclar/kapilar/defter-kontrol.ts ",
       "cikis": 0,
-      "sure_ms": 145,
-      "log": "port\\kayit\\P3\\defter-kontrol.log",
-      "zaman": "2026-10-03T11:55:26.924Z"
+      "sure_ms": 144,
+      "log": "port\\kayit\\P4\\defter-kontrol.log",
+      "zaman": "2026-10-03T12:32:58.247Z"
     }
   ],
   "tum_kapilar_yesil_mi": true

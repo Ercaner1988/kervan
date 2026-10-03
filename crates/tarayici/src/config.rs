@@ -27,6 +27,29 @@ pub struct Config {
     /// bu bolum degisir.
     #[serde(default)]
     pub providers: std::collections::HashMap<String, SaglayiciAyar>,
+    /// REST yukarı akış sağlayıcıları ([rest.<ad>]).
+    #[serde(default)]
+    pub rest: std::collections::HashMap<String, RestAyar>,
+}
+
+/// REST yukarı akış sağlayıcı yapılandırması ([rest.<ad>]).
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+pub struct RestAyar {
+    pub bicim: String,
+    pub taban_url: String,
+    pub anahtar_env: String,
+    pub model: String,
+    #[serde(default)]
+    pub yol: Option<String>,
+}
+
+impl RestAyar {
+    pub fn dogrula(&self, ad: &str) -> Result<()> {
+        match self.bicim.as_str() {
+            "openai" | "claude" | "gemini" => Ok(()),
+            diger => anyhow::bail!("Geçersiz REST sağlayıcı biçimi: '{}' ([rest.{}])", diger, ad),
+        }
+    }
 }
 
 /// Yerlesik saglayici tanimini kismen ezer; verilmeyen alan varsayilanda kalir.
@@ -158,7 +181,15 @@ impl Config {
         if c.accounts.is_empty() {
             c.accounts = Self::varsayilan().accounts;
         }
+        c.dogrula()?;
         Ok(c)
+    }
+
+    pub fn dogrula(&self) -> Result<()> {
+        for (ad, r) in &self.rest {
+            r.dogrula(ad)?;
+        }
+        Ok(())
     }
 
     fn varsayilan() -> Self {
@@ -172,6 +203,7 @@ impl Config {
             pacing: Pacing::default(),
             kota: Kota::default(),
             providers: Default::default(),
+            rest: Default::default(),
         }
     }
 }
@@ -214,5 +246,37 @@ mod tests {
         let c: Config = toml::from_str("[[accounts]]\nname = \"a\"\n").unwrap();
         assert!(c.pacing.min_delay_ms >= 1000);
         assert!(c.pacing.hourly_cap > 0);
+    }
+
+    #[test]
+    fn gecerli_rest_yapilandirmasi_okunur() {
+        let t = r#"
+            [rest.deepseek]
+            bicim = "openai"
+            taban_url = "https://api.deepseek.com"
+            anahtar_env = "DEEPSEEK_API_KEY"
+            model = "deepseek-chat"
+        "#;
+        let c: Config = toml::from_str(t).unwrap();
+        assert_eq!(c.rest.len(), 1);
+        let ds = c.rest.get("deepseek").unwrap();
+        assert_eq!(ds.bicim, "openai");
+        assert_eq!(ds.taban_url, "https://api.deepseek.com");
+        assert_eq!(ds.anahtar_env, "DEEPSEEK_API_KEY");
+        assert_eq!(ds.model, "deepseek-chat");
+        assert!(c.dogrula().is_ok());
+    }
+
+    #[test]
+    fn gecersiz_rest_bicimi_hata_verir() {
+        let t = r#"
+            [rest.gecersiz]
+            bicim = "bilinmeyen_bicim"
+            taban_url = "https://api.example.com"
+            anahtar_env = "API_KEY"
+            model = "model-1"
+        "#;
+        let c: Config = toml::from_str(t).unwrap();
+        assert!(c.dogrula().is_err());
     }
 }

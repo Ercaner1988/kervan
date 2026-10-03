@@ -1,11 +1,11 @@
-<!-- URETILMIS_DURUM_HASH: 8a3145bb6112fca5c3c4318460c90bce1571749b6fe0bff70d1fe988717ab108 -->
+<!-- URETILMIS_DURUM_HASH: 9d347c4c6919ae0379967670135401dcf8320881436511215b86c80b2cc9e6bb -->
 # DURUM.md — Kervan Aktarım Durum Defteri (ÜRETİLMİŞTİR)
 
 > ⚠️ BU DOSYA OTOMATİK OLARAK ÜRETİLMİŞTİR. ELLE DÜZENLEMEYİNİZ.
 > Düzenlemeler kapı ve defter araçları tarafından ezilir.
 
-- **Mevcut Faz:** P2
-- **Son Güncelleme:** 2026-10-03T11:42:24.323Z
+- **Mevcut Faz:** P3
+- **Son Güncelleme:** 2026-10-03T11:55:26.925Z
 - **Tüm Kapılar Yeşil mi:** ✅ EVET
 
 ---
@@ -14,13 +14,17 @@
 
 | Kapı Adı | Çıkış Kodu | Süre (ms) | Log Dosyası |
 |---|:---:|:---:|---|
-| makine-sakin | ✅ 0 | 603 | [makine-sakin.log](port\kayit\P2\makine-sakin.log) |
-| kabul-haritasi | ✅ 0 | 19299 | [kabul-haritasi.log](port\kayit\P2\kabul-haritasi.log) |
-| ulasilabilirlik | ✅ 0 | 2412 | [ulasilabilirlik.log](port\kayit\P2\ulasilabilirlik.log) |
-| sabit-yanit | ✅ 0 | 360 | [sabit-yanit.log](port\kayit\P2\sabit-yanit.log) |
-| uc-kaydi | ✅ 0 | 4000 | [uc-kaydi.log](port\kayit\P2\uc-kaydi.log) |
-| muhur-kontrol | ✅ 0 | 248 | [muhur-kontrol.log](port\kayit\P2\muhur-kontrol.log) |
-| rapor-kontrol | ✅ 0 | 157 | [rapor-kontrol.log](port\kayit\P2\rapor-kontrol.log) |
+| makine-sakin | ✅ 0 | 580 | [makine-sakin.log](port\kayit\P3\makine-sakin.log) |
+| kabul-haritasi | ✅ 0 | 14829 | [kabul-haritasi.log](port\kayit\P3\kabul-haritasi.log) |
+| ulasilabilirlik | ✅ 0 | 2809 | [ulasilabilirlik.log](port\kayit\P3\ulasilabilirlik.log) |
+| sabit-yanit | ✅ 0 | 388 | [sabit-yanit.log](port\kayit\P3\sabit-yanit.log) |
+| uc-kaydi | ✅ 0 | 3987 | [uc-kaydi.log](port\kayit\P3\uc-kaydi.log) |
+| muhur-kontrol | ✅ 0 | 212 | [muhur-kontrol.log](port\kayit\P3\muhur-kontrol.log) |
+| rapor-kontrol | ✅ 0 | 158 | [rapor-kontrol.log](port\kayit\P3\rapor-kontrol.log) |
+| kulliyat-tara | ✅ 0 | 939 | [kulliyat-tara.log](port\kayit\P3\kulliyat-tara.log) |
+| mutasyon-kontrol | ✅ 0 | 7083 | [mutasyon-kontrol.log](port\kayit\P3\mutasyon-kontrol.log) |
+| durum-kontrol | ✅ 0 | 211 | [durum-kontrol.log](port\kayit\P3\durum-kontrol.log) |
+| defter-kontrol | ✅ 0 | 145 | [defter-kontrol.log](port\kayit\P3\defter-kontrol.log) |
 
 ---
 

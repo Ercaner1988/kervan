@@ -9,7 +9,7 @@ default = []
 gui = ["dep:kervan-gui"]
 
 [workspace]
-members = ["crates/tarayici", "crates/saglayici", "crates/havuz", "crates/mcp", "crates/akis", "crates/akis-gui", "crates/sunucu", "crates/gui"]
+members = ["crates/tarayici", "crates/saglayici", "crates/havuz", "crates/mcp", "crates/akis", "crates/akis-gui", "crates/sunucu", "crates/gui", "crates/yukari"]
 resolver = "3"
 
 [workspace.package]
@@ -40,6 +40,7 @@ kervan-havuz = { path = "crates/havuz" }
 kervan-mcp = { path = "crates/mcp" }
 kervan-akis = { path = "crates/akis" }
 kervan-sunucu = { path = "crates/sunucu" }
+kervan-yukari = { path = "crates/yukari" }
 kervan-gui = { path = "crates/gui", optional = true }
 anyhow.workspace = true
 axum.workspace = true

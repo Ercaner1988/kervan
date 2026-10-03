@@ -14,3 +14,10 @@ dosya = "crates/sunucu/src/server.rs"
 bul = "async fn chat("
 yerine = "async fn chat(/* chatcmpl-123 */ "
 oldurmesi_gereken_test = ["bun araclar/kapilar/sabit-yanit.ts"]
+[[mutant]]
+ad = "rest-kancasini-kaldir"
+dosya = "crates/sunucu/src/server.rs"
+bul = "pub fn rest_hedefi_coz(&self, model_adi: &str) -> Option<(kervan_yukari::Hedef, Option<String>)> {"
+yerine = "pub fn rest_hedefi_coz(&self, _model_adi: &str) -> Option<(kervan_yukari::Hedef, Option<String>)> { return None;"
+oldurmesi_gereken_test = ["server::tests::rest_hedefi_cozumleme_ve_yonlendirme"]
+

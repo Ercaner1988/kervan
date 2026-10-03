@@ -130,6 +130,11 @@ async fn main() -> Result<()> {
             println!("tavan tohumu : son bir saatten {n} istek defterden geri yuklendi");
         }
 
+        let mut rest_hedefleri = std::collections::HashMap::new();
+        for (ad, r) in &cfg.rest {
+            rest_hedefleri.insert(ad.clone(), kervan_yukari::Hedef::rest_ayardan(ad, r, YANIT_ZAMAN_ASIMI));
+        }
+
         let state = Arc::new(server::AppState {
             pool: havuz,
             defter,
@@ -141,6 +146,8 @@ async fn main() -> Result<()> {
             compressor: kervan::compressor::Compressor::new(),
             router: kervan::router::SmartRouter::new(kervan::router::RoutingStrategy::Lkgp),
             sayaclar: Default::default(),
+            rest_hedefleri,
+            yukari: kervan_yukari::Yukari::new(),
         });
 
         // Bosta tarayici supurucusu. Havuzun buyuyebilmesini saglayan sey bu:

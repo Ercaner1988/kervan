@@ -1,0 +1,181 @@
+0 tests, 0 benchmarks
+tests::bayrak_degeri_hesap_adi_sanilmaz: test
+tests::hesap_bayraklardan_once_de_sonra_da_bulunur: test
+
+2 tests, 0 benchmarks
+istek
+├─ insan_kapisi
+├─ istek_ayristir
+├─ iz
+├─ model_secimi
+├─ son_mesaj
+├─ tohum
+╰─ tohum_kirpilan
+
+kota
+├─ defter_ayristir
+├─ kota_sinyali_eslesen
+├─ kota_sinyali_eslesmeyen
+├─ kota_sinyali_uzun_yanit
+├─ olay_yaz
+╰─ tahmin_et_akis
+
+yapilandirma
+├─ config_ayristir
+├─ defter_ezmeli
+├─ defter_varsayilan
+├─ defterden_bul
+╰─ profil
+
+audio_video::tests::test_kavram_sozlugu_filtresi: test
+audio_video::tests::test_video_gorevi_yasam_dongusu: test
+session_pool::tests::test_hata_sonrasi_soguma_cooldown: test
+session_pool::tests::test_oturum_rotasyonu_ve_fallback: test
+stream_recovery::tests::test_akis_tarayici_terminal_isaretleri: test
+stream_recovery::tests::test_devam_istemi_olusturma: test
+stream_recovery::tests::test_dikis_kesisim_ve_birlestirme: test
+stream_recovery::tests::test_hiz_bekcisi_dusunme_evresinde_durdurmaz: test
+stream_recovery::tests::test_holdback_tamponu_azami_bayt_ile_bosaltilir: test
+stream_recovery::tests::test_holdback_tamponu_sifirlama: test
+translator::tests::json_blogu_ayiklanir_ve_metinden_cikar: test
+translator::tests::test_kervan_oku_ayiklama: test
+translator::tests::test_kervan_yaz_ayiklama: test
+translator::tests::test_sistem_geri_bildirimi: test
+
+14 tests, 0 benchmarks
+havuz::tests::en_uygun_musait_ilk_hesaptir: test
+ses::tests::hiz_sapi_olcegine_iner: test
+ses::tests::istem_sozlugu_tasir: test
+ses::tests::zaman_damgali_satirlar_ayrilir: test
+tests::boyut_okunur_yazilir: test
+video::tests::baglanti_markdowndan_ayiklanir: test
+video::tests::istem_secenekleri_tasir: test
+video::tests::yanit_gorevi_kapatir: test
+
+8 tests, 0 benchmarks
+gui::tests::test_amiral_model: test
+gui::tests::test_base64_encode: test
+gui::tests::test_dosya_mime_belirle: test
+gui::tests::test_istem_cerceveleme: test
+gui::tests::test_medyalari_ayikla: test
+gui::tests::test_medyalari_ayikla_bos_ve_gecersiz: test
+gui::tests::test_saglayici_modelleri: test
+
+7 tests, 0 benchmarks
+pool::tests::bilinmeyen_saglayicili_hesap_havuzu_kurmaz: test
+pool::tests::cloudflare_saglayicisi_kapanmaz_sayilir: test
+pool::tests::duraklatilmis_hesap_secilmez: test
+pool::tests::duraklatilmis_sabit_birakilir: test
+pool::tests::hazir_sabit_kullanilir: test
+pool::tests::hiz_butcesi_bitisten_itibaren_sayilir: test
+pool::tests::hiz_penceresi_beklenir: test
+pool::tests::insan_kapisi_yalniz_dogrulama_icin: test
+pool::tests::kapi_sifira_dusurulemez: test
+pool::tests::kapi_varsayilani_siralidir: test
+pool::tests::kapi_yapilandirmayla_genisler: test
+pool::tests::kendi_tahminimiz_hesabi_duraklatmaz: test
+pool::tests::kisa_bekleme_icin_sabit_birakilmaz: test
+pool::tests::saatlik_tavan_dolunca_hesap_secilmez: test
+pool::tests::sabit_tablosu_tavanda_bosalir: test
+pool::tests::supurucu_mesgul_kimlikte_asili_kalmaz: test
+pool::tests::tavan_dolunca_bekleme_pencere_sonuna_kadar: test
+pool::tests::tavan_dolunca_sabit_birakilir: test
+pool::tests::tavan_penceresi_defterden_geri_kurulur: test
+pool::tests::ust_uste_hata_insan_kapisini_acar: test
+router::tests::bos_aday_none_doner: test
+router::tests::devre_kesici_uc_hatada_kilitler: test
+router::tests::lkgp_son_basariliyi_hatirlar: test
+
+23 tests, 0 benchmarks
+compressor::tests::test_bosluk_ve_bos_girdi: test
+compressor::tests::test_kod_bloklarini_koruma: test
+compressor::tests::test_turkce_akademik_ve_agresif_sikistirma: test
+mcp_server::tests::test_mcp_gecersiz_metot: test
+mcp_server::tests::test_mcp_initialize: test
+mcp_server::tests::test_mcp_tools_call_gorev_rotala: test
+mcp_server::tests::test_mcp_tools_call_sikistir: test
+mcp_server::tests::test_mcp_tools_list: test
+task_router::tests::test_akademik_yazim_tespiti: test
+task_router::tests::test_akilli_rota_cozumleme_otomatik: test
+task_router::tests::test_akilli_rota_kullanici_secimini_ezmez: test
+task_router::tests::test_derin_dusunme_gorevi_tespiti: test
+task_router::tests::test_gorsel_ve_video_tespiti: test
+task_router::tests::test_kodlama_gorevi_tespiti: test
+
+14 tests, 0 benchmarks
+kota::tests::ard_arda_kota_kapasiteyi_bozmaz: test
+kota::tests::bos_isaret_listesi_hicbir_seyi_kota_yapmaz: test
+kota::tests::hatalar_kapasiteden_sayilmaz: test
+kota::tests::iki_dongude_pencere_ve_kapasite_cikar: test
+kota::tests::kanit_yoksa_tahmin_yok: test
+kota::tests::kisa_pencere_sifira_yuvarlanmaz: test
+kota::tests::saglayicilar_ayri_kota_havuzudur: test
+kota::tests::saglayicisiz_eski_satir_hala_ayrisir: test
+kota::tests::turkce_kota_isareti_buyuk_harfle_de_yakalanir: test
+kota::tests::uzun_yanit_kota_sayilmaz: test
+kota::tests::yeni_satir_saglayici_tasir: test
+saglayicilar::tests::bilinmeyen_saglayici_acik_hata_verir: test
+saglayicilar::tests::cloudflare_isareti_olculene_uyar: test
+saglayicilar::tests::cloudflare_isareti_yapilandirmayla_ezilir: test
+saglayicilar::tests::copilot_kisisel_ile_m365_karismaz: test
+saglayicilar::tests::surum_ekli_model_kimligi_eslesir: test
+saglayicilar::tests::yapilandirma_seciciyi_ezer: test
+
+17 tests, 0 benchmarks
+eklenti::tests::test_giden_mesaj_sor_dosyali_ser_de: test
+eklenti::tests::test_giden_mesaj_sor_dosyasiz_geriye_uyumluluk: test
+eklenti::tests::zaman_asiminda_yarim_metin_doner: test
+server::tests::arac_sonucu_turu_geri_bildirim_gonderir: test
+server::tests::ayri_konusmalar_ayri_ize_duser: test
+server::tests::degisen_sistem_istemi_izi_bozmaz: test
+server::tests::iz_konusma_boyunca_sabit_kalir: test
+server::tests::kullanici_mesaji_yoksa_none: test
+server::tests::null_icerik_kabul_edilir: test
+server::tests::rest_hedefi_cozumleme_ve_yonlendirme: test
+server::tests::son_kullanici_mesaji_secilir: test
+server::tests::tanimli_arac_tool_calls_olur: test
+server::tests::tanimsiz_arac_metne_dokunmaz: test
+server::tests::tek_mesajda_tohum_sade_kalir: test
+server::tests::tohum_gecmisi_ve_asil_soruyu_tasir: test
+server::tests::tohum_kirpmasi_yazili_ve_yakin_baglami_korur: test
+
+16 tests, 0 benchmarks
+browser::tests::arti_isareti_kodlanir: test
+browser::tests::bos_balon_bitis_sayilmaz: test
+browser::tests::bosluk_farki_yazimi_reddettirmez: test
+browser::tests::dogrulama_duvari_taninir: test
+browser::tests::dusunme_gostergesi_kararli_sayilmaz: test
+browser::tests::dusunme_gurultusu_ayiklanir: test
+browser::tests::eksik_tarayici_acik_hata_verir: test
+browser::tests::eksik_yazilan_istem_kabul_edilmez: test
+browser::tests::iki_yol_ayni_ayarlari_tasir: test
+browser::tests::insan_kapisi_oneki_taninabilir: test
+browser::tests::kilit_dosya_varligina_degil_tutuluyor_olmasina_bakar: test
+browser::tests::onceki_turun_yaniti_dondurulmez: test
+browser::tests::portlar_benzersiz: test
+browser::tests::profil_dizinleri_hesaba_gore_ayrilir: test
+browser::tests::sifir_genislikli_karakter_yazimi_reddettirmez: test
+browser::tests::surucu_arizasi_hesap_arizasindan_ayrilir: test
+browser::tests::tohumlama_profile_dosya_yazar: test
+browser::tests::uzunluk_tanisi_arizalari_ayirt_eder: test
+browser::tests::yarim_metin_saklanir: test
+browser::tests::yeni_yanit_kararlilasinca_donulur: test
+browser::tests::yetenekler_karsilama_ayarlarini_tasir: test
+config::tests::eksik_pacing_guvenli_varsayilana_duser: test
+config::tests::gecerli_rest_yapilandirmasi_okunur: test
+config::tests::gecersiz_rest_bicimi_hata_verir: test
+config::tests::hesaplar_ve_hiz_butcesi_okunur: test
+kurulum::tests::ayri_hesaplar_ayri_profil: test
+kurulum::tests::profil_adi_hesabin_kendisidir: test
+kurulum::tests::profil_adi_yol_kacisina_izin_vermez: test
+tara::tests::hicbir_oturumu_olmayan_profil_olu: test
+tara::tests::okunamayan_profil_olu_sayilmaz: test
+tara::tests::tek_acik_saglayici_profili_yasatir: test
+
+31 tests, 0 benchmarks
+0 tests, 0 benchmarks
+p4_a1_yapilandirma_ve_anahtar_dogrulamasi: test
+p4_a2_openai_bicimli_gecis_kayipsiz_ve_derin_esit: test
+p4_a3_chat_kancasi_model_cozumleme: test
+
+3 tests, 0 benchmarks
