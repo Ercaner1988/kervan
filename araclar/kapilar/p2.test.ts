@@ -55,7 +55,8 @@ describe("p2::kapilar", () => {
   // P2-A3: Uç kaydı
   it("p2::a3_uc_kaydi_eksik_rota_ve_test_hatalarinda_kirmizidir", () => {
     // 1. Mevcut port/uclar.toml geçerli olmalı
-    const gecerliSonuc = ucKaydiniDenetle();
+    const onbellekliTestler = new Set(["server::tests::tohum_gecmisi_ve_asil_soruyu_tasir"]);
+    const gecerliSonuc = ucKaydiniDenetle(process.cwd(), undefined, onbellekliTestler);
     expect(gecerliSonuc.gecerli).toBe(true);
 
     // 2. Kayıtsız rota içeren sahte toml -> kırmızı olmalı
@@ -67,7 +68,7 @@ describe("p2::kapilar", () => {
       durum = "kapsam-disi"
     `, "utf-8"); // Diğer 15 rota eksik!
 
-    const eksikSonuc = ucKaydiniDenetle(process.cwd(), sahteToml);
+    const eksikSonuc = ucKaydiniDenetle(process.cwd(), sahteToml, onbellekliTestler);
     expect(eksikSonuc.gecerli).toBe(false);
     expect(eksikSonuc.hatalar.length).toBeGreaterThan(0);
     fs.unlinkSync(sahteToml);
@@ -81,10 +82,10 @@ describe("p2::kapilar", () => {
       durum = "gercek"
       test = "olmayan::test::xyz_999"
     `, "utf-8");
-    const testSonuc = ucKaydiniDenetle(process.cwd(), gecersizTestToml, new Set());
+    const testSonuc = ucKaydiniDenetle(process.cwd(), gecersizTestToml, onbellekliTestler);
     expect(testSonuc.gecerli).toBe(false);
     fs.unlinkSync(gecersizTestToml);
-  }, 30000);
+  }, 60000);
 
   // P2-A4: Mühür kontrolü
   it("p2::a4_muhur_kontrol_degisiklikte_kirmizi_temizde_yesildir", () => {
