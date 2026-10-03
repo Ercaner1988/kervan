@@ -182,9 +182,12 @@ pub struct ClaudeYanit {
     pub id: String,
     pub r#type: String,
     pub role: String,
+    #[serde(default)]
     pub content: Vec<ClaudeIcerikBloku>,
     pub model: String,
+    #[serde(default)]
     pub stop_reason: Option<String>,
+    #[serde(default)]
     pub usage: Option<ClaudeKullanim>,
 }
 
@@ -208,6 +211,8 @@ pub enum ClaudeOlay {
     },
     #[serde(rename = "message_stop")]
     MesajBitti,
+    #[serde(other)]
+    Diger,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -215,6 +220,8 @@ pub enum ClaudeOlay {
 pub enum ClaudeDeltaIcerik {
     #[serde(rename = "text_delta")]
     Metin { text: String },
+    #[serde(other)]
+    Diger,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -268,12 +275,15 @@ pub struct GeminiSystemInstruction {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GeminiIcerik {
+    #[serde(default)]
     pub role: String,
+    #[serde(default)]
     pub parts: Vec<GeminiParca>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GeminiParca {
+    #[serde(default)]
     pub text: String,
 }
 

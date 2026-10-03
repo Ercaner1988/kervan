@@ -172,6 +172,7 @@ pub fn claude_dan_openai_parcasi(
                     finish_reason: None,
                 }],
             })),
+            ClaudeDeltaIcerik::Diger => Ok(None),
         },
         ClaudeOlay::MesajDeltasi { delta, .. } => {
             let finish = delta.stop_reason.as_deref().map(|r| match r {
@@ -192,5 +193,6 @@ pub fn claude_dan_openai_parcasi(
             }))
         }
         ClaudeOlay::MesajBitti => Ok(None),
+        ClaudeOlay::Diger => Ok(None),
     }
 }

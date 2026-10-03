@@ -476,51 +476,40 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
 
     // 1. REST yukarı akış kancası: model [rest.*] yapılandırmasına çözülürse yukari'ya devret
     if let Some((hedef, alt_model)) = st.rest_hedefi_coz(model_adi) {
-        match st.yukari.gonder(&hedef, &raw_val, alt_model.as_deref()).await {
-            Ok(yanit) => return (StatusCode::OK, Json(yanit)).into_response(),
-            Err(kervan_yukari::YukariHatasi::AnahtarYok(env_ad)) => {
-                return hata(
-                    StatusCode::SERVICE_UNAVAILABLE,
-                    &format!("Ortam değişkeni '{}' tanımlı değil", env_ad),
-                );
-            }
-            Err(kervan_yukari::YukariHatasi::Desteklenmiyor(alan)) => {
-                return hata(
-                    StatusCode::NOT_IMPLEMENTED,
-                    &format!("desteklenmiyor: {}", alan),
-                );
-            }
-            Err(kervan_yukari::YukariHatasi::DevreAcik { ad, kalan_sure_ms }) => {
-                return hata(
-                    StatusCode::SERVICE_UNAVAILABLE,
-                    &format!("Devre kesici açık: {} ({}ms sonra tekrar denenecek)", ad, kalan_sure_ms),
-                );
-            }
-            Err(kervan_yukari::YukariHatasi::Sogumada { ad, retry_after_saniye }) => {
-                let mut resp = hata(
-                    StatusCode::TOO_MANY_REQUESTS,
-                    &format!("Sağlayıcı soğumada: {} (Retry-After: {}s)", ad, retry_after_saniye),
-                );
-                if let Ok(val) = axum::http::HeaderValue::from_str(&retry_after_saniye.to_string()) {
-                    resp.headers_mut().insert(axum::http::header::RETRY_AFTER, val);
+        if req.stream {
+            match st.yukari.gonder_akis(&hedef, &raw_val, alt_model.as_deref()).await {
+                Ok(mut rx) => {
+                    let stream = futures_util::stream::poll_fn(move |cx| {
+                        rx.poll_recv(cx).map(|opt| {
+                            opt.map(|res| {
+                                res.map(axum::body::Bytes::from)
+                                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+                            })
+                        })
+                    });
+                    let body = axum::body::Body::from_stream(stream);
+                    let mut resp = Response::new(body);
+                    *resp.status_mut() = StatusCode::OK;
+                    resp.headers_mut().insert(
+                        axum::http::header::CONTENT_TYPE,
+                        axum::http::HeaderValue::from_static("text/event-stream"),
+                    );
+                    resp.headers_mut().insert(
+                        axum::http::header::CACHE_CONTROL,
+                        axum::http::HeaderValue::from_static("no-cache"),
+                    );
+                    resp.headers_mut().insert(
+                        axum::http::header::CONNECTION,
+                        axum::http::HeaderValue::from_static("keep-alive"),
+                    );
+                    return resp;
                 }
-                return resp;
+                Err(e) => return yukari_hatasini_don(e),
             }
-            Err(kervan_yukari::YukariHatasi::HttpHatasi(429, govde, retry_after)) => {
-                let mut resp = hata(StatusCode::TOO_MANY_REQUESTS, &format!("Yukarı akış 429 hatası: {}", govde));
-                if let Some(sn) = retry_after {
-                    if let Ok(val) = axum::http::HeaderValue::from_str(&sn.to_string()) {
-                        resp.headers_mut().insert(axum::http::header::RETRY_AFTER, val);
-                    }
-                }
-                return resp;
-            }
-            Err(kervan_yukari::YukariHatasi::HttpHatasi(durum, govde, _)) => {
-                let status = StatusCode::from_u16(durum).unwrap_or(StatusCode::BAD_GATEWAY);
-                return hata(status, &format!("Yukarı akış HTTP hatası ({}): {}", durum, govde));
-            }
-            Err(e) => {
-                return hata(StatusCode::BAD_GATEWAY, &format!("Yukarı akış hatası: {}", e));
+        } else {
+            match st.yukari.gonder(&hedef, &raw_val, alt_model.as_deref()).await {
+                Ok(yanit) => return (StatusCode::OK, Json(yanit)).into_response(),
+                Err(e) => return yukari_hatasini_don(e),
             }
         }
     }
@@ -889,6 +878,58 @@ fn hata(kod: StatusCode, mesaj: &str) -> Response {
         Json(serde_json::json!({ "error": { "message": mesaj } })),
     )
         .into_response()
+}
+
+fn yukari_hatasini_don(err: kervan_yukari::YukariHatasi) -> Response {
+    match err {
+        kervan_yukari::YukariHatasi::AnahtarYok(env_ad) => {
+            hata(
+                StatusCode::SERVICE_UNAVAILABLE,
+                &format!("Sağlayıcı API anahtarı bulunamadı: Ortam değişkeni '{}' tanımlı değil", env_ad),
+            )
+        }
+        kervan_yukari::YukariHatasi::Desteklenmiyor(alan) => {
+            hata(
+                StatusCode::NOT_IMPLEMENTED,
+                &format!("desteklenmiyor: {}", alan),
+            )
+        }
+        kervan_yukari::YukariHatasi::DevreAcik { ad, kalan_sure_ms } => {
+            hata(
+                StatusCode::SERVICE_UNAVAILABLE,
+                &format!("Devre kesici açık: {} ({}ms sonra tekrar denenecek)", ad, kalan_sure_ms),
+            )
+        }
+        kervan_yukari::YukariHatasi::Sogumada { ad, retry_after_saniye } => {
+            let mut resp = hata(
+                StatusCode::TOO_MANY_REQUESTS,
+                &format!("Sağlayıcı soğumada: {} (Retry-After: {}s)", ad, retry_after_saniye),
+            );
+            if let Ok(val) = axum::http::HeaderValue::from_str(&retry_after_saniye.to_string()) {
+                resp.headers_mut().insert(axum::http::header::RETRY_AFTER, val);
+            }
+            resp
+        }
+        kervan_yukari::YukariHatasi::HttpHatasi(429, govde, retry_after) => {
+            let mut resp = hata(StatusCode::TOO_MANY_REQUESTS, &format!("Yukarı akış 429 hatası: {}", govde));
+            if let Some(sn) = retry_after {
+                if let Ok(val) = axum::http::HeaderValue::from_str(&sn.to_string()) {
+                    resp.headers_mut().insert(axum::http::header::RETRY_AFTER, val);
+                }
+            }
+            resp
+        }
+        kervan_yukari::YukariHatasi::HttpHatasi(durum, govde, _) => {
+            let status = StatusCode::from_u16(durum).unwrap_or(StatusCode::BAD_GATEWAY);
+            hata(status, &format!("Yukarı akış HTTP hatası ({}): {}", durum, govde))
+        }
+        kervan_yukari::YukariHatasi::AgHatasi(m) => {
+            hata(StatusCode::BAD_GATEWAY, &format!("Yukarı akış ağ bağlantı hatası: {}", m))
+        }
+        kervan_yukari::YukariHatasi::JsonHatasi(m) => {
+            hata(StatusCode::BAD_GATEWAY, &format!("Yukarı akış JSON hatası: {}", m))
+        }
+    }
 }
 
 /// OpenAI uyumlu SSE akisi.

@@ -114,9 +114,11 @@ pub fn temizle_hata(govde: &str, gizli_anahtar: &str) -> String {
     }
 }
 
+pub mod akis;
+
 #[derive(Clone)]
 pub struct Yukari {
-    ajan: ureq::Agent,
+    pub(crate) ajan: ureq::Agent,
     pub direnc: Arc<Mutex<kervan_direnc::DirencYoneticisi>>,
 }
 
@@ -210,6 +212,16 @@ impl Yukari {
         }
 
         sonuc
+    }
+
+    /// OpenAI-biçimli istemci gövdesini yukarı akışa akışlı (SSE) olarak iletir ve parçaları döner.
+    pub async fn gonder_akis(
+        &self,
+        hedef: &Hedef,
+        istemci_govdesi: &Value,
+        istenen_model: Option<&str>,
+    ) -> Result<tokio::sync::mpsc::Receiver<Result<String, YukariHatasi>>, YukariHatasi> {
+        akis::gonder_akis(self, hedef, istemci_govdesi, istenen_model).await
     }
 
     async fn gonder_openai(

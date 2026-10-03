@@ -1,0 +1,35 @@
+{
+  "faz": "P8",
+  "maddeler": [
+    {
+      "id": "P8-A1",
+      "metin": "Gecikmeli sahte sunucuyla ilk parça yukarı akış sonundan önce gelir; nonce parçalarının sırası korunur; [DONE] ile biter",
+      "kanit": [
+        "test_p8_gercek_sse_zamanlama_ve_parca_sirasi"
+      ]
+    },
+    {
+      "id": "P8-A2",
+      "metin": "Claude ve Gemini akış SSE çevirisi OpenAI chunk biçimine dönüştürülür ve parite korunur",
+      "kanit": [
+        "test_p8_claude_sse_cevirisi",
+        "test_p8_gemini_sse_cevirisi"
+      ]
+    },
+    {
+      "id": "P8-A3",
+      "metin": "OpenAI hedeflerde araç çağrısı (tools / tool_calls) akışsız ve akışlı kayıpsız iletilir",
+      "kanit": [
+        "test_p8_openai_arac_cagrisi_akissiz",
+        "test_p8_openai_arac_cagrisi_akisli"
+      ]
+    },
+    {
+      "id": "P8-A4",
+      "metin": "Claude ve Gemini hedeflerde stream=true iken tools gelirse yukarı akışa istek gitmeden açık hata (501) döner",
+      "kanit": [
+        "test_p8_claude_akista_arac_acik_hata"
+      ]
+    }
+  ]
+}

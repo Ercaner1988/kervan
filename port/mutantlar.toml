@@ -35,3 +35,11 @@ bul = "d.hata_kaydet(&hedef.ad, durum, retry_after);"
 yerine = "// d.hata_kaydet(&hedef.ad, durum, retry_after);"
 oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-yukari', '--test', 'p7_dayaniklilik_test', '--', 'test_p7_ardisik_5xx_kesiciyi_acar'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]
 
+[[mutant]]
+ad = "sse-claude-arac-desteklenmiyor-denetimini-atla"
+dosya = "crates/yukari/src/akis.rs"
+bul = "return Err(YukariHatasi::Desteklenmiyor(\"tools\".to_string()));"
+yerine = "// return Err(YukariHatasi::Desteklenmiyor(\"tools\".to_string()));"
+oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-sunucu', '--test', 'p8_sse_ve_tool_test', '--', 'test_p8_claude_akista_arac_acik_hata'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]
+
+

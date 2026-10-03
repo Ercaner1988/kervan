@@ -3,30 +3,6 @@ tests::bayrak_degeri_hesap_adi_sanilmaz: test
 tests::hesap_bayraklardan_once_de_sonra_da_bulunur: test
 
 2 tests, 0 benchmarks
-istek
-├─ insan_kapisi
-├─ istek_ayristir
-├─ iz
-├─ model_secimi
-├─ son_mesaj
-├─ tohum
-╰─ tohum_kirpilan
-
-kota
-├─ defter_ayristir
-├─ kota_sinyali_eslesen
-├─ kota_sinyali_eslesmeyen
-├─ kota_sinyali_uzun_yanit
-├─ olay_yaz
-╰─ tahmin_et_akis
-
-yapilandirma
-├─ config_ayristir
-├─ defter_ezmeli
-├─ defter_varsayilan
-├─ defterden_bul
-╰─ profil
-
 audio_video::tests::test_kavram_sozlugu_filtresi: test
 audio_video::tests::test_video_gorevi_yasam_dongusu: test
 session_pool::tests::test_hata_sonrasi_soguma_cooldown: test
@@ -164,6 +140,14 @@ p7_ardisik_5xx_kesici_503_ve_sayac_sabit: test
 p7_hata_temizligi_ve_anahtar_sizdirmazligi: test
 
 3 tests, 0 benchmarks
+test_p8_claude_akista_arac_acik_hata: test
+test_p8_claude_sse_cevirisi: test
+test_p8_gemini_sse_cevirisi: test
+test_p8_gercek_sse_zamanlama_ve_parca_sirasi: test
+test_p8_openai_arac_cagrisi_akisli: test
+test_p8_openai_arac_cagrisi_akissiz: test
+
+6 tests, 0 benchmarks
 browser::tests::arti_isareti_kodlanir: test
 browser::tests::bos_balon_bitis_sayilmaz: test
 browser::tests::bosluk_farki_yazimi_reddettirmez: test
@@ -209,3 +193,15 @@ test_p7_ardisik_5xx_kesiciyi_acar: test
 test_p7_hata_temizligi_ve_anahtar_sizdirmazligi: test
 
 4 tests, 0 benchmarks
+0 tests, 0 benchmarks
+0 tests, 0 benchmarks
+0 tests, 0 benchmarks
+0 tests, 0 benchmarks
+0 tests, 0 benchmarks
+0 tests, 0 benchmarks
+0 tests, 0 benchmarks
+0 tests, 0 benchmarks
+0 tests, 0 benchmarks
+0 tests, 0 benchmarks
+0 tests, 0 benchmarks
+0 tests, 0 benchmarks
