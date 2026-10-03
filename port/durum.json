@@ -1,0 +1,24 @@
+{
+  "uretici_ozeti": "araclar/kapilar/hepsi.ts",
+  "uretim_zamani": "2026-10-03T11:33:43.618Z",
+  "faz": "P1",
+  "kapilar": [
+    {
+      "ad": "makine-sakin",
+      "komut": "bun araclar/kapilar/makine-sakin.ts --min-ram-gb 0.1 --max-cpu-pct 100 ",
+      "cikis": 0,
+      "sure_ms": 1313,
+      "log": "port\\kayit\\P1\\makine-sakin.log",
+      "zaman": "2026-10-03T11:33:06.360Z"
+    },
+    {
+      "ad": "kabul-haritasi",
+      "komut": "bun araclar/kapilar/kabul-haritasi.ts P1 ",
+      "cikis": 0,
+      "sure_ms": 37256,
+      "log": "port\\kayit\\P1\\kabul-haritasi.log",
+      "zaman": "2026-10-03T11:33:43.617Z"
+    }
+  ],
+  "tum_kapilar_yesil_mi": true
+}

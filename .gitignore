@@ -18,3 +18,7 @@
 
 # Calisma zamani gunlukleri
 *.log
+
+# Gecici worktree dizinleri
+/port/kayit/_gecici/
+
