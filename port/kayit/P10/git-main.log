@@ -1,0 +1,5 @@
+6d3a135 geçiş
+340b34a egui/eframe 0.30 → 0.36: ortak tema crate'i için sürüm birliği
+11287ca G-21: kervan-akis modüllerini sunucuya ve arayüze bağla
+a14535a G-06: altin-kapi kapısına bağlan, işlevsel bölme (7 sandık)
+70183dc kervan: eklenti, GUI, MCP sunucusu, yonlendirici ve oturum havuzu modulleri

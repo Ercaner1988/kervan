@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "envanter": "bun run envanter.ts",
+    "defter-envanter": "bun run envanter-defter.ts",
     "defter-kontrol": "bun run defter-kontrol.ts",
     "parite:kayit": "bun run parite/kayit.ts",
     "parite:kos": "bun run parite/kos.ts"

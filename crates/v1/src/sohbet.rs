@@ -5,7 +5,7 @@ use axum::{
     http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
 };
-use kervan_ceviri::{OpenAiIstek, OpenAiKullanim, OpenAiMesaj, OpenAiSecenek, OpenAiYanit};
+use kervan_ceviri::{OpenAiIstek, OpenAiKullanim, OpenAiMesajCikti, OpenAiSecenek, OpenAiYanit};
 use kervan_yonlendirme::{AnlamsalOnbellek, HizSiniriKarari};
 use serde_json::json;
 use std::sync::Arc;
@@ -51,9 +51,9 @@ pub async fn sohbet_tamamlama(
     let ilk_istem = istek
         .messages
         .last()
-        .and_then(|m| m.content.clone())
+        .and_then(|m| m.duz_metin())
         .unwrap_or_default();
-    let sicaklik = istek.temperature.unwrap_or(0.7);
+    let sicaklik = istek.temperature.unwrap_or(0.7) as f32;
     let ozet = AnlamsalOnbellek::ozetle(&istek.model, &ilk_istem, sicaklik);
 
     if !istek.stream
@@ -66,12 +66,9 @@ pub async fn sohbet_tamamlama(
             model: istek.model,
             choices: vec![OpenAiSecenek {
                 index: 0,
-                message: OpenAiMesaj {
+                message: OpenAiMesajCikti {
                     role: "assistant".to_string(),
                     content: Some(onbellek_metni),
-                    name: None,
-                    tool_calls: None,
-                    tool_call_id: None,
                 },
                 finish_reason: Some("stop".to_string()),
             }],
@@ -113,8 +110,7 @@ pub async fn sohbet_tamamlama(
             Err(e) => e.into_inner(),
         };
         if soguma.sogumada_mi(saglayici) {
-            let bekleme_ms = soguma.kalan_sure_ms(saglayici);
-            let bekleme_sn = (bekleme_ms / 1000).max(1);
+            let bekleme_sn = soguma.kalan_sure_saniye(saglayici).max(1);
             let hata = json!({
                 "error": {
                     "message": format!("Sağlayıcı soğuma durumunda, {} sn bekleyin.", bekleme_sn),
@@ -190,12 +186,9 @@ pub async fn sohbet_tamamlama(
             model: istek.model,
             choices: vec![OpenAiSecenek {
                 index: 0,
-                message: OpenAiMesaj {
+                message: OpenAiMesajCikti {
                     role: "assistant".to_string(),
                     content: Some(uretilen_metin),
-                    name: None,
-                    tool_calls: None,
-                    tool_call_id: None,
                 },
                 finish_reason: Some("stop".to_string()),
             }],

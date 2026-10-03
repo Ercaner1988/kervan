@@ -40,6 +40,23 @@ pub struct AppState {
     pub compressor: crate::compressor::Compressor,
     pub router: crate::router::SmartRouter,
     pub sayaclar: Sayaclar,
+    pub rest_hedefleri: std::collections::HashMap<String, kervan_yukari::Hedef>,
+    pub yukari: kervan_yukari::Yukari,
+}
+
+impl AppState {
+    pub fn rest_hedefi_coz(
+        &self,
+        model_adi: &str,
+    ) -> Option<(kervan_yukari::Hedef, Option<String>)> {
+        let sade = model_adi.strip_prefix("kervan/").unwrap_or(model_adi);
+        let mut parcalar = sade.splitn(2, '/');
+        let saglayici_ad = parcalar.next()?;
+        let alt_model = parcalar.next().map(|s| s.to_string());
+
+        let hedef = self.rest_hedefleri.get(saglayici_ad)?;
+        Some((hedef.clone(), alt_model))
+    }
 }
 
 /// Durum çubuğunun okuduğu akış sayaçları (süreç ömrü boyunca).
@@ -423,7 +440,7 @@ struct ModelInfo {
 // ─── Uclar ───────────────────────────────────────────────────────────────────
 
 async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
-    // Hem havuzdaki hesaplar hem de canli bagli eklenti sekmeleri listelenir.
+    // Hem havuzdaki hesaplar hem de canli bagli eklenti sekmeleri ve REST sağlayıcıları listelenir.
     let mut ad_seti: std::collections::BTreeSet<String> = st
         .pool
         .slots
@@ -432,6 +449,9 @@ async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
         .collect();
     for ext_s in st.eklenti_hub.bagli_sekmeler().await {
         ad_seti.insert(ext_s);
+    }
+    for rest_ad in st.rest_hedefleri.keys() {
+        ad_seti.insert(rest_ad.clone());
     }
     let mut adlar: Vec<String> = ad_seti.into_iter().collect();
     adlar.sort();
@@ -449,13 +469,73 @@ async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
     })
 }
 
-async fn chat(State(st): State<Arc<AppState>>, Json(req): Json<ChatRequest>) -> Response {
+async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::Value>) -> Response {
+    let req: ChatRequest = match serde_json::from_value(raw_val.clone()) {
+        Ok(r) => r,
+        Err(e) => {
+            return hata(
+                StatusCode::BAD_REQUEST,
+                &format!("Geçersiz ChatRequest gövdesi: {}", e),
+            );
+        }
+    };
+
+    let model_adi = req.model.trim();
+
+    // 1. REST yukarı akış kancası: model [rest.*] yapılandırmasına çözülürse yukari'ya devret
+    if let Some((hedef, alt_model)) = st.rest_hedefi_coz(model_adi) {
+        if req.stream {
+            match st
+                .yukari
+                .gonder_akis(&hedef, &raw_val, alt_model.as_deref())
+                .await
+            {
+                Ok(mut rx) => {
+                    let stream = futures_util::stream::poll_fn(move |cx| {
+                        rx.poll_recv(cx).map(|opt| {
+                            opt.map(|res| {
+                                res.map(axum::body::Bytes::from).map_err(|e| {
+                                    std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
+                                })
+                            })
+                        })
+                    });
+                    let body = axum::body::Body::from_stream(stream);
+                    let mut resp = Response::new(body);
+                    *resp.status_mut() = StatusCode::OK;
+                    resp.headers_mut().insert(
+                        axum::http::header::CONTENT_TYPE,
+                        axum::http::HeaderValue::from_static("text/event-stream"),
+                    );
+                    resp.headers_mut().insert(
+                        axum::http::header::CACHE_CONTROL,
+                        axum::http::HeaderValue::from_static("no-cache"),
+                    );
+                    resp.headers_mut().insert(
+                        axum::http::header::CONNECTION,
+                        axum::http::HeaderValue::from_static("keep-alive"),
+                    );
+                    return resp;
+                }
+                Err(e) => return yukari_hatasini_don(e),
+            }
+        } else {
+            match st
+                .yukari
+                .gonder(&hedef, &raw_val, alt_model.as_deref())
+                .await
+            {
+                Ok(yanit) => return (StatusCode::OK, Json(yanit)).into_response(),
+                Err(e) => return yukari_hatasini_don(e),
+            }
+        }
+    }
+
     let Some(istem) = son_kullanici_mesaji(&req.messages) else {
         return hata(StatusCode::BAD_REQUEST, "messages icinde user rolu yok");
     };
 
     // Model kimliginden saglayiciyi sec. 'auto' verilirse SmartRouter en uygununu belirler.
-    let model_adi = req.model.trim();
     let saglayici = if model_adi.is_empty() || model_adi == "auto" {
         let mut adaylar = st.eklenti_hub.bagli_sekmeler().await;
         if adaylar.is_empty() {
@@ -817,6 +897,74 @@ fn hata(kod: StatusCode, mesaj: &str) -> Response {
         .into_response()
 }
 
+fn yukari_hatasini_don(err: kervan_yukari::YukariHatasi) -> Response {
+    match err {
+        kervan_yukari::YukariHatasi::AnahtarYok(env_ad) => hata(
+            StatusCode::SERVICE_UNAVAILABLE,
+            &format!(
+                "Sağlayıcı API anahtarı bulunamadı: Ortam değişkeni '{}' tanımlı değil",
+                env_ad
+            ),
+        ),
+        kervan_yukari::YukariHatasi::Desteklenmiyor(alan) => hata(
+            StatusCode::NOT_IMPLEMENTED,
+            &format!("desteklenmiyor: {}", alan),
+        ),
+        kervan_yukari::YukariHatasi::DevreAcik { ad, kalan_sure_ms } => hata(
+            StatusCode::SERVICE_UNAVAILABLE,
+            &format!(
+                "Devre kesici açık: {} ({}ms sonra tekrar denenecek)",
+                ad, kalan_sure_ms
+            ),
+        ),
+        kervan_yukari::YukariHatasi::Sogumada {
+            ad,
+            retry_after_saniye,
+        } => {
+            let mut resp = hata(
+                StatusCode::TOO_MANY_REQUESTS,
+                &format!(
+                    "Sağlayıcı soğumada: {} (Retry-After: {}s)",
+                    ad, retry_after_saniye
+                ),
+            );
+            if let Ok(val) = axum::http::HeaderValue::from_str(&retry_after_saniye.to_string()) {
+                resp.headers_mut()
+                    .insert(axum::http::header::RETRY_AFTER, val);
+            }
+            resp
+        }
+        kervan_yukari::YukariHatasi::HttpHatasi(429, govde, retry_after) => {
+            let mut resp = hata(
+                StatusCode::TOO_MANY_REQUESTS,
+                &format!("Yukarı akış 429 hatası: {}", govde),
+            );
+            if let Some(sn) = retry_after {
+                if let Ok(val) = axum::http::HeaderValue::from_str(&sn.to_string()) {
+                    resp.headers_mut()
+                        .insert(axum::http::header::RETRY_AFTER, val);
+                }
+            }
+            resp
+        }
+        kervan_yukari::YukariHatasi::HttpHatasi(durum, govde, _) => {
+            let status = StatusCode::from_u16(durum).unwrap_or(StatusCode::BAD_GATEWAY);
+            hata(
+                status,
+                &format!("Yukarı akış HTTP hatası ({}): {}", durum, govde),
+            )
+        }
+        kervan_yukari::YukariHatasi::AgHatasi(m) => hata(
+            StatusCode::BAD_GATEWAY,
+            &format!("Yukarı akış ağ bağlantı hatası: {}", m),
+        ),
+        kervan_yukari::YukariHatasi::JsonHatasi(m) => hata(
+            StatusCode::BAD_GATEWAY,
+            &format!("Yukarı akış JSON hatası: {}", m),
+        ),
+    }
+}
+
 /// OpenAI uyumlu SSE akisi.
 ///
 /// ponytail: tarayici bize metni parca parca degil, tamamlandiginda veriyor
@@ -1166,5 +1314,74 @@ mod tests {
         let b = vec![m("user", "bambaska bir soru")];
         assert_ne!(konusma_izi(&a), konusma_izi(&b));
         assert_eq!(konusma_izi(&[]), None);
+    }
+
+    #[tokio::test]
+    async fn rest_hedefi_cozumleme_ve_yonlendirme() {
+        let ayar = kervan_tarayici::config::RestAyar {
+            bicim: "openai".into(),
+            taban_url: "https://api.deepseek.com".into(),
+            anahtar_env: "DEEPSEEK_API_KEY".into(),
+            model: "deepseek-chat".into(),
+            yol: None,
+        };
+        let mut rest_hedefleri = std::collections::HashMap::new();
+        rest_hedefleri.insert(
+            "deepseek".into(),
+            kervan_yukari::Hedef::rest_ayardan("deepseek", &ayar, Duration::from_secs(5)),
+        );
+
+        let temp_dir = std::env::temp_dir().join(format!("kervan_test_{}", rand::random::<u64>()));
+        let _ = std::fs::create_dir_all(&temp_dir);
+        let defter_yolu = temp_dir.join("defter.log");
+        let defter = Defter::ac(defter_yolu).unwrap();
+
+        let ortam = crate::pool::Ortam {
+            profiles_root: temp_dir.clone(),
+            browser: crate::browser::BrowserBinary(std::path::PathBuf::from(".")),
+            geckodriver: std::path::PathBuf::from("."),
+            headless: true,
+        };
+
+        let pool = Pool::new(
+            vec![],
+            kervan_tarayici::config::Pacing::default(),
+            &Default::default(),
+            &Default::default(),
+            ortam,
+        )
+        .unwrap();
+
+        let state = Arc::new(AppState {
+            pool,
+            defter,
+            kota_ayar: Default::default(),
+            saglayicilar: Default::default(),
+            varsayilan_saglayici: "gemini".into(),
+            timeout: Duration::from_secs(5),
+            eklenti_hub: crate::eklenti::EklentiHub::new(),
+            compressor: crate::compressor::Compressor::new(),
+            router: crate::router::SmartRouter::new(crate::router::RoutingStrategy::Lkgp),
+            sayaclar: Default::default(),
+            rest_hedefleri,
+            yukari: kervan_yukari::Yukari::new(),
+        });
+
+        // 1. REST model çözümlenir
+        let (hedef, alt) = state.rest_hedefi_coz("kervan/deepseek").unwrap();
+        assert_eq!(hedef.ad, "deepseek");
+        assert_eq!(alt, None);
+
+        // 2. Alt model çözümlenir
+        let (hedef2, alt2) = state
+            .rest_hedefi_coz("kervan/deepseek/deepseek-reasoner")
+            .unwrap();
+        assert_eq!(hedef2.ad, "deepseek");
+        assert_eq!(alt2, Some("deepseek-reasoner".into()));
+
+        // 3. REST olmayan model çözülmez (None)
+        assert!(state.rest_hedefi_coz("kervan/gemini").is_none());
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }

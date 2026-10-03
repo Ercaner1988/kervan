@@ -1,0 +1,17 @@
+{
+  "kaynak_sha": "dbe703a",
+  "tarih": "2026-10-03",
+  "route_sayisi": 730,
+  "pano_sayfasi_sayisi": 122,
+  "toplam_sayfa_sayisi": 147,
+  "db_modul_sayisi": 193,
+  "goc_dosyasi_sayisi": 252,
+  "test_dosyasi_sayisi": 6543,
+  "fark_aciklamalari": {
+    "route_sayisi": "§1.1'deki 721 sayısı ilk taslaktaki route.ts sayımıdır; tam anlık görüntü taramasında route.js dahil 730 rota bulunmaktadır.",
+    "pano_sayfasi_sayisi": "§1.1'deki 122 pano sayfası ile tam örtüşmektedir (122).",
+    "test_dosyasi_sayisi": "§1.1'deki \"6.500'ü aşkın test dosyası\" ifadesi ile tam örtüşmektedir (6543 dosya).",
+    "db_modul_sayisi": "src/lib/db altında 193 veri tabanı modülü bulunmaktadır.",
+    "goc_dosyasi_sayisi": "Tüm dizin genelinde göç ve şema sql/ts tanımları 252 adettir."
+  }
+}

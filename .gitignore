@@ -19,9 +19,9 @@
 # Calisma zamani gunlukleri
 *.log
 
-# Gecici worktree alani
+# Gecici worktree dizinleri
+/port/kayit/_gecici/
+
+# Eski aktarim calisma alani ve Bun bagimliliklari
 /.w
-
-# Node/Bun bagimliliklari
 node_modules/
-

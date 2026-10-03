@@ -1,4 +1,4 @@
-# ENVANTER.md — Faz 0 Envanter ve Kaynak Döküm Raporu
+# ENVANTER.md — Faz 0 Envanter ve Kaynak Döküm Raporu (Tarihsel)
 
 **Tarih:** 2026-10-01  
 **Kaynak:** OmniRoute `upstream/release/v3.8.52` (Commit: `dbe703a0000b303cd7b1cf5879cb8740e5bfce71`)  
@@ -9,7 +9,7 @@
 
 ## 1. Dosya Dökümü Özeti
 
-Makine tarafından taranan (`araclar/envanter.ts`) ve `port/defter/dosyalar.jsonl` dosyasına yazılan kayıt dökümü:
+Bu rapordaki tarihsel kayıt dökümü `araclar/envanter-defter.ts` ile taranıp `port/defter/dosyalar.jsonl` dosyasına yazılmıştır. Güncel port fazlarının özeti için `port/DURUM.md` ve `port/durum.json` dosyalarına bakın.
 
 | Alan / Kategori | Dosya Sayısı | Açıklama / Hedef Yaklaşım |
 |---|:---:|---|

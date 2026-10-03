@@ -4,16 +4,37 @@
 
 use serde::{Deserialize, Serialize};
 
-// ── 1. OpenAI Modelleri ───────────────────────────────────────────────
+// ── 1. Ortak Hata Tipi ────────────────────────────────────────────────
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CeviriHatasi {
+    Desteklenmiyor(String),
+    GecersizIstek(String),
+    AyrirmaHatasi(String),
+}
+
+impl std::fmt::Display for CeviriHatasi {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Desteklenmiyor(alan) => write!(f, "desteklenmiyor: {}", alan),
+            Self::GecersizIstek(mesaj) => write!(f, "geçersiz istek: {}", mesaj),
+            Self::AyrirmaHatasi(mesaj) => write!(f, "ayrıştırma hatası: {}", mesaj),
+        }
+    }
+}
+
+impl std::error::Error for CeviriHatasi {}
+
+// ── 2. OpenAI Modelleri ───────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct OpenAiIstek {
     pub model: String,
     pub messages: Vec<OpenAiMesaj>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub temperature: Option<f32>,
+    pub temperature: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub top_p: Option<f32>,
+    pub top_p: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<u32>,
     #[serde(default)]
@@ -26,13 +47,22 @@ pub struct OpenAiIstek {
 pub struct OpenAiMesaj {
     pub role: String,
     #[serde(default)]
-    pub content: Option<String>,
+    pub content: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<OpenAiAracCagrisi>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_call_id: Option<String>,
+}
+
+impl OpenAiMesaj {
+    pub fn duz_metin(&self) -> Option<String> {
+        match &self.content {
+            Some(serde_json::Value::String(s)) => Some(s.clone()),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -55,14 +85,21 @@ pub struct OpenAiYanit {
     pub created: u64,
     pub model: String,
     pub choices: Vec<OpenAiSecenek>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<OpenAiKullanim>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct OpenAiSecenek {
     pub index: u32,
-    pub message: OpenAiMesaj,
+    pub message: OpenAiMesajCikti,
     pub finish_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct OpenAiMesajCikti {
+    pub role: String,
+    pub content: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -96,21 +133,34 @@ pub struct OpenAiDelta {
     pub content: Option<String>,
 }
 
-// ── 2. Anthropic Claude Modelleri ─────────────────────────────────────
+// ── 3. Anthropic Claude Modelleri ─────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ClaudeCacheControl {
+    pub r#type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ttl: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ClaudeSistemBloku {
+    pub r#type: String,
+    pub text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_control: Option<ClaudeCacheControl>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ClaudeIstek {
     pub model: String,
-    pub messages: Vec<ClaudeMesaj>,
     pub max_tokens: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub system: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub temperature: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub top_p: Option<f32>,
     #[serde(default)]
     pub stream: bool,
+    pub messages: Vec<ClaudeMesaj>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system: Option<Vec<ClaudeSistemBloku>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -120,10 +170,11 @@ pub struct ClaudeMesaj {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "type")]
-pub enum ClaudeIcerikBloku {
-    #[serde(rename = "text")]
-    Metin { text: String },
+pub struct ClaudeIcerikBloku {
+    pub r#type: String,
+    pub text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_control: Option<ClaudeCacheControl>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -131,9 +182,12 @@ pub struct ClaudeYanit {
     pub id: String,
     pub r#type: String,
     pub role: String,
+    #[serde(default)]
     pub content: Vec<ClaudeIcerikBloku>,
     pub model: String,
+    #[serde(default)]
     pub stop_reason: Option<String>,
+    #[serde(default)]
     pub usage: Option<ClaudeKullanim>,
 }
 
@@ -157,6 +211,8 @@ pub enum ClaudeOlay {
     },
     #[serde(rename = "message_stop")]
     MesajBitti,
+    #[serde(other)]
+    Diger,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -164,6 +220,8 @@ pub enum ClaudeOlay {
 pub enum ClaudeDeltaIcerik {
     #[serde(rename = "text_delta")]
     Metin { text: String },
+    #[serde(other)]
+    Diger,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -171,39 +229,66 @@ pub struct ClaudeDurdurmaDeltasi {
     pub stop_reason: Option<String>,
 }
 
-// ── 3. Google Gemini Modelleri ────────────────────────────────────────
+// ── 4. Google Gemini Modelleri ────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct GeminiIstek {
+    pub model: String,
     pub contents: Vec<GeminiIcerik>,
+    pub generation_config: GeminiGenerationConfig,
+    pub safety_settings: Vec<GeminiSafetySetting>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_instruction: Option<GeminiIcerik>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub generation_config: Option<GeminiAyar>,
+    pub system_instruction: Option<GeminiSystemInstruction>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct GeminiAyar {
+#[serde(rename_all = "camelCase")]
+pub struct GeminiGenerationConfig {
+    pub max_output_tokens: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub temperature: Option<f32>,
+    pub temperature: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub top_p: Option<f32>,
+    pub top_p: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_output_tokens: Option<u32>,
+    pub thinking_config: Option<GeminiThinkingConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct GeminiIcerik {
+#[serde(rename_all = "camelCase")]
+pub struct GeminiThinkingConfig {
+    pub thinking_budget: u32,
+    pub include_thoughts: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GeminiSafetySetting {
+    pub category: String,
+    pub threshold: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GeminiSystemInstruction {
     pub role: String,
     pub parts: Vec<GeminiParca>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GeminiIcerik {
+    #[serde(default)]
+    pub role: String,
+    #[serde(default)]
+    pub parts: Vec<GeminiParca>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GeminiParca {
+    #[serde(default)]
     pub text: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct GeminiYanit {
     pub candidates: Option<Vec<GeminiAday>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -211,12 +296,14 @@ pub struct GeminiYanit {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct GeminiAday {
     pub content: Option<GeminiIcerik>,
     pub finish_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct GeminiKullanim {
     pub prompt_token_count: Option<u32>,
     pub candidates_token_count: Option<u32>,

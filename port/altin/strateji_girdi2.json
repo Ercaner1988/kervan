@@ -1,0 +1,158 @@
+{
+  "kaynak_sha": "dbe703a",
+  "kaynak_yol": "open-sse/services/combo/applyStrategyOrdering.ts",
+  "uretici_ozeti": "sha256:7be7201a4114de065b4bb683a45e2043404618f87722f8cab6eb9582b28ddbcd",
+  "girdi_id": "strateji_girdi2",
+  "tohum": 42,
+  "adaylar": [
+    {
+      "ad": "deepseek/deepseek-chat",
+      "execution_key": "deepseek:v3:accA",
+      "connection_id": "accA",
+      "weight": 15,
+      "cost": 0.2,
+      "context_size": 64000,
+      "latency_ms": 300,
+      "error_count": 2,
+      "request_count": 30,
+      "free_quota": 20000,
+      "reset_seconds": 120,
+      "warm_cache": false
+    },
+    {
+      "ad": "qwen/qwen-2.5-max",
+      "execution_key": "qwen:max:accB",
+      "connection_id": "accB",
+      "weight": 30,
+      "cost": 1.5,
+      "context_size": 32000,
+      "latency_ms": 120,
+      "error_count": 0,
+      "request_count": 20,
+      "free_quota": 80000,
+      "reset_seconds": 7200,
+      "warm_cache": true
+    },
+    {
+      "ad": "mistral/mistral-large",
+      "execution_key": "mistral:large:accC",
+      "connection_id": null,
+      "weight": 5,
+      "cost": 2,
+      "context_size": 128000,
+      "latency_ms": 180,
+      "error_count": 0,
+      "request_count": 5,
+      "free_quota": 10000,
+      "reset_seconds": 1800,
+      "warm_cache": false
+    }
+  ],
+  "sonuclar": {
+    "priority": [
+      "deepseek/deepseek-chat",
+      "qwen/qwen-2.5-max",
+      "mistral/mistral-large"
+    ],
+    "weighted": [
+      "qwen/qwen-2.5-max",
+      "deepseek/deepseek-chat",
+      "mistral/mistral-large"
+    ],
+    "round-robin": [
+      "deepseek/deepseek-chat",
+      "qwen/qwen-2.5-max",
+      "mistral/mistral-large"
+    ],
+    "context-relay": [
+      "mistral/mistral-large",
+      "deepseek/deepseek-chat",
+      "qwen/qwen-2.5-max"
+    ],
+    "fill-first": [
+      "deepseek/deepseek-chat",
+      "qwen/qwen-2.5-max",
+      "mistral/mistral-large"
+    ],
+    "p2c": [
+      "mistral/mistral-large",
+      "deepseek/deepseek-chat",
+      "qwen/qwen-2.5-max"
+    ],
+    "random": [
+      "qwen/qwen-2.5-max",
+      "deepseek/deepseek-chat",
+      "mistral/mistral-large"
+    ],
+    "least-used": [
+      "mistral/mistral-large",
+      "qwen/qwen-2.5-max",
+      "deepseek/deepseek-chat"
+    ],
+    "cost-optimized": [
+      "deepseek/deepseek-chat",
+      "qwen/qwen-2.5-max",
+      "mistral/mistral-large"
+    ],
+    "reset-aware": [
+      "deepseek/deepseek-chat",
+      "qwen/qwen-2.5-max",
+      "mistral/mistral-large"
+    ],
+    "reset-window": [
+      "deepseek/deepseek-chat",
+      "mistral/mistral-large",
+      "qwen/qwen-2.5-max"
+    ],
+    "headroom": [
+      "qwen/qwen-2.5-max",
+      "deepseek/deepseek-chat",
+      "mistral/mistral-large"
+    ],
+    "quota-weighted": [
+      "qwen/qwen-2.5-max",
+      "deepseek/deepseek-chat",
+      "mistral/mistral-large"
+    ],
+    "strict-random": [
+      "qwen/qwen-2.5-max",
+      "deepseek/deepseek-chat",
+      "mistral/mistral-large"
+    ],
+    "auto": [
+      "qwen/qwen-2.5-max",
+      "mistral/mistral-large",
+      "deepseek/deepseek-chat"
+    ],
+    "lkgp": [
+      "deepseek/deepseek-chat",
+      "qwen/qwen-2.5-max",
+      "mistral/mistral-large"
+    ],
+    "context-optimized": [
+      "mistral/mistral-large",
+      "deepseek/deepseek-chat",
+      "qwen/qwen-2.5-max"
+    ],
+    "cache-optimized": [
+      "qwen/qwen-2.5-max",
+      "deepseek/deepseek-chat",
+      "mistral/mistral-large"
+    ],
+    "fusion": [
+      "deepseek/deepseek-chat",
+      "mistral/mistral-large",
+      "qwen/qwen-2.5-max"
+    ],
+    "pipeline": [
+      "qwen/qwen-2.5-max",
+      "deepseek/deepseek-chat",
+      "mistral/mistral-large"
+    ],
+    "quota-share": [
+      "qwen/qwen-2.5-max",
+      "deepseek/deepseek-chat",
+      "mistral/mistral-large"
+    ]
+  }
+}

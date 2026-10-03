@@ -14,14 +14,9 @@ pub struct KilitKaydi {
     pub gerekce: String,
 }
 
+#[derive(Debug, Default)]
 pub struct ModelKilidi {
     kilitler: HashMap<String, KilitKaydi>,
-}
-
-impl Default for ModelKilidi {
-    fn default() -> Self {
-        Self::yeni()
-    }
 }
 
 impl ModelKilidi {
@@ -33,9 +28,14 @@ impl ModelKilidi {
 
     /// Bir modelin belirli bir anahtar (sağlayıcı::model) altında kilitli olup olmadığını denetler.
     pub fn kilitli_mi(&self, anahtar: &str) -> bool {
+        self.kilitli_mi_zamaniyla(anahtar, Instant::now())
+    }
+
+    /// Belirtilen zamana göre kilit durumunu denetler.
+    pub fn kilitli_mi_zamaniyla(&self, anahtar: &str, simdi: Instant) -> bool {
         if let Some(kayit) = self.kilitler.get(anahtar) {
             if let Some(bitis) = kayit.bitis_zamani {
-                Instant::now() < bitis
+                simdi < bitis
             } else {
                 true // Kalıcı kilit
             }
@@ -46,17 +46,29 @@ impl ModelKilidi {
 
     /// Modeli geçici süreyle kilitler.
     pub fn gecici_kilitle(&mut self, anahtar: &str, model: &str, sure: Duration, gerekce: &str) {
+        self.gecici_kilitle_zamaniyla(anahtar, model, sure, gerekce, Instant::now());
+    }
+
+    /// Belirtilen zamanla modeli geçici süreyle kilitler.
+    pub fn gecici_kilitle_zamaniyla(
+        &mut self,
+        anahtar: &str,
+        model: &str,
+        sure: Duration,
+        gerekce: &str,
+        simdi: Instant,
+    ) {
         self.kilitler.insert(
             anahtar.to_string(),
             KilitKaydi {
                 model: model.to_string(),
-                bitis_zamani: Some(Instant::now() + sure),
+                bitis_zamani: Some(simdi + sure),
                 gerekce: gerekce.to_string(),
             },
         );
     }
 
-    /// Modeli kalıcı olarak kilitler (yapılandırma yenilenene kadar rotadan çıkarır).
+    /// Modeli kalıcı olarak kilitler.
     pub fn kalici_kilitle(&mut self, anahtar: &str, model: &str, gerekce: &str) {
         self.kilitler.insert(
             anahtar.to_string(),

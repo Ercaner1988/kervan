@@ -1,0 +1,26 @@
+{
+  "faz": "P9",
+  "maddeler": [
+    {
+      "id": "P9-A1",
+      "metin": "Kervan'ın herkese açık strateji kümesi ROUTING_STRATEGY_VALUES ile küme eşittir (20); dahili quota-share ayrı işaretlidir ve kullanıcıya açılmaz.",
+      "kanit": [
+        "test_fr71_kume_sayilari_ve_dahili_ayrimi"
+      ]
+    },
+    {
+      "id": "P9-A2",
+      "metin": "21 stratejinin her biri için iki sabit girdi ve altın dosyayla Kervan sıralaması eşittir.",
+      "kanit": [
+        "test_fr72_altin_parite_girdi1_ve_girdi2"
+      ]
+    },
+    {
+      "id": "P9-A3",
+      "metin": "random/strict-random ve reset-aware/reset-window çiftleri için farklı çıktı veren girdi kanıtı.",
+      "kanit": [
+        "test_fr73_ikizler_fark_kaniti"
+      ]
+    }
+  ]
+}

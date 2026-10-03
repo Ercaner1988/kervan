@@ -1,0 +1,21 @@
+[package]
+name = "kervan-yukari"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Kervan REST yukarı akış istemcisi: ureq ile doğrudan HTTP çağrısı ve dayanıklılık"
+
+[dependencies]
+kervan-tarayici = { path = "../tarayici" }
+kervan-ceviri = { path = "../ceviri" }
+kervan-direnc = { path = "../direnc" }
+regex = "1.13"
+ureq = { version = "3.4.2", default-features = false, features = ["rustls", "gzip", "json"] }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+log = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }

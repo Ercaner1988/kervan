@@ -1,6 +1,6 @@
 //! Bağlantı ve Sağlayıcı Soğuma (Cooldown / Backoff) Takipçisi
 //!
-//! 429 Too Many Requests ve 5xx hatalarında üstel geri çekilme ve Retry-After yönetimi.
+//! 429 Too Many Requests ve aşırı yüklenme durumlarında üstel geri çekilme ve Retry-After yönetimi.
 //! OmniRoute providerCooldownTracker.ts mimarisine uygun saf Rust uygulaması.
 
 use std::collections::HashMap;
@@ -37,19 +37,29 @@ impl SogumaTakipcisi {
 
     /// Bir hedefin (sağlayıcı veya bağlantı ID'si) şu anda soğumada olup olmadığını denetler.
     pub fn sogumada_mi(&self, hedef: &str) -> bool {
+        self.sogumada_mi_zamaniyla(hedef, Instant::now())
+    }
+
+    /// Belirtilen zamana göre soğuma durumunu denetler.
+    pub fn sogumada_mi_zamaniyla(&self, hedef: &str, simdi: Instant) -> bool {
         if let Some(kayit) = self.kayitlar.get(hedef) {
-            Instant::now() < kayit.bitis_zamani
+            simdi < kayit.bitis_zamani
         } else {
             false
         }
     }
 
-    /// Kalan soğuma süresini milisaniye olarak döner. Soğumada değilse 0 döner.
-    pub fn kalan_sure_ms(&self, hedef: &str) -> u64 {
+    /// Kalan soğuma süresini saniye olarak döner. Soğumada değilse 0 döner.
+    pub fn kalan_sure_saniye(&self, hedef: &str) -> u64 {
+        self.kalan_sure_saniye_zamaniyla(hedef, Instant::now())
+    }
+
+    /// Belirtilen zamana göre kalan süreyi saniye olarak döner.
+    pub fn kalan_sure_saniye_zamaniyla(&self, hedef: &str, simdi: Instant) -> u64 {
         if let Some(kayit) = self.kayitlar.get(hedef) {
-            let simdi = Instant::now();
             if simdi < kayit.bitis_zamani {
-                return (kayit.bitis_zamani - simdi).as_millis() as u64;
+                let kalan = kayit.bitis_zamani.duration_since(simdi);
+                return kalan.as_secs().max(1);
             }
         }
         0
@@ -62,6 +72,17 @@ impl SogumaTakipcisi {
         hedef: &str,
         hata_kodu: Option<&str>,
         retry_after_saniye: Option<u64>,
+    ) -> Duration {
+        self.soguma_baslat_zamaniyla(hedef, hata_kodu, retry_after_saniye, Instant::now())
+    }
+
+    /// Belirtilen zamanla soğuma başlatır (test edilebilirlik için).
+    pub fn soguma_baslat_zamaniyla(
+        &mut self,
+        hedef: &str,
+        hata_kodu: Option<&str>,
+        retry_after_saniye: Option<u64>,
+        simdi: Instant,
     ) -> Duration {
         let mevcut_hata = self
             .kayitlar
@@ -89,7 +110,7 @@ impl SogumaTakipcisi {
             hedef.to_string(),
             SogumaKaydi {
                 hedef: hedef.to_string(),
-                bitis_zamani: Instant::now() + sure,
+                bitis_zamani: simdi + sure,
                 ardisik_hata: yeni_hata,
                 son_hata_kodu: hata_kodu.map(|s| s.to_string()),
             },

@@ -1,27 +1,51 @@
 //! OpenAI ↔ Anthropic Claude Biçim Çeviricisi
 //!
-//! OmniRoute translator/request/openai-to-claude.ts ve response/claude-to-openai.ts
-//! kurallarının saf Rust uygulaması.
+//! OmniRoute translator/request/openai-to-claude.ts kurallarının saf Rust uygulaması.
 
-use anyhow::Result;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::modeller::*;
 
 /// OpenAI istek gövdesini Anthropic Claude Messages istek gövdesine dönüştürür.
-/// - Sistem mesajlarını ayrıştırır ve üst düzey `system` alanına taşır.
-/// - Boş metin bloklarını temizler (Anthropic 400 kuralı).
-/// - Varsayılan `max_tokens` (4096) atar.
-pub fn openai_den_claude_istegi(istek: &OpenAiIstek) -> Result<ClaudeIstek> {
-    let mut sistem_mesajlari = Vec::new();
+/// - FR-5.3: `tools` veya çok parçalı içerik varsa yukarı akışa gitmeden açık hata döner.
+/// - Boş metin Anthropic API kuralı gereği `.` ile doldurulur.
+/// - Sistem mesajları `system` bloğuna taşınır.
+pub fn openai_den_claude_istegi(
+    istek: &OpenAiIstek,
+    hedef_model: &str,
+) -> Result<ClaudeIstek, CeviriHatasi> {
+    // 1. Desteklenmeyen alan denetimleri (FR-5.3)
+    if let Some(ref tools) = istek.tools {
+        if !tools.is_empty() {
+            return Err(CeviriHatasi::Desteklenmiyor("tools".to_string()));
+        }
+    }
+
+    for m in &istek.messages {
+        if let Some(ref c) = m.content {
+            if !c.is_string() {
+                return Err(CeviriHatasi::Desteklenmiyor(
+                    "çok parçalı içerik".to_string(),
+                ));
+            }
+        }
+    }
+
+    let mut sistem_bloklari = Vec::new();
     let mut claude_mesajlar = Vec::new();
 
     for m in &istek.messages {
+        let metin = m.duz_metin().unwrap_or_default();
         if m.role == "system" {
-            if let Some(ref icerik) = m.content
-                && !icerik.trim().is_empty()
-            {
-                sistem_mesajlari.push(icerik.clone());
+            if !metin.trim().is_empty() {
+                sistem_bloklari.push(ClaudeSistemBloku {
+                    r#type: "text".to_string(),
+                    text: metin,
+                    cache_control: Some(ClaudeCacheControl {
+                        r#type: "ephemeral".to_string(),
+                        ttl: Some("1h".to_string()),
+                    }),
+                });
             }
         } else {
             let rol = if m.role == "assistant" {
@@ -29,56 +53,62 @@ pub fn openai_den_claude_istegi(istek: &OpenAiIstek) -> Result<ClaudeIstek> {
             } else {
                 "user"
             };
-            let mut icerik_bloklari = Vec::new();
+            // Anthropic boş metni reddeder; OmniRoute boş içerikte "." yerleştirir
+            let son_metin = if metin.is_empty() {
+                ".".to_string()
+            } else {
+                metin
+            };
 
-            if let Some(ref icerik) = m.content
-                && !icerik.is_empty()
-            {
-                icerik_bloklari.push(ClaudeIcerikBloku::Metin {
-                    text: icerik.clone(),
-                });
-            }
+            let cache_control = if rol == "assistant" {
+                Some(ClaudeCacheControl {
+                    r#type: "ephemeral".to_string(),
+                    ttl: None,
+                })
+            } else {
+                None
+            };
 
-            if !icerik_bloklari.is_empty() {
-                claude_mesajlar.push(ClaudeMesaj {
-                    role: rol.to_string(),
-                    content: icerik_bloklari,
-                });
-            }
+            claude_mesajlar.push(ClaudeMesaj {
+                role: rol.to_string(),
+                content: vec![ClaudeIcerikBloku {
+                    r#type: "text".to_string(),
+                    text: son_metin,
+                    cache_control,
+                }],
+            });
         }
     }
 
-    let system = if sistem_mesajlari.is_empty() {
+    let system = if sistem_bloklari.is_empty() {
         None
     } else {
-        Some(sistem_mesajlari.join("\n\n"))
+        Some(sistem_bloklari)
     };
 
     Ok(ClaudeIstek {
-        model: istek.model.clone(),
+        model: hedef_model.to_string(),
+        max_tokens: istek.max_tokens.unwrap_or(64000),
+        stream: istek.stream,
         messages: claude_mesajlar,
-        max_tokens: istek.max_tokens.unwrap_or(4096),
         system,
         temperature: istek.temperature,
-        top_p: istek.top_p,
-        stream: istek.stream,
     })
 }
 
 /// Anthropic Claude yanıtını OpenAI Chat Completion yanıt biçimine dönüştürür.
-pub fn claude_dan_openai_yaniti(yanit: &ClaudeYanit, istenen_model: &str) -> Result<OpenAiYanit> {
-    let simdi = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+pub fn claude_dan_openai_yaniti(
+    yanit: &ClaudeYanit,
+    istenen_model: &str,
+) -> Result<OpenAiYanit, CeviriHatasi> {
+    let simdi = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(d) => d.as_secs(),
+        Err(_) => 0,
+    };
 
     let mut metin_toplami = String::new();
     for blok in &yanit.content {
-        match blok {
-            ClaudeIcerikBloku::Metin { text } => {
-                metin_toplami.push_str(text);
-            }
-        }
+        metin_toplami.push_str(&blok.text);
     }
 
     let finish_reason = yanit
@@ -94,12 +124,9 @@ pub fn claude_dan_openai_yaniti(yanit: &ClaudeYanit, istenen_model: &str) -> Res
 
     let secenek = OpenAiSecenek {
         index: 0,
-        message: OpenAiMesaj {
+        message: OpenAiMesajCikti {
             role: "assistant".to_string(),
             content: Some(metin_toplami),
-            name: None,
-            tool_calls: None,
-            tool_call_id: None,
         },
         finish_reason: Some(finish_reason),
     };
@@ -125,11 +152,11 @@ pub fn claude_dan_openai_parcasi(
     olay: &ClaudeOlay,
     istek_id: &str,
     model: &str,
-) -> Result<Option<OpenAiParca>> {
-    let simdi = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+) -> Result<Option<OpenAiParca>, CeviriHatasi> {
+    let simdi = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(d) => d.as_secs(),
+        Err(_) => 0,
+    };
 
     match olay {
         ClaudeOlay::MesajBasladi { .. } => Ok(Some(OpenAiParca {
@@ -161,6 +188,7 @@ pub fn claude_dan_openai_parcasi(
                     finish_reason: None,
                 }],
             })),
+            ClaudeDeltaIcerik::Diger => Ok(None),
         },
         ClaudeOlay::MesajDeltasi { delta, .. } => {
             let finish = delta.stop_reason.as_deref().map(|r| match r {
@@ -181,5 +209,6 @@ pub fn claude_dan_openai_parcasi(
             }))
         }
         ClaudeOlay::MesajBitti => Ok(None),
+        ClaudeOlay::Diger => Ok(None),
     }
 }

@@ -1,16 +1,18 @@
 //! Devre Kesici (Circuit Breaker) Durum Makinesi
 //!
-//! CLOSED (Kapalı) → DEGRADED (Bozulmuş) → OPEN (Açık) → HALF_OPEN (Yarı Açık) → CLOSED
+//! KAPALI (Closed) → BOZULMUŞ (Degraded) → AÇIK (Open) → YARI-AÇIK (Half-Open) → KAPALI
 //! OmniRoute shared/utils/circuitBreaker.ts mimarisinin saf Rust uygulaması.
 
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum DirencHatasi {
     #[error("Devre kesici açık: {ad} ({kalan_sure_ms}ms sonra tekrar denenecek)")]
     DevreAcik { ad: String, kalan_sure_ms: u64 },
+    #[error("Sağlayıcı soğuma durumunda: {ad} (Retry-After: {retry_after_saniye}s)")]
+    Sogumada { ad: String, retry_after_saniye: u64 },
     #[error("Yarı açık deneme limiti aşıldı: {0}")]
     YariAcikDolu(String),
     #[error("İşlem hatası: {0}")]
@@ -23,7 +25,7 @@ pub enum Durum {
     Kapali,
     /// Hata oranı yükseldi, istekler geçer ancak uyarı verilir
     Bozulmus,
-    /// Devre kesildi, gelen istekler derhal reddedilir
+    /// Devre kesildi, gelen istekler derhal reddedilir (503)
     Acik,
     /// İyileşme denemesi: sınırlı sayıda test isteğine izin verilir
     YariAcik,
@@ -42,7 +44,7 @@ impl Default for DevreKesiciYapilandirma {
         Self {
             hata_esigi: 3,
             bozulma_esigi: 2,
-            soguma_suresi: Duration::from_millis(30_000),
+            soguma_suresi: Duration::from_secs(30),
             yari_acik_izin: 1,
         }
     }
@@ -69,11 +71,17 @@ impl DevreKesici {
         }
     }
 
-    /// Mevcut durumu zamana ve sayaçlara göre güncelleyip döndürür.
+    /// Mevcut durumu zamana ve sayaçlara göre günceller.
     pub fn durum(&mut self) -> Durum {
+        self.durum_zamaniyla(Instant::now())
+    }
+
+    /// Belirtilen zamana göre durumu günceller (test edilebilirlik için).
+    pub fn durum_zamaniyla(&mut self, simdi: Instant) -> Durum {
         if self.durum == Durum::Acik
             && let Some(son_hata) = self.son_hata_zamani
-            && son_hata.elapsed() >= self.yapilandirma.soguma_suresi
+            && simdi >= son_hata
+            && simdi.duration_since(son_hata) >= self.yapilandirma.soguma_suresi
         {
             self.durum = Durum::YariAcik;
             self.yari_acik_deneme_sayisi = 0;
@@ -81,17 +89,26 @@ impl DevreKesici {
         self.durum
     }
 
-    /// İstek yapılabilir mi denetler. Açık veya yarı-açık doluysa hata döner.
+    /// İstek yapılabilir mi denetler.
     pub fn istek_izni_al(&mut self) -> Result<(), DirencHatasi> {
-        match self.durum() {
+        self.istek_izni_al_zamaniyla(Instant::now())
+    }
+
+    /// Belirtilen zamana göre istek izni denetler.
+    pub fn istek_izni_al_zamaniyla(&mut self, simdi: Instant) -> Result<(), DirencHatasi> {
+        match self.durum_zamaniyla(simdi) {
             Durum::Kapali | Durum::Bozulmus => Ok(()),
             Durum::Acik => {
                 let kalan = if let Some(son_hata) = self.son_hata_zamani {
-                    let gecen = son_hata.elapsed();
-                    if gecen < self.yapilandirma.soguma_suresi {
-                        (self.yapilandirma.soguma_suresi - gecen).as_millis() as u64
+                    if simdi >= son_hata {
+                        let gecen = simdi.duration_since(son_hata);
+                        if gecen < self.yapilandirma.soguma_suresi {
+                            (self.yapilandirma.soguma_suresi - gecen).as_millis() as u64
+                        } else {
+                            0
+                        }
                     } else {
-                        0
+                        self.yapilandirma.soguma_suresi.as_millis() as u64
                     }
                 } else {
                     0
@@ -122,8 +139,13 @@ impl DevreKesici {
 
     /// Başarısız bir çağrı sonrası hata sayacını artırır ve gerekiyorsa devreyi açar.
     pub fn hata_kaydet(&mut self) {
+        self.hata_kaydet_zamaniyla(Instant::now());
+    }
+
+    /// Belirtilen zamanla hata kaydeder.
+    pub fn hata_kaydet_zamaniyla(&mut self, simdi: Instant) {
         self.ardisik_hata_sayisi += 1;
-        self.son_hata_zamani = Some(Instant::now());
+        self.son_hata_zamani = Some(simdi);
 
         if self.durum == Durum::YariAcik {
             // Yarı açık durumdaki deneme başarısız olursa derhal tekrar AÇIK duruma döner
@@ -133,5 +155,9 @@ impl DevreKesici {
         } else if self.ardisik_hata_sayisi >= self.yapilandirma.bozulma_esigi {
             self.durum = Durum::Bozulmus;
         }
+    }
+
+    pub fn ardisik_hata(&self) -> u32 {
+        self.ardisik_hata_sayisi
     }
 }

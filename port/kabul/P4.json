@@ -1,0 +1,20 @@
+{
+  "faz": "P4",
+  "maddeler": [
+    {
+      "id": "P4-A1",
+      "clause": "kervan.toml içinde [rest.<ad>] tablosu okunur; geçersiz biçim hata verir, eksik ortam değişkeninde 503 döner, örnek dosya geriye uyumludur",
+      "kanit": ["p4_a1_yapilandirma_ve_anahtar_dogrulamasi", "config::tests::gecersiz_rest_bicimi_hata_verir"]
+    },
+    {
+      "id": "P4-A2",
+      "clause": "openai biçimli sağlayıcıya istek kayıpsız gider; model hariç istemci gövdesiyle derin eşittir ve Authorization Bearer başlığı doğrudur",
+      "kanit": ["p4_a2_openai_bicimli_gecis_kayipsiz_ve_derin_esit"]
+    },
+    {
+      "id": "P4-A3",
+      "clause": "chat kancası model [rest.*] hedefine çözülürse yukari akışa devreder; REST olmayan model tarayıcı yoluna düşer",
+      "kanit": ["p4_a3_chat_kancasi_model_cozumleme"]
+    }
+  ]
+}

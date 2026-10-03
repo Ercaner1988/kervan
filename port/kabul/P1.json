@@ -1,0 +1,25 @@
+{
+  "faz": "P1",
+  "maddeler": [
+    {
+      "id": "P1-A1",
+      "clause": "kasıtlı kırık ve zaman aşan örnek kapılar hepsi.ts ile çıkış != 0 verir; port/kayit altında ham çıktı dosyası oluşur",
+      "kanit": ["p1::a1_hepsi_kapilari_calistirir_ve_hata_yakalar"]
+    },
+    {
+      "id": "P1-A2",
+      "clause": "izlenmeyen dosyaya bağımlı fixture testi çalışma dizininde yeşil, temiz kopyada kırmızıdır; çalışma dizinine dokunulmaz",
+      "kanit": ["p1::a2_temiz_kopya_izlenmeyen_dosyalari_yitirir_ve_calisma_agacini_korur"]
+    },
+    {
+      "id": "P1-A3",
+      "clause": "kabul haritasında var olmayan test kimliği kapıyı kırmızı yapar",
+      "kanit": ["p1::a3_kabul_haritasi_gecersiz_veya_eksik_test_kimliklerini_reddeder"]
+    },
+    {
+      "id": "P1-A4",
+      "clause": "makine-sakin eşik dışında çıkış != 0, içinde 0 verir",
+      "kanit": ["p1::a4_makine_sakin_esik_ici_ve_disi_davranislari_ayirt_eder"]
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 name = "kervan-direnc"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
 description = "Kervan 3 Katmanlı Dayanıklılık: Devre kesici (circuit breaker), bağlantı soğuma (cooldown) ve model kilidi (lockout)"
 
 [dependencies]

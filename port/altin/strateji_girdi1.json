@@ -1,0 +1,158 @@
+{
+  "kaynak_sha": "dbe703a",
+  "kaynak_yol": "open-sse/services/combo/applyStrategyOrdering.ts",
+  "uretici_ozeti": "sha256:7be7201a4114de065b4bb683a45e2043404618f87722f8cab6eb9582b28ddbcd",
+  "girdi_id": "strateji_girdi1",
+  "tohum": 42,
+  "adaylar": [
+    {
+      "ad": "openai/gpt-4o",
+      "execution_key": "openai:gpt-4o:acc1",
+      "connection_id": "acc1",
+      "weight": 10,
+      "cost": 5,
+      "context_size": 128000,
+      "latency_ms": 150,
+      "error_count": 0,
+      "request_count": 50,
+      "free_quota": 500000,
+      "reset_seconds": 300,
+      "warm_cache": true
+    },
+    {
+      "ad": "claude/claude-3-5-sonnet",
+      "execution_key": "claude:sonnet:acc2",
+      "connection_id": "acc2",
+      "weight": 20,
+      "cost": 3,
+      "context_size": 200000,
+      "latency_ms": 250,
+      "error_count": 1,
+      "request_count": 10,
+      "free_quota": 10000,
+      "reset_seconds": 10,
+      "warm_cache": false
+    },
+    {
+      "ad": "gemini/gemini-2.5-flash",
+      "execution_key": "gemini:flash:acc3",
+      "connection_id": null,
+      "weight": 5,
+      "cost": 0.5,
+      "context_size": 1000000,
+      "latency_ms": 80,
+      "error_count": 0,
+      "request_count": 100,
+      "free_quota": 50000,
+      "reset_seconds": 600,
+      "warm_cache": true
+    }
+  ],
+  "sonuclar": {
+    "priority": [
+      "openai/gpt-4o",
+      "claude/claude-3-5-sonnet",
+      "gemini/gemini-2.5-flash"
+    ],
+    "weighted": [
+      "claude/claude-3-5-sonnet",
+      "openai/gpt-4o",
+      "gemini/gemini-2.5-flash"
+    ],
+    "round-robin": [
+      "openai/gpt-4o",
+      "claude/claude-3-5-sonnet",
+      "gemini/gemini-2.5-flash"
+    ],
+    "context-relay": [
+      "gemini/gemini-2.5-flash",
+      "claude/claude-3-5-sonnet",
+      "openai/gpt-4o"
+    ],
+    "fill-first": [
+      "openai/gpt-4o",
+      "claude/claude-3-5-sonnet",
+      "gemini/gemini-2.5-flash"
+    ],
+    "p2c": [
+      "gemini/gemini-2.5-flash",
+      "openai/gpt-4o",
+      "claude/claude-3-5-sonnet"
+    ],
+    "random": [
+      "claude/claude-3-5-sonnet",
+      "openai/gpt-4o",
+      "gemini/gemini-2.5-flash"
+    ],
+    "least-used": [
+      "claude/claude-3-5-sonnet",
+      "openai/gpt-4o",
+      "gemini/gemini-2.5-flash"
+    ],
+    "cost-optimized": [
+      "gemini/gemini-2.5-flash",
+      "claude/claude-3-5-sonnet",
+      "openai/gpt-4o"
+    ],
+    "reset-aware": [
+      "openai/gpt-4o",
+      "claude/claude-3-5-sonnet",
+      "gemini/gemini-2.5-flash"
+    ],
+    "reset-window": [
+      "claude/claude-3-5-sonnet",
+      "openai/gpt-4o",
+      "gemini/gemini-2.5-flash"
+    ],
+    "headroom": [
+      "openai/gpt-4o",
+      "gemini/gemini-2.5-flash",
+      "claude/claude-3-5-sonnet"
+    ],
+    "quota-weighted": [
+      "openai/gpt-4o",
+      "gemini/gemini-2.5-flash",
+      "claude/claude-3-5-sonnet"
+    ],
+    "strict-random": [
+      "claude/claude-3-5-sonnet",
+      "gemini/gemini-2.5-flash",
+      "openai/gpt-4o"
+    ],
+    "auto": [
+      "gemini/gemini-2.5-flash",
+      "openai/gpt-4o",
+      "claude/claude-3-5-sonnet"
+    ],
+    "lkgp": [
+      "openai/gpt-4o",
+      "claude/claude-3-5-sonnet",
+      "gemini/gemini-2.5-flash"
+    ],
+    "context-optimized": [
+      "gemini/gemini-2.5-flash",
+      "claude/claude-3-5-sonnet",
+      "openai/gpt-4o"
+    ],
+    "cache-optimized": [
+      "gemini/gemini-2.5-flash",
+      "openai/gpt-4o",
+      "claude/claude-3-5-sonnet"
+    ],
+    "fusion": [
+      "claude/claude-3-5-sonnet",
+      "gemini/gemini-2.5-flash",
+      "openai/gpt-4o"
+    ],
+    "pipeline": [
+      "claude/claude-3-5-sonnet",
+      "openai/gpt-4o",
+      "gemini/gemini-2.5-flash"
+    ],
+    "quota-share": [
+      "openai/gpt-4o",
+      "gemini/gemini-2.5-flash",
+      "claude/claude-3-5-sonnet"
+    ]
+  }
+}

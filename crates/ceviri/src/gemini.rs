@@ -1,29 +1,45 @@
 //! OpenAI ↔ Google Gemini Biçim Çeviricisi
 //!
-//! OmniRoute translator/request/openai-to-gemini.ts ve response/gemini-to-openai.ts
-//! kurallarının saf Rust uygulaması.
+//! OmniRoute translator/request/openai-to-gemini.ts kurallarının saf Rust uygulaması.
 
-use anyhow::Result;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::modeller::*;
 
 /// OpenAI istek gövdesini Google Gemini GenerateContent istek gövdesine dönüştürür.
-/// - Sistem mesajlarını `system_instruction` alanına taşır.
+/// - FR-5.3: `tools` veya çok parçalı içerik varsa yukarı akışa gitmeden açık hata döner.
+/// - Sistem mesajları `systemInstruction` alanına taşınır.
 /// - OpenAI 'assistant' rolünü Gemini 'model' rolüne dönüştürür.
 /// - Arka arkaya gelen aynı rollü mesajları tek bir içerikte birleştirir (Gemini kuralı).
-pub fn openai_den_gemini_istegi(istek: &OpenAiIstek) -> Result<GeminiIstek> {
+pub fn openai_den_gemini_istegi(
+    istek: &OpenAiIstek,
+    hedef_model: &str,
+) -> Result<GeminiIstek, CeviriHatasi> {
+    // 1. Desteklenmeyen alan denetimleri (FR-5.3)
+    if let Some(ref tools) = istek.tools {
+        if !tools.is_empty() {
+            return Err(CeviriHatasi::Desteklenmiyor("tools".to_string()));
+        }
+    }
+
+    for m in &istek.messages {
+        if let Some(ref c) = m.content {
+            if !c.is_string() {
+                return Err(CeviriHatasi::Desteklenmiyor(
+                    "çok parçalı içerik".to_string(),
+                ));
+            }
+        }
+    }
+
     let mut sistem_parcalari = Vec::new();
     let mut ham_icerikler: Vec<GeminiIcerik> = Vec::new();
 
     for m in &istek.messages {
+        let metin = m.duz_metin().unwrap_or_default();
         if m.role == "system" {
-            if let Some(ref icerik) = m.content
-                && !icerik.trim().is_empty()
-            {
-                sistem_parcalari.push(GeminiParca {
-                    text: icerik.clone(),
-                });
+            if !metin.trim().is_empty() {
+                sistem_parcalari.push(GeminiParca { text: metin });
             }
         } else {
             let rol = if m.role == "assistant" {
@@ -31,27 +47,21 @@ pub fn openai_den_gemini_istegi(istek: &OpenAiIstek) -> Result<GeminiIstek> {
             } else {
                 "user"
             };
-            if let Some(ref icerik) = m.content
-                && !icerik.is_empty()
-            {
-                ham_icerikler.push(GeminiIcerik {
-                    role: rol.to_string(),
-                    parts: vec![GeminiParca {
-                        text: icerik.clone(),
-                    }],
-                });
-            }
+            ham_icerikler.push(GeminiIcerik {
+                role: rol.to_string(),
+                parts: vec![GeminiParca { text: metin }],
+            });
         }
     }
 
     // Arka arkaya gelen aynı rollü içerikleri birleştir (Gemini API şartı)
     let mut birlestirilmis_icerikler: Vec<GeminiIcerik> = Vec::new();
     for icerik in ham_icerikler {
-        if let Some(son) = birlestirilmis_icerikler.last_mut()
-            && son.role == icerik.role
-        {
-            son.parts.extend(icerik.parts);
-            continue;
+        if let Some(son) = birlestirilmis_icerikler.last_mut() {
+            if son.role == icerik.role {
+                son.parts.extend(icerik.parts);
+                continue;
+            }
         }
         birlestirilmis_icerikler.push(icerik);
     }
@@ -59,67 +69,93 @@ pub fn openai_den_gemini_istegi(istek: &OpenAiIstek) -> Result<GeminiIstek> {
     let system_instruction = if sistem_parcalari.is_empty() {
         None
     } else {
-        Some(GeminiIcerik {
-            role: "user".to_string(),
+        Some(GeminiSystemInstruction {
+            role: "system".to_string(),
             parts: sistem_parcalari,
         })
     };
 
-    let generation_config =
-        if istek.temperature.is_some() || istek.top_p.is_some() || istek.max_tokens.is_some() {
-            Some(GeminiAyar {
-                temperature: istek.temperature,
-                top_p: istek.top_p,
-                max_output_tokens: istek.max_tokens,
-            })
-        } else {
-            None
-        };
+    let max_output_tokens = istek.max_tokens.unwrap_or(65536);
+    let default_budget = 24576u32;
+    let thinking_budget = default_budget.min(max_output_tokens / 2);
+
+    let thinking_config = Some(GeminiThinkingConfig {
+        thinking_budget,
+        include_thoughts: true,
+    });
+
+    let generation_config = GeminiGenerationConfig {
+        max_output_tokens,
+        temperature: istek.temperature,
+        top_p: istek.top_p,
+        thinking_config,
+    };
+
+    let safety_settings = vec![
+        GeminiSafetySetting {
+            category: "HARM_CATEGORY_HATE_SPEECH".to_string(),
+            threshold: "OFF".to_string(),
+        },
+        GeminiSafetySetting {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT".to_string(),
+            threshold: "OFF".to_string(),
+        },
+        GeminiSafetySetting {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT".to_string(),
+            threshold: "OFF".to_string(),
+        },
+        GeminiSafetySetting {
+            category: "HARM_CATEGORY_HARASSMENT".to_string(),
+            threshold: "OFF".to_string(),
+        },
+    ];
 
     Ok(GeminiIstek {
+        model: hedef_model.to_string(),
         contents: birlestirilmis_icerikler,
-        system_instruction,
         generation_config,
+        safety_settings,
+        system_instruction,
     })
 }
 
 /// Google Gemini GenerateContent yanıtını OpenAI Chat Completion yanıt biçimine dönüştürür.
-pub fn gemini_den_openai_yaniti(yanit: &GeminiYanit, istenen_model: &str) -> Result<OpenAiYanit> {
-    let simdi = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+pub fn gemini_den_openai_yaniti(
+    yanit: &GeminiYanit,
+    istenen_model: &str,
+) -> Result<OpenAiYanit, CeviriHatasi> {
+    let simdi = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(d) => d.as_secs(),
+        Err(_) => 0,
+    };
 
     let mut metin_toplami = String::new();
     let mut finish_reason = Some("stop".to_string());
 
-    if let Some(ref adaylar) = yanit.candidates
-        && let Some(ilk_aday) = adaylar.first()
-    {
-        if let Some(ref icerik) = ilk_aday.content {
-            for parca in &icerik.parts {
-                metin_toplami.push_str(&parca.text);
+    if let Some(ref adaylar) = yanit.candidates {
+        if let Some(ilk_aday) = adaylar.first() {
+            if let Some(ref icerik) = ilk_aday.content {
+                for parca in &icerik.parts {
+                    metin_toplami.push_str(&parca.text);
+                }
             }
-        }
 
-        if let Some(ref sebep) = ilk_aday.finish_reason {
-            finish_reason = Some(match sebep.as_str() {
-                "STOP" => "stop".to_string(),
-                "MAX_TOKENS" => "length".to_string(),
-                "SAFETY" => "content_filter".to_string(),
-                other => other.to_ascii_lowercase(),
-            });
+            if let Some(ref sebep) = ilk_aday.finish_reason {
+                finish_reason = Some(match sebep.as_str() {
+                    "STOP" => "stop".to_string(),
+                    "MAX_TOKENS" => "length".to_string(),
+                    "SAFETY" => "content_filter".to_string(),
+                    other => other.to_ascii_lowercase(),
+                });
+            }
         }
     }
 
     let secenek = OpenAiSecenek {
         index: 0,
-        message: OpenAiMesaj {
+        message: OpenAiMesajCikti {
             role: "assistant".to_string(),
             content: Some(metin_toplami),
-            name: None,
-            tool_calls: None,
-            tool_call_id: None,
         },
         finish_reason,
     };
@@ -145,29 +181,29 @@ pub fn gemini_den_openai_parcasi(
     yanit: &GeminiYanit,
     istek_id: &str,
     model: &str,
-) -> Result<Option<OpenAiParca>> {
-    let simdi = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+) -> Result<Option<OpenAiParca>, CeviriHatasi> {
+    let simdi = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(d) => d.as_secs(),
+        Err(_) => 0,
+    };
 
     let mut metin = String::new();
     let mut finish_reason = None;
 
-    if let Some(ref adaylar) = yanit.candidates
-        && let Some(ilk_aday) = adaylar.first()
-    {
-        if let Some(ref icerik) = ilk_aday.content {
-            for parca in &icerik.parts {
-                metin.push_str(&parca.text);
+    if let Some(ref adaylar) = yanit.candidates {
+        if let Some(ilk_aday) = adaylar.first() {
+            if let Some(ref icerik) = ilk_aday.content {
+                for parca in &icerik.parts {
+                    metin.push_str(&parca.text);
+                }
             }
-        }
-        if let Some(ref sebep) = ilk_aday.finish_reason {
-            finish_reason = Some(match sebep.as_str() {
-                "STOP" => "stop".to_string(),
-                "MAX_TOKENS" => "length".to_string(),
-                other => other.to_ascii_lowercase(),
-            });
+            if let Some(ref sebep) = ilk_aday.finish_reason {
+                finish_reason = Some(match sebep.as_str() {
+                    "STOP" => "stop".to_string(),
+                    "MAX_TOKENS" => "length".to_string(),
+                    other => other.to_ascii_lowercase(),
+                });
+            }
         }
     }
 

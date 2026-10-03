@@ -1,0 +1,86 @@
+# port/uclar.toml
+# Kervan HTTP Rota Kayıt Defteri
+
+[[uc]]
+yol = "/v1/chat/completions"
+yontem = "POST"
+durum = "gercek"
+test = "p5_e2e_nonce_testi"
+testDosyasi = "crates/sunucu/tests/p5_e2e_test.rs"
+
+[[uc]]
+yol = "/v1/models"
+yontem = "GET"
+durum = "gercek"
+test = "p5_models_testi"
+testDosyasi = "crates/sunucu/tests/p5_e2e_test.rs"
+
+[[uc]]
+yol = "/health"
+yontem = "GET"
+durum = "kapsam-disi"
+
+[[uc]]
+yol = "/telemetri"
+yontem = "GET"
+durum = "kapsam-disi"
+
+[[uc]]
+yol = "/bakiye"
+yontem = "GET"
+durum = "kapsam-disi"
+
+[[uc]]
+yol = "/bakiye/hediye"
+yontem = "POST"
+durum = "kapsam-disi"
+
+[[uc]]
+yol = "/ws/eklenti"
+yontem = "GET"
+durum = "kapsam-disi"
+
+[[uc]]
+yol = "/eklenti/sekmeler"
+yontem = "GET"
+durum = "kapsam-disi"
+
+[[uc]]
+yol = "/accounts"
+yontem = "GET"
+durum = "kapsam-disi"
+
+[[uc]]
+yol = "/accounts/{i}/devam"
+yontem = "POST"
+durum = "kapsam-disi"
+
+[[uc]]
+yol = "/accounts/{i}/goster"
+yontem = "POST"
+durum = "kapsam-disi"
+
+[[uc]]
+yol = "/accounts/{i}/gizle"
+yontem = "POST"
+durum = "kapsam-disi"
+
+[[uc]]
+yol = "/kimlikler"
+yontem = "GET"
+durum = "kapsam-disi"
+
+[[uc]]
+yol = "/kimlikler/{k}/goster"
+yontem = "POST"
+durum = "kapsam-disi"
+
+[[uc]]
+yol = "/kimlikler/{k}/gizle"
+yontem = "POST"
+durum = "kapsam-disi"
+
+[[uc]]
+yol = "/kota"
+yontem = "GET"
+durum = "kapsam-disi"
