@@ -19,3 +19,7 @@ anyhow.workspace = true
 axum.workspace = true
 futures-util.workspace = true
 rand.workspace = true
+
+[dev-dependencies]
+ureq = { version = "3.4.2", default-features = false, features = ["rustls", "gzip", "json"] }
+

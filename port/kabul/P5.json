@@ -1,0 +1,20 @@
+{
+  "faz": "P5",
+  "maddeler": [
+    {
+      "id": "P5-A1",
+      "clause": "gerçek server::router axum::serve ile açılır; sahte yukarı akış rastgele nonce üretir ve istemciye dönen yanıtta nonce doğrulanır",
+      "kanit": ["p5_e2e_nonce_testi"]
+    },
+    {
+      "id": "P5-A2",
+      "clause": "sahte yanıt kalıpları depoda bulunmaz; port/uclar.toml kayıtlı rotalarla birebir eşleşir",
+      "kanit": ["p5_e2e_nonce_testi", "p5_models_testi"]
+    },
+    {
+      "id": "P5-A3",
+      "clause": "/v1/models REST sağlayıcılarını kervan/<ad> olarak listeler, gpt-4o gibi uydurma modeller bulunmaz",
+      "kanit": ["p5_models_testi"]
+    }
+  ]
+}

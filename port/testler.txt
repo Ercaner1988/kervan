@@ -140,6 +140,10 @@ server::tests::tohum_gecmisi_ve_asil_soruyu_tasir: test
 server::tests::tohum_kirpmasi_yazili_ve_yakin_baglami_korur: test
 
 16 tests, 0 benchmarks
+p5_e2e_nonce_testi: test
+p5_models_testi: test
+
+2 tests, 0 benchmarks
 browser::tests::arti_isareti_kodlanir: test
 browser::tests::bos_balon_bitis_sayilmaz: test
 browser::tests::bosluk_farki_yazimi_reddettirmez: test

@@ -4,14 +4,16 @@
 [[uc]]
 yol = "/v1/chat/completions"
 yontem = "POST"
-durum = "kapsam-disi"
-# Not: P4/P5 fazlarında 'gercek' durumuna terfi ettirilecek ve nonce'lu test kimliği atanacaktır.
+durum = "gercek"
+test = "p5_e2e_nonce_testi"
+testDosyasi = "crates/sunucu/tests/p5_e2e_test.rs"
 
 [[uc]]
 yol = "/v1/models"
 yontem = "GET"
-durum = "kapsam-disi"
-# Not: P5 fazında 'gercek' durumuna terfi ettirilecektir.
+durum = "gercek"
+test = "p5_models_testi"
+testDosyasi = "crates/sunucu/tests/p5_e2e_test.rs"
 
 [[uc]]
 yol = "/health"
