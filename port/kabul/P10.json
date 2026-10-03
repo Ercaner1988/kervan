@@ -1,0 +1,33 @@
+{
+  "faz": "P10",
+  "maddeler": [
+    {
+      "id": "P10-A1",
+      "metin": "araclar/envanter.ts anlık görüntüden dosya/rota/göç/sayfa/modül sayımını üretir; iki koşuda özdeş çıktı verir.",
+      "kanit": [
+        "test_p10_envanter_deterministik"
+      ]
+    },
+    {
+      "id": "P10-A2",
+      "metin": "port/defter/{dosyalar,davranislar}.jsonl şemaya uygundur; dogrulandi satırları kanıtlarıyla bağlıdır; defter-kontrol geçer.",
+      "kanit": [
+        "test_p10_defter_sema_uygun"
+      ]
+    },
+    {
+      "id": "P10-A3",
+      "metin": "araclar/dalga-uret.ts defterden en az 3 dalga taslağı üretir; her taslak §2 başlıklarını ve en az bir Acceptance: içeren FR iskeleti taşır.",
+      "kanit": [
+        "test_p10_dalga_taslak_uretimi"
+      ]
+    },
+    {
+      "id": "P10-A4",
+      "metin": "main doğrudan commit almamıştır; PR.md taslak olarak yazılmıştır ve insan onayına bırakılmıştır.",
+      "kanit": [
+        "test_p10_pr_taslak_ve_main_dokunulmamis"
+      ]
+    }
+  ]
+}

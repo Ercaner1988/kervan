@@ -1,0 +1,5 @@
+{"id":"DOS-1","kaynak":"ref/omniroute-dbe703a/open-sse/translator/request/openai-to-claude.ts","satir":[1,300],"durum":"dogrulandi","hedef":"crates/ceviri/src/claude.rs","kanit":["port/altin/claude_1_sade.json"]}
+{"id":"DOS-2","kaynak":"ref/omniroute-dbe703a/open-sse/translator/request/openai-to-gemini.ts","satir":[1,300],"durum":"dogrulandi","hedef":"crates/ceviri/src/gemini.rs","kanit":["port/altin/gemini_1_sade.json"]}
+{"id":"DOS-3","kaynak":"ref/omniroute-dbe703a/open-sse/services/combo/applyStrategyOrdering.ts","satir":[1,300],"durum":"dogrulandi","hedef":"crates/havuz/src/router.rs","kanit":["port/altin/strateji_girdi1.json"]}
+{"id":"DOS-4","kaynak":"ref/omniroute-dbe703a/src/lib/stealth/detector.ts","satir":[1,300],"durum":"kapsam-disi","gerekce":"PRD §2.2 Non-Goals: Bot tespiti, CAPTCHA ve TLS taklidi portlanmaz."}
+{"id":"DOS-5","kaynak":"ref/omniroute-dbe703a/src/lib/proxy/mitm.ts","satir":[1,300],"durum":"insan-karari","gerekce":"PRD §2.2 Non-Goals: MITM proxy ve sistem ayarı değiştiren özellikler insan kararına tabidir."}

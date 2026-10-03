@@ -207,3 +207,9 @@ test_fr72_altin_parite_girdi1_ve_girdi2: test
 test_fr73_ikizler_fark_kaniti: test
 
 3 tests, 0 benchmarks
+
+# P10 — Envanter, Defter, Dalga, PR Taslağı (FR-8.1, FR-8.2, FR-8.3, FR-3.2)
+test_p10_envanter_deterministik: test
+test_p10_defter_sema_uygun: test
+test_p10_dalga_taslak_uretimi: test
+test_p10_pr_taslak_ve_main_dokunulmamis: test

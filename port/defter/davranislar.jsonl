@@ -1,0 +1,5 @@
+{"id":"DAV-1","tanim":"OpenAI isteklerinin Claude biçimine dönüştürülmesi","durum":"dogrulandi","hedef":"crates/ceviri/src/claude.rs","kanit":["port/altin/claude_1_sade.json"]}
+{"id":"DAV-2","tanim":"OpenAI isteklerinin Gemini biçimine dönüştürülmesi","durum":"dogrulandi","hedef":"crates/ceviri/src/gemini.rs","kanit":["port/altin/gemini_1_sade.json"]}
+{"id":"DAV-3","tanim":"21 yönlendirme stratejisi sıralaması ve ikiz ayrımı","durum":"dogrulandi","hedef":"crates/havuz/src/router.rs","kanit":["port/altin/strateji_girdi1.json"]}
+{"id":"DAV-4","tanim":"Canlı SSE akışının chunk çevirisi ve [DONE] ile sonlanması","durum":"dogrulandi","hedef":"crates/yukari/src/akis.rs","kanit":["crates/sunucu/tests/p8_sse_ve_tool_test.rs"]}
+{"id":"DAV-5","tanim":"3 katmanlı hata kalkanı devre kesici ve 429 soğuma","durum":"dogrulandi","hedef":"crates/yukari/src/lib.rs","kanit":["crates/yukari/tests/p7_dayaniklilik_test.rs"]}

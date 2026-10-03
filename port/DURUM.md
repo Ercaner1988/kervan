@@ -1,12 +1,12 @@
-<!-- URETILMIS_DURUM_HASH: 81657e666d40abc2788c41305ebbaecf231be195454e30cf7a07daf72a331690 -->
+<!-- URETILMIS_DURUM_HASH: 0c41bd47d8a8ef383c2b0a0a22f272b06ab50362572069afd7b8c9d224c12389 -->
 # DURUM.md — Kervan Aktarım Durum Defteri (ÜRETİLMİŞTİR)
 
 > ⚠️ BU DOSYA OTOMATİK OLARAK ÜRETİLMİŞTİR. ELLE DÜZENLEMEYİNİZ.
 > Düzenlemeler kapı ve defter araçları tarafından ezilir.
 
-- **Mevcut Faz:** P9
-- **Son Güncelleme:** 2026-10-03T19:59:09.007Z
-- **Tüm Kapılar Yeşil mi:** ✅ EVET
+- **Mevcut Faz:** P10
+- **Son Güncelleme:** 2026-10-03T20:28:13.732Z
+- **Tüm Kapılar Yeşil mi:** ❌ HAYIR
 
 ---
 
@@ -14,18 +14,18 @@
 
 | Kapı Adı | Çıkış Kodu | Süre (ms) | Log Dosyası |
 |---|:---:|:---:|---|
-| makine-sakin | ✅ 0 | 594 | [makine-sakin.log](port\kayit\P9\makine-sakin.log) |
-| kabul-haritasi | ✅ 0 | 39438 | [kabul-haritasi.log](port\kayit\P9\kabul-haritasi.log) |
-| ulasilabilirlik | ✅ 0 | 2006 | [ulasilabilirlik.log](port\kayit\P9\ulasilabilirlik.log) |
-| sabit-yanit | ✅ 0 | 139 | [sabit-yanit.log](port\kayit\P9\sabit-yanit.log) |
-| uc-kaydi | ✅ 0 | 86544 | [uc-kaydi.log](port\kayit\P9\uc-kaydi.log) |
-| muhur-kontrol | ✅ 0 | 433 | [muhur-kontrol.log](port\kayit\P9\muhur-kontrol.log) |
-| rapor-kontrol | ✅ 0 | 271 | [rapor-kontrol.log](port\kayit\P9\rapor-kontrol.log) |
-| kulliyat-tara | ✅ 0 | 2358 | [kulliyat-tara.log](port\kayit\P9\kulliyat-tara.log) |
-| mutasyon-kontrol | ✅ 0 | 67786 | [mutasyon-kontrol.log](port\kayit\P9\mutasyon-kontrol.log) |
-| defter-kontrol | ✅ 0 | 138 | [defter-kontrol.log](port\kayit\P9\defter-kontrol.log) |
-| strateji-kumesi | ✅ 0 | 109 | [strateji-kumesi.log](port\kayit\P9\strateji-kumesi.log) |
-| p9-strateji-test | ✅ 0 | 7068 | [p9-strateji-test.log](port\kayit\P9\p9-strateji-test.log) |
+| makine-sakin | ✅ 0 | 687 | [makine-sakin.log](port\kayit\P10\makine-sakin.log) |
+| kabul-haritasi | ❌ 1 | 350840 | [kabul-haritasi.log](port\kayit\P10\kabul-haritasi.log) |
+| ulasilabilirlik | ✅ 0 | 2120 | [ulasilabilirlik.log](port\kayit\P10\ulasilabilirlik.log) |
+| sabit-yanit | ✅ 0 | 182 | [sabit-yanit.log](port\kayit\P10\sabit-yanit.log) |
+| uc-kaydi | ✅ 0 | 15094 | [uc-kaydi.log](port\kayit\P10\uc-kaydi.log) |
+| muhur-kontrol | ✅ 0 | 116 | [muhur-kontrol.log](port\kayit\P10\muhur-kontrol.log) |
+| rapor-kontrol | ❌ 1 | 95 | [rapor-kontrol.log](port\kayit\P10\rapor-kontrol.log) |
+| kulliyat-tara | ✅ 0 | 589 | [kulliyat-tara.log](port\kayit\P10\kulliyat-tara.log) |
+| mutasyon-kontrol | ✅ 0 | 52216 | [mutasyon-kontrol.log](port\kayit\P10\mutasyon-kontrol.log) |
+| defter-kontrol | ✅ 0 | 100 | [defter-kontrol.log](port\kayit\P10\defter-kontrol.log) |
+| envanter | ✅ 0 | 1877 | [envanter.log](port\kayit\P10\envanter.log) |
+| dalga-uret | ✅ 0 | 106 | [dalga-uret.log](port\kayit\P10\dalga-uret.log) |
 
 ---
 
