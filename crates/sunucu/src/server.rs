@@ -490,7 +490,32 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
                     &format!("desteklenmiyor: {}", alan),
                 );
             }
-            Err(kervan_yukari::YukariHatasi::HttpHatasi(durum, govde)) => {
+            Err(kervan_yukari::YukariHatasi::DevreAcik { ad, kalan_sure_ms }) => {
+                return hata(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    &format!("Devre kesici açık: {} ({}ms sonra tekrar denenecek)", ad, kalan_sure_ms),
+                );
+            }
+            Err(kervan_yukari::YukariHatasi::Sogumada { ad, retry_after_saniye }) => {
+                let mut resp = hata(
+                    StatusCode::TOO_MANY_REQUESTS,
+                    &format!("Sağlayıcı soğumada: {} (Retry-After: {}s)", ad, retry_after_saniye),
+                );
+                if let Ok(val) = axum::http::HeaderValue::from_str(&retry_after_saniye.to_string()) {
+                    resp.headers_mut().insert(axum::http::header::RETRY_AFTER, val);
+                }
+                return resp;
+            }
+            Err(kervan_yukari::YukariHatasi::HttpHatasi(429, govde, retry_after)) => {
+                let mut resp = hata(StatusCode::TOO_MANY_REQUESTS, &format!("Yukarı akış 429 hatası: {}", govde));
+                if let Some(sn) = retry_after {
+                    if let Ok(val) = axum::http::HeaderValue::from_str(&sn.to_string()) {
+                        resp.headers_mut().insert(axum::http::header::RETRY_AFTER, val);
+                    }
+                }
+                return resp;
+            }
+            Err(kervan_yukari::YukariHatasi::HttpHatasi(durum, govde, _)) => {
                 let status = StatusCode::from_u16(durum).unwrap_or(StatusCode::BAD_GATEWAY);
                 return hata(status, &format!("Yukarı akış HTTP hatası ({}): {}", durum, govde));
             }

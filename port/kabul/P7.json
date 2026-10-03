@@ -1,0 +1,23 @@
+{
+  "faz": "P7",
+  "maddeler": [
+    {
+      "id": "P7-A1",
+      "metin": "ardışık 5xx kesiciyi açar ve sonraki istek yukarı akışa gitmeden 503 döner; 429 Retry-After ile soğuma ve süre sonunda yeniden deneme çalışır",
+      "kanit": [
+        "test_p7_ardisik_5xx_kesiciyi_acar",
+        "test_p7_429_retry_after_ve_soguma",
+        "p7_ardisik_5xx_kesici_503_ve_sayac_sabit",
+        "p7_429_retry_after_ve_soguma_kervan"
+      ]
+    },
+    {
+      "id": "P7-A2",
+      "metin": "yankılanan test anahtarı istemci yanıtında, stdout/stderr'de ve günlüklerde yoktur",
+      "kanit": [
+        "test_p7_hata_temizligi_ve_anahtar_sizdirmazligi",
+        "p7_hata_temizligi_ve_anahtar_sizdirmazligi"
+      ]
+    }
+  ]
+}

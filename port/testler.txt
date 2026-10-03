@@ -60,6 +60,11 @@ p6_gemini_altin_parite_testi: test
 p6_yanit_donusumleri_testi: test
 
 3 tests, 0 benchmarks
+tests::test_direnc_yoneticisi_429_retry_after: test
+tests::test_direnc_yoneticisi_4xx_hata_kesiciyi_etkilemez: test
+tests::test_direnc_yoneticisi_5xx_ve_kesici_acma: test
+
+3 tests, 0 benchmarks
 gui::tests::test_amiral_model: test
 gui::tests::test_base64_encode: test
 gui::tests::test_dosya_mime_belirle: test
@@ -154,6 +159,11 @@ p5_models_testi: test
 p6_desteklenmeyen_alanlar_testi: test
 
 1 test, 0 benchmarks
+p7_429_retry_after_ve_soguma_kervan: test
+p7_ardisik_5xx_kesici_503_ve_sayac_sabit: test
+p7_hata_temizligi_ve_anahtar_sizdirmazligi: test
+
+3 tests, 0 benchmarks
 browser::tests::arti_isareti_kodlanir: test
 browser::tests::bos_balon_bitis_sayilmaz: test
 browser::tests::bosluk_farki_yazimi_reddettirmez: test
@@ -193,3 +203,9 @@ p4_a2_openai_bicimli_gecis_kayipsiz_ve_derin_esit: test
 p4_a3_chat_kancasi_model_cozumleme: test
 
 3 tests, 0 benchmarks
+test_p7_429_retry_after_ve_soguma: test
+test_p7_4xx_hata_kesiciyi_etkilemez: test
+test_p7_ardisik_5xx_kesiciyi_acar: test
+test_p7_hata_temizligi_ve_anahtar_sizdirmazligi: test
+
+4 tests, 0 benchmarks

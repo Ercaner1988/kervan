@@ -2281,6 +2281,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "kervan-direnc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "kervan-gui"
 version = "0.1.0"
 dependencies = [
@@ -2335,6 +2346,7 @@ dependencies = [
  "axum",
  "futures-util",
  "kervan-akis",
+ "kervan-direnc",
  "kervan-havuz",
  "kervan-mcp",
  "kervan-saglayici",
@@ -2366,8 +2378,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "kervan-ceviri",
+ "kervan-direnc",
  "kervan-tarayici",
  "log",
+ "regex",
  "serde",
  "serde_json",
  "tokio",

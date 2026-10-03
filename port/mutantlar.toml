@@ -28,3 +28,10 @@ bul = "max_tokens: istek.max_tokens.unwrap_or(64000),"
 yerine = "max_tokens: 12345,"
 oldurmesi_gereken_test = ["cargo test -p kervan-ceviri --test p6_parite_test"]
 
+[[mutant]]
+ad = "direnc-hata-kaydini-atla"
+dosya = "crates/yukari/src/lib.rs"
+bul = "d.hata_kaydet(&hedef.ad, durum, retry_after);"
+yerine = "// d.hata_kaydet(&hedef.ad, durum, retry_after);"
+oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-yukari', '--test', 'p7_dayaniklilik_test', '--', 'test_p7_ardisik_5xx_kesiciyi_acar'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]
+
