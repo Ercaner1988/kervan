@@ -165,6 +165,16 @@ if (import.meta.main) {
         { ad: "makine-sakin", komut: "bun araclar/kapilar/makine-sakin.ts --min-ram-gb 0.1 --max-cpu-pct 100" },
         { ad: "kabul-haritasi", komut: "bun araclar/kapilar/kabul-haritasi.ts P1" },
       ];
+    } else if (faz === "P2") {
+      gorevler = [
+        { ad: "makine-sakin", komut: "bun araclar/kapilar/makine-sakin.ts --min-ram-gb 0.1 --max-cpu-pct 100" },
+        { ad: "kabul-haritasi", komut: "bun araclar/kapilar/kabul-haritasi.ts P2" },
+        { ad: "ulasilabilirlik", komut: "bun araclar/kapilar/ulasilabilirlik.ts" },
+        { ad: "sabit-yanit", komut: "bun araclar/kapilar/sabit-yanit.ts" },
+        { ad: "uc-kaydi", komut: "bun araclar/kapilar/uc-kaydi.ts" },
+        { ad: "muhur-kontrol", komut: "bun araclar/kapilar/muhur-kontrol.ts --faz P2" },
+        { ad: "rapor-kontrol", komut: "bun araclar/kapilar/rapor-kontrol.ts P1" },
+      ];
     }
   }
 

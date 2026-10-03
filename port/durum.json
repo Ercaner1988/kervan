@@ -1,23 +1,63 @@
 {
   "uretici_ozeti": "araclar/kapilar/hepsi.ts",
-  "uretim_zamani": "2026-10-03T11:33:43.618Z",
-  "faz": "P1",
+  "uretim_zamani": "2026-10-03T11:42:24.323Z",
+  "faz": "P2",
   "kapilar": [
     {
       "ad": "makine-sakin",
       "komut": "bun araclar/kapilar/makine-sakin.ts --min-ram-gb 0.1 --max-cpu-pct 100 ",
       "cikis": 0,
-      "sure_ms": 1313,
-      "log": "port\\kayit\\P1\\makine-sakin.log",
-      "zaman": "2026-10-03T11:33:06.360Z"
+      "sure_ms": 603,
+      "log": "port\\kayit\\P2\\makine-sakin.log",
+      "zaman": "2026-10-03T11:41:57.845Z"
     },
     {
       "ad": "kabul-haritasi",
-      "komut": "bun araclar/kapilar/kabul-haritasi.ts P1 ",
+      "komut": "bun araclar/kapilar/kabul-haritasi.ts P2 ",
       "cikis": 0,
-      "sure_ms": 37256,
-      "log": "port\\kayit\\P1\\kabul-haritasi.log",
-      "zaman": "2026-10-03T11:33:43.617Z"
+      "sure_ms": 19299,
+      "log": "port\\kayit\\P2\\kabul-haritasi.log",
+      "zaman": "2026-10-03T11:42:17.144Z"
+    },
+    {
+      "ad": "ulasilabilirlik",
+      "komut": "bun araclar/kapilar/ulasilabilirlik.ts ",
+      "cikis": 0,
+      "sure_ms": 2412,
+      "log": "port\\kayit\\P2\\ulasilabilirlik.log",
+      "zaman": "2026-10-03T11:42:19.556Z"
+    },
+    {
+      "ad": "sabit-yanit",
+      "komut": "bun araclar/kapilar/sabit-yanit.ts ",
+      "cikis": 0,
+      "sure_ms": 360,
+      "log": "port\\kayit\\P2\\sabit-yanit.log",
+      "zaman": "2026-10-03T11:42:19.916Z"
+    },
+    {
+      "ad": "uc-kaydi",
+      "komut": "bun araclar/kapilar/uc-kaydi.ts ",
+      "cikis": 0,
+      "sure_ms": 4000,
+      "log": "port\\kayit\\P2\\uc-kaydi.log",
+      "zaman": "2026-10-03T11:42:23.916Z"
+    },
+    {
+      "ad": "muhur-kontrol",
+      "komut": "bun araclar/kapilar/muhur-kontrol.ts --faz P2 ",
+      "cikis": 0,
+      "sure_ms": 248,
+      "log": "port\\kayit\\P2\\muhur-kontrol.log",
+      "zaman": "2026-10-03T11:42:24.164Z"
+    },
+    {
+      "ad": "rapor-kontrol",
+      "komut": "bun araclar/kapilar/rapor-kontrol.ts P1 ",
+      "cikis": 0,
+      "sure_ms": 157,
+      "log": "port\\kayit\\P2\\rapor-kontrol.log",
+      "zaman": "2026-10-03T11:42:24.323Z"
     }
   ],
   "tum_kapilar_yesil_mi": true

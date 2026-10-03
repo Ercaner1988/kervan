@@ -36,10 +36,10 @@
 
 | Madde | Kural / Açıklama | Kanıt Testi / Komut | Sonuç |
 |---|---|---|:---:|
-| **P1-A1** | Kasıtlı kırık ve zaman aşan örnek kapılar `hepsi.ts` ile çıkış != 0 verir; `port/kayit` altında ham log oluşur | `bun test araclar/kapilar` (`p1::a1_hepsi_kapilari_calistirir_ve_hata_yakalar`) | ✅ GEÇTİ |
-| **P1-A2** | İzlenmeyen dosyaya bağımlı test çalışma dizininde yeşil, temiz kopyada kırmızıdır; çalışma dizinine dokunulmaz | `bun test araclar/kapilar` (`p1::a2_temiz_kopya_izlenmeyen_dosyalari_yitirir_ve_calisma_agacini_korur`) | ✅ GEÇTİ |
-| **P1-A3** | Kabul haritasında var olmayan veya boş test kimliği kapıyı kırmızı yapar | `bun test araclar/kapilar` (`p1::a3_kabul_haritasi_gecersiz_veya_eksik_test_kimliklerini_reddeder`) | ✅ GEÇTİ |
-| **P1-A4** | `makine-sakin` eşik dışında çıkış != 0, içinde 0 verir | `bun test araclar/kapilar` (`p1::a4_makine_sakin_esik_ici_ve_disi_davranislari_ayirt_eder`) | ✅ GEÇTİ |
+| **P1-A1** | Kasıtlı kırık ve zaman aşan örnek kapılar `hepsi.ts` ile çıkış != 0 verir; `port/kayit` altında ham log oluşur | [p1.test.ts:11](file:///C:/Users/buzbe/Desktop/Github/kervan/araclar/kapilar/p1.test.ts#L11) (`p1::a1`) · [makine-sakin.log](file:///C:/Users/buzbe/Desktop/Github/kervan/port/kayit/P1/makine-sakin.log) | ✅ GEÇTİ |
+| **P1-A2** | İzlenmeyen dosyaya bağımlı test çalışma dizininde yeşil, temiz kopyada kırmızıdır; çalışma dizinine dokunulmaz | [p1.test.ts:46](file:///C:/Users/buzbe/Desktop/Github/kervan/araclar/kapilar/p1.test.ts#L46) (`p1::a2`) · [temiz-kopya.ts:18](file:///C:/Users/buzbe/Desktop/Github/kervan/araclar/kapilar/temiz-kopya.ts#L18) | ✅ GEÇTİ |
+| **P1-A3** | Kabul haritasında var olmayan veya boş test kimliği kapıyı kırmızı yapar | [p1.test.ts:66](file:///C:/Users/buzbe/Desktop/Github/kervan/araclar/kapilar/p1.test.ts#L66) (`p1::a3`) · [kabul-haritasi.log](file:///C:/Users/buzbe/Desktop/Github/kervan/port/kayit/P1/kabul-haritasi.log) | ✅ GEÇTİ |
+| **P1-A4** | `makine-sakin` eşik dışında çıkış != 0, içinde 0 verir | [p1.test.ts:93](file:///C:/Users/buzbe/Desktop/Github/kervan/araclar/kapilar/p1.test.ts#L93) (`p1::a4`) · [makine-sakin.log](file:///C:/Users/buzbe/Desktop/Github/kervan/port/kayit/P1/makine-sakin.log) | ✅ GEÇTİ |
 
 ---
 

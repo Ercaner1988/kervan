@@ -1,0 +1,30 @@
+{
+  "faz": "P2",
+  "maddeler": [
+    {
+      "id": "P2-A1",
+      "clause": "ulasilabilirlik bağsız crate eklenmiş sahte ağaçta kırmızı, temiz ağaçta yeşildir",
+      "kanit": ["p2::a1_ulasilabilirlik_temiz_agacta_gecer"]
+    },
+    {
+      "id": "P2-A2",
+      "clause": "sabit-yanit test-dışı src içindeki kalıpta kırmızı, cfg(test) içinde yeşildir",
+      "kanit": ["p2::a2_sabit_yanit_test_disi_kalipte_kirmizi_cfg_test_icinde_yesildir"]
+    },
+    {
+      "id": "P2-A3",
+      "clause": "uc-kaydi kayıtsız rota, var olmayan test kimliği ve nonce geçmeyen gercek testinde kırmızıdır",
+      "kanit": ["p2::a3_uc_kaydi_eksik_rota_ve_test_hatalarinda_kirmizidir"]
+    },
+    {
+      "id": "P2-A4",
+      "clause": "muhur-kontrol mühürlü fixture değişikliğinde, mutantlar.toml silinmesinde ve elle düzenlenmiş altında kırmızı; ekleme yeşildir",
+      "kanit": ["p2::a4_muhur_kontrol_degisiklikte_kirmizi_temizde_yesildir"]
+    },
+    {
+      "id": "P2-A5",
+      "clause": "rapor-kontrol bağsız geçti cümlesinde ve cevapsız liste maddesinde kırmızıdır",
+      "kanit": ["p2::a5_rapor_kontrol_bagisiz_veya_eksik_maddede_kirmizi_tam_raporda_yesildir"]
+    }
+  ]
+}
