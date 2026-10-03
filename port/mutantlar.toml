@@ -42,4 +42,11 @@ bul = "return Err(YukariHatasi::Desteklenmiyor(\"tools\".to_string()));"
 yerine = "// return Err(YukariHatasi::Desteklenmiyor(\"tools\".to_string()));"
 oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-sunucu', '--test', 'p8_sse_ve_tool_test', '--', 'test_p8_claude_akista_arac_acik_hata'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]
 
+[[mutant]]
+ad = "strateji-least-used-yonunu-ters-cevir"
+dosya = "crates/havuz/src/router.rs"
+bul = "a.request_count.cmp(&b.request_count)"
+yerine = "b.request_count.cmp(&a.request_count)"
+oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-havuz', '--test', 'p9_strateji_test', '--', 'test_fr72_altin_parite_girdi1_ve_girdi2'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]
+
 

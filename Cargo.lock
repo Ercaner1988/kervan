@@ -2311,6 +2311,7 @@ dependencies = [
  "kervan-saglayici",
  "kervan-tarayici",
  "rand 0.10.2",
+ "serde",
  "serde_json",
  "tokio",
  "toml",

@@ -202,6 +202,8 @@ test_p7_hata_temizligi_ve_anahtar_sizdirmazligi: test
 0 tests, 0 benchmarks
 0 tests, 0 benchmarks
 0 tests, 0 benchmarks
-0 tests, 0 benchmarks
-0 tests, 0 benchmarks
-0 tests, 0 benchmarks
+test_fr71_kume_sayilari_ve_dahili_ayrimi: test
+test_fr72_altin_parite_girdi1_ve_girdi2: test
+test_fr73_ikizler_fark_kaniti: test
+
+3 tests, 0 benchmarks
