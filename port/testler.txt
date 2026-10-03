@@ -53,6 +53,13 @@ video::tests::istem_secenekleri_tasir: test
 video::tests::yanit_gorevi_kapatir: test
 
 8 tests, 0 benchmarks
+0 tests, 0 benchmarks
+0 tests, 0 benchmarks
+p6_claude_altin_parite_testi: test
+p6_gemini_altin_parite_testi: test
+p6_yanit_donusumleri_testi: test
+
+3 tests, 0 benchmarks
 gui::tests::test_amiral_model: test
 gui::tests::test_base64_encode: test
 gui::tests::test_dosya_mime_belirle: test
@@ -144,6 +151,9 @@ p5_e2e_nonce_testi: test
 p5_models_testi: test
 
 2 tests, 0 benchmarks
+p6_desteklenmeyen_alanlar_testi: test
+
+1 test, 0 benchmarks
 browser::tests::arti_isareti_kodlanir: test
 browser::tests::bos_balon_bitis_sayilmaz: test
 browser::tests::bosluk_farki_yazimi_reddettirmez: test

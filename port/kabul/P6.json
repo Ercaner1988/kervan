@@ -1,0 +1,20 @@
+{
+  "faz": "P6",
+  "maddeler": [
+    {
+      "id": "P6-A1",
+      "clause": "altin-uret iki ardışık koşuda bayt-özdeş çıktı verir; başlıklar kaynak SHA'sını taşır; canlı OmniRoute'a dokunulmaz",
+      "kanit": ["p6_claude_altin_parite_testi", "p6_gemini_altin_parite_testi"]
+    },
+    {
+      "id": "P6-A2",
+      "clause": "altı sabit girdi için Kervan çıktısı altınla eşittir (kayıtlı sapmalar hariç); ceviri mutantı testi kırar",
+      "kanit": ["p6_claude_altin_parite_testi", "p6_gemini_altin_parite_testi", "p6_yanit_donusumleri_testi"]
+    },
+    {
+      "id": "P6-A3",
+      "clause": "Claude/Gemini hedefte tools veya çok parçalı içerikte açık hata döner ve sahte sunucu istek sayacı 0 kalır",
+      "kanit": ["p6_desteklenmeyen_alanlar_testi"]
+    }
+  ]
+}

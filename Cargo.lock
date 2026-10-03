@@ -2270,6 +2270,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "kervan-ceviri"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "kervan-gui"
 version = "0.1.0"
 dependencies = [
@@ -2354,6 +2365,7 @@ name = "kervan-yukari"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "kervan-ceviri",
  "kervan-tarayici",
  "log",
  "serde",

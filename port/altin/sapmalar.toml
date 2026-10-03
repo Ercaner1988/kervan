@@ -1,0 +1,15 @@
+# port/altin/sapmalar.toml
+# PRD FR-5.2: Kervan ile OmniRoute referansı arasındaki gerekçeli sapma kaydı.
+# Her sapma: alan, neden, omniroute_kaynak_satiri, onaylayan.
+
+[[sapma]]
+alan = "tools"
+neden = "FR-5.3 gereği Claude ve Gemini REST sağlayıcılarında araç tanımları bu fazda desteklenmez; yukarı akışa istek atılmadan 400/501 hatası verilir."
+omniroute_kaynak_satiri = "open-sse/translator/request/openai-to-claude.ts:38"
+onaylayan = "Ercan"
+
+[[sapma]]
+alan = "cok_parcali_icerik"
+neden = "FR-5.3 gereği görsel ve çok parçalı gövdeler bu fazda desteklenmez; açık hata döndürülür."
+omniroute_kaynak_satiri = "open-sse/translator/request/openai-to-claude/imageBlocks.ts:21"
+onaylayan = "Ercan"

@@ -1,0 +1,73 @@
+{
+  "kaynak_sha": "dbe703a",
+  "kaynak_yol": "open-sse/translator/request/openai-to-claude.ts",
+  "uretici_ozeti": "sha256:46c8b54508399e195720f48bcdee726be751a7af8e8f7582e1b599a48cd844fd",
+  "girdi_id": "claude_5_arac_tanimi",
+  "girdi": {
+    "model": "gpt-4o",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hava durumu sorgula"
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "get_weather",
+          "description": "Get weather in location",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "location": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "location"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "cikti": {
+    "model": "claude-3-7-sonnet",
+    "max_tokens": 64000,
+    "stream": false,
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "Hava durumu sorgula"
+          }
+        ]
+      }
+    ],
+    "tools": [
+      {
+        "name": "proxy_get_weather",
+        "description": "Get weather in location",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "location": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "location"
+          ]
+        },
+        "cache_control": {
+          "type": "ephemeral",
+          "ttl": "1h"
+        }
+      }
+    ],
+    "_toolNameMap": {}
+  }
+}

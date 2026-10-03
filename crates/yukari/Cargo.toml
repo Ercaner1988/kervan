@@ -7,6 +7,7 @@ description = "Kervan REST yukarı akış istemcisi: ureq ile doğrudan HTTP ça
 
 [dependencies]
 kervan-tarayici = { path = "../tarayici" }
+kervan-ceviri = { path = "../ceviri" }
 ureq = { version = "3.4.2", default-features = false, features = ["rustls", "gzip", "json"] }
 tokio = { workspace = true }
 serde = { workspace = true }

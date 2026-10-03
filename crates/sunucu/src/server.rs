@@ -487,7 +487,7 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
             Err(kervan_yukari::YukariHatasi::Desteklenmiyor(alan)) => {
                 return hata(
                     StatusCode::NOT_IMPLEMENTED,
-                    &format!("Desteklenmiyor: {}", alan),
+                    &format!("desteklenmiyor: {}", alan),
                 );
             }
             Err(kervan_yukari::YukariHatasi::HttpHatasi(durum, govde)) => {

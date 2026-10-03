@@ -105,14 +105,8 @@ impl Yukari {
 
         match hedef.bicim.as_str() {
             "openai" => self.gonder_openai(hedef, &anahtar, istemci_govdesi, yukari_model).await,
-            "claude" => {
-                // P6 altın parite aşamasında ceviri crate'ine bağlanacak
-                Err(YukariHatasi::Desteklenmiyor("claude biçimi P6 dilimindedir".into()))
-            }
-            "gemini" => {
-                // P6 altın parite aşamasında ceviri crate'ine bağlanacak
-                Err(YukariHatasi::Desteklenmiyor("gemini biçimi P6 dilimindedir".into()))
-            }
+            "claude" => self.gonder_claude(hedef, &anahtar, istemci_govdesi, yukari_model).await,
+            "gemini" => self.gonder_gemini(hedef, &anahtar, istemci_govdesi, yukari_model).await,
             diger => Err(YukariHatasi::Desteklenmiyor(format!("Bilinmeyen biçim: {}", diger))),
         }
     }
@@ -155,6 +149,155 @@ impl Yukari {
                         response
                             .body_mut()
                             .read_json::<Value>()
+                            .map_err(|e| YukariHatasi::JsonHatasi(e.to_string()))
+                    } else {
+                        let hata_govdesi = response
+                            .body_mut()
+                            .read_to_string()
+                            .unwrap_or_else(|_| String::new());
+                        let kisaltilmis = if hata_govdesi.len() > 500 {
+                            format!("{}...", &hata_govdesi[..500])
+                        } else {
+                            hata_govdesi
+                        };
+                        Err(YukariHatasi::HttpHatasi(durum, kisaltilmis))
+                    }
+                }
+                Err(ureq::Error::StatusCode(status)) => {
+                    Err(YukariHatasi::HttpHatasi(status, "HTTP Hata Durumu".to_string()))
+                }
+                Err(e) => Err(YukariHatasi::AgHatasi(e.to_string())),
+            }
+        })
+        .await
+        .map_err(|e| YukariHatasi::AgHatasi(format!("spawn_blocking hatası: {}", e)))?
+    }
+
+    async fn gonder_claude(
+        &self,
+        hedef: &Hedef,
+        anahtar: &str,
+        istemci_govdesi: &Value,
+        yukari_model: &str,
+    ) -> Result<Value, YukariHatasi> {
+        let openai_istek: kervan_ceviri::OpenAiIstek = serde_json::from_value(istemci_govdesi.clone())
+            .map_err(|e| YukariHatasi::JsonHatasi(format!("İstemci gövdesi ayrıştırılamadı: {}", e)))?;
+
+        let claude_istek = kervan_ceviri::openai_den_claude_istegi(&openai_istek, yukari_model)
+            .map_err(|e| match e {
+                kervan_ceviri::CeviriHatasi::Desteklenmiyor(alan) => YukariHatasi::Desteklenmiyor(alan),
+                kervan_ceviri::CeviriHatasi::GecersizIstek(m) => YukariHatasi::JsonHatasi(m),
+                kervan_ceviri::CeviriHatasi::AyrirmaHatasi(m) => YukariHatasi::JsonHatasi(m),
+            })?;
+
+        let yukari_govde = serde_json::to_value(&claude_istek)
+            .map_err(|e| YukariHatasi::JsonHatasi(e.to_string()))?;
+
+        let yol = hedef.yol.as_deref().unwrap_or("/v1/messages");
+        let url = format!("{}{}", hedef.taban_url, yol);
+        let anahtar_kopya = anahtar.to_string();
+        let model_kopya = yukari_model.to_string();
+
+        let ajan = self.ajan.clone();
+        let timeout = hedef.zaman_asimi;
+
+        tokio::task::spawn_blocking(move || {
+            let res = ajan
+                .post(&url)
+                .header("x-api-key", &anahtar_kopya)
+                .header("anthropic-version", "2023-06-01")
+                .header("Content-Type", "application/json")
+                .config()
+                .timeout_global(Some(timeout))
+                .build()
+                .send_json(&yukari_govde);
+
+            match res {
+                Ok(mut response) => {
+                    let durum = response.status().as_u16();
+                    if durum >= 200 && durum < 300 {
+                        let claude_yanit = response
+                            .body_mut()
+                            .read_json::<kervan_ceviri::ClaudeYanit>()
+                            .map_err(|e| YukariHatasi::JsonHatasi(e.to_string()))?;
+                        let openai_yanit = kervan_ceviri::claude_dan_openai_yaniti(&claude_yanit, &model_kopya)
+                            .map_err(|e| YukariHatasi::JsonHatasi(e.to_string()))?;
+                        serde_json::to_value(&openai_yanit)
+                            .map_err(|e| YukariHatasi::JsonHatasi(e.to_string()))
+                    } else {
+                        let hata_govdesi = response
+                            .body_mut()
+                            .read_to_string()
+                            .unwrap_or_else(|_| String::new());
+                        let kisaltilmis = if hata_govdesi.len() > 500 {
+                            format!("{}...", &hata_govdesi[..500])
+                        } else {
+                            hata_govdesi
+                        };
+                        Err(YukariHatasi::HttpHatasi(durum, kisaltilmis))
+                    }
+                }
+                Err(ureq::Error::StatusCode(status)) => {
+                    Err(YukariHatasi::HttpHatasi(status, "HTTP Hata Durumu".to_string()))
+                }
+                Err(e) => Err(YukariHatasi::AgHatasi(e.to_string())),
+            }
+        })
+        .await
+        .map_err(|e| YukariHatasi::AgHatasi(format!("spawn_blocking hatası: {}", e)))?
+    }
+
+    async fn gonder_gemini(
+        &self,
+        hedef: &Hedef,
+        anahtar: &str,
+        istemci_govdesi: &Value,
+        yukari_model: &str,
+    ) -> Result<Value, YukariHatasi> {
+        let openai_istek: kervan_ceviri::OpenAiIstek = serde_json::from_value(istemci_govdesi.clone())
+            .map_err(|e| YukariHatasi::JsonHatasi(format!("İstemci gövdesi ayrıştırılamadı: {}", e)))?;
+
+        let gemini_istek = kervan_ceviri::openai_den_gemini_istegi(&openai_istek, yukari_model)
+            .map_err(|e| match e {
+                kervan_ceviri::CeviriHatasi::Desteklenmiyor(alan) => YukariHatasi::Desteklenmiyor(alan),
+                kervan_ceviri::CeviriHatasi::GecersizIstek(m) => YukariHatasi::JsonHatasi(m),
+                kervan_ceviri::CeviriHatasi::AyrirmaHatasi(m) => YukariHatasi::JsonHatasi(m),
+            })?;
+
+        let yukari_govde = serde_json::to_value(&gemini_istek)
+            .map_err(|e| YukariHatasi::JsonHatasi(e.to_string()))?;
+
+        let yol = hedef.yol.clone().unwrap_or_else(|| {
+            format!("/v1beta/models/{}:generateContent", yukari_model)
+        });
+        let url = format!("{}{}", hedef.taban_url, yol);
+        let anahtar_kopya = anahtar.to_string();
+        let model_kopya = yukari_model.to_string();
+
+        let ajan = self.ajan.clone();
+        let timeout = hedef.zaman_asimi;
+
+        tokio::task::spawn_blocking(move || {
+            let res = ajan
+                .post(&url)
+                .header("x-goog-api-key", &anahtar_kopya)
+                .header("Content-Type", "application/json")
+                .config()
+                .timeout_global(Some(timeout))
+                .build()
+                .send_json(&yukari_govde);
+
+            match res {
+                Ok(mut response) => {
+                    let durum = response.status().as_u16();
+                    if durum >= 200 && durum < 300 {
+                        let gemini_yanit = response
+                            .body_mut()
+                            .read_json::<kervan_ceviri::GeminiYanit>()
+                            .map_err(|e| YukariHatasi::JsonHatasi(e.to_string()))?;
+                        let openai_yanit = kervan_ceviri::gemini_den_openai_yaniti(&gemini_yanit, &model_kopya)
+                            .map_err(|e| YukariHatasi::JsonHatasi(e.to_string()))?;
+                        serde_json::to_value(&openai_yanit)
                             .map_err(|e| YukariHatasi::JsonHatasi(e.to_string()))
                     } else {
                         let hata_govdesi = response

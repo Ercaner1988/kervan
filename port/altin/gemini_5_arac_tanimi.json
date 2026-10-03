@@ -1,0 +1,100 @@
+{
+  "kaynak_sha": "dbe703a",
+  "kaynak_yol": "open-sse/translator/request/openai-to-gemini.ts",
+  "uretici_ozeti": "sha256:46c8b54508399e195720f48bcdee726be751a7af8e8f7582e1b599a48cd844fd",
+  "girdi_id": "gemini_5_arac_tanimi",
+  "girdi": {
+    "model": "gpt-4o",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hava durumu sorgula"
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "get_weather",
+          "description": "Get weather in location",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "location": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "location"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "cikti": {
+    "model": "gemini-2.5-flash",
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Hava durumu sorgula"
+          }
+        ]
+      }
+    ],
+    "generationConfig": {
+      "maxOutputTokens": 65536,
+      "thinkingConfig": {
+        "thinkingBudget": 24576,
+        "includeThoughts": true
+      }
+    },
+    "safetySettings": [
+      {
+        "category": "HARM_CATEGORY_HATE_SPEECH",
+        "threshold": "OFF"
+      },
+      {
+        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+        "threshold": "OFF"
+      },
+      {
+        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+        "threshold": "OFF"
+      },
+      {
+        "category": "HARM_CATEGORY_HARASSMENT",
+        "threshold": "OFF"
+      }
+    ],
+    "tools": [
+      {
+        "functionDeclarations": [
+          {
+            "name": "get_weather",
+            "description": "Get weather in location",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "location"
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "toolConfig": {
+      "functionCallingConfig": {
+        "mode": "VALIDATED"
+      }
+    },
+    "_toolNameMap": {}
+  }
+}

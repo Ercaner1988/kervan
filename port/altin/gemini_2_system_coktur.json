@@ -1,0 +1,89 @@
+{
+  "kaynak_sha": "dbe703a",
+  "kaynak_yol": "open-sse/translator/request/openai-to-gemini.ts",
+  "uretici_ozeti": "sha256:46c8b54508399e195720f48bcdee726be751a7af8e8f7582e1b599a48cd844fd",
+  "girdi_id": "gemini_2_system_coktur",
+  "girdi": {
+    "model": "gpt-4o",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Sen yardimci bir asistansin."
+      },
+      {
+        "role": "user",
+        "content": "Nasilsin?"
+      },
+      {
+        "role": "assistant",
+        "content": "Iyiyim, tesekkurler."
+      },
+      {
+        "role": "user",
+        "content": "Bugun hava nasil?"
+      }
+    ]
+  },
+  "cikti": {
+    "model": "gemini-2.5-flash",
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Nasilsin?"
+          }
+        ]
+      },
+      {
+        "role": "model",
+        "parts": [
+          {
+            "text": "Iyiyim, tesekkurler."
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Bugun hava nasil?"
+          }
+        ]
+      }
+    ],
+    "generationConfig": {
+      "maxOutputTokens": 65536,
+      "thinkingConfig": {
+        "thinkingBudget": 24576,
+        "includeThoughts": true
+      }
+    },
+    "safetySettings": [
+      {
+        "category": "HARM_CATEGORY_HATE_SPEECH",
+        "threshold": "OFF"
+      },
+      {
+        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+        "threshold": "OFF"
+      },
+      {
+        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+        "threshold": "OFF"
+      },
+      {
+        "category": "HARM_CATEGORY_HARASSMENT",
+        "threshold": "OFF"
+      }
+    ],
+    "systemInstruction": {
+      "role": "system",
+      "parts": [
+        {
+          "text": "Sen yardimci bir asistansin."
+        }
+      ]
+    }
+  }
+}

@@ -1,79 +1,103 @@
 {
   "uretici_ozeti": "araclar/kapilar/hepsi.ts",
-  "uretim_zamani": "2026-10-03T12:41:43.864Z",
-  "faz": "P5",
+  "uretim_zamani": "2026-10-03T13:18:25.208Z",
+  "faz": "P6",
   "kapilar": [
-    {
-      "ad": "makine-sakin",
-      "komut": "bun araclar/kapilar/makine-sakin.ts --min-ram-gb 0.1 --max-cpu-pct 100 ",
-      "cikis": 0,
-      "sure_ms": 590,
-      "log": "port\\kayit\\P5\\makine-sakin.log",
-      "zaman": "2026-10-03T12:41:22.631Z"
-    },
-    {
-      "ad": "kabul-haritasi",
-      "komut": "bun araclar/kapilar/kabul-haritasi.ts P5 --test-list-dosyasi port/testler.txt ",
-      "cikis": 0,
-      "sure_ms": 151,
-      "log": "port\\kayit\\P5\\kabul-haritasi.log",
-      "zaman": "2026-10-03T12:41:22.782Z"
-    },
     {
       "ad": "ulasilabilirlik",
       "komut": "bun araclar/kapilar/ulasilabilirlik.ts ",
       "cikis": 0,
-      "sure_ms": 3138,
-      "log": "port\\kayit\\P5\\ulasilabilirlik.log",
-      "zaman": "2026-10-03T12:41:25.920Z"
+      "sure_ms": 1157,
+      "log": "port\\kayit\\P6\\ulasilabilirlik.log",
+      "zaman": "2026-10-03T13:17:35.487Z"
     },
     {
       "ad": "sabit-yanit",
       "komut": "bun araclar/kapilar/sabit-yanit.ts ",
       "cikis": 0,
-      "sure_ms": 2253,
-      "log": "port\\kayit\\P5\\sabit-yanit.log",
-      "zaman": "2026-10-03T12:41:28.173Z"
+      "sure_ms": 151,
+      "log": "port\\kayit\\P6\\sabit-yanit.log",
+      "zaman": "2026-10-03T13:17:35.638Z"
     },
     {
       "ad": "uc-kaydi",
-      "komut": "bun araclar/kapilar/uc-kaydi.ts ",
+      "komut": "bun araclar/kapilar/uc-kaydi.ts --test-list-dosyasi port/testler.txt ",
       "cikis": 0,
-      "sure_ms": 4417,
-      "log": "port\\kayit\\P5\\uc-kaydi.log",
-      "zaman": "2026-10-03T12:41:32.590Z"
+      "sure_ms": 2065,
+      "log": "port\\kayit\\P6\\uc-kaydi.log",
+      "zaman": "2026-10-03T13:17:37.703Z"
     },
     {
       "ad": "muhur-kontrol",
-      "komut": "bun araclar/kapilar/muhur-kontrol.ts --faz P5 --ref HEAD ",
+      "komut": "bun araclar/kapilar/muhur-kontrol.ts P6 ",
       "cikis": 0,
-      "sure_ms": 381,
-      "log": "port\\kayit\\P5\\muhur-kontrol.log",
-      "zaman": "2026-10-03T12:41:32.971Z"
+      "sure_ms": 368,
+      "log": "port\\kayit\\P6\\muhur-kontrol.log",
+      "zaman": "2026-10-03T13:17:38.071Z"
+    },
+    {
+      "ad": "kulliyat-tara",
+      "komut": "bun araclar/kapilar/kulliyat-tara.ts ",
+      "cikis": 0,
+      "sure_ms": 394,
+      "log": "port\\kayit\\P6\\kulliyat-tara.log",
+      "zaman": "2026-10-03T13:17:38.465Z"
     },
     {
       "ad": "mutasyon-kontrol",
       "komut": "bun araclar/kapilar/mutasyon-kontrol.ts ",
       "cikis": 0,
-      "sure_ms": 10536,
-      "log": "port\\kayit\\P5\\mutasyon-kontrol.log",
-      "zaman": "2026-10-03T12:41:43.507Z"
-    },
-    {
-      "ad": "durum-kontrol",
-      "komut": "bun araclar/kapilar/durum-kontrol.ts ",
-      "cikis": 0,
-      "sure_ms": 194,
-      "log": "port\\kayit\\P5\\durum-kontrol.log",
-      "zaman": "2026-10-03T12:41:43.701Z"
+      "sure_ms": 29174,
+      "log": "port\\kayit\\P6\\mutasyon-kontrol.log",
+      "zaman": "2026-10-03T13:18:07.639Z"
     },
     {
       "ad": "defter-kontrol",
       "komut": "bun araclar/kapilar/defter-kontrol.ts ",
       "cikis": 0,
-      "sure_ms": 162,
-      "log": "port\\kayit\\P5\\defter-kontrol.log",
-      "zaman": "2026-10-03T12:41:43.863Z"
+      "sure_ms": 79,
+      "log": "port\\kayit\\P6\\defter-kontrol.log",
+      "zaman": "2026-10-03T13:18:07.719Z"
+    },
+    {
+      "ad": "durum-kontrol",
+      "komut": "bun araclar/kapilar/durum-kontrol.ts ",
+      "cikis": 0,
+      "sure_ms": 71,
+      "log": "port\\kayit\\P6\\durum-kontrol.log",
+      "zaman": "2026-10-03T13:18:07.790Z"
+    },
+    {
+      "ad": "kabul-haritasi",
+      "komut": "bun araclar/kapilar/kabul-haritasi.ts P6 --test-list-dosyasi port/testler.txt ",
+      "cikis": 0,
+      "sure_ms": 71,
+      "log": "port\\kayit\\P6\\kabul-haritasi.log",
+      "zaman": "2026-10-03T13:18:07.861Z"
+    },
+    {
+      "ad": "altin-parite",
+      "komut": "bun araclar/parite/altin-uret.ts --kontrol ",
+      "cikis": 0,
+      "sure_ms": 2768,
+      "log": "port\\kayit\\P6\\altin-parite.log",
+      "zaman": "2026-10-03T13:18:10.629Z"
+    },
+    {
+      "ad": "ceviri-test",
+      "komut": "cargo test -p kervan-ceviri --test p6_parite_test ",
+      "cikis": 0,
+      "sure_ms": 3345,
+      "log": "port\\kayit\\P6\\ceviri-test.log",
+      "zaman": "2026-10-03T13:18:13.974Z"
+    },
+    {
+      "ad": "unsupported-test",
+      "komut": "cargo test -p kervan-sunucu --test p6_unsupported_test ",
+      "cikis": 0,
+      "sure_ms": 11234,
+      "log": "port\\kayit\\P6\\unsupported-test.log",
+      "zaman": "2026-10-03T13:18:25.208Z"
     }
   ],
   "tum_kapilar_yesil_mi": true

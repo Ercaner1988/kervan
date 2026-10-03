@@ -1,11 +1,11 @@
-<!-- URETILMIS_DURUM_HASH: a609e1f6009723ce363ef2b756d14a062deb97545f7e2738f5901dfe3406e441 -->
+<!-- URETILMIS_DURUM_HASH: 25f93d1accde7be2cc121ea7edb70e0f4280c19879cb3b6d5dba87c574dcc9ed -->
 # DURUM.md — Kervan Aktarım Durum Defteri (ÜRETİLMİŞTİR)
 
 > ⚠️ BU DOSYA OTOMATİK OLARAK ÜRETİLMİŞTİR. ELLE DÜZENLEMEYİNİZ.
 > Düzenlemeler kapı ve defter araçları tarafından ezilir.
 
-- **Mevcut Faz:** P4
-- **Son Güncelleme:** 2026-10-03T12:32:58.247Z
+- **Mevcut Faz:** P6
+- **Son Güncelleme:** 2026-10-03T13:18:25.208Z
 - **Tüm Kapılar Yeşil mi:** ✅ EVET
 
 ---
@@ -14,15 +14,18 @@
 
 | Kapı Adı | Çıkış Kodu | Süre (ms) | Log Dosyası |
 |---|:---:|:---:|---|
-| makine-sakin | ✅ 0 | 717 | [makine-sakin.log](port\kayit\P4\makine-sakin.log) |
-| kabul-haritasi | ✅ 0 | 195 | [kabul-haritasi.log](port\kayit\P4\kabul-haritasi.log) |
-| ulasilabilirlik | ✅ 0 | 5891 | [ulasilabilirlik.log](port\kayit\P4\ulasilabilirlik.log) |
-| sabit-yanit | ✅ 0 | 479 | [sabit-yanit.log](port\kayit\P4\sabit-yanit.log) |
-| uc-kaydi | ✅ 0 | 5089 | [uc-kaydi.log](port\kayit\P4\uc-kaydi.log) |
-| muhur-kontrol | ✅ 0 | 360 | [muhur-kontrol.log](port\kayit\P4\muhur-kontrol.log) |
-| mutasyon-kontrol | ✅ 0 | 10750 | [mutasyon-kontrol.log](port\kayit\P4\mutasyon-kontrol.log) |
-| durum-kontrol | ✅ 0 | 213 | [durum-kontrol.log](port\kayit\P4\durum-kontrol.log) |
-| defter-kontrol | ✅ 0 | 144 | [defter-kontrol.log](port\kayit\P4\defter-kontrol.log) |
+| ulasilabilirlik | ✅ 0 | 1157 | [ulasilabilirlik.log](port\kayit\P6\ulasilabilirlik.log) |
+| sabit-yanit | ✅ 0 | 151 | [sabit-yanit.log](port\kayit\P6\sabit-yanit.log) |
+| uc-kaydi | ✅ 0 | 2065 | [uc-kaydi.log](port\kayit\P6\uc-kaydi.log) |
+| muhur-kontrol | ✅ 0 | 368 | [muhur-kontrol.log](port\kayit\P6\muhur-kontrol.log) |
+| kulliyat-tara | ✅ 0 | 394 | [kulliyat-tara.log](port\kayit\P6\kulliyat-tara.log) |
+| mutasyon-kontrol | ✅ 0 | 29174 | [mutasyon-kontrol.log](port\kayit\P6\mutasyon-kontrol.log) |
+| defter-kontrol | ✅ 0 | 79 | [defter-kontrol.log](port\kayit\P6\defter-kontrol.log) |
+| durum-kontrol | ✅ 0 | 71 | [durum-kontrol.log](port\kayit\P6\durum-kontrol.log) |
+| kabul-haritasi | ✅ 0 | 71 | [kabul-haritasi.log](port\kayit\P6\kabul-haritasi.log) |
+| altin-parite | ✅ 0 | 2768 | [altin-parite.log](port\kayit\P6\altin-parite.log) |
+| ceviri-test | ✅ 0 | 3345 | [ceviri-test.log](port\kayit\P6\ceviri-test.log) |
+| unsupported-test | ✅ 0 | 11234 | [unsupported-test.log](port\kayit\P6\unsupported-test.log) |
 
 ---
 
