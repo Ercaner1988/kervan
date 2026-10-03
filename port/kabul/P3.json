@@ -1,0 +1,25 @@
+{
+  "faz": "P3",
+  "maddeler": [
+    {
+      "id": "P3-A1",
+      "clause": "kulliyat-tara ac2f18d teslimindeki 5 sahte teslim sınıfının tamamını kırmızı yakalar, temiz ağaçta yeşildir",
+      "kanit": ["p3::a1_kulliyat_taramasi_ac2f18d_5_sinifi_yakalar_ve_temiz_agac_yesildir"]
+    },
+    {
+      "id": "P3-A2",
+      "clause": "mutasyon-kontrol bildirilmiş mutantları öldürür, yaşayan mutantta ve bağsız paritede kırmızıdır",
+      "kanit": ["p3::a2_mutasyon_ve_parite_baglantisi"]
+    },
+    {
+      "id": "P3-A3",
+      "clause": "durum-kontrol elle değiştirilmiş DURUM.md ve eksik README başlığında kırmızı, üretilmiş blokta yeşildir",
+      "kanit": ["p3::a3_durum_ve_belge_butunlugu"]
+    },
+    {
+      "id": "P3-A4",
+      "clause": "defter-kontrol sahte hedef, sahte kanıt, pencere boşluğu ve gerekçesiz kapsam-dışında kırmızıdır",
+      "kanit": ["p3::a4_defter_kapisi_ihlalleri"]
+    }
+  ]
+}

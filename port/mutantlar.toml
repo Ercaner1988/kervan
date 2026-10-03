@@ -1,0 +1,16 @@
+# port/mutantlar.toml (yalnız-ekleme)
+# Her mutant tek kullanımlık kopyaya uygulanır ve eşlediği testi kırmızıya çevirmek zorundadır.
+
+[[mutant]]
+ad = "tohum-istemi-bos-dondur"
+dosya = "crates/sunucu/src/server.rs"
+bul = "pub fn tohum_istemi(msgs: &[Message], azami: usize) -> String {"
+yerine = "pub fn tohum_istemi(_msgs: &[Message], _azami: usize) -> String { return String::new();"
+oldurmesi_gereken_test = ["server::tests::tohum_gecmisi_ve_asil_soruyu_tasir"]
+
+[[mutant]]
+ad = "sabit-yanit-enjekte-et"
+dosya = "crates/sunucu/src/server.rs"
+bul = "async fn chat("
+yerine = "async fn chat(/* chatcmpl-123 */ "
+oldurmesi_gereken_test = ["bun araclar/kapilar/sabit-yanit.ts"]

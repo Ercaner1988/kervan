@@ -1,0 +1,84 @@
+# port/muhur.toml - SHA-256 Mühür Listesi
+# PRD FR-2.4: P3'ün insan kapısında Ercan onayı ile mühürlenmiştir.
+# Bu dosyada listelenen dosyalar P4 ve sonrasında DEĞİŞTİRİLEMEZ.
+
+[[dosya]]
+yol = "araclar/kapilar/defter-kontrol.ts"
+sha256 = "6b754a4b6437da7d0219ebf0fc8e119135ec75e8281a21aed0ea4266e8de3fd2"
+
+[[dosya]]
+yol = "araclar/kapilar/durum-kontrol.ts"
+sha256 = "03f5168b16a0576400fa1af1010538702e6c6e781cdb82bc27cf13002fff3938"
+
+[[dosya]]
+yol = "araclar/kapilar/durum-uret.ts"
+sha256 = "a8b43ed49e0329ff0c554e3b557d0fad70f46a031964bb3c34e66f73ec0385bd"
+
+[[dosya]]
+yol = "araclar/kapilar/hepsi.ts"
+sha256 = "af8e7e93108048655206fd8a557fff9878a4049bb22280cdd04c6c33c6cb21a9"
+
+[[dosya]]
+yol = "araclar/kapilar/kabul-haritasi.ts"
+sha256 = "bcbbd0d957d6a7ee0ae708e072629421627782cd928794fb1aad457b950ff0f9"
+
+[[dosya]]
+yol = "araclar/kapilar/kulliyat-tara.ts"
+sha256 = "3202385f75fe8bf97caa96735e6c34a6389dd1d21a1f57056caf0127e93a5669"
+
+[[dosya]]
+yol = "araclar/kapilar/makine-sakin.ts"
+sha256 = "fb7c3a665b29fbc37e33bd003f1081e4e5556342fd22b4535b9cbca13df9afcd"
+
+[[dosya]]
+yol = "araclar/kapilar/muhur-kontrol.ts"
+sha256 = "7a0b136a05dd8a3eec22e558e9dfd97461f48c2c1c9bafd13c73f3e975208dc0"
+
+[[dosya]]
+yol = "araclar/kapilar/muhur-uret.ts"
+sha256 = "c75687b5e14e22d3553a8c334008847b061acb3e8d5d27dd0ebb9f9348c761b0"
+
+[[dosya]]
+yol = "araclar/kapilar/mutasyon-kontrol.ts"
+sha256 = "496735e0116343d528be30fd3d53bd569fd32ff101a677d91c5c287730fdc26d"
+
+[[dosya]]
+yol = "araclar/kapilar/p1.test.ts"
+sha256 = "58e67542e0334c3034a69b3461e31761f10276a08ecc81867ef797bfc6e78d97"
+
+[[dosya]]
+yol = "araclar/kapilar/p2.test.ts"
+sha256 = "41a5628bd2eb22a5e686ff7cc3727a7feb1fd7d6ae8083cfa938ee7cf849b390"
+
+[[dosya]]
+yol = "araclar/kapilar/p3.test.ts"
+sha256 = "134eb410603f0cef345fbdab8f67e15df208528594b8fc3746c95b5a49b69704"
+
+[[dosya]]
+yol = "araclar/kapilar/rapor-kontrol.ts"
+sha256 = "e858e97d00223c982676b25d49ade2266afd81fdc0162bf669845f8b834d0610"
+
+[[dosya]]
+yol = "araclar/kapilar/sabit-yanit.ts"
+sha256 = "e87beff022f197f742f7bc1b4b752b71a1b2cf98247312191a3de816e24d2237"
+
+[[dosya]]
+yol = "araclar/kapilar/temiz-kopya.ts"
+sha256 = "22443df585045937e43f2118a60405a05fb0cfa6840dc408669a76ba01f05947"
+
+[[dosya]]
+yol = "araclar/kapilar/test-hepsi.ts"
+sha256 = "ab2511496ff84f1bd1dfab26cfa1a8a7d9a736eb04c94ccff17b0ee9b17f1506"
+
+[[dosya]]
+yol = "araclar/kapilar/test-temiz-kopya.ts"
+sha256 = "77fe8194d0aba6e1b19b17635dff9be2b953f13fa9e51e443eb74ae67e8da3e0"
+
+[[dosya]]
+yol = "araclar/kapilar/uc-kaydi.ts"
+sha256 = "8e8e6600b6574b65ca188a82eaca1d270c597dcaa44fee48dfc27f2792e7191d"
+
+[[dosya]]
+yol = "araclar/kapilar/ulasilabilirlik.ts"
+sha256 = "d2d1aa1a3ddf51e4b8c514150dfc6836ff6149a3365f170d05fad0bd0cc53e91"
+
