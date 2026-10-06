@@ -93,7 +93,7 @@ impl RoutingStrategy {
     }
 
     pub fn from_str_canonical(s: &str) -> Option<Self> {
-        match s.trim().to_lowercase().as_str() {
+        match s.trim().to_ascii_lowercase().as_str() {
             "priority" => Some(Self::Priority),
             "weighted" => Some(Self::Weighted),
             "round-robin" | "roundrobin" => Some(Self::RoundRobin),
@@ -120,6 +120,8 @@ impl RoutingStrategy {
     }
 
     /// Sabit girdi hedeflerini strateji kuralına ve tohumlu determinizme göre sıralar.
+    // Biçim sabit: port/mutantlar.toml "strateji-least-used-yonunu-ters-cevir" bu gövdeyi arar.
+    #[rustfmt::skip]
     pub fn sirala(&self, adaylar: &[HedefAdayi], tohum: Option<u64>) -> Vec<HedefAdayi> {
         if adaylar.is_empty() {
             return Vec::new();

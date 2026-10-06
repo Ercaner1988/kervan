@@ -4,10 +4,10 @@
 //! kayıpsız istek iletimi, yanıt alımı, devre kesici (circuit breaker),
 //! soğuma takipçisi ve hata temizliğini sağlar.
 
+use serde_json::Value;
 use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
-use serde_json::Value;
 use tokio::sync::Mutex;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,7 +22,11 @@ pub struct Hedef {
 }
 
 impl Hedef {
-    pub fn rest_ayardan(ad: &str, ayar: &kervan_tarayici::config::RestAyar, varsayilan_timeout: Duration) -> Self {
+    pub fn rest_ayardan(
+        ad: &str,
+        ayar: &kervan_tarayici::config::RestAyar,
+        varsayilan_timeout: Duration,
+    ) -> Self {
         Self {
             ad: ad.to_string(),
             bicim: ayar.bicim.clone(),
@@ -50,14 +54,22 @@ impl fmt::Display for YukariHatasi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::AnahtarYok(env_ad) => {
-                write!(f, "Sağlayıcı API anahtarı bulunamadı: Ortam değişkeni '{}' tanımlı değil", env_ad)
+                write!(
+                    f,
+                    "Sağlayıcı API anahtarı bulunamadı: Ortam değişkeni '{}' tanımlı değil",
+                    env_ad
+                )
             }
             Self::Desteklenmiyor(alan) => {
                 write!(f, "Yukarı akış için desteklenmeyen alan: {}", alan)
             }
             Self::HttpHatasi(durum, govde, retry_after) => {
                 if let Some(sn) = retry_after {
-                    write!(f, "Yukarı akış HTTP hatası ({}) [Retry-After: {}s]: {}", durum, sn, govde)
+                    write!(
+                        f,
+                        "Yukarı akış HTTP hatası ({}) [Retry-After: {}s]: {}",
+                        durum, sn, govde
+                    )
                 } else {
                     write!(f, "Yukarı akış HTTP hatası ({}): {}", durum, govde)
                 }
@@ -69,10 +81,21 @@ impl fmt::Display for YukariHatasi {
                 write!(f, "Yukarı akış JSON ayrıştırma hatası: {}", mesaj)
             }
             Self::DevreAcik { ad, kalan_sure_ms } => {
-                write!(f, "Devre kesici açık: {} ({}ms sonra tekrar denenecek)", ad, kalan_sure_ms)
+                write!(
+                    f,
+                    "Devre kesici açık: {} ({}ms sonra tekrar denenecek)",
+                    ad, kalan_sure_ms
+                )
             }
-            Self::Sogumada { ad, retry_after_saniye } => {
-                write!(f, "Sağlayıcı soğumada: {} (Retry-After: {}s)", ad, retry_after_saniye)
+            Self::Sogumada {
+                ad,
+                retry_after_saniye,
+            } => {
+                write!(
+                    f,
+                    "Sağlayıcı soğumada: {} (Retry-After: {}s)",
+                    ad, retry_after_saniye
+                )
             }
         }
     }
@@ -92,9 +115,13 @@ pub fn temizle_hata(govde: &str, gizli_anahtar: &str) -> String {
 
     // 2. Bearer token ve authorization kalıplarını maskele
     if let Ok(re_bearer) = regex::Regex::new(r"(?i)bearer\s+([a-zA-Z0-9_\-\.]{8,})") {
-        temiz = re_bearer.replace_all(&temiz, "Bearer [GIZLENDI]").to_string();
+        temiz = re_bearer
+            .replace_all(&temiz, "Bearer [GIZLENDI]")
+            .to_string();
     }
-    if let Ok(re_key) = regex::Regex::new(r#"(?i)(api[_-]?key|token|secret)["']?\s*[:=]\s*["']?([a-zA-Z0-9_\-\.]{8,})"#) {
+    if let Ok(re_key) = regex::Regex::new(
+        r#"(?i)(api[_-]?key|token|secret)["']?\s*[:=]\s*["']?([a-zA-Z0-9_\-\.]{8,})"#,
+    ) {
         temiz = re_key.replace_all(&temiz, "$1=[GIZLENDI]").to_string();
     }
 
@@ -168,15 +195,18 @@ impl Yukari {
                     kervan_direnc::DirencHatasi::DevreAcik { ad, kalan_sure_ms } => {
                         Err(YukariHatasi::DevreAcik { ad, kalan_sure_ms })
                     }
-                    kervan_direnc::DirencHatasi::Sogumada { ad, retry_after_saniye } => {
-                        Err(YukariHatasi::Sogumada { ad, retry_after_saniye })
-                    }
-                    kervan_direnc::DirencHatasi::YariAcikDolu(ad) => {
-                        Err(YukariHatasi::DevreAcik { ad, kalan_sure_ms: 1000 })
-                    }
-                    kervan_direnc::DirencHatasi::IslemHatasi(m) => {
-                        Err(YukariHatasi::AgHatasi(m))
-                    }
+                    kervan_direnc::DirencHatasi::Sogumada {
+                        ad,
+                        retry_after_saniye,
+                    } => Err(YukariHatasi::Sogumada {
+                        ad,
+                        retry_after_saniye,
+                    }),
+                    kervan_direnc::DirencHatasi::YariAcikDolu(ad) => Err(YukariHatasi::DevreAcik {
+                        ad,
+                        kalan_sure_ms: 1000,
+                    }),
+                    kervan_direnc::DirencHatasi::IslemHatasi(m) => Err(YukariHatasi::AgHatasi(m)),
                 };
             }
         }
@@ -186,10 +216,22 @@ impl Yukari {
 
         // 4. İsteği gönder
         let sonuc = match hedef.bicim.as_str() {
-            "openai" => self.gonder_openai(hedef, &anahtar, istemci_govdesi, yukari_model).await,
-            "claude" => self.gonder_claude(hedef, &anahtar, istemci_govdesi, yukari_model).await,
-            "gemini" => self.gonder_gemini(hedef, &anahtar, istemci_govdesi, yukari_model).await,
-            diger => Err(YukariHatasi::Desteklenmiyor(format!("Bilinmeyen biçim: {}", diger))),
+            "openai" => {
+                self.gonder_openai(hedef, &anahtar, istemci_govdesi, yukari_model)
+                    .await
+            }
+            "claude" => {
+                self.gonder_claude(hedef, &anahtar, istemci_govdesi, yukari_model)
+                    .await
+            }
+            "gemini" => {
+                self.gonder_gemini(hedef, &anahtar, istemci_govdesi, yukari_model)
+                    .await
+            }
+            diger => Err(YukariHatasi::Desteklenmiyor(format!(
+                "Bilinmeyen biçim: {}",
+                diger
+            ))),
         };
 
         // 5. Dayanıklılık durumunu güncelle
@@ -259,13 +301,14 @@ impl Yukari {
             match res {
                 Ok(mut response) => {
                     let durum = response.status().as_u16();
-                    if durum >= 200 && durum < 300 {
-                        response
-                            .body_mut()
-                            .read_json::<Value>()
-                            .map_err(|e| YukariHatasi::JsonHatasi(temizle_hata(&e.to_string(), &anahtar_kopya)))
+                    if (200..300).contains(&durum) {
+                        response.body_mut().read_json::<Value>().map_err(|e| {
+                            YukariHatasi::JsonHatasi(temizle_hata(&e.to_string(), &anahtar_kopya))
+                        })
                     } else {
-                        let retry_after = response.headers().get("retry-after")
+                        let retry_after = response
+                            .headers()
+                            .get("retry-after")
                             .or_else(|| response.headers().get("Retry-After"))
                             .and_then(|v| v.to_str().ok())
                             .and_then(|v| v.trim().parse::<u64>().ok());
@@ -278,10 +321,15 @@ impl Yukari {
                         Err(YukariHatasi::HttpHatasi(durum, temizlenmis, retry_after))
                     }
                 }
-                Err(ureq::Error::StatusCode(status)) => {
-                    Err(YukariHatasi::HttpHatasi(status, "HTTP Hata Durumu".to_string(), None))
-                }
-                Err(e) => Err(YukariHatasi::AgHatasi(temizle_hata(&e.to_string(), &anahtar_kopya))),
+                Err(ureq::Error::StatusCode(status)) => Err(YukariHatasi::HttpHatasi(
+                    status,
+                    "HTTP Hata Durumu".to_string(),
+                    None,
+                )),
+                Err(e) => Err(YukariHatasi::AgHatasi(temizle_hata(
+                    &e.to_string(),
+                    &anahtar_kopya,
+                ))),
             }
         })
         .await
@@ -295,12 +343,16 @@ impl Yukari {
         istemci_govdesi: &Value,
         yukari_model: &str,
     ) -> Result<Value, YukariHatasi> {
-        let openai_istek: kervan_ceviri::OpenAiIstek = serde_json::from_value(istemci_govdesi.clone())
-            .map_err(|e| YukariHatasi::JsonHatasi(format!("İstemci gövdesi ayrıştırılamadı: {}", e)))?;
+        let openai_istek: kervan_ceviri::OpenAiIstek =
+            serde_json::from_value(istemci_govdesi.clone()).map_err(|e| {
+                YukariHatasi::JsonHatasi(format!("İstemci gövdesi ayrıştırılamadı: {}", e))
+            })?;
 
         let claude_istek = kervan_ceviri::openai_den_claude_istegi(&openai_istek, yukari_model)
             .map_err(|e| match e {
-                kervan_ceviri::CeviriHatasi::Desteklenmiyor(alan) => YukariHatasi::Desteklenmiyor(alan),
+                kervan_ceviri::CeviriHatasi::Desteklenmiyor(alan) => {
+                    YukariHatasi::Desteklenmiyor(alan)
+                }
                 kervan_ceviri::CeviriHatasi::GecersizIstek(m) => YukariHatasi::JsonHatasi(m),
                 kervan_ceviri::CeviriHatasi::AyrirmaHatasi(m) => YukariHatasi::JsonHatasi(m),
             })?;
@@ -331,17 +383,30 @@ impl Yukari {
             match res {
                 Ok(mut response) => {
                     let durum = response.status().as_u16();
-                    if durum >= 200 && durum < 300 {
+                    if (200..300).contains(&durum) {
                         let claude_yanit = response
                             .body_mut()
                             .read_json::<kervan_ceviri::ClaudeYanit>()
-                            .map_err(|e| YukariHatasi::JsonHatasi(temizle_hata(&e.to_string(), &anahtar_kopya)))?;
-                        let openai_yanit = kervan_ceviri::claude_dan_openai_yaniti(&claude_yanit, &model_kopya)
-                            .map_err(|e| YukariHatasi::JsonHatasi(temizle_hata(&e.to_string(), &anahtar_kopya)))?;
+                            .map_err(|e| {
+                                YukariHatasi::JsonHatasi(temizle_hata(
+                                    &e.to_string(),
+                                    &anahtar_kopya,
+                                ))
+                            })?;
+                        let openai_yanit =
+                            kervan_ceviri::claude_dan_openai_yaniti(&claude_yanit, &model_kopya)
+                                .map_err(|e| {
+                                    YukariHatasi::JsonHatasi(temizle_hata(
+                                        &e.to_string(),
+                                        &anahtar_kopya,
+                                    ))
+                                })?;
                         serde_json::to_value(&openai_yanit)
                             .map_err(|e| YukariHatasi::JsonHatasi(e.to_string()))
                     } else {
-                        let retry_after = response.headers().get("retry-after")
+                        let retry_after = response
+                            .headers()
+                            .get("retry-after")
                             .or_else(|| response.headers().get("Retry-After"))
                             .and_then(|v| v.to_str().ok())
                             .and_then(|v| v.trim().parse::<u64>().ok());
@@ -354,10 +419,15 @@ impl Yukari {
                         Err(YukariHatasi::HttpHatasi(durum, temizlenmis, retry_after))
                     }
                 }
-                Err(ureq::Error::StatusCode(status)) => {
-                    Err(YukariHatasi::HttpHatasi(status, "HTTP Hata Durumu".to_string(), None))
-                }
-                Err(e) => Err(YukariHatasi::AgHatasi(temizle_hata(&e.to_string(), &anahtar_kopya))),
+                Err(ureq::Error::StatusCode(status)) => Err(YukariHatasi::HttpHatasi(
+                    status,
+                    "HTTP Hata Durumu".to_string(),
+                    None,
+                )),
+                Err(e) => Err(YukariHatasi::AgHatasi(temizle_hata(
+                    &e.to_string(),
+                    &anahtar_kopya,
+                ))),
             }
         })
         .await
@@ -371,12 +441,16 @@ impl Yukari {
         istemci_govdesi: &Value,
         yukari_model: &str,
     ) -> Result<Value, YukariHatasi> {
-        let openai_istek: kervan_ceviri::OpenAiIstek = serde_json::from_value(istemci_govdesi.clone())
-            .map_err(|e| YukariHatasi::JsonHatasi(format!("İstemci gövdesi ayrıştırılamadı: {}", e)))?;
+        let openai_istek: kervan_ceviri::OpenAiIstek =
+            serde_json::from_value(istemci_govdesi.clone()).map_err(|e| {
+                YukariHatasi::JsonHatasi(format!("İstemci gövdesi ayrıştırılamadı: {}", e))
+            })?;
 
         let gemini_istek = kervan_ceviri::openai_den_gemini_istegi(&openai_istek, yukari_model)
             .map_err(|e| match e {
-                kervan_ceviri::CeviriHatasi::Desteklenmiyor(alan) => YukariHatasi::Desteklenmiyor(alan),
+                kervan_ceviri::CeviriHatasi::Desteklenmiyor(alan) => {
+                    YukariHatasi::Desteklenmiyor(alan)
+                }
                 kervan_ceviri::CeviriHatasi::GecersizIstek(m) => YukariHatasi::JsonHatasi(m),
                 kervan_ceviri::CeviriHatasi::AyrirmaHatasi(m) => YukariHatasi::JsonHatasi(m),
             })?;
@@ -384,9 +458,10 @@ impl Yukari {
         let yukari_govde = serde_json::to_value(&gemini_istek)
             .map_err(|e| YukariHatasi::JsonHatasi(e.to_string()))?;
 
-        let yol = hedef.yol.clone().unwrap_or_else(|| {
-            format!("/v1beta/models/{}:generateContent", yukari_model)
-        });
+        let yol = hedef
+            .yol
+            .clone()
+            .unwrap_or_else(|| format!("/v1beta/models/{}:generateContent", yukari_model));
         let url = format!("{}{}", hedef.taban_url, yol);
         let anahtar_kopya = anahtar.to_string();
         let model_kopya = yukari_model.to_string();
@@ -408,17 +483,30 @@ impl Yukari {
             match res {
                 Ok(mut response) => {
                     let durum = response.status().as_u16();
-                    if durum >= 200 && durum < 300 {
+                    if (200..300).contains(&durum) {
                         let gemini_yanit = response
                             .body_mut()
                             .read_json::<kervan_ceviri::GeminiYanit>()
-                            .map_err(|e| YukariHatasi::JsonHatasi(temizle_hata(&e.to_string(), &anahtar_kopya)))?;
-                        let openai_yanit = kervan_ceviri::gemini_den_openai_yaniti(&gemini_yanit, &model_kopya)
-                            .map_err(|e| YukariHatasi::JsonHatasi(temizle_hata(&e.to_string(), &anahtar_kopya)))?;
+                            .map_err(|e| {
+                                YukariHatasi::JsonHatasi(temizle_hata(
+                                    &e.to_string(),
+                                    &anahtar_kopya,
+                                ))
+                            })?;
+                        let openai_yanit =
+                            kervan_ceviri::gemini_den_openai_yaniti(&gemini_yanit, &model_kopya)
+                                .map_err(|e| {
+                                    YukariHatasi::JsonHatasi(temizle_hata(
+                                        &e.to_string(),
+                                        &anahtar_kopya,
+                                    ))
+                                })?;
                         serde_json::to_value(&openai_yanit)
                             .map_err(|e| YukariHatasi::JsonHatasi(e.to_string()))
                     } else {
-                        let retry_after = response.headers().get("retry-after")
+                        let retry_after = response
+                            .headers()
+                            .get("retry-after")
                             .or_else(|| response.headers().get("Retry-After"))
                             .and_then(|v| v.to_str().ok())
                             .and_then(|v| v.trim().parse::<u64>().ok());
@@ -431,10 +519,15 @@ impl Yukari {
                         Err(YukariHatasi::HttpHatasi(durum, temizlenmis, retry_after))
                     }
                 }
-                Err(ureq::Error::StatusCode(status)) => {
-                    Err(YukariHatasi::HttpHatasi(status, "HTTP Hata Durumu".to_string(), None))
-                }
-                Err(e) => Err(YukariHatasi::AgHatasi(temizle_hata(&e.to_string(), &anahtar_kopya))),
+                Err(ureq::Error::StatusCode(status)) => Err(YukariHatasi::HttpHatasi(
+                    status,
+                    "HTTP Hata Durumu".to_string(),
+                    None,
+                )),
+                Err(e) => Err(YukariHatasi::AgHatasi(temizle_hata(
+                    &e.to_string(),
+                    &anahtar_kopya,
+                ))),
             }
         })
         .await

@@ -10,19 +10,24 @@ use crate::modeller::*;
 /// - FR-5.3: `tools` veya çok parçalı içerik varsa yukarı akışa gitmeden açık hata döner.
 /// - Boş metin Anthropic API kuralı gereği `.` ile doldurulur.
 /// - Sistem mesajları `system` bloğuna taşınır.
-pub fn openai_den_claude_istegi(istek: &OpenAiIstek, hedef_model: &str) -> Result<ClaudeIstek, CeviriHatasi> {
+pub fn openai_den_claude_istegi(
+    istek: &OpenAiIstek,
+    hedef_model: &str,
+) -> Result<ClaudeIstek, CeviriHatasi> {
     // 1. Desteklenmeyen alan denetimleri (FR-5.3)
-    if let Some(ref tools) = istek.tools {
-        if !tools.is_empty() {
-            return Err(CeviriHatasi::Desteklenmiyor("tools".to_string()));
-        }
+    if let Some(ref tools) = istek.tools
+        && !tools.is_empty()
+    {
+        return Err(CeviriHatasi::Desteklenmiyor("tools".to_string()));
     }
 
     for m in &istek.messages {
-        if let Some(ref c) = m.content {
-            if !c.is_string() {
-                return Err(CeviriHatasi::Desteklenmiyor("çok parçalı içerik".to_string()));
-            }
+        if let Some(ref c) = m.content
+            && !c.is_string()
+        {
+            return Err(CeviriHatasi::Desteklenmiyor(
+                "çok parçalı içerik".to_string(),
+            ));
         }
     }
 
@@ -43,9 +48,17 @@ pub fn openai_den_claude_istegi(istek: &OpenAiIstek, hedef_model: &str) -> Resul
                 });
             }
         } else {
-            let rol = if m.role == "assistant" { "assistant" } else { "user" };
+            let rol = if m.role == "assistant" {
+                "assistant"
+            } else {
+                "user"
+            };
             // Anthropic boş metni reddeder; OmniRoute boş içerikte "." yerleştirir
-            let son_metin = if metin.is_empty() { ".".to_string() } else { metin };
+            let son_metin = if metin.is_empty() {
+                ".".to_string()
+            } else {
+                metin
+            };
 
             let cache_control = if rol == "assistant" {
                 Some(ClaudeCacheControl {
@@ -84,7 +97,10 @@ pub fn openai_den_claude_istegi(istek: &OpenAiIstek, hedef_model: &str) -> Resul
 }
 
 /// Anthropic Claude yanıtını OpenAI Chat Completion yanıt biçimine dönüştürür.
-pub fn claude_dan_openai_yaniti(yanit: &ClaudeYanit, istenen_model: &str) -> Result<OpenAiYanit, CeviriHatasi> {
+pub fn claude_dan_openai_yaniti(
+    yanit: &ClaudeYanit,
+    istenen_model: &str,
+) -> Result<OpenAiYanit, CeviriHatasi> {
     let simdi = match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(d) => d.as_secs(),
         Err(_) => 0,

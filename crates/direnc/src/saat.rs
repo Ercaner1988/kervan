@@ -52,6 +52,9 @@ impl TestSaati {
 
 impl Saat for TestSaati {
     fn simdi(&self) -> Instant {
-        self.simdi.lock().map(|g| *g).unwrap_or_else(|_| Instant::now())
+        self.simdi
+            .lock()
+            .map(|g| *g)
+            .unwrap_or_else(|_| Instant::now())
     }
 }

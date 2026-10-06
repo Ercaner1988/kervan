@@ -1,6 +1,6 @@
+use serde_json::{Value, json};
 use std::path::Path;
 use std::time::Duration;
-use serde_json::{json, Value};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
@@ -13,7 +13,10 @@ async fn p4_a1_yapilandirma_ve_anahtar_dogrulamasi() {
     // 1. (c) kervan.toml.example yeni tablosuz da yüklenir (geriye uyum)
     let example_yol = Path::new("kervan.toml.example");
     let cfg = Config::load(example_yol).expect("kervan.toml.example hatasız yüklenmelidir");
-    assert!(cfg.rest.is_empty(), "kervan.toml.example içinde rest boş olmalı");
+    assert!(
+        cfg.rest.is_empty(),
+        "kervan.toml.example içinde rest boş olmalı"
+    );
     assert!(cfg.dogrula().is_ok());
 
     // 2. (b) Ortam değişkeni yoksa istek 503 ve hata metninde değişken adı olur, değeri asla
@@ -95,25 +98,25 @@ async fn p4_a2_openai_bicimli_gecis_kayipsiz_ve_derin_esit() {
             }
             buffer.extend_from_slice(&tmp[..n]);
 
-            if body_start.is_none() {
-                if let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n") {
-                    body_start = Some(pos + 4);
-                    let header_str = String::from_utf8_lossy(&buffer[..pos]);
-                    for line in header_str.lines() {
-                        let lower = line.to_lowercase();
-                        if lower.starts_with("content-length:") {
-                            if let Some(val) = line.split(':').nth(1) {
-                                content_length = val.trim().parse::<usize>().ok();
-                            }
-                        }
+            if body_start.is_none()
+                && let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n")
+            {
+                body_start = Some(pos + 4);
+                let header_str = String::from_utf8_lossy(&buffer[..pos]);
+                for line in header_str.lines() {
+                    let lower = line.to_lowercase();
+                    if lower.starts_with("content-length:")
+                        && let Some(val) = line.split(':').nth(1)
+                    {
+                        content_length = val.trim().parse::<usize>().ok();
                     }
                 }
             }
 
-            if let (Some(start), Some(cl)) = (body_start, content_length) {
-                if buffer.len() >= start + cl {
-                    break;
-                }
+            if let (Some(start), Some(cl)) = (body_start, content_length)
+                && buffer.len() >= start + cl
+            {
+                break;
             }
         }
 
@@ -121,8 +124,15 @@ async fn p4_a2_openai_bicimli_gecis_kayipsiz_ve_derin_esit() {
 
         // Başlık kontrolleri
         assert!(request_str.contains("POST /v1/chat/completions HTTP/1.1"));
-        assert!(request_str.contains(&format!("authorization: Bearer {}", gizli_anahtar)) || request_str.contains(&format!("Authorization: Bearer {}", gizli_anahtar)));
-        assert!(request_str.to_lowercase().contains("content-type: application/json"));
+        assert!(
+            request_str.contains(&format!("authorization: Bearer {}", gizli_anahtar))
+                || request_str.contains(&format!("Authorization: Bearer {}", gizli_anahtar))
+        );
+        assert!(
+            request_str
+                .to_lowercase()
+                .contains("content-type: application/json")
+        );
 
         // Gövdeyi ayıkla
         let start = body_start.expect("Gövde başlangıcı bulunamadı");
@@ -202,7 +212,10 @@ async fn p4_a3_chat_kancasi_model_cozumleme() {
     };
 
     let mut rest_map: std::collections::HashMap<String, Hedef> = std::collections::HashMap::new();
-    rest_map.insert("deepseek".into(), Hedef::rest_ayardan("deepseek", &ayar, Duration::from_secs(10)));
+    rest_map.insert(
+        "deepseek".into(),
+        Hedef::rest_ayardan("deepseek", &ayar, Duration::from_secs(10)),
+    );
 
     // 1. kervan/deepseek doğru çözülür
     let sade_model = "kervan/deepseek";
@@ -231,8 +244,10 @@ async fn p4_a3_chat_kancasi_model_cozumleme() {
     // 3. REST olmayan bir model (örn: gemini-flash) çözülmez (None döner -> tarayıcı yoluna düşer)
     let tarayici_model = "kervan/gemini";
     let rest_mi = {
-        let sade = tarayici_model.strip_prefix("kervan/").unwrap_or(tarayici_model);
-        let saglayici_ad = sade.splitn(2, '/').next().unwrap();
+        let sade = tarayici_model
+            .strip_prefix("kervan/")
+            .unwrap_or(tarayici_model);
+        let saglayici_ad = sade.split('/').next().unwrap();
         rest_map.contains_key(saglayici_ad)
     };
     assert!(!rest_mi, "Tarayıcı modeli REST hedefine düşmemelidir");

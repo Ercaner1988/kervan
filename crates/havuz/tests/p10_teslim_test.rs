@@ -46,7 +46,9 @@ fn test_p10_envanter_deterministik() {
         serde_json::from_str(&icerik).expect("envanter.json geçerli JSON olmalı");
 
     // En az birkaç temel anahtar içermeli
-    let obj = json.as_object().expect("envanter.json bir JSON nesnesi olmalı");
+    let obj = json
+        .as_object()
+        .expect("envanter.json bir JSON nesnesi olmalı");
     assert!(
         obj.len() >= 3,
         "envanter.json en az 3 sayım kategorisi içermeli, bulundu: {}",
@@ -64,8 +66,8 @@ fn test_p10_defter_sema_uygun() {
         let yol = defter.join(dosya_adi);
         assert!(yol.exists(), "port/defter/{} mevcut olmalı", dosya_adi);
 
-        let icerik = std::fs::read_to_string(&yol)
-            .unwrap_or_else(|_| panic!("{} okunamadı", dosya_adi));
+        let icerik =
+            std::fs::read_to_string(&yol).unwrap_or_else(|_| panic!("{} okunamadı", dosya_adi));
         let satirlar: Vec<&str> = icerik.lines().filter(|s| !s.trim().is_empty()).collect();
         assert!(
             !satirlar.is_empty(),
@@ -98,8 +100,8 @@ fn test_p10_dalga_taslak_uretimi() {
         let yol = dalgalar.join(&dosya_adi);
         assert!(yol.exists(), "port/dalgalar/{} mevcut olmalı", dosya_adi);
 
-        let icerik = std::fs::read_to_string(&yol)
-            .unwrap_or_else(|_| panic!("{} okunamadı", dosya_adi));
+        let icerik =
+            std::fs::read_to_string(&yol).unwrap_or_else(|_| panic!("{} okunamadı", dosya_adi));
 
         // §2 başlığı olmalı (## ile başlayan satır)
         assert!(
@@ -128,10 +130,17 @@ fn test_p10_pr_taslak_ve_main_dokunulmamis() {
     let icerik_kucuk = icerik.to_lowercase();
 
     // Üç bakış açısından en az ikisinin izini bul
-    let bakis_sayisi = ["bakımcı", "benimseyici", "dağıtımcı", "maintainer", "adopter", "deployer"]
-        .iter()
-        .filter(|k| icerik_kucuk.contains(*k))
-        .count();
+    let bakis_sayisi = [
+        "bakımcı",
+        "benimseyici",
+        "dağıtımcı",
+        "maintainer",
+        "adopter",
+        "deployer",
+    ]
+    .iter()
+    .filter(|k| icerik_kucuk.contains(*k))
+    .count();
     assert!(
         bakis_sayisi >= 2,
         "PR.md en az 2 bakış açısı içermeli, bulunan: {}",

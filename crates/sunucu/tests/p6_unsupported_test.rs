@@ -1,7 +1,7 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use serde_json::{Value, json};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
-use serde_json::{json, Value};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
@@ -40,30 +40,31 @@ async fn p6_desteklenmeyen_alanlar_testi() {
             let mut body_start = None;
             let mut content_length = None;
 
-            loop {
-                let Ok(n) = socket.read(&mut tmp).await else { break; };
-                if n == 0 { break; }
+            while let Ok(n) = socket.read(&mut tmp).await {
+                if n == 0 {
+                    break;
+                }
                 buffer.extend_from_slice(&tmp[..n]);
 
-                if body_start.is_none() {
-                    if let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n") {
-                        body_start = Some(pos + 4);
-                        let header_str = String::from_utf8_lossy(&buffer[..pos]);
-                        for line in header_str.lines() {
-                            let lower = line.to_lowercase();
-                            if lower.starts_with("content-length:") {
-                                if let Some(val) = line.split(':').nth(1) {
-                                    content_length = val.trim().parse::<usize>().ok();
-                                }
-                            }
+                if body_start.is_none()
+                    && let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n")
+                {
+                    body_start = Some(pos + 4);
+                    let header_str = String::from_utf8_lossy(&buffer[..pos]);
+                    for line in header_str.lines() {
+                        let lower = line.to_lowercase();
+                        if lower.starts_with("content-length:")
+                            && let Some(val) = line.split(':').nth(1)
+                        {
+                            content_length = val.trim().parse::<usize>().ok();
                         }
                     }
                 }
 
-                if let (Some(start), Some(cl)) = (body_start, content_length) {
-                    if buffer.len() >= start + cl {
-                        break;
-                    }
+                if let (Some(start), Some(cl)) = (body_start, content_length)
+                    && buffer.len() >= start + cl
+                {
+                    break;
                 }
             }
 
@@ -77,7 +78,8 @@ async fn p6_desteklenmeyen_alanlar_testi() {
                     "message": { "role": "assistant", "content": "Tamam" },
                     "finish_reason": "stop"
                 }]
-            }).to_string();
+            })
+            .to_string();
 
             let http_response = format!(
                 "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
@@ -131,7 +133,8 @@ async fn p6_desteklenmeyen_alanlar_testi() {
         },
     );
 
-    let temp_dir = std::env::temp_dir().join(format!("kervan_unsupported_test_{}", rand::random::<u64>()));
+    let temp_dir =
+        std::env::temp_dir().join(format!("kervan_unsupported_test_{}", rand::random::<u64>()));
     let _ = std::fs::create_dir_all(&temp_dir);
     let defter_yolu = temp_dir.join("defter.log");
     let defter = kervan_saglayici::kota::Defter::ac(defter_yolu).unwrap();
@@ -161,7 +164,9 @@ async fn p6_desteklenmeyen_alanlar_testi() {
         timeout: Duration::from_secs(5),
         eklenti_hub: kervan_sunucu::eklenti::EklentiHub::new(),
         compressor: kervan_sunucu::compressor::Compressor::new(),
-        router: kervan_sunucu::router::SmartRouter::new(kervan_sunucu::router::RoutingStrategy::Lkgp),
+        router: kervan_sunucu::router::SmartRouter::new(
+            kervan_sunucu::router::RoutingStrategy::Lkgp,
+        ),
         sayaclar: Default::default(),
         rest_hedefleri,
         yukari: kervan_yukari::Yukari::new(),
@@ -171,7 +176,9 @@ async fn p6_desteklenmeyen_alanlar_testi() {
     let server_addr = server_listener.local_addr().unwrap();
 
     tokio::spawn(async move {
-        axum::serve(server_listener, server::router(state)).await.unwrap();
+        axum::serve(server_listener, server::router(state))
+            .await
+            .unwrap();
     });
 
     let endpoint = format!("http://{}/v1/chat/completions", server_addr);
@@ -198,14 +205,23 @@ async fn p6_desteklenmeyen_alanlar_testi() {
         );
         let res = client.post(&ep1).send_json(&req_claude_tools);
         match res {
-            Ok(mut r) => (r.status().as_u16(), r.body_mut().read_json::<Value>().unwrap_or_default()),
+            Ok(mut r) => (
+                r.status().as_u16(),
+                r.body_mut().read_json::<Value>().unwrap_or_default(),
+            ),
             Err(ureq::Error::StatusCode(code)) => (code, json!({})),
             Err(e) => panic!("Beklenmeyen hata: {:?}", e),
         }
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
 
     assert_eq!(status1, 501, "Claude hedefte tools 501 dönmeli");
-    assert_eq!(istek_sayaci.load(Ordering::SeqCst), 0, "Yukarı akışa istek GİTMEMELİ");
+    assert_eq!(
+        istek_sayaci.load(Ordering::SeqCst),
+        0,
+        "Yukarı akışa istek GİTMEMELİ"
+    );
 
     // --- TEST 2: Claude hedefte çok parçalı içerik gönderimi ---
     let req_claude_multipart = json!({
@@ -228,14 +244,27 @@ async fn p6_desteklenmeyen_alanlar_testi() {
         );
         let res = client.post(&ep2).send_json(&req_claude_multipart);
         match res {
-            Ok(mut r) => (r.status().as_u16(), r.body_mut().read_json::<Value>().unwrap_or_default()),
+            Ok(mut r) => (
+                r.status().as_u16(),
+                r.body_mut().read_json::<Value>().unwrap_or_default(),
+            ),
             Err(ureq::Error::StatusCode(code)) => (code, json!({})),
             Err(e) => panic!("Beklenmeyen hata: {:?}", e),
         }
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
 
-    assert!(status2 == 400 || status2 == 501, "Claude hedefte çok parçalı içerik 400 veya 501 dönmeli, alınan: {}", status2);
-    assert_eq!(istek_sayaci.load(Ordering::SeqCst), 0, "Yukarı akışa istek GİTMEMELİ");
+    assert!(
+        status2 == 400 || status2 == 501,
+        "Claude hedefte çok parçalı içerik 400 veya 501 dönmeli, alınan: {}",
+        status2
+    );
+    assert_eq!(
+        istek_sayaci.load(Ordering::SeqCst),
+        0,
+        "Yukarı akışa istek GİTMEMELİ"
+    );
 
     // --- TEST 3: Gemini hedefte `tools` gönderimi ---
     let req_gemini_tools = json!({
@@ -259,14 +288,26 @@ async fn p6_desteklenmeyen_alanlar_testi() {
         );
         let res = client.post(&ep3).send_json(&req_gemini_tools);
         match res {
-            Ok(mut r) => (r.status().as_u16(), r.body_mut().read_json::<Value>().unwrap_or_default()),
+            Ok(mut r) => (
+                r.status().as_u16(),
+                r.body_mut().read_json::<Value>().unwrap_or_default(),
+            ),
             Err(ureq::Error::StatusCode(code)) => (code, json!({})),
             Err(e) => panic!("Beklenmeyen hata: {:?}", e),
         }
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
 
-    assert!(status3 == 400 || status3 == 501, "Gemini hedefte tools 400 veya 501 dönmeli");
-    assert_eq!(istek_sayaci.load(Ordering::SeqCst), 0, "Yukarı akışa istek GİTMEMELİ");
+    assert!(
+        status3 == 400 || status3 == 501,
+        "Gemini hedefte tools 400 veya 501 dönmeli"
+    );
+    assert_eq!(
+        istek_sayaci.load(Ordering::SeqCst),
+        0,
+        "Yukarı akışa istek GİTMEMELİ"
+    );
 
     // --- TEST 4: Gemini hedefte çok parçalı içerik gönderimi ---
     let req_gemini_multipart = json!({
@@ -289,14 +330,27 @@ async fn p6_desteklenmeyen_alanlar_testi() {
         );
         let res = client.post(&ep4).send_json(&req_gemini_multipart);
         match res {
-            Ok(mut r) => (r.status().as_u16(), r.body_mut().read_json::<Value>().unwrap_or_default()),
+            Ok(mut r) => (
+                r.status().as_u16(),
+                r.body_mut().read_json::<Value>().unwrap_or_default(),
+            ),
             Err(ureq::Error::StatusCode(code)) => (code, json!({})),
             Err(e) => panic!("Beklenmeyen hata: {:?}", e),
         }
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
 
-    assert!(status4 == 400 || status4 == 501, "Gemini hedefte çok parçalı içerik 400 veya 501 dönmeli, alınan: {}", status4);
-    assert_eq!(istek_sayaci.load(Ordering::SeqCst), 0, "Yukarı akışa istek GİTMEMELİ");
+    assert!(
+        status4 == 400 || status4 == 501,
+        "Gemini hedefte çok parçalı içerik 400 veya 501 dönmeli, alınan: {}",
+        status4
+    );
+    assert_eq!(
+        istek_sayaci.load(Ordering::SeqCst),
+        0,
+        "Yukarı akışa istek GİTMEMELİ"
+    );
 
     // --- TEST 5: OpenAI hedefte `tools` geçer ve yukarı akışa iletilir (FR-4.2) ---
     let req_openai_tools = json!({
@@ -318,10 +372,22 @@ async fn p6_desteklenmeyen_alanlar_testi() {
                 .timeout_global(Some(Duration::from_secs(5)))
                 .build(),
         );
-        let mut res = client.post(&ep5).send_json(&req_openai_tools).expect("OpenAI tools çağrısı 200 dönmeli");
-        (res.status().as_u16(), res.body_mut().read_json::<Value>().unwrap_or_default())
-    }).await.unwrap();
+        let mut res = client
+            .post(&ep5)
+            .send_json(&req_openai_tools)
+            .expect("OpenAI tools çağrısı 200 dönmeli");
+        (
+            res.status().as_u16(),
+            res.body_mut().read_json::<Value>().unwrap_or_default(),
+        )
+    })
+    .await
+    .unwrap();
 
     assert_eq!(status5, 200, "OpenAI hedefte tools 200 dönmeli");
-    assert_eq!(istek_sayaci.load(Ordering::SeqCst), 1, "OpenAI hedefte yukarı akışa istek GİTMELİ (sayac = 1)");
+    assert_eq!(
+        istek_sayaci.load(Ordering::SeqCst),
+        1,
+        "OpenAI hedefte yukarı akışa istek GİTMELİ (sayac = 1)"
+    );
 }

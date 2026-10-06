@@ -1,7 +1,7 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use serde_json::{Value, json};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
-use serde_json::{json, Value};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
@@ -43,25 +43,25 @@ async fn p5_e2e_nonce_testi() {
             }
             buffer.extend_from_slice(&tmp[..n]);
 
-            if body_start.is_none() {
-                if let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n") {
-                    body_start = Some(pos + 4);
-                    let header_str = String::from_utf8_lossy(&buffer[..pos]);
-                    for line in header_str.lines() {
-                        let lower = line.to_lowercase();
-                        if lower.starts_with("content-length:") {
-                            if let Some(val) = line.split(':').nth(1) {
-                                content_length = val.trim().parse::<usize>().ok();
-                            }
-                        }
+            if body_start.is_none()
+                && let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n")
+            {
+                body_start = Some(pos + 4);
+                let header_str = String::from_utf8_lossy(&buffer[..pos]);
+                for line in header_str.lines() {
+                    let lower = line.to_lowercase();
+                    if lower.starts_with("content-length:")
+                        && let Some(val) = line.split(':').nth(1)
+                    {
+                        content_length = val.trim().parse::<usize>().ok();
                     }
                 }
             }
 
-            if let (Some(start), Some(cl)) = (body_start, content_length) {
-                if buffer.len() >= start + cl {
-                    break;
-                }
+            if let (Some(start), Some(cl)) = (body_start, content_length)
+                && buffer.len() >= start + cl
+            {
+                break;
             }
         }
 
@@ -103,7 +103,8 @@ async fn p5_e2e_nonce_testi() {
     };
     rest_hedefleri.insert("mock_provider".into(), hedef);
 
-    let temp_dir = std::env::temp_dir().join(format!("kervan_nonce_test_{}", rand::random::<u64>()));
+    let temp_dir =
+        std::env::temp_dir().join(format!("kervan_nonce_test_{}", rand::random::<u64>()));
     let _ = std::fs::create_dir_all(&temp_dir);
     let defter_yolu = temp_dir.join("defter.log");
     let defter = kervan_saglayici::kota::Defter::ac(defter_yolu).unwrap();
@@ -133,7 +134,9 @@ async fn p5_e2e_nonce_testi() {
         timeout: Duration::from_secs(5),
         eklenti_hub: kervan_sunucu::eklenti::EklentiHub::new(),
         compressor: kervan_sunucu::compressor::Compressor::new(),
-        router: kervan_sunucu::router::SmartRouter::new(kervan_sunucu::router::RoutingStrategy::Lkgp),
+        router: kervan_sunucu::router::SmartRouter::new(
+            kervan_sunucu::router::RoutingStrategy::Lkgp,
+        ),
         sayaclar: Default::default(),
         rest_hedefleri,
         yukari: kervan_yukari::Yukari::new(),
@@ -144,7 +147,9 @@ async fn p5_e2e_nonce_testi() {
     let server_addr = server_listener.local_addr().unwrap();
 
     tokio::spawn(async move {
-        axum::serve(server_listener, server::router(state)).await.unwrap();
+        axum::serve(server_listener, server::router(state))
+            .await
+            .unwrap();
     });
 
     // 4. İstemci olarak istek at (spawn_blocking içinde)
@@ -167,7 +172,9 @@ async fn p5_e2e_nonce_testi() {
             .send_json(&client_req)
             .expect("Kervan sunucusu isteği kabul etmelidir");
 
-        resp.body_mut().read_json().expect("Yanıt geçerli JSON olmalıdır")
+        resp.body_mut()
+            .read_json()
+            .expect("Yanıt geçerli JSON olmalıdır")
     })
     .await
     .unwrap();
@@ -180,7 +187,9 @@ async fn p5_e2e_nonce_testi() {
     );
 
     // (b) İstemciye dönen yanıt rastgele üretilen nonce'u İÇERİYOR MU?
-    let content = resp_val["choices"][0]["message"]["content"].as_str().unwrap();
+    let content = resp_val["choices"][0]["message"]["content"]
+        .as_str()
+        .unwrap();
     assert!(
         content.contains(&nonce_degeri),
         "Yanıt nonce değerini içermiyor! Beklenen: {}, Gelen: {}",
@@ -223,7 +232,8 @@ async fn p5_models_testi() {
         },
     );
 
-    let temp_dir = std::env::temp_dir().join(format!("kervan_models_test_{}", rand::random::<u64>()));
+    let temp_dir =
+        std::env::temp_dir().join(format!("kervan_models_test_{}", rand::random::<u64>()));
     let _ = std::fs::create_dir_all(&temp_dir);
     let defter_yolu = temp_dir.join("defter.log");
     let defter = kervan_saglayici::kota::Defter::ac(defter_yolu).unwrap();
@@ -253,7 +263,9 @@ async fn p5_models_testi() {
         timeout: Duration::from_secs(5),
         eklenti_hub: kervan_sunucu::eklenti::EklentiHub::new(),
         compressor: kervan_sunucu::compressor::Compressor::new(),
-        router: kervan_sunucu::router::SmartRouter::new(kervan_sunucu::router::RoutingStrategy::Lkgp),
+        router: kervan_sunucu::router::SmartRouter::new(
+            kervan_sunucu::router::RoutingStrategy::Lkgp,
+        ),
         sayaclar: Default::default(),
         rest_hedefleri,
         yukari: kervan_yukari::Yukari::new(),
@@ -263,7 +275,9 @@ async fn p5_models_testi() {
     let server_addr = server_listener.local_addr().unwrap();
 
     tokio::spawn(async move {
-        axum::serve(server_listener, server::router(state)).await.unwrap();
+        axum::serve(server_listener, server::router(state))
+            .await
+            .unwrap();
     });
 
     let resp_val: Value = tokio::task::spawn_blocking(move || {
@@ -282,18 +296,32 @@ async fn p5_models_testi() {
     })
     .await
     .unwrap();
-    let data = resp_val["data"].as_array().expect("data bir dizi olmalıdır");
+    let data = resp_val["data"]
+        .as_array()
+        .expect("data bir dizi olmalıdır");
 
     let model_idler: Vec<&str> = data.iter().filter_map(|m| m["id"].as_str()).collect();
 
     // 1. Gerçek REST sağlayıcıları kervan/<ad> olarak listelenir
-    assert!(model_idler.contains(&"kervan/mock1"), "kervan/mock1 listede olmalı");
-    assert!(model_idler.contains(&"kervan/mock2"), "kervan/mock2 listede olmalı");
+    assert!(
+        model_idler.contains(&"kervan/mock1"),
+        "kervan/mock1 listede olmalı"
+    );
+    assert!(
+        model_idler.contains(&"kervan/mock2"),
+        "kervan/mock2 listede olmalı"
+    );
 
     // 2. Uydurma OpenAI modelleri (gpt-4o vb.) BULUNMAZ
     assert!(!model_idler.contains(&"gpt-4o"), "gpt-4o listede olmamalı");
-    assert!(!model_idler.contains(&"gpt-4o-mini"), "gpt-4o-mini listede olmamalı");
-    assert!(!model_idler.contains(&"gpt-3.5-turbo"), "gpt-3.5-turbo listede olmamalı");
+    assert!(
+        !model_idler.contains(&"gpt-4o-mini"),
+        "gpt-4o-mini listede olmamalı"
+    );
+    assert!(
+        !model_idler.contains(&"gpt-3.5-turbo"),
+        "gpt-3.5-turbo listede olmamalı"
+    );
 
     let _ = std::fs::remove_dir_all(&temp_dir);
 }

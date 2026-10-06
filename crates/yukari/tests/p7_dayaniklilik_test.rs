@@ -1,11 +1,11 @@
-use std::io::{Read, Write};
-use std::net::TcpListener;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
 use kervan_direnc::{DevreKesiciYapilandirma, DirencYoneticisi, TestSaati};
 use kervan_yukari::{Hedef, Yukari, YukariHatasi};
 use serde_json::json;
+use std::io::{Read, Write};
+use std::net::TcpListener;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::{Duration, Instant};
 
 fn baslat_sahte_sunucu_sayacli(
     durum_kodu: u16,
@@ -28,30 +28,31 @@ fn baslat_sahte_sunucu_sayacli(
             let mut body_start = None;
             let mut content_length = None;
 
-            loop {
-                let Ok(n) = s.read(&mut tmp) else { break; };
-                if n == 0 { break; }
+            while let Ok(n) = s.read(&mut tmp) {
+                if n == 0 {
+                    break;
+                }
                 buffer.extend_from_slice(&tmp[..n]);
 
-                if body_start.is_none() {
-                    if let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n") {
-                        body_start = Some(pos + 4);
-                        let header_str = String::from_utf8_lossy(&buffer[..pos]);
-                        for line in header_str.lines() {
-                            let lower = line.to_lowercase();
-                            if lower.starts_with("content-length:") {
-                                if let Some(val) = line.split(':').nth(1) {
-                                    content_length = val.trim().parse::<usize>().ok();
-                                }
-                            }
+                if body_start.is_none()
+                    && let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n")
+                {
+                    body_start = Some(pos + 4);
+                    let header_str = String::from_utf8_lossy(&buffer[..pos]);
+                    for line in header_str.lines() {
+                        let lower = line.to_ascii_lowercase();
+                        if lower.starts_with("content-length:")
+                            && let Some(val) = line.split(':').nth(1)
+                        {
+                            content_length = val.trim().parse::<usize>().ok();
                         }
                     }
                 }
 
-                if let (Some(start), Some(cl)) = (body_start, content_length) {
-                    if buffer.len() >= start + cl {
-                        break;
-                    }
+                if let (Some(start), Some(cl)) = (body_start, content_length)
+                    && buffer.len() >= start + cl
+                {
+                    break;
                 }
             }
 
@@ -189,7 +190,10 @@ async fn test_p7_429_retry_after_ve_soguma() {
     // 2. İstek hemen sonrasında -> Soğumada! Yukarı akışa GİTMEDEN reddedilmeli!
     let res2 = yukari.gonder(&hedef, &govde, None).await;
     match res2 {
-        Err(YukariHatasi::Sogumada { ad, retry_after_saniye }) => {
+        Err(YukariHatasi::Sogumada {
+            ad,
+            retry_after_saniye,
+        }) => {
             assert_eq!(ad, "test-retry-hedef");
             assert_eq!(retry_after_saniye, 5);
         }
@@ -270,12 +274,7 @@ async fn test_p7_hata_temizligi_ve_anahtar_sizdirmazligi() {
         gizli_anahtar, gizli_anahtar
     );
 
-    let (url, _) = baslat_sahte_sunucu_sayacli(
-        401,
-        "Unauthorized",
-        sahte_hata_govdesi,
-        vec![],
-    );
+    let (url, _) = baslat_sahte_sunucu_sayacli(401, "Unauthorized", sahte_hata_govdesi, vec![]);
 
     let yukari = Yukari::new();
     let hedef = Hedef {

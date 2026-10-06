@@ -47,7 +47,11 @@ impl RestAyar {
     pub fn dogrula(&self, ad: &str) -> Result<()> {
         match self.bicim.as_str() {
             "openai" | "claude" | "gemini" => Ok(()),
-            diger => anyhow::bail!("Geçersiz REST sağlayıcı biçimi: '{}' ([rest.{}])", diger, ad),
+            diger => anyhow::bail!(
+                "Geçersiz REST sağlayıcı biçimi: '{}' ([rest.{}])",
+                diger,
+                ad
+            ),
         }
     }
 }

@@ -45,6 +45,8 @@ pub struct AppState {
 }
 
 impl AppState {
+    // Biçim sabit: port/mutantlar.toml "rest-kancasini-kaldir" bu satırı arar.
+    #[rustfmt::skip]
     pub fn rest_hedefi_coz(&self, model_adi: &str) -> Option<(kervan_yukari::Hedef, Option<String>)> {
         let sade = model_adi.strip_prefix("kervan/").unwrap_or(model_adi);
         let mut parcalar = sade.splitn(2, '/');
@@ -469,7 +471,12 @@ async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
 async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::Value>) -> Response {
     let req: ChatRequest = match serde_json::from_value(raw_val.clone()) {
         Ok(r) => r,
-        Err(e) => return hata(StatusCode::BAD_REQUEST, &format!("Geçersiz ChatRequest gövdesi: {}", e)),
+        Err(e) => {
+            return hata(
+                StatusCode::BAD_REQUEST,
+                &format!("Geçersiz ChatRequest gövdesi: {}", e),
+            );
+        }
     };
 
     let model_adi = req.model.trim();
@@ -477,13 +484,17 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
     // 1. REST yukarı akış kancası: model [rest.*] yapılandırmasına çözülürse yukari'ya devret
     if let Some((hedef, alt_model)) = st.rest_hedefi_coz(model_adi) {
         if req.stream {
-            match st.yukari.gonder_akis(&hedef, &raw_val, alt_model.as_deref()).await {
+            match st
+                .yukari
+                .gonder_akis(&hedef, &raw_val, alt_model.as_deref())
+                .await
+            {
                 Ok(mut rx) => {
                     let stream = futures_util::stream::poll_fn(move |cx| {
                         rx.poll_recv(cx).map(|opt| {
                             opt.map(|res| {
                                 res.map(axum::body::Bytes::from)
-                                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+                                    .map_err(|e| std::io::Error::other(e.to_string()))
                             })
                         })
                     });
@@ -507,7 +518,11 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
                 Err(e) => return yukari_hatasini_don(e),
             }
         } else {
-            match st.yukari.gonder(&hedef, &raw_val, alt_model.as_deref()).await {
+            match st
+                .yukari
+                .gonder(&hedef, &raw_val, alt_model.as_deref())
+                .await
+            {
                 Ok(yanit) => return (StatusCode::OK, Json(yanit)).into_response(),
                 Err(e) => return yukari_hatasini_don(e),
             }
@@ -882,53 +897,69 @@ fn hata(kod: StatusCode, mesaj: &str) -> Response {
 
 fn yukari_hatasini_don(err: kervan_yukari::YukariHatasi) -> Response {
     match err {
-        kervan_yukari::YukariHatasi::AnahtarYok(env_ad) => {
-            hata(
-                StatusCode::SERVICE_UNAVAILABLE,
-                &format!("Sağlayıcı API anahtarı bulunamadı: Ortam değişkeni '{}' tanımlı değil", env_ad),
-            )
-        }
-        kervan_yukari::YukariHatasi::Desteklenmiyor(alan) => {
-            hata(
-                StatusCode::NOT_IMPLEMENTED,
-                &format!("desteklenmiyor: {}", alan),
-            )
-        }
-        kervan_yukari::YukariHatasi::DevreAcik { ad, kalan_sure_ms } => {
-            hata(
-                StatusCode::SERVICE_UNAVAILABLE,
-                &format!("Devre kesici açık: {} ({}ms sonra tekrar denenecek)", ad, kalan_sure_ms),
-            )
-        }
-        kervan_yukari::YukariHatasi::Sogumada { ad, retry_after_saniye } => {
+        kervan_yukari::YukariHatasi::AnahtarYok(env_ad) => hata(
+            StatusCode::SERVICE_UNAVAILABLE,
+            &format!(
+                "Sağlayıcı API anahtarı bulunamadı: Ortam değişkeni '{}' tanımlı değil",
+                env_ad
+            ),
+        ),
+        kervan_yukari::YukariHatasi::Desteklenmiyor(alan) => hata(
+            StatusCode::NOT_IMPLEMENTED,
+            &format!("desteklenmiyor: {}", alan),
+        ),
+        kervan_yukari::YukariHatasi::DevreAcik { ad, kalan_sure_ms } => hata(
+            StatusCode::SERVICE_UNAVAILABLE,
+            &format!(
+                "Devre kesici açık: {} ({}ms sonra tekrar denenecek)",
+                ad, kalan_sure_ms
+            ),
+        ),
+        kervan_yukari::YukariHatasi::Sogumada {
+            ad,
+            retry_after_saniye,
+        } => {
             let mut resp = hata(
                 StatusCode::TOO_MANY_REQUESTS,
-                &format!("Sağlayıcı soğumada: {} (Retry-After: {}s)", ad, retry_after_saniye),
+                &format!(
+                    "Sağlayıcı soğumada: {} (Retry-After: {}s)",
+                    ad, retry_after_saniye
+                ),
             );
             if let Ok(val) = axum::http::HeaderValue::from_str(&retry_after_saniye.to_string()) {
-                resp.headers_mut().insert(axum::http::header::RETRY_AFTER, val);
+                resp.headers_mut()
+                    .insert(axum::http::header::RETRY_AFTER, val);
             }
             resp
         }
         kervan_yukari::YukariHatasi::HttpHatasi(429, govde, retry_after) => {
-            let mut resp = hata(StatusCode::TOO_MANY_REQUESTS, &format!("Yukarı akış 429 hatası: {}", govde));
-            if let Some(sn) = retry_after {
-                if let Ok(val) = axum::http::HeaderValue::from_str(&sn.to_string()) {
-                    resp.headers_mut().insert(axum::http::header::RETRY_AFTER, val);
-                }
+            let mut resp = hata(
+                StatusCode::TOO_MANY_REQUESTS,
+                &format!("Yukarı akış 429 hatası: {}", govde),
+            );
+            if let Some(sn) = retry_after
+                && let Ok(val) = axum::http::HeaderValue::from_str(&sn.to_string())
+            {
+                resp.headers_mut()
+                    .insert(axum::http::header::RETRY_AFTER, val);
             }
             resp
         }
         kervan_yukari::YukariHatasi::HttpHatasi(durum, govde, _) => {
             let status = StatusCode::from_u16(durum).unwrap_or(StatusCode::BAD_GATEWAY);
-            hata(status, &format!("Yukarı akış HTTP hatası ({}): {}", durum, govde))
+            hata(
+                status,
+                &format!("Yukarı akış HTTP hatası ({}): {}", durum, govde),
+            )
         }
-        kervan_yukari::YukariHatasi::AgHatasi(m) => {
-            hata(StatusCode::BAD_GATEWAY, &format!("Yukarı akış ağ bağlantı hatası: {}", m))
-        }
-        kervan_yukari::YukariHatasi::JsonHatasi(m) => {
-            hata(StatusCode::BAD_GATEWAY, &format!("Yukarı akış JSON hatası: {}", m))
-        }
+        kervan_yukari::YukariHatasi::AgHatasi(m) => hata(
+            StatusCode::BAD_GATEWAY,
+            &format!("Yukarı akış ağ bağlantı hatası: {}", m),
+        ),
+        kervan_yukari::YukariHatasi::JsonHatasi(m) => hata(
+            StatusCode::BAD_GATEWAY,
+            &format!("Yukarı akış JSON hatası: {}", m),
+        ),
     }
 }
 
@@ -1340,7 +1371,9 @@ mod tests {
         assert_eq!(alt, None);
 
         // 2. Alt model çözümlenir
-        let (hedef2, alt2) = state.rest_hedefi_coz("kervan/deepseek/deepseek-reasoner").unwrap();
+        let (hedef2, alt2) = state
+            .rest_hedefi_coz("kervan/deepseek/deepseek-reasoner")
+            .unwrap();
         assert_eq!(hedef2.ad, "deepseek");
         assert_eq!(alt2, Some("deepseek-reasoner".into()));
 
