@@ -146,7 +146,7 @@ describe("p2::kapilar", () => {
       - Kanıtı aşan rapor: baktım
       - Gevşetme: baktım
       - Başarısız olamayan test: baktım
-
+      
       Bu adımda her şey başarıyla geçti ve tamamlandı.
     `, "utf-8");
     const bagisizSonuc = raporuDenetle(sahteRapor);

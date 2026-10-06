@@ -22,6 +22,3 @@
 # Gecici worktree dizinleri
 /port/kayit/_gecici/
 
-# Eski aktarim calisma alani ve Bun bagimliliklari
-/.w
-node_modules/

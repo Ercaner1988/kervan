@@ -132,10 +132,7 @@ async fn main() -> Result<()> {
 
         let mut rest_hedefleri = std::collections::HashMap::new();
         for (ad, r) in &cfg.rest {
-            rest_hedefleri.insert(
-                ad.clone(),
-                kervan_yukari::Hedef::rest_ayardan(ad, r, YANIT_ZAMAN_ASIMI),
-            );
+            rest_hedefleri.insert(ad.clone(), kervan_yukari::Hedef::rest_ayardan(ad, r, YANIT_ZAMAN_ASIMI));
         }
 
         let state = Arc::new(server::AppState {

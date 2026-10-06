@@ -9,7 +9,7 @@ default = []
 gui = ["dep:kervan-gui"]
 
 [workspace]
-members = ["crates/tarayici", "crates/saglayici", "crates/havuz", "crates/mcp", "crates/akis", "crates/akis-gui", "crates/sunucu", "crates/gui", "crates/yukari", "crates/depo", "crates/ceviri", "crates/direnc", "crates/yonlendirme", "crates/v1", "crates/katalog", "crates/yurutucu", "crates/a2a", "crates/koruma", "crates/paneller", "crates/cli"]
+members = ["crates/tarayici", "crates/saglayici", "crates/havuz", "crates/mcp", "crates/akis", "crates/akis-gui", "crates/sunucu", "crates/gui", "crates/yukari", "crates/ceviri", "crates/direnc"]
 resolver = "3"
 
 [workspace.package]
@@ -41,7 +41,6 @@ kervan-mcp = { path = "crates/mcp" }
 kervan-akis = { path = "crates/akis" }
 kervan-sunucu = { path = "crates/sunucu" }
 kervan-yukari = { path = "crates/yukari" }
-kervan-depo = { path = "crates/depo" }
 kervan-gui = { path = "crates/gui", optional = true }
 anyhow.workspace = true
 axum.workspace = true
@@ -51,9 +50,6 @@ toml.workspace = true
 [dev-dependencies]
 serde_json.workspace = true
 divan = { version = "5.0.2", package = "codspeed-divan-compat" }
-kervan-ceviri = { path = "crates/ceviri" }
-kervan-yonlendirme = { path = "crates/yonlendirme" }
-rand = "0.9"
 
 [[bench]]
 name = "kota"
@@ -65,8 +61,4 @@ harness = false
 
 [[bench]]
 name = "yapilandirma"
-harness = false
-
-[[bench]]
-name = "omniroute_cekirdek"
 harness = false

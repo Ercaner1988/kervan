@@ -11,10 +11,7 @@ use crate::modeller::*;
 /// - Sistem mesajları `systemInstruction` alanına taşınır.
 /// - OpenAI 'assistant' rolünü Gemini 'model' rolüne dönüştürür.
 /// - Arka arkaya gelen aynı rollü mesajları tek bir içerikte birleştirir (Gemini kuralı).
-pub fn openai_den_gemini_istegi(
-    istek: &OpenAiIstek,
-    hedef_model: &str,
-) -> Result<GeminiIstek, CeviriHatasi> {
+pub fn openai_den_gemini_istegi(istek: &OpenAiIstek, hedef_model: &str) -> Result<GeminiIstek, CeviriHatasi> {
     // 1. Desteklenmeyen alan denetimleri (FR-5.3)
     if let Some(ref tools) = istek.tools {
         if !tools.is_empty() {
@@ -25,9 +22,7 @@ pub fn openai_den_gemini_istegi(
     for m in &istek.messages {
         if let Some(ref c) = m.content {
             if !c.is_string() {
-                return Err(CeviriHatasi::Desteklenmiyor(
-                    "çok parçalı içerik".to_string(),
-                ));
+                return Err(CeviriHatasi::Desteklenmiyor("çok parçalı içerik".to_string()));
             }
         }
     }
@@ -42,11 +37,7 @@ pub fn openai_den_gemini_istegi(
                 sistem_parcalari.push(GeminiParca { text: metin });
             }
         } else {
-            let rol = if m.role == "assistant" {
-                "model"
-            } else {
-                "user"
-            };
+            let rol = if m.role == "assistant" { "model" } else { "user" };
             ham_icerikler.push(GeminiIcerik {
                 role: rol.to_string(),
                 parts: vec![GeminiParca { text: metin }],
@@ -120,10 +111,7 @@ pub fn openai_den_gemini_istegi(
 }
 
 /// Google Gemini GenerateContent yanıtını OpenAI Chat Completion yanıt biçimine dönüştürür.
-pub fn gemini_den_openai_yaniti(
-    yanit: &GeminiYanit,
-    istenen_model: &str,
-) -> Result<OpenAiYanit, CeviriHatasi> {
+pub fn gemini_den_openai_yaniti(yanit: &GeminiYanit, istenen_model: &str) -> Result<OpenAiYanit, CeviriHatasi> {
     let simdi = match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(d) => d.as_secs(),
         Err(_) => 0,

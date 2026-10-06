@@ -88,8 +88,7 @@ impl DirencYoneticisi {
         let simdi = self.saat.simdi();
 
         if durum_kodu == Some(429) {
-            self.soguma
-                .soguma_baslat_zamaniyla(hedef_ad, Some("429"), retry_after_saniye, simdi);
+            self.soguma.soguma_baslat_zamaniyla(hedef_ad, Some("429"), retry_after_saniye, simdi);
         } else if durum_kodu.map_or(true, |kod| kod >= 500) {
             let ayar = self.varsayilan_kesici_ayar.clone();
             let kesici = self
@@ -183,10 +182,7 @@ mod tests {
         assert!(yonetici.sogumada_mi("hedef-2"));
 
         match yonetici.istek_izni_al("hedef-2") {
-            Err(DirencHatasi::Sogumada {
-                ad,
-                retry_after_saniye,
-            }) => {
+            Err(DirencHatasi::Sogumada { ad, retry_after_saniye }) => {
                 assert_eq!(ad, "hedef-2");
                 assert_eq!(retry_after_saniye, 5);
             }

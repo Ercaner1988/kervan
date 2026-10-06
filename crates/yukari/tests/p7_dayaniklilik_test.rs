@@ -1,11 +1,11 @@
+use std::io::{Read, Write};
+use std::net::TcpListener;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 use kervan_direnc::{DevreKesiciYapilandirma, DirencYoneticisi, TestSaati};
 use kervan_yukari::{Hedef, Yukari, YukariHatasi};
 use serde_json::json;
-use std::io::{Read, Write};
-use std::net::TcpListener;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
 
 fn baslat_sahte_sunucu_sayacli(
     durum_kodu: u16,
@@ -29,12 +29,8 @@ fn baslat_sahte_sunucu_sayacli(
             let mut content_length = None;
 
             loop {
-                let Ok(n) = s.read(&mut tmp) else {
-                    break;
-                };
-                if n == 0 {
-                    break;
-                }
+                let Ok(n) = s.read(&mut tmp) else { break; };
+                if n == 0 { break; }
                 buffer.extend_from_slice(&tmp[..n]);
 
                 if body_start.is_none() {
@@ -193,10 +189,7 @@ async fn test_p7_429_retry_after_ve_soguma() {
     // 2. İstek hemen sonrasında -> Soğumada! Yukarı akışa GİTMEDEN reddedilmeli!
     let res2 = yukari.gonder(&hedef, &govde, None).await;
     match res2 {
-        Err(YukariHatasi::Sogumada {
-            ad,
-            retry_after_saniye,
-        }) => {
+        Err(YukariHatasi::Sogumada { ad, retry_after_saniye }) => {
             assert_eq!(ad, "test-retry-hedef");
             assert_eq!(retry_after_saniye, 5);
         }
@@ -277,7 +270,12 @@ async fn test_p7_hata_temizligi_ve_anahtar_sizdirmazligi() {
         gizli_anahtar, gizli_anahtar
     );
 
-    let (url, _) = baslat_sahte_sunucu_sayacli(401, "Unauthorized", sahte_hata_govdesi, vec![]);
+    let (url, _) = baslat_sahte_sunucu_sayacli(
+        401,
+        "Unauthorized",
+        sahte_hata_govdesi,
+        vec![],
+    );
 
     let yukari = Yukari::new();
     let hedef = Hedef {

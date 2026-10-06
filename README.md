@@ -3,97 +3,115 @@
 # Kervan
 
 [![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/Ercaner1988/kervan?utm_source=badge)
-[![Altın Kapı](https://img.shields.io/badge/alt%C4%B1n--kap%C4%B1-16%20boyut-brightgreen)](#altın-kapı-ve-ekdenetle-disiplini)
 
-Yapay zekâ kullanımını tek bir çatı altında birleştiren, yüksek başarımlı ve sıfır-maliyetli evrensel yapay zekâ geçidi ve yönlendirme motoru. Saf Rust, modüler çalışma alanı (20 sandık), yerel egui masaüstü arayüzü ve Bun araç takımı.
+Web üzerinden yapay zekâ kullanımını istediğiniz arayüzlere yönlendirmeyi sağlayan bir geçit altyapısı. Rust, tek ikili dosya.
 
 > Çok yoldan yük taşıyan, hangi yolun ne kadar kaldırdığını bilen.
 
 ---
 
-## 📦 Özellikler ve Mimari
+## 📦 Gereksinimler
 
-Kervan, hem API anahtarı olmayan web oturumlarını (Gemini, Claude, Perplexity vb.) hem de 276'dan fazla resmi/açık kaynaklı sağlayıcıyı (OpenAI, Anthropic, Google, DeepSeek, Qwen, Mistral, Ollama, Groq, vLLM...) tek bir OpenAI uyumlu uçta toplar.
+| Gereksinim | Sürüm / Not |
+|---|---|
+| Rust | 1.70+ (derleme için) |
+| Firefox | Zen veya standart Firefox (geckodriver ile) |
+| İşletim sistemi | Windows, Linux, macOS |
 
-* **276 Sağlayıcı ve 5 Birleşik Yürütücü:** Standart REST, Claude Messages, Gemini Content, Tarayıcı Oturumu ve OAuth2 belirteç yenileme motoru.
-* **19 Kanonik Yönlendirme Stratejisi:** Öncelik, Round-Robin, Ağırlıklı, En Az Kullanılan, Maliyet Odaklı, Bağlam Odaklı, Anlamsal Önbellek Odaklı, Kota Paylaşımlı vb.
-* **3 Katmanlı Dayanıklılık (Resilience):** Devre Kesici (Circuit Breaker), Üstel Geri Çekilme Soğuma Takipçisi ve Geçici/Kalıcı Model Kilidi.
-* **İki Yönlü Biçim Çeviricisi:** OpenAI ↔ Claude ↔ Gemini format ve SSE akış parçacığı dönüşümleri (alt-mikrosaniye gecikme).
-* **Güvenli Depo ve 193 SQL Göçü:** AES-256-GCM + scrypt şifrelemeli yerel SQLite veritabanı, 134 tablo altın şeması ve `VACUUM INTO` sıcak yedekleme.
-* **A2A Protokolü (v0.3):** JSON-RPC 2.0 `tasks.create`, `tasks.get`, `tasks.cancel` ve `/.well-known/agent.json` ajan kartı keşfi.
-* **Sert Kural #20 Koruma Kalkanı:** PII maskeleme (varsayılan kapalı / opt-in), hassas kimlik gizleme (`[REDACTED_API_KEY]`) ve istem enjeksiyonu sezgisel savunması.
-* **Modüler egui Masaüstü Panelleri:** Gösterge Paneli, Model Yönetimi (276 sağlayıcı / filtreleme) ve Güvenlik/PII paneli.
-* **CLI İşletim Araçları:** `kervan goc` (kuru koşu varsayılan; `--uygula` ile güvenli göç), `kervan yedekle`, `kervan dogrula`.
+## 🛠 İşlev ve Özellikler
 
----
+API anahtarı olmayan AI hesaplarını (Gemini, Claude, Perplexity web arayüzleri) OpenAI uyumlu tek bir uca dönüştürür. Çerez kopyalamak yerine **gerçek tarayıcı** sürer: bir kez giriş yaparsın, oturum profil dizininde kalır.
 
-## 🚀 Başarım Ölçümleri (CodSpeed / Divan)
+Var olan çözümlerden farkı üç noktada:
 
-Kervan çekirdek operasyonları mikrosaniyenin altındaki sürelerde icra edilir:
+- **Hesap başına gerçek yalıtım** — her hesap kendi tarayıcı profilinde. Gizli pencere yetmez: aynı tarayıcı örneğindeki tüm gizli pencereler tek profili paylaşır.
+- **Kalıcı oturum** — çerez yapıştırma yok, çerez döndüğünde yenileme yok.
+- **İnsan kapısı** — doğrulama duvarına çarpıldığında sessizce düşmez; hesabı duraklatır, pencereyi öne getirir, sen çözersin. Bot tespitini yenmeye çalışmaz.
 
-| Operasyon | Ölçülen Medyan Süre | Açıklama |
-|---|---|---|
-| **OpenAI ➔ Claude Çevirisi** | `~384 ns` | İstek şeması normalizasyonu ve sistem talimatı ayırma |
-| **OpenAI ➔ Gemini Çevirisi** | `~315 ns` | İstek ve çok modlu içerik dönüşümü |
-| **19 Kombo Yönlendirme** | `~799 ns` | 3 sağlayıcı / model arasında maliyet & bağlam sıralaması |
-| **AES-256-GCM + scrypt Şifreleme** | `~1.39 µs` | Hassas anahtar ve belirteç şifreleme/çözme |
+## ⚙ Kurulum
 
----
+### Kurulum Adımları
 
-## ⚙ Kurulum ve Çalıştırma
-
-### Gereksinimler
-* Rust 1.80+ (2024 edition)
-* Windows, Linux veya macOS
-* Opsiyonel: Tarayıcı oturumları için Firefox veya Zen Browser
-
-### Derleme
+1. Depoyu klonlayın:
 
 ```bash
-# Depoyu klonlayın
 git clone https://github.com/Ercaner1988/kervan.git
 cd kervan
-
-# Çalışma alanını derleyin
-cargo build --release
-
-# Testleri ve kapı denetimini koşun
-cargo test --workspace --all-features
 ```
+
+2. Derleyin:
+
+```bash
+cargo build --release
+```
+
+3. Yapılandırma dosyasını oluşturun:
+
+```bash
+cp kervan.toml.example kervan.toml
+```
+
+4. Hesaplarınızı `kervan.toml`'da tanımlayın.
 
 ### Kullanım
 
 ```bash
-# Sunucuyu başlatın (varsayılan 127.0.0.1:20129)
 ./target/release/kervan
-
-# Masaüstü grafik arayüzü ile başlatmak için:
-cargo run --features gui
 ```
 
-### Örnek API İsteği
+Sunucu `127.0.0.1:20129` üzerinde çalışır. OpenAI uyumlu uç:
 
 ```bash
 curl http://127.0.0.1:20129/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{
-    "model": "claude-3-7-sonnet",
-    "messages": [{"role": "user", "content": "Merhaba Kervan!"}]
-  }'
+  -d '{"model": "gemini", "messages": [{"role": "user", "content": "Merhaba"}]}'
 ```
 
----
+## 🗺 Durum ve Yol Haritası
 
-## 🛡 Altın Kapı ve Ekdenetle Disiplini
+| Durum | Konu |
+|---|---|
+| ✅ Kurulu | Çok sağlayıcı, çok hesap, hız bütçesi, insan kapısı |
+| 🔬 Deneysel | Kota öğrenme (gözlemlenen kota sınırları) |
+| 📅 Gelecekte | `kervan.toml` şablonları, sağlayıcı başına kota öğrenme |
 
-Kervan projesi katı mühendislik kurallarına tabidir:
-1. **Sandık Boyut Sınırı:** Çalışma alanındaki 20 sandığın her biri istisnasız **en fazla 1.500 kod satırıdır**.
-2. **Sıfır Panik:** Üretim kodunda hiçbir `unwrap` veya `expect` bulunmaz.
-3. **Loopback Güvenliği:** Yalnızca yerel döngü (`127.0.0.1`) üzerinden dinler; dış ağlara kapalıdır.
-4. **Temiz Hata Disiplini:** İstemciye ham veritabanı hatası ya da iç çağrı yığını (stack trace) asla sızdırılmaz.
+### Teknik Detaylar
 
----
+| | |
+|---|---|
+| Tarayıcı | Firefox tabanlı (Zen ya da Firefox), geckodriver ile |
+| Uç | `POST /v1/chat/completions`, `GET /v1/models`, `GET /health` |
+| Havuz | `GET /accounts`, `POST /accounts/{i}/devam` |
+| Bağlanma | yalnız `127.0.0.1` |
 
-## 📄 Lisans
+### Sağlayıcılar
 
-MIT License © 2026 Ercan ER
+Tanımlı: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, `deepseek`, `qwen`, `z.ai`. Her hesap `kervan.toml`'da bir ya da birkaç sağlayıcıya bağlıdır.
+
+#### Sağlayıcı Durumu
+
+| Sağlayıcı | Durum |
+|---|---|
+| `gemini` | ✅ Havuzda — çok hesap, ~11 sn |
+| `kimi` | ✅ Havuzda — çok hesap, ~24 sn. **Adres `kimi.ai`**, `kimi.com` değil |
+| `copilot` | ✅ Havuzda — kişisel Microsoft hesabı, ~12 sn |
+| `copilot-m365` | ✅ Havuzda — iş/okul hesabı, ~14 sn |
+| `perplexity` | ⚠️ Kararsız — bazı hesaplarda Cloudflare |
+| `claude` | ❌ Cloudflare — havuzda devre dışı |
+| `deepseek` | ❌ Cloudflare — çoğu hesapta |
+| `qwen` | ❌ Cloudflare — tüm hesaplarda |
+| `z.ai` | ❌ Cloudflare — yanıltıcı boş yanıt |
+
+## ⚠️ Bilinen Sorunlar / Deneysel Kısımlar
+
+- **Kota öğrenme:** Web sağlayıcıları kota durumunu açıklamaz. Kervan her isteğin sonucunu `%LOCALAPPDATA%\kervan\kota.jsonl`'ye yazar ve kota dolduğunda işaretler.
+- **Cloudflare:** Claude, Deepseek, Qwen, Z.ai çoğu hesapta Cloudflare duvarına çarpar.
+- **İnsan kapısı:** Doğrulama duvarında hesabı duraklatır ve pencereyi öne getirir — otomatik çözüm yok.
+
+## 🤝 Katkıda Bulunanlar
+
+- [Ercan ER](https://github.com/Ercaner1988) — tasarım ve geliştirme
+
+## 📜 Lisans
+
+MIT — ayrıntı için [LICENSE](LICENSE).

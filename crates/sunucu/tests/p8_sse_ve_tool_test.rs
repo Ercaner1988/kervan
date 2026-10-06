@@ -1,7 +1,7 @@
-use serde_json::json;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
+use serde_json::json;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 
@@ -47,9 +47,7 @@ fn kur_test_state(
         timeout: Duration::from_secs(5),
         eklenti_hub: kervan_sunucu::eklenti::EklentiHub::new(),
         compressor: kervan_sunucu::compressor::Compressor::new(),
-        router: kervan_sunucu::router::SmartRouter::new(
-            kervan_sunucu::router::RoutingStrategy::Lkgp,
-        ),
+        router: kervan_sunucu::router::SmartRouter::new(kervan_sunucu::router::RoutingStrategy::Lkgp),
         sayaclar: Default::default(),
         rest_hedefleri,
         yukari,
@@ -81,8 +79,7 @@ pub async fn test_p8_gercek_sse_zamanlama_ve_parca_sirasi() {
         );
         let done = "data: [DONE]\n\n";
 
-        let baslik =
-            "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n";
+        let baslik = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n";
         socket.write_all(baslik.as_bytes()).await.unwrap();
         socket.write_all(chunk1.as_bytes()).await.unwrap();
         socket.flush().await.unwrap();
@@ -130,14 +127,11 @@ pub async fn test_p8_gercek_sse_zamanlama_ve_parca_sirasi() {
         "model": "kervan/test-stream-openai",
         "messages": [{"role": "user", "content": "merhaba"}],
         "stream": true
-    })
-    .to_string();
+    }).to_string();
 
     let http_req = format!(
         "POST /v1/chat/completions HTTP/1.1\r\nHost: {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
-        kervan_addr,
-        req_body.len(),
-        req_body
+        kervan_addr, req_body.len(), req_body
     );
     stream_socket.write_all(http_req.as_bytes()).await.unwrap();
 
@@ -183,16 +177,9 @@ pub async fn test_p8_gercek_sse_zamanlama_ve_parca_sirasi() {
     );
 
     // Acceptance 2: Parçalar sırasıyla geldi ve nonceleri içeriyor
-    assert!(
-        chunks.len() >= 3,
-        "En az 2 parça + [DONE] bekleniyordu: {:?}",
-        chunks
-    );
+    assert!(chunks.len() >= 3, "En az 2 parça + [DONE] bekleniyordu: {:?}", chunks);
     assert!(chunks[0].contains(&nonce_a), "İlk parça nonce A içermeli");
-    assert!(
-        chunks[1].contains(&nonce_b),
-        "İkinci parça nonce B içermeli"
-    );
+    assert!(chunks[1].contains(&nonce_b), "İkinci parça nonce B içermeli");
     assert_eq!(chunks[chunks.len() - 1], "data: [DONE]");
 }
 
@@ -209,8 +196,7 @@ pub async fn test_p8_claude_sse_cevirisi() {
         let mut buf = [0u8; 1024];
         let _ = socket.read(&mut buf).await;
 
-        let baslik =
-            "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n";
+        let baslik = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n";
         socket.write_all(baslik.as_bytes()).await.unwrap();
 
         let e1 = "event: message_start\r\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_p8\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"model\":\"claude-3-7-sonnet\",\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\r\n\r\n";
@@ -262,14 +248,11 @@ pub async fn test_p8_claude_sse_cevirisi() {
         "model": "kervan/test-claude-stream",
         "messages": [{"role": "user", "content": "selam"}],
         "stream": true
-    })
-    .to_string();
+    }).to_string();
 
     let http_req = format!(
         "POST /v1/chat/completions HTTP/1.1\r\nHost: {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
-        kervan_addr,
-        req_body.len(),
-        req_body
+        kervan_addr, req_body.len(), req_body
     );
     stream_socket.write_all(http_req.as_bytes()).await.unwrap();
 
@@ -297,14 +280,8 @@ pub async fn test_p8_claude_sse_cevirisi() {
 
     assert!(!chunks.is_empty(), "Claude akış parçaları alınmalıydı");
     let birlesik = chunks.join("\n");
-    assert!(
-        birlesik.contains(&claude_nonce),
-        "Claude nonce'u parçalarda bulunmalı"
-    );
-    assert!(
-        birlesik.contains("chat.completion.chunk"),
-        "OpenAI parça biçimine dönüştürülmeli"
-    );
+    assert!(birlesik.contains(&claude_nonce), "Claude nonce'u parçalarda bulunmalı");
+    assert!(birlesik.contains("chat.completion.chunk"), "OpenAI parça biçimine dönüştürülmeli");
     assert_eq!(chunks[chunks.len() - 1], "data: [DONE]");
 }
 
@@ -321,8 +298,7 @@ pub async fn test_p8_gemini_sse_cevirisi() {
         let mut buf = [0u8; 1024];
         let _ = socket.read(&mut buf).await;
 
-        let baslik =
-            "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n";
+        let baslik = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n";
         socket.write_all(baslik.as_bytes()).await.unwrap();
 
         let d1 = format!(
@@ -369,14 +345,11 @@ pub async fn test_p8_gemini_sse_cevirisi() {
         "model": "kervan/test-gemini-stream",
         "messages": [{"role": "user", "content": "selam"}],
         "stream": true
-    })
-    .to_string();
+    }).to_string();
 
     let http_req = format!(
         "POST /v1/chat/completions HTTP/1.1\r\nHost: {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
-        kervan_addr,
-        req_body.len(),
-        req_body
+        kervan_addr, req_body.len(), req_body
     );
     stream_socket.write_all(http_req.as_bytes()).await.unwrap();
 
@@ -404,14 +377,8 @@ pub async fn test_p8_gemini_sse_cevirisi() {
 
     assert!(!chunks.is_empty(), "Gemini akış parçaları alınmalıydı");
     let birlesik = chunks.join("\n");
-    assert!(
-        birlesik.contains(&gemini_nonce),
-        "Gemini nonce'u parçalarda bulunmalı"
-    );
-    assert!(
-        birlesik.contains("chat.completion.chunk"),
-        "OpenAI parça biçimine dönüştürülmeli"
-    );
+    assert!(birlesik.contains(&gemini_nonce), "Gemini nonce'u parçalarda bulunmalı");
+    assert!(birlesik.contains("chat.completion.chunk"), "OpenAI parça biçimine dönüştürülmeli");
     assert_eq!(chunks[chunks.len() - 1], "data: [DONE]");
 }
 
@@ -432,9 +399,7 @@ pub async fn test_p8_openai_arac_cagrisi_akissiz() {
 
         loop {
             let n = socket.read(&mut tmp).await.unwrap();
-            if n == 0 {
-                break;
-            }
+            if n == 0 { break; }
             buffer.extend_from_slice(&tmp[..n]);
 
             if body_start.is_none() {
@@ -460,10 +425,7 @@ pub async fn test_p8_openai_arac_cagrisi_akissiz() {
         }
 
         let req_text = String::from_utf8_lossy(&buffer);
-        assert!(
-            req_text.contains("get_current_weather"),
-            "Yukarı akış tools tanımını kayıpsız almalı"
-        );
+        assert!(req_text.contains("get_current_weather"), "Yukarı akış tools tanımını kayıpsız almalı");
 
         let response_body = json!({
             "id": "chatcmpl-tool-test",
@@ -491,13 +453,11 @@ pub async fn test_p8_openai_arac_cagrisi_akissiz() {
                 "completion_tokens": 20,
                 "total_tokens": 30
             }
-        })
-        .to_string();
+        }).to_string();
 
         let resp = format!(
             "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-            response_body.len(),
-            response_body
+            response_body.len(), response_body
         );
         socket.write_all(resp.as_bytes()).await.unwrap();
         let _ = socket.shutdown().await;
@@ -530,11 +490,7 @@ pub async fn test_p8_openai_arac_cagrisi_akissiz() {
         axum::serve(kervan_listener, router).await.unwrap();
     });
 
-    let client = ureq::Agent::new_with_config(
-        ureq::config::Config::builder()
-            .http_status_as_error(false)
-            .build(),
-    );
+    let client = ureq::Agent::new_with_config(ureq::config::Config::builder().http_status_as_error(false).build());
     let resp: serde_json::Value = client
         .post(&format!("http://{}/v1/chat/completions", kervan_addr))
         .send_json(&json!({
@@ -555,9 +511,7 @@ pub async fn test_p8_openai_arac_cagrisi_akissiz() {
         .read_json()
         .unwrap();
 
-    let tool_calls = resp["choices"][0]["message"]["tool_calls"]
-        .as_array()
-        .expect("tool_calls dizisi olmalı");
+    let tool_calls = resp["choices"][0]["message"]["tool_calls"].as_array().expect("tool_calls dizisi olmalı");
     assert_eq!(tool_calls[0]["id"], tool_nonce);
     assert_eq!(tool_calls[0]["function"]["name"], "get_current_weather");
 }
@@ -575,8 +529,7 @@ pub async fn test_p8_openai_arac_cagrisi_akisli() {
         let mut buf = [0u8; 1024];
         let _ = socket.read(&mut buf).await;
 
-        let baslik =
-            "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n";
+        let baslik = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n";
         socket.write_all(baslik.as_bytes()).await.unwrap();
 
         let chunk1 = format!(
@@ -631,14 +584,11 @@ pub async fn test_p8_openai_arac_cagrisi_akisli() {
             "function": {"name": "hesap_yap", "parameters": {}}
         }],
         "stream": true
-    })
-    .to_string();
+    }).to_string();
 
     let http_req = format!(
         "POST /v1/chat/completions HTTP/1.1\r\nHost: {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
-        kervan_addr,
-        req_body.len(),
-        req_body
+        kervan_addr, req_body.len(), req_body
     );
     stream_socket.write_all(http_req.as_bytes()).await.unwrap();
 
@@ -665,14 +615,8 @@ pub async fn test_p8_openai_arac_cagrisi_akisli() {
     }
 
     let birlesik = chunks.join("\n");
-    assert!(
-        birlesik.contains(&stream_tool_nonce),
-        "Akışlı tool çağrısında nonce bulunmalı"
-    );
-    assert!(
-        birlesik.contains("hesap_yap"),
-        "Fonksiyon adı akışta bulunmalı"
-    );
+    assert!(birlesik.contains(&stream_tool_nonce), "Akışlı tool çağrısında nonce bulunmalı");
+    assert!(birlesik.contains("hesap_yap"), "Fonksiyon adı akışta bulunmalı");
     assert!(birlesik.contains("42"), "Argüman akışta bulunmalı");
 }
 
@@ -721,11 +665,7 @@ pub async fn test_p8_claude_akista_arac_acik_hata() {
         axum::serve(kervan_listener, router).await.unwrap();
     });
 
-    let client = ureq::Agent::new_with_config(
-        ureq::config::Config::builder()
-            .http_status_as_error(false)
-            .build(),
-    );
+    let client = ureq::Agent::new_with_config(ureq::config::Config::builder().http_status_as_error(false).build());
     let resp = client
         .post(&format!("http://{}/v1/chat/completions", kervan_addr))
         .send_json(&json!({
@@ -742,14 +682,6 @@ pub async fn test_p8_claude_akista_arac_acik_hata() {
     // FR-6.4 Acceptance: stream=true iken Claude/Gemini açık hata (501 / 400), yukarı akışa istek gitmez (sayaç 0)
     assert_eq!(resp.status().as_u16(), 501);
     let govde = resp.into_body().read_to_string().unwrap();
-    assert!(
-        govde.contains("desteklenmiyor: tools"),
-        "Hata mesajı 'desteklenmiyor: tools' içermeli: {}",
-        govde
-    );
-    assert_eq!(
-        istek_sayaci.load(Ordering::SeqCst),
-        0,
-        "Yukarı akışa hiç istek gitmemeli (sayaç 0)"
-    );
+    assert!(govde.contains("desteklenmiyor: tools"), "Hata mesajı 'desteklenmiyor: tools' içermeli: {}", govde);
+    assert_eq!(istek_sayaci.load(Ordering::SeqCst), 0, "Yukarı akışa hiç istek gitmemeli (sayaç 0)");
 }

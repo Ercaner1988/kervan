@@ -1,7 +1,7 @@
-use serde_json::json;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
+use serde_json::json;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
@@ -17,8 +17,7 @@ fn kur_test_state(
     rest_hedefleri: std::collections::HashMap<String, kervan_yukari::Hedef>,
     yukari: kervan_yukari::Yukari,
 ) -> Arc<AppState> {
-    let temp_dir =
-        std::env::temp_dir().join(format!("kervan_resilience_test_{}", rand::random::<u64>()));
+    let temp_dir = std::env::temp_dir().join(format!("kervan_resilience_test_{}", rand::random::<u64>()));
     let _ = std::fs::create_dir_all(&temp_dir);
     let defter_yolu = temp_dir.join("defter.log");
     let defter = kervan_saglayici::kota::Defter::ac(defter_yolu).unwrap();
@@ -48,9 +47,7 @@ fn kur_test_state(
         timeout: Duration::from_secs(5),
         eklenti_hub: kervan_sunucu::eklenti::EklentiHub::new(),
         compressor: kervan_sunucu::compressor::Compressor::new(),
-        router: kervan_sunucu::router::SmartRouter::new(
-            kervan_sunucu::router::RoutingStrategy::Lkgp,
-        ),
+        router: kervan_sunucu::router::SmartRouter::new(kervan_sunucu::router::RoutingStrategy::Lkgp),
         sayaclar: Default::default(),
         rest_hedefleri,
         yukari,
@@ -78,12 +75,8 @@ async fn p7_ardisik_5xx_kesici_503_ve_sayac_sabit() {
             let mut content_length = None;
 
             loop {
-                let Ok(n) = socket.read(&mut tmp).await else {
-                    break;
-                };
-                if n == 0 {
-                    break;
-                }
+                let Ok(n) = socket.read(&mut tmp).await else { break; };
+                if n == 0 { break; }
                 buffer.extend_from_slice(&tmp[..n]);
 
                 if body_start.is_none() {
@@ -219,12 +212,8 @@ async fn p7_429_retry_after_ve_soguma_kervan() {
             let mut content_length = None;
 
             loop {
-                let Ok(n) = socket.read(&mut tmp).await else {
-                    break;
-                };
-                if n == 0 {
-                    break;
-                }
+                let Ok(n) = socket.read(&mut tmp).await else { break; };
+                if n == 0 { break; }
                 buffer.extend_from_slice(&tmp[..n]);
 
                 if body_start.is_none() {
@@ -306,10 +295,7 @@ async fn p7_429_retry_after_ve_soguma_kervan() {
     match res1 {
         Ok(r) => {
             assert_eq!(r.status().as_u16(), 429);
-            assert_eq!(
-                r.headers().get("Retry-After").map(|v| v.to_str().unwrap()),
-                Some("5")
-            );
+            assert_eq!(r.headers().get("Retry-After").map(|v| v.to_str().unwrap()), Some("5"));
         }
         Err(ureq::Error::StatusCode(status)) => assert_eq!(status, 429),
         Err(e) => panic!("Beklenmeyen hata: {:?}", e),
@@ -321,10 +307,7 @@ async fn p7_429_retry_after_ve_soguma_kervan() {
     match res2 {
         Ok(r) => {
             assert_eq!(r.status().as_u16(), 429);
-            assert_eq!(
-                r.headers().get("Retry-After").map(|v| v.to_str().unwrap()),
-                Some("5")
-            );
+            assert_eq!(r.headers().get("Retry-After").map(|v| v.to_str().unwrap()), Some("5"));
             let body: serde_json::Value = r.into_body().read_json().unwrap();
             let msg = body["error"]["message"].as_str().unwrap();
             assert!(msg.contains("soğumada"), "Mesaj: {}", msg);
@@ -364,12 +347,8 @@ async fn p7_hata_temizligi_ve_anahtar_sizdirmazligi() {
             let mut content_length = None;
 
             loop {
-                let Ok(n) = socket.read(&mut tmp).await else {
-                    break;
-                };
-                if n == 0 {
-                    break;
-                }
+                let Ok(n) = socket.read(&mut tmp).await else { break; };
+                if n == 0 { break; }
                 buffer.extend_from_slice(&tmp[..n]);
 
                 if body_start.is_none() {
@@ -447,28 +426,12 @@ async fn p7_hata_temizligi_ve_anahtar_sizdirmazligi() {
             assert_eq!(r.status().as_u16(), 401);
             let body_str = r.into_body().read_to_string().unwrap();
             // 1. Gizli anahtar asla yer almamalıdır!
-            assert!(
-                !body_str.contains(gizli_anahtar),
-                "Gizli anahtar yanıta sızdı: {}",
-                body_str
-            );
-            assert!(
-                body_str.contains("[GIZLENDI]"),
-                "Maske bulunamadı: {}",
-                body_str
-            );
+            assert!(!body_str.contains(gizli_anahtar), "Gizli anahtar yanıta sızdı: {}", body_str);
+            assert!(body_str.contains("[GIZLENDI]"), "Maske bulunamadı: {}", body_str);
 
             // 2. İç Windows yolları temizlenmelidir!
-            assert!(
-                !body_str.contains("C:\\Users\\admin"),
-                "İç yol yanıta sızdı: {}",
-                body_str
-            );
-            assert!(
-                body_str.contains("[GIZLI_YOL]"),
-                "Yol maskesi bulunamadı: {}",
-                body_str
-            );
+            assert!(!body_str.contains("C:\\Users\\admin"), "İç yol yanıta sızdı: {}", body_str);
+            assert!(body_str.contains("[GIZLI_YOL]"), "Yol maskesi bulunamadı: {}", body_str);
         }
         Err(e) => panic!("Beklenmeyen hata: {:?}", e),
     }

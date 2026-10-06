@@ -52,7 +52,10 @@ fn altin_yolu(dosya_adi: &str) -> std::path::PathBuf {
 
 #[test]
 fn test_fr72_altin_parite_girdi1_ve_girdi2() {
-    let dosyalar = ["strateji_girdi1.json", "strateji_girdi2.json"];
+    let dosyalar = [
+        "strateji_girdi1.json",
+        "strateji_girdi2.json",
+    ];
 
     for dosya_adi in &dosyalar {
         let tam_yol = altin_yolu(dosya_adi);

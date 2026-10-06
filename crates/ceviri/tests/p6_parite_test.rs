@@ -4,9 +4,9 @@
 //! Kervan'ın gerçek Rust çeviri çıktısı ile altın referans çıktısını karşılaştırır.
 //! Sapmalar port/altin/sapmalar.toml kaydı ile doğrulanır.
 
-use serde_json::Value;
 use std::fs;
 use std::path::Path;
+use serde_json::Value;
 
 use kervan_ceviri::*;
 
@@ -58,12 +58,12 @@ fn p6_claude_altin_parite_testi() {
                 kervan_sonucu.err()
             );
             let kervan_istek = kervan_sonucu.unwrap();
-            let kervan_val =
-                serde_json::to_value(&kervan_istek).expect("ClaudeIstek serileştirilemedi");
+            let kervan_val = serde_json::to_value(&kervan_istek).expect("ClaudeIstek serileştirilemedi");
             let beklenen_val = &altin_json["cikti"];
 
             assert_eq!(
-                kervan_val, *beklenen_val,
+                kervan_val,
+                *beklenen_val,
                 "Altın parite farkı tespit edildi: {}",
                 dosya_adi
             );
@@ -118,12 +118,12 @@ fn p6_gemini_altin_parite_testi() {
                 kervan_sonucu.err()
             );
             let kervan_istek = kervan_sonucu.unwrap();
-            let kervan_val =
-                serde_json::to_value(&kervan_istek).expect("GeminiIstek serileştirilemedi");
+            let kervan_val = serde_json::to_value(&kervan_istek).expect("GeminiIstek serileştirilemedi");
             let beklenen_val = &altin_json["cikti"];
 
             assert_eq!(
-                kervan_val, *beklenen_val,
+                kervan_val,
+                *beklenen_val,
                 "Altın parite farkı tespit edildi: {}",
                 dosya_adi
             );
@@ -159,10 +159,7 @@ fn p6_yanit_donusumleri_testi() {
         openai_claude.choices[0].message.content,
         Some("Claude parite yanıtı".to_string())
     );
-    assert_eq!(
-        openai_claude.choices[0].finish_reason,
-        Some("stop".to_string())
-    );
+    assert_eq!(openai_claude.choices[0].finish_reason, Some("stop".to_string()));
     assert_eq!(openai_claude.usage.as_ref().unwrap().total_tokens, 60);
 
     // 2. Gemini yanıtı
@@ -191,9 +188,6 @@ fn p6_yanit_donusumleri_testi() {
         openai_gemini.choices[0].message.content,
         Some("Gemini parite yanıtı".to_string())
     );
-    assert_eq!(
-        openai_gemini.choices[0].finish_reason,
-        Some("stop".to_string())
-    );
+    assert_eq!(openai_gemini.choices[0].finish_reason, Some("stop".to_string()));
     assert_eq!(openai_gemini.usage.as_ref().unwrap().total_tokens, 40);
 }

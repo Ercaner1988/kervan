@@ -3,12 +3,12 @@
 //! OpenAI, Anthropic Claude ve Google Gemini yukarı akışlarından SSE formatında
 //! verileri gerçek zamanlı olarak okur, dönüştürür ve gecikmesiz iletir (FR-6.3, FR-6.4).
 
-use serde_json::Value;
 use std::io::{BufRead, BufReader, Read};
 use std::sync::Arc;
-use tokio::sync::{Mutex, mpsc, oneshot};
+use serde_json::Value;
+use tokio::sync::{mpsc, oneshot, Mutex};
 
-use crate::{Hedef, Yukari, YukariHatasi, temizle_hata};
+use crate::{temizle_hata, Hedef, Yukari, YukariHatasi};
 
 pub async fn gonder_akis(
     yukari: &Yukari,
@@ -32,18 +32,15 @@ pub async fn gonder_akis(
                 kervan_direnc::DirencHatasi::DevreAcik { ad, kalan_sure_ms } => {
                     Err(YukariHatasi::DevreAcik { ad, kalan_sure_ms })
                 }
-                kervan_direnc::DirencHatasi::Sogumada {
-                    ad,
-                    retry_after_saniye,
-                } => Err(YukariHatasi::Sogumada {
-                    ad,
-                    retry_after_saniye,
-                }),
-                kervan_direnc::DirencHatasi::YariAcikDolu(ad) => Err(YukariHatasi::DevreAcik {
-                    ad,
-                    kalan_sure_ms: 1000,
-                }),
-                kervan_direnc::DirencHatasi::IslemHatasi(m) => Err(YukariHatasi::AgHatasi(m)),
+                kervan_direnc::DirencHatasi::Sogumada { ad, retry_after_saniye } => {
+                    Err(YukariHatasi::Sogumada { ad, retry_after_saniye })
+                }
+                kervan_direnc::DirencHatasi::YariAcikDolu(ad) => {
+                    Err(YukariHatasi::DevreAcik { ad, kalan_sure_ms: 1000 })
+                }
+                kervan_direnc::DirencHatasi::IslemHatasi(m) => {
+                    Err(YukariHatasi::AgHatasi(m))
+                }
             };
         }
     }
@@ -66,42 +63,14 @@ pub async fn gonder_akis(
     let govde_kopya = istemci_govdesi.clone();
     let direnc = yukari.direnc.clone();
 
-    tokio::task::spawn_blocking(move || match hedef_kopya.bicim.as_str() {
-        "openai" => akis_openai(
-            ajan,
-            hedef_kopya,
-            anahtar,
-            govde_kopya,
-            yukari_model,
-            tx,
-            init_tx,
-            direnc,
-        ),
-        "claude" => akis_claude(
-            ajan,
-            hedef_kopya,
-            anahtar,
-            govde_kopya,
-            yukari_model,
-            tx,
-            init_tx,
-            direnc,
-        ),
-        "gemini" => akis_gemini(
-            ajan,
-            hedef_kopya,
-            anahtar,
-            govde_kopya,
-            yukari_model,
-            tx,
-            init_tx,
-            direnc,
-        ),
-        diger => {
-            let _ = init_tx.send(Err(YukariHatasi::Desteklenmiyor(format!(
-                "Bilinmeyen biçim: {}",
-                diger
-            ))));
+    tokio::task::spawn_blocking(move || {
+        match hedef_kopya.bicim.as_str() {
+            "openai" => akis_openai(ajan, hedef_kopya, anahtar, govde_kopya, yukari_model, tx, init_tx, direnc),
+            "claude" => akis_claude(ajan, hedef_kopya, anahtar, govde_kopya, yukari_model, tx, init_tx, direnc),
+            "gemini" => akis_gemini(ajan, hedef_kopya, anahtar, govde_kopya, yukari_model, tx, init_tx, direnc),
+            diger => {
+                let _ = init_tx.send(Err(YukariHatasi::Desteklenmiyor(format!("Bilinmeyen biçim: {}", diger))));
+            }
         }
     });
 
@@ -146,31 +115,21 @@ fn akis_openai(
         Ok(r) => r,
         Err(e) => {
             direnc.blocking_lock().hata_kaydet(&hedef.ad, None, None);
-            let _ = init_tx.send(Err(YukariHatasi::AgHatasi(temizle_hata(
-                &e.to_string(),
-                &anahtar,
-            ))));
+            let _ = init_tx.send(Err(YukariHatasi::AgHatasi(temizle_hata(&e.to_string(), &anahtar))));
             return;
         }
     };
 
     let durum = response.status().as_u16();
     if durum < 200 || durum >= 300 {
-        let retry_after = response
-            .headers()
-            .get("retry-after")
+        let retry_after = response.headers().get("retry-after")
             .or_else(|| response.headers().get("Retry-After"))
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.trim().parse::<u64>().ok());
         let mut err_body = String::new();
-        let _ = response
-            .into_body()
-            .into_reader()
-            .read_to_string(&mut err_body);
+        let _ = response.into_body().into_reader().read_to_string(&mut err_body);
         let temiz = temizle_hata(&err_body, &anahtar);
-        direnc
-            .blocking_lock()
-            .hata_kaydet(&hedef.ad, Some(durum), retry_after);
+        direnc.blocking_lock().hata_kaydet(&hedef.ad, Some(durum), retry_after);
         let _ = init_tx.send(Err(YukariHatasi::HttpHatasi(durum, temiz, retry_after)));
         return;
     }
@@ -197,10 +156,7 @@ fn akis_openai(
                 }
             }
             Err(e) => {
-                let _ = tx.blocking_send(Err(YukariHatasi::AgHatasi(temizle_hata(
-                    &e.to_string(),
-                    &anahtar,
-                ))));
+                let _ = tx.blocking_send(Err(YukariHatasi::AgHatasi(temizle_hata(&e.to_string(), &anahtar))));
                 return;
             }
         }
@@ -230,14 +186,13 @@ fn akis_claude(
         }
     };
 
-    let mut claude_istek =
-        match kervan_ceviri::openai_den_claude_istegi(&openai_istek, &yukari_model) {
-            Ok(c) => c,
-            Err(e) => {
-                let _ = init_tx.send(Err(YukariHatasi::Desteklenmiyor(e.to_string())));
-                return;
-            }
-        };
+    let mut claude_istek = match kervan_ceviri::openai_den_claude_istegi(&openai_istek, &yukari_model) {
+        Ok(c) => c,
+        Err(e) => {
+            let _ = init_tx.send(Err(YukariHatasi::Desteklenmiyor(e.to_string())));
+            return;
+        }
+    };
     claude_istek.stream = true;
 
     let yol = hedef.yol.as_deref().unwrap_or("/v1/messages");
@@ -258,31 +213,21 @@ fn akis_claude(
         Ok(r) => r,
         Err(e) => {
             direnc.blocking_lock().hata_kaydet(&hedef.ad, None, None);
-            let _ = init_tx.send(Err(YukariHatasi::AgHatasi(temizle_hata(
-                &e.to_string(),
-                &anahtar,
-            ))));
+            let _ = init_tx.send(Err(YukariHatasi::AgHatasi(temizle_hata(&e.to_string(), &anahtar))));
             return;
         }
     };
 
     let durum = response.status().as_u16();
     if durum < 200 || durum >= 300 {
-        let retry_after = response
-            .headers()
-            .get("retry-after")
+        let retry_after = response.headers().get("retry-after")
             .or_else(|| response.headers().get("Retry-After"))
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.trim().parse::<u64>().ok());
         let mut err_body = String::new();
-        let _ = response
-            .into_body()
-            .into_reader()
-            .read_to_string(&mut err_body);
+        let _ = response.into_body().into_reader().read_to_string(&mut err_body);
         let temiz = temizle_hata(&err_body, &anahtar);
-        direnc
-            .blocking_lock()
-            .hata_kaydet(&hedef.ad, Some(durum), retry_after);
+        direnc.blocking_lock().hata_kaydet(&hedef.ad, Some(durum), retry_after);
         let _ = init_tx.send(Err(YukariHatasi::HttpHatasi(durum, temiz, retry_after)));
         return;
     }
@@ -290,10 +235,7 @@ fn akis_claude(
     let _ = init_tx.send(Ok(()));
 
     let reader = BufReader::new(response.into_body().into_reader());
-    let simdi = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+    let simdi = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let istek_id = format!("chatcmpl-claude-{}", simdi);
 
     for line_res in reader.lines() {
@@ -310,16 +252,9 @@ fn akis_claude(
                     }
                     if let Ok(olay) = serde_json::from_str::<kervan_ceviri::ClaudeOlay>(json_str) {
                         let bitti = matches!(olay, kervan_ceviri::ClaudeOlay::MesajBitti);
-                        if let Ok(Some(parca)) = kervan_ceviri::claude_dan_openai_parcasi(
-                            &olay,
-                            &istek_id,
-                            &yukari_model,
-                        ) {
+                        if let Ok(Some(parca)) = kervan_ceviri::claude_dan_openai_parcasi(&olay, &istek_id, &yukari_model) {
                             if let Ok(parca_json) = serde_json::to_string(&parca) {
-                                if tx
-                                    .blocking_send(Ok(format!("data: {}\n\n", parca_json)))
-                                    .is_err()
-                                {
+                                if tx.blocking_send(Ok(format!("data: {}\n\n", parca_json))).is_err() {
                                     return;
                                 }
                             }
@@ -331,10 +266,7 @@ fn akis_claude(
                 }
             }
             Err(e) => {
-                let _ = tx.blocking_send(Err(YukariHatasi::AgHatasi(temizle_hata(
-                    &e.to_string(),
-                    &anahtar,
-                ))));
+                let _ = tx.blocking_send(Err(YukariHatasi::AgHatasi(temizle_hata(&e.to_string(), &anahtar))));
                 return;
             }
         }
@@ -370,10 +302,7 @@ fn akis_gemini(
         }
     };
 
-    let varsayilan_yol = format!(
-        "/v1beta/models/{}:streamGenerateContent?alt=sse",
-        yukari_model
-    );
+    let varsayilan_yol = format!("/v1beta/models/{}:streamGenerateContent?alt=sse", yukari_model);
     let yol = hedef.yol.as_deref().unwrap_or(&varsayilan_yol);
     let url = format!("{}{}", hedef.taban_url, yol);
 
@@ -391,31 +320,21 @@ fn akis_gemini(
         Ok(r) => r,
         Err(e) => {
             direnc.blocking_lock().hata_kaydet(&hedef.ad, None, None);
-            let _ = init_tx.send(Err(YukariHatasi::AgHatasi(temizle_hata(
-                &e.to_string(),
-                &anahtar,
-            ))));
+            let _ = init_tx.send(Err(YukariHatasi::AgHatasi(temizle_hata(&e.to_string(), &anahtar))));
             return;
         }
     };
 
     let durum = response.status().as_u16();
     if durum < 200 || durum >= 300 {
-        let retry_after = response
-            .headers()
-            .get("retry-after")
+        let retry_after = response.headers().get("retry-after")
             .or_else(|| response.headers().get("Retry-After"))
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.trim().parse::<u64>().ok());
         let mut err_body = String::new();
-        let _ = response
-            .into_body()
-            .into_reader()
-            .read_to_string(&mut err_body);
+        let _ = response.into_body().into_reader().read_to_string(&mut err_body);
         let temiz = temizle_hata(&err_body, &anahtar);
-        direnc
-            .blocking_lock()
-            .hata_kaydet(&hedef.ad, Some(durum), retry_after);
+        direnc.blocking_lock().hata_kaydet(&hedef.ad, Some(durum), retry_after);
         let _ = init_tx.send(Err(YukariHatasi::HttpHatasi(durum, temiz, retry_after)));
         return;
     }
@@ -423,10 +342,7 @@ fn akis_gemini(
     let _ = init_tx.send(Ok(()));
 
     let reader = BufReader::new(response.into_body().into_reader());
-    let simdi = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+    let simdi = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let istek_id = format!("chatcmpl-gemini-{}", simdi);
 
     for line_res in reader.lines() {
@@ -441,18 +357,10 @@ fn akis_gemini(
                     if json_str == "[DONE]" {
                         break;
                     }
-                    if let Ok(yanit) = serde_json::from_str::<kervan_ceviri::GeminiYanit>(json_str)
-                    {
-                        if let Ok(Some(parca)) = kervan_ceviri::gemini_den_openai_parcasi(
-                            &yanit,
-                            &istek_id,
-                            &yukari_model,
-                        ) {
+                    if let Ok(yanit) = serde_json::from_str::<kervan_ceviri::GeminiYanit>(json_str) {
+                        if let Ok(Some(parca)) = kervan_ceviri::gemini_den_openai_parcasi(&yanit, &istek_id, &yukari_model) {
                             if let Ok(parca_json) = serde_json::to_string(&parca) {
-                                if tx
-                                    .blocking_send(Ok(format!("data: {}\n\n", parca_json)))
-                                    .is_err()
-                                {
+                                if tx.blocking_send(Ok(format!("data: {}\n\n", parca_json))).is_err() {
                                     return;
                                 }
                             }
@@ -461,10 +369,7 @@ fn akis_gemini(
                 }
             }
             Err(e) => {
-                let _ = tx.blocking_send(Err(YukariHatasi::AgHatasi(temizle_hata(
-                    &e.to_string(),
-                    &anahtar,
-                ))));
+                let _ = tx.blocking_send(Err(YukariHatasi::AgHatasi(temizle_hata(&e.to_string(), &anahtar))));
                 return;
             }
         }

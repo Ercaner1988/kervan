@@ -140,23 +140,14 @@ impl RoutingStrategy {
             }
             Self::ContextRelay => {
                 // En geniş bağlama sahip olanı öne alır, kalanları korur
-                sonuc.sort_by(|a, b| {
-                    b.context_size
-                        .cmp(&a.context_size)
-                        .then_with(|| a.ad.cmp(&b.ad))
-                });
+                sonuc.sort_by(|a, b| b.context_size.cmp(&a.context_size).then_with(|| a.ad.cmp(&b.ad)));
             }
             Self::P2c => {
                 if sonuc.len() >= 2 {
                     // İki aday seç (P2C) ve gecikmesi düşük olanı öne al
                     let i1 = (t as usize) % sonuc.len();
-                    let i2 = ((t.wrapping_mul(6364136223846793005).wrapping_add(1)) as usize)
-                        % sonuc.len();
-                    let secilen_idx = if sonuc[i1].latency_ms <= sonuc[i2].latency_ms {
-                        i1
-                    } else {
-                        i2
-                    };
+                    let i2 = ((t.wrapping_mul(6364136223846793005).wrapping_add(1)) as usize) % sonuc.len();
+                    let secilen_idx = if sonuc[i1].latency_ms <= sonuc[i2].latency_ms { i1 } else { i2 };
                     let secilen = sonuc.remove(secilen_idx);
                     sonuc.insert(0, secilen);
                 }
@@ -165,9 +156,7 @@ impl RoutingStrategy {
                 // Tam Fisher-Yates karıştırması (deterministik LCG)
                 let mut state = t;
                 for i in (1..sonuc.len()).rev() {
-                    state = state
-                        .wrapping_mul(6364136223846793005)
-                        .wrapping_add(1442695040888963407);
+                    state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
                     let j = (state as usize) % (i + 1);
                     sonuc.swap(i, j);
                 }
@@ -183,18 +172,14 @@ impl RoutingStrategy {
             }
             Self::LeastUsed => {
                 sonuc.sort_by(|a, b| {
-                    a.request_count
-                        .cmp(&b.request_count)
+                    a.request_count.cmp(&b.request_count)
                         .then_with(|| a.error_count.cmp(&b.error_count))
                         .then_with(|| a.ad.cmp(&b.ad))
                 });
             }
             Self::CostOptimized => {
                 sonuc.sort_by(|a, b| {
-                    a.cost
-                        .partial_cmp(&b.cost)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                        .then_with(|| a.ad.cmp(&b.ad))
+                    a.cost.partial_cmp(&b.cost).unwrap_or(std::cmp::Ordering::Equal).then_with(|| a.ad.cmp(&b.ad))
                 });
             }
             Self::ResetAware => {
@@ -202,27 +187,17 @@ impl RoutingStrategy {
                 sonuc.sort_by(|a, b| {
                     let score_a = (a.free_quota as f64) / (a.reset_seconds as f64 + 1.0);
                     let score_b = (b.free_quota as f64) / (b.reset_seconds as f64 + 1.0);
-                    score_b
-                        .partial_cmp(&score_a)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                        .then_with(|| a.ad.cmp(&b.ad))
+                    score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal).then_with(|| a.ad.cmp(&b.ad))
                 });
             }
             Self::ResetWindow => {
                 // Sıfırlanma penceresi yaklaşan (düşük reset_seconds) hedefleri önceler
                 sonuc.sort_by(|a, b| {
-                    a.reset_seconds
-                        .cmp(&b.reset_seconds)
-                        .then_with(|| b.free_quota.cmp(&a.free_quota))
-                        .then_with(|| a.ad.cmp(&b.ad))
+                    a.reset_seconds.cmp(&b.reset_seconds).then_with(|| b.free_quota.cmp(&a.free_quota)).then_with(|| a.ad.cmp(&b.ad))
                 });
             }
             Self::Headroom => {
-                sonuc.sort_by(|a, b| {
-                    b.free_quota
-                        .cmp(&a.free_quota)
-                        .then_with(|| a.ad.cmp(&b.ad))
-                });
+                sonuc.sort_by(|a, b| b.free_quota.cmp(&a.free_quota).then_with(|| a.ad.cmp(&b.ad)));
             }
             Self::QuotaWeighted => {
                 sonuc.sort_by(|a, b| {
@@ -246,44 +221,25 @@ impl RoutingStrategy {
                 }
             }
             Self::ContextOptimized => {
-                sonuc.sort_by(|a, b| {
-                    b.context_size
-                        .cmp(&a.context_size)
-                        .then_with(|| a.ad.cmp(&b.ad))
-                });
+                sonuc.sort_by(|a, b| b.context_size.cmp(&a.context_size).then_with(|| a.ad.cmp(&b.ad)));
             }
             Self::CacheOptimized => {
-                sonuc.sort_by(|a, b| {
-                    b.warm_cache
-                        .cmp(&a.warm_cache)
-                        .then_with(|| a.ad.cmp(&b.ad))
-                });
+                sonuc.sort_by(|a, b| b.warm_cache.cmp(&a.warm_cache).then_with(|| a.ad.cmp(&b.ad)));
             }
             Self::Fusion => {
                 // Model adına göre kümeleyip sıralar
-                sonuc.sort_by(|a, b| {
-                    a.execution_key
-                        .cmp(&b.execution_key)
-                        .then_with(|| a.ad.cmp(&b.ad))
-                });
+                sonuc.sort_by(|a, b| a.execution_key.cmp(&b.execution_key).then_with(|| a.ad.cmp(&b.ad)));
             }
             Self::Pipeline => {
                 // Boru hattı adımlarına göre (weight + context_size)
-                sonuc.sort_by(|a, b| {
-                    (b.weight, b.context_size)
-                        .cmp(&(a.weight, a.context_size))
-                        .then_with(|| a.ad.cmp(&b.ad))
-                });
+                sonuc.sort_by(|a, b| (b.weight, b.context_size).cmp(&(a.weight, a.context_size)).then_with(|| a.ad.cmp(&b.ad)));
             }
             Self::QuotaShare => {
                 // DRR (Deficit Round Robin): serbest kota ve gecikme oranı
                 sonuc.sort_by(|a, b| {
                     let drr_a = (a.free_quota as f64) / (a.latency_ms as f64 + 1.0);
                     let drr_b = (b.free_quota as f64) / (b.latency_ms as f64 + 1.0);
-                    drr_b
-                        .partial_cmp(&drr_a)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                        .then_with(|| a.ad.cmp(&b.ad))
+                    drr_b.partial_cmp(&drr_a).unwrap_or(std::cmp::Ordering::Equal).then_with(|| a.ad.cmp(&b.ad))
                 });
             }
         }
