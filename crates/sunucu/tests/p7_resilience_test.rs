@@ -77,34 +77,31 @@ async fn p7_ardisik_5xx_kesici_503_ve_sayac_sabit() {
             let mut body_start = None;
             let mut content_length = None;
 
-            loop {
-                let Ok(n) = socket.read(&mut tmp).await else {
-                    break;
-                };
+            while let Ok(n) = socket.read(&mut tmp).await {
                 if n == 0 {
                     break;
                 }
                 buffer.extend_from_slice(&tmp[..n]);
 
-                if body_start.is_none() {
-                    if let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n") {
-                        body_start = Some(pos + 4);
-                        let header_str = String::from_utf8_lossy(&buffer[..pos]);
-                        for line in header_str.lines() {
-                            let lower = line.to_lowercase();
-                            if lower.starts_with("content-length:") {
-                                if let Some(val) = line.split(':').nth(1) {
-                                    content_length = val.trim().parse::<usize>().ok();
-                                }
-                            }
+                if body_start.is_none()
+                    && let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n")
+                {
+                    body_start = Some(pos + 4);
+                    let header_str = String::from_utf8_lossy(&buffer[..pos]);
+                    for line in header_str.lines() {
+                        let lower = line.to_lowercase();
+                        if lower.starts_with("content-length:")
+                            && let Some(val) = line.split(':').nth(1)
+                        {
+                            content_length = val.trim().parse::<usize>().ok();
                         }
                     }
                 }
 
-                if let (Some(start), Some(cl)) = (body_start, content_length) {
-                    if buffer.len() >= start + cl {
-                        break;
-                    }
+                if let (Some(start), Some(cl)) = (body_start, content_length)
+                    && buffer.len() >= start + cl
+                {
+                    break;
                 }
             }
 
@@ -218,34 +215,31 @@ async fn p7_429_retry_after_ve_soguma_kervan() {
             let mut body_start = None;
             let mut content_length = None;
 
-            loop {
-                let Ok(n) = socket.read(&mut tmp).await else {
-                    break;
-                };
+            while let Ok(n) = socket.read(&mut tmp).await {
                 if n == 0 {
                     break;
                 }
                 buffer.extend_from_slice(&tmp[..n]);
 
-                if body_start.is_none() {
-                    if let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n") {
-                        body_start = Some(pos + 4);
-                        let header_str = String::from_utf8_lossy(&buffer[..pos]);
-                        for line in header_str.lines() {
-                            let lower = line.to_lowercase();
-                            if lower.starts_with("content-length:") {
-                                if let Some(val) = line.split(':').nth(1) {
-                                    content_length = val.trim().parse::<usize>().ok();
-                                }
-                            }
+                if body_start.is_none()
+                    && let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n")
+                {
+                    body_start = Some(pos + 4);
+                    let header_str = String::from_utf8_lossy(&buffer[..pos]);
+                    for line in header_str.lines() {
+                        let lower = line.to_lowercase();
+                        if lower.starts_with("content-length:")
+                            && let Some(val) = line.split(':').nth(1)
+                        {
+                            content_length = val.trim().parse::<usize>().ok();
                         }
                     }
                 }
 
-                if let (Some(start), Some(cl)) = (body_start, content_length) {
-                    if buffer.len() >= start + cl {
-                        break;
-                    }
+                if let (Some(start), Some(cl)) = (body_start, content_length)
+                    && buffer.len() >= start + cl
+                {
+                    break;
                 }
             }
 
@@ -363,34 +357,31 @@ async fn p7_hata_temizligi_ve_anahtar_sizdirmazligi() {
             let mut body_start = None;
             let mut content_length = None;
 
-            loop {
-                let Ok(n) = socket.read(&mut tmp).await else {
-                    break;
-                };
+            while let Ok(n) = socket.read(&mut tmp).await {
                 if n == 0 {
                     break;
                 }
                 buffer.extend_from_slice(&tmp[..n]);
 
-                if body_start.is_none() {
-                    if let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n") {
-                        body_start = Some(pos + 4);
-                        let header_str = String::from_utf8_lossy(&buffer[..pos]);
-                        for line in header_str.lines() {
-                            let lower = line.to_lowercase();
-                            if lower.starts_with("content-length:") {
-                                if let Some(val) = line.split(':').nth(1) {
-                                    content_length = val.trim().parse::<usize>().ok();
-                                }
-                            }
+                if body_start.is_none()
+                    && let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n")
+                {
+                    body_start = Some(pos + 4);
+                    let header_str = String::from_utf8_lossy(&buffer[..pos]);
+                    for line in header_str.lines() {
+                        let lower = line.to_lowercase();
+                        if lower.starts_with("content-length:")
+                            && let Some(val) = line.split(':').nth(1)
+                        {
+                            content_length = val.trim().parse::<usize>().ok();
                         }
                     }
                 }
 
-                if let (Some(start), Some(cl)) = (body_start, content_length) {
-                    if buffer.len() >= start + cl {
-                        break;
-                    }
+                if let (Some(start), Some(cl)) = (body_start, content_length)
+                    && buffer.len() >= start + cl
+                {
+                    break;
                 }
             }
 

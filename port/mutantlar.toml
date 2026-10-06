@@ -49,6 +49,7 @@ bul = "a.request_count.cmp(&b.request_count)"
 yerine = "b.request_count.cmp(&a.request_count)"
 oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-havuz', '--test', 'p9_strateji_test', '--', 'test_fr72_altin_parite_girdi1_ve_girdi2'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]
 
+
 [[mutant]]
 ad = "gemini-max-tokens-varsayilanini-boz"
 dosya = "crates/ceviri/src/gemini.rs"

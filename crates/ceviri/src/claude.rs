@@ -15,19 +15,19 @@ pub fn openai_den_claude_istegi(
     hedef_model: &str,
 ) -> Result<ClaudeIstek, CeviriHatasi> {
     // 1. Desteklenmeyen alan denetimleri (FR-5.3)
-    if let Some(ref tools) = istek.tools {
-        if !tools.is_empty() {
-            return Err(CeviriHatasi::Desteklenmiyor("tools".to_string()));
-        }
+    if let Some(ref tools) = istek.tools
+        && !tools.is_empty()
+    {
+        return Err(CeviriHatasi::Desteklenmiyor("tools".to_string()));
     }
 
     for m in &istek.messages {
-        if let Some(ref c) = m.content {
-            if !c.is_string() {
-                return Err(CeviriHatasi::Desteklenmiyor(
-                    "çok parçalı içerik".to_string(),
-                ));
-            }
+        if let Some(ref c) = m.content
+            && !c.is_string()
+        {
+            return Err(CeviriHatasi::Desteklenmiyor(
+                "çok parçalı içerik".to_string(),
+            ));
         }
     }
 

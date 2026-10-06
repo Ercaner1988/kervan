@@ -1,11 +1,44 @@
 use serde_json::json;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 
 use kervan_sunucu::server::{self, AppState};
+
+/// Sahte upstream yanıt vermeden önce isteğin tamamını (başlık + Content-Length gövde) okur.
+/// Tek `read` yetmez: gövde okunmadan soket kapanırsa Windows RST gönderir ve ureq yazarken hata alır.
+async fn istegi_tamamen_oku(socket: &mut tokio::net::TcpStream) {
+    let mut alinan = Vec::new();
+    let mut buf = [0u8; 4096];
+    loop {
+        let n = socket.read(&mut buf).await.unwrap_or(0);
+        if n == 0 {
+            return;
+        }
+        alinan.extend_from_slice(&buf[..n]);
+        if let Some(son) = alinan.windows(4).position(|w| w == b"\r\n\r\n") {
+            let baslik = String::from_utf8_lossy(&alinan[..son]).to_ascii_lowercase();
+            let uzunluk = baslik
+                .lines()
+                .find_map(|l| l.strip_prefix("content-length:"))
+                .and_then(|v| v.trim().parse::<usize>().ok())
+                .unwrap_or(0);
+            if alinan.len() >= son + 4 + uzunluk {
+                return;
+            }
+        }
+    }
+}
+
+/// İstemci satır okuması; geçit yanıt vermezse test asılmak yerine düşer.
+async fn satir_oku(reader: &mut BufReader<tokio::net::TcpStream>, line: &mut String) -> usize {
+    tokio::time::timeout(Duration::from_secs(10), reader.read_line(line))
+        .await
+        .expect("geçitten 10 sn içinde satır gelmedi")
+        .unwrap()
+}
 
 // PRD FR-6.3 ve FR-6.4: Gerçek SSE ve Araç Çağrısı Geçişi Testi
 // 1. FR-6.3: Gecikmeli sahte sunucuyla ilk parça tüm yanıt bitmeden ulaşır; nonce parçalarının sırası korunur; [DONE] ile biter.
@@ -66,10 +99,16 @@ pub async fn test_p8_gercek_sse_zamanlama_ve_parca_sirasi() {
     let nonce_a_klon = nonce_a.clone();
     let nonce_b_klon = nonce_b.clone();
 
+    // FR-6.3 sıra engeli: yukarı akış, istemci ilk parçayı ALDIĞINI bildirmeden ikinci
+    // parçayı göndermez. Kervan akışı tamponlasaydı istemci A'yı yukarı akış bitmeden
+    // göremez, sinyal gelmez ve `ilk_parca_onceden_geldi` false kalırdı. Süreye değil
+    // sıraya bakar: makine yükünden bağımsızdır (eski hâli mutlak 100 ms eşiğiydi).
+    let (ilk_alindi_tx, ilk_alindi_rx) = tokio::sync::oneshot::channel::<()>();
+    let (sonuc_tx, sonuc_rx) = tokio::sync::oneshot::channel::<bool>();
+
     tokio::spawn(async move {
         let (mut socket, _) = upstream_listener.accept().await.unwrap();
-        let mut buf = [0u8; 1024];
-        let _ = socket.read(&mut buf).await;
+        istegi_tamamen_oku(&mut socket).await;
 
         let chunk1 = format!(
             "data: {{\"id\":\"chatcmpl-stream\",\"object\":\"chat.completion.chunk\",\"choices\":[{{\"delta\":{{\"content\":\"{}\"}}}}]}}\n\n",
@@ -87,8 +126,11 @@ pub async fn test_p8_gercek_sse_zamanlama_ve_parca_sirasi() {
         socket.write_all(chunk1.as_bytes()).await.unwrap();
         socket.flush().await.unwrap();
 
-        // İkinci parça öncesinde bilerek gecikme koy (FR-6.3 gecikmeli sunucu kabul kriteri)
-        tokio::time::sleep(Duration::from_millis(150)).await;
+        // İstemci A'yı görene kadar bekle; tamponlayan bir geçitte bu hiç gelmez.
+        let onceden = tokio::time::timeout(Duration::from_secs(10), ilk_alindi_rx)
+            .await
+            .is_ok_and(|r| r.is_ok());
+        sonuc_tx.send(onceden).ok();
 
         socket.write_all(chunk2.as_bytes()).await.unwrap();
         socket.write_all(done.as_bytes()).await.unwrap();
@@ -123,7 +165,6 @@ pub async fn test_p8_gercek_sse_zamanlama_ve_parca_sirasi() {
         axum::serve(kervan_listener, router).await.unwrap();
     });
 
-    let t0 = Instant::now();
     let mut stream_socket = tokio::net::TcpStream::connect(kervan_addr).await.unwrap();
 
     let req_body = json!({
@@ -144,10 +185,10 @@ pub async fn test_p8_gercek_sse_zamanlama_ve_parca_sirasi() {
     let mut reader = BufReader::new(stream_socket);
     let mut basliklar_bitti = false;
     let mut chunks = Vec::new();
-    let mut ilk_parca_zamani = None;
+    let mut ilk_alindi_tx = Some(ilk_alindi_tx);
 
     let mut line = String::new();
-    while reader.read_line(&mut line).await.unwrap() > 0 {
+    while satir_oku(&mut reader, &mut line).await > 0 {
         if !basliklar_bitti {
             if line == "\r\n" || line == "\n" {
                 basliklar_bitti = true;
@@ -155,8 +196,10 @@ pub async fn test_p8_gercek_sse_zamanlama_ve_parca_sirasi() {
         } else {
             let trimmed = line.trim();
             if trimmed.starts_with("data:") {
-                if ilk_parca_zamani.is_none() && trimmed != "data: [DONE]" {
-                    ilk_parca_zamani = Some(t0.elapsed());
+                if trimmed != "data: [DONE]"
+                    && let Some(tx) = ilk_alindi_tx.take()
+                {
+                    tx.send(()).ok();
                 }
                 chunks.push(trimmed.to_string());
                 if trimmed == "data: [DONE]" {
@@ -167,19 +210,11 @@ pub async fn test_p8_gercek_sse_zamanlama_ve_parca_sirasi() {
         line.clear();
     }
 
-    let toplam_sure = t0.elapsed();
-    let ilk_zaman = ilk_parca_zamani.expect("İlk parça gelmiş olmalı");
-
-    // Acceptance 1: İlk parça yukarı akış sonundan önce gelir (t_ilk < 100ms, toplam >= 140ms)
+    // Acceptance 1: İlk parça yukarı akış bitmeden istemciye ulaştı (sıra engeli).
+    let ilk_parca_onceden_geldi = sonuc_rx.await.unwrap_or(false);
     assert!(
-        ilk_zaman < Duration::from_millis(100),
-        "İlk parça gecikmesi {}ms, 100ms altında olmalıydı (yukarı akış bitmeden geldi)",
-        ilk_zaman.as_millis()
-    );
-    assert!(
-        toplam_sure >= Duration::from_millis(140),
-        "Toplam süre {}ms, 140ms üzerinde olmalıydı",
-        toplam_sure.as_millis()
+        ilk_parca_onceden_geldi,
+        "İlk parça yukarı akış bitmeden istemciye ulaşmadı: geçit akışı tamponluyor"
     );
 
     // Acceptance 2: Parçalar sırasıyla geldi ve nonceleri içeriyor
@@ -206,8 +241,7 @@ pub async fn test_p8_claude_sse_cevirisi() {
 
     tokio::spawn(async move {
         let (mut socket, _) = upstream_listener.accept().await.unwrap();
-        let mut buf = [0u8; 1024];
-        let _ = socket.read(&mut buf).await;
+        istegi_tamamen_oku(&mut socket).await;
 
         let baslik =
             "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n";
@@ -278,7 +312,7 @@ pub async fn test_p8_claude_sse_cevirisi() {
     let mut chunks = Vec::new();
 
     let mut line = String::new();
-    while reader.read_line(&mut line).await.unwrap() > 0 {
+    while satir_oku(&mut reader, &mut line).await > 0 {
         if !basliklar_bitti {
             if line == "\r\n" || line == "\n" {
                 basliklar_bitti = true;
@@ -318,8 +352,7 @@ pub async fn test_p8_gemini_sse_cevirisi() {
 
     tokio::spawn(async move {
         let (mut socket, _) = upstream_listener.accept().await.unwrap();
-        let mut buf = [0u8; 1024];
-        let _ = socket.read(&mut buf).await;
+        istegi_tamamen_oku(&mut socket).await;
 
         let baslik =
             "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n";
@@ -385,7 +418,7 @@ pub async fn test_p8_gemini_sse_cevirisi() {
     let mut chunks = Vec::new();
 
     let mut line = String::new();
-    while reader.read_line(&mut line).await.unwrap() > 0 {
+    while satir_oku(&mut reader, &mut line).await > 0 {
         if !basliklar_bitti {
             if line == "\r\n" || line == "\n" {
                 basliklar_bitti = true;
@@ -437,25 +470,25 @@ pub async fn test_p8_openai_arac_cagrisi_akissiz() {
             }
             buffer.extend_from_slice(&tmp[..n]);
 
-            if body_start.is_none() {
-                if let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n") {
-                    body_start = Some(pos + 4);
-                    let header_str = String::from_utf8_lossy(&buffer[..pos]);
-                    for line in header_str.lines() {
-                        let lower = line.to_lowercase();
-                        if lower.starts_with("content-length:") {
-                            if let Some(val) = line.split(':').nth(1) {
-                                content_length = val.trim().parse::<usize>().ok();
-                            }
-                        }
+            if body_start.is_none()
+                && let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n")
+            {
+                body_start = Some(pos + 4);
+                let header_str = String::from_utf8_lossy(&buffer[..pos]);
+                for line in header_str.lines() {
+                    let lower = line.to_lowercase();
+                    if lower.starts_with("content-length:")
+                        && let Some(val) = line.split(':').nth(1)
+                    {
+                        content_length = val.trim().parse::<usize>().ok();
                     }
                 }
             }
 
-            if let (Some(start), Some(cl)) = (body_start, content_length) {
-                if buffer.len() >= start + cl {
-                    break;
-                }
+            if let (Some(start), Some(cl)) = (body_start, content_length)
+                && buffer.len() >= start + cl
+            {
+                break;
             }
         }
 
@@ -537,7 +570,7 @@ pub async fn test_p8_openai_arac_cagrisi_akissiz() {
     );
     let resp: serde_json::Value = client
         .post(&format!("http://{}/v1/chat/completions", kervan_addr))
-        .send_json(&json!({
+        .send_json(json!({
             "model": "kervan/test-tool-openai",
             "messages": [{"role": "user", "content": "hava nasıl?"}],
             "tools": [{
@@ -572,8 +605,7 @@ pub async fn test_p8_openai_arac_cagrisi_akisli() {
 
     tokio::spawn(async move {
         let (mut socket, _) = upstream_listener.accept().await.unwrap();
-        let mut buf = [0u8; 1024];
-        let _ = socket.read(&mut buf).await;
+        istegi_tamamen_oku(&mut socket).await;
 
         let baslik =
             "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n";
@@ -647,7 +679,7 @@ pub async fn test_p8_openai_arac_cagrisi_akisli() {
     let mut chunks = Vec::new();
 
     let mut line = String::new();
-    while reader.read_line(&mut line).await.unwrap() > 0 {
+    while satir_oku(&mut reader, &mut line).await > 0 {
         if !basliklar_bitti {
             if line == "\r\n" || line == "\n" {
                 basliklar_bitti = true;
@@ -728,7 +760,7 @@ pub async fn test_p8_claude_akista_arac_acik_hata() {
     );
     let resp = client
         .post(&format!("http://{}/v1/chat/completions", kervan_addr))
-        .send_json(&json!({
+        .send_json(json!({
             "model": "kervan/test-claude-tool",
             "messages": [{"role": "user", "content": "hava nasıl?"}],
             "tools": [{

@@ -10,6 +10,16 @@ use tokio::sync::{Mutex, mpsc, oneshot};
 
 use crate::{Hedef, Yukari, YukariHatasi, temizle_hata};
 
+/// Akışın son iletisinin (hata ya da `[DONE]`) gönderim sonucu. Alıcı düştüyse
+/// istemci ayrılmıştır: iletinin gideceği, hatanın bildirileceği yer yoktur.
+#[allow(
+    clippy::let_underscore_must_use,
+    reason = "alıcının ayrılması akışın olağan sonu; bildirilecek kimse kalmadı"
+)]
+fn alici_ayrildiysa_birak<E>(sonuc: Result<(), E>) {
+    let _ = sonuc;
+}
+
 pub async fn gonder_akis(
     yukari: &Yukari,
     hedef: &Hedef,
@@ -49,12 +59,11 @@ pub async fn gonder_akis(
     }
 
     // 3. FR-6.4: Claude veya Gemini hedeflerde stream=true iken tools varsa açık hata ver
-    if hedef.bicim != "openai" {
-        if let Some(tools) = istemci_govdesi.get("tools").and_then(|t| t.as_array()) {
-            if !tools.is_empty() {
-                return Err(YukariHatasi::Desteklenmiyor("tools".to_string()));
-            }
-        }
+    if hedef.bicim != "openai"
+        && let Some(tools) = istemci_govdesi.get("tools").and_then(|t| t.as_array())
+        && !tools.is_empty()
+    {
+        return Err(YukariHatasi::Desteklenmiyor("tools".to_string()));
     }
 
     let yukari_model = istenen_model.unwrap_or(&hedef.model).to_string();
@@ -98,10 +107,10 @@ pub async fn gonder_akis(
             direnc,
         ),
         diger => {
-            let _ = init_tx.send(Err(YukariHatasi::Desteklenmiyor(format!(
+            alici_ayrildiysa_birak(init_tx.send(Err(YukariHatasi::Desteklenmiyor(format!(
                 "Bilinmeyen biçim: {}",
                 diger
-            ))));
+            )))));
         }
     });
 
@@ -112,6 +121,10 @@ pub async fn gonder_akis(
     }
 }
 
+#[allow(
+    clippy::too_many_arguments,
+    reason = "üç biçim aynı imzayı paylaşır; yapıya toplamak tek kullanımlık soyutlama olurdu"
+)]
 fn akis_openai(
     ajan: ureq::Agent,
     hedef: Hedef,
@@ -146,16 +159,16 @@ fn akis_openai(
         Ok(r) => r,
         Err(e) => {
             direnc.blocking_lock().hata_kaydet(&hedef.ad, None, None);
-            let _ = init_tx.send(Err(YukariHatasi::AgHatasi(temizle_hata(
+            alici_ayrildiysa_birak(init_tx.send(Err(YukariHatasi::AgHatasi(temizle_hata(
                 &e.to_string(),
                 &anahtar,
-            ))));
+            )))));
             return;
         }
     };
 
     let durum = response.status().as_u16();
-    if durum < 200 || durum >= 300 {
+    if !(200..300).contains(&durum) {
         let retry_after = response
             .headers()
             .get("retry-after")
@@ -163,19 +176,29 @@ fn akis_openai(
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.trim().parse::<u64>().ok());
         let mut err_body = String::new();
-        let _ = response
+        if let Err(e) = response
             .into_body()
             .into_reader()
-            .read_to_string(&mut err_body);
+            .read_to_string(&mut err_body)
+        {
+            err_body = format!("(hata gövdesi okunamadı: {e})");
+        }
         let temiz = temizle_hata(&err_body, &anahtar);
         direnc
             .blocking_lock()
             .hata_kaydet(&hedef.ad, Some(durum), retry_after);
-        let _ = init_tx.send(Err(YukariHatasi::HttpHatasi(durum, temiz, retry_after)));
+        alici_ayrildiysa_birak(init_tx.send(Err(YukariHatasi::HttpHatasi(
+            durum,
+            temiz,
+            retry_after,
+        ))));
         return;
     }
 
-    let _ = init_tx.send(Ok(()));
+    if init_tx.send(Ok(())).is_err() {
+        // Çağıran ayrıldı: yukarı akışı okumanın alıcısı yok.
+        return;
+    }
 
     let reader = BufReader::new(response.into_body().into_reader());
     let mut gonderildi_done = false;
@@ -197,9 +220,8 @@ fn akis_openai(
                 }
             }
             Err(e) => {
-                let _ = tx.blocking_send(Err(YukariHatasi::AgHatasi(temizle_hata(
-                    &e.to_string(),
-                    &anahtar,
+                alici_ayrildiysa_birak(tx.blocking_send(Err(YukariHatasi::AgHatasi(
+                    temizle_hata(&e.to_string(), &anahtar),
                 ))));
                 return;
             }
@@ -207,11 +229,15 @@ fn akis_openai(
     }
 
     if !gonderildi_done {
-        let _ = tx.blocking_send(Ok("data: [DONE]\n\n".to_string()));
+        alici_ayrildiysa_birak(tx.blocking_send(Ok("data: [DONE]\n\n".to_string())));
     }
     direnc.blocking_lock().basari_kaydet(&hedef.ad);
 }
 
+#[allow(
+    clippy::too_many_arguments,
+    reason = "üç biçim aynı imzayı paylaşır; yapıya toplamak tek kullanımlık soyutlama olurdu"
+)]
 fn akis_claude(
     ajan: ureq::Agent,
     hedef: Hedef,
@@ -225,7 +251,7 @@ fn akis_claude(
     let openai_istek: kervan_ceviri::OpenAiIstek = match serde_json::from_value(istemci_govdesi) {
         Ok(i) => i,
         Err(e) => {
-            let _ = init_tx.send(Err(YukariHatasi::JsonHatasi(e.to_string())));
+            alici_ayrildiysa_birak(init_tx.send(Err(YukariHatasi::JsonHatasi(e.to_string()))));
             return;
         }
     };
@@ -234,7 +260,9 @@ fn akis_claude(
         match kervan_ceviri::openai_den_claude_istegi(&openai_istek, &yukari_model) {
             Ok(c) => c,
             Err(e) => {
-                let _ = init_tx.send(Err(YukariHatasi::Desteklenmiyor(e.to_string())));
+                alici_ayrildiysa_birak(
+                    init_tx.send(Err(YukariHatasi::Desteklenmiyor(e.to_string()))),
+                );
                 return;
             }
         };
@@ -258,16 +286,16 @@ fn akis_claude(
         Ok(r) => r,
         Err(e) => {
             direnc.blocking_lock().hata_kaydet(&hedef.ad, None, None);
-            let _ = init_tx.send(Err(YukariHatasi::AgHatasi(temizle_hata(
+            alici_ayrildiysa_birak(init_tx.send(Err(YukariHatasi::AgHatasi(temizle_hata(
                 &e.to_string(),
                 &anahtar,
-            ))));
+            )))));
             return;
         }
     };
 
     let durum = response.status().as_u16();
-    if durum < 200 || durum >= 300 {
+    if !(200..300).contains(&durum) {
         let retry_after = response
             .headers()
             .get("retry-after")
@@ -275,19 +303,29 @@ fn akis_claude(
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.trim().parse::<u64>().ok());
         let mut err_body = String::new();
-        let _ = response
+        if let Err(e) = response
             .into_body()
             .into_reader()
-            .read_to_string(&mut err_body);
+            .read_to_string(&mut err_body)
+        {
+            err_body = format!("(hata gövdesi okunamadı: {e})");
+        }
         let temiz = temizle_hata(&err_body, &anahtar);
         direnc
             .blocking_lock()
             .hata_kaydet(&hedef.ad, Some(durum), retry_after);
-        let _ = init_tx.send(Err(YukariHatasi::HttpHatasi(durum, temiz, retry_after)));
+        alici_ayrildiysa_birak(init_tx.send(Err(YukariHatasi::HttpHatasi(
+            durum,
+            temiz,
+            retry_after,
+        ))));
         return;
     }
 
-    let _ = init_tx.send(Ok(()));
+    if init_tx.send(Ok(())).is_err() {
+        // Çağıran ayrıldı: yukarı akışı okumanın alıcısı yok.
+        return;
+    }
 
     let reader = BufReader::new(response.into_body().into_reader());
     let simdi = std::time::SystemTime::now()
@@ -314,15 +352,12 @@ fn akis_claude(
                             &olay,
                             &istek_id,
                             &yukari_model,
-                        ) {
-                            if let Ok(parca_json) = serde_json::to_string(&parca) {
-                                if tx
-                                    .blocking_send(Ok(format!("data: {}\n\n", parca_json)))
-                                    .is_err()
-                                {
-                                    return;
-                                }
-                            }
+                        ) && let Ok(parca_json) = serde_json::to_string(&parca)
+                            && tx
+                                .blocking_send(Ok(format!("data: {}\n\n", parca_json)))
+                                .is_err()
+                        {
+                            return;
                         }
                         if bitti {
                             break;
@@ -331,19 +366,22 @@ fn akis_claude(
                 }
             }
             Err(e) => {
-                let _ = tx.blocking_send(Err(YukariHatasi::AgHatasi(temizle_hata(
-                    &e.to_string(),
-                    &anahtar,
+                alici_ayrildiysa_birak(tx.blocking_send(Err(YukariHatasi::AgHatasi(
+                    temizle_hata(&e.to_string(), &anahtar),
                 ))));
                 return;
             }
         }
     }
 
-    let _ = tx.blocking_send(Ok("data: [DONE]\n\n".to_string()));
+    alici_ayrildiysa_birak(tx.blocking_send(Ok("data: [DONE]\n\n".to_string())));
     direnc.blocking_lock().basari_kaydet(&hedef.ad);
 }
 
+#[allow(
+    clippy::too_many_arguments,
+    reason = "üç biçim aynı imzayı paylaşır; yapıya toplamak tek kullanımlık soyutlama olurdu"
+)]
 fn akis_gemini(
     ajan: ureq::Agent,
     hedef: Hedef,
@@ -357,7 +395,7 @@ fn akis_gemini(
     let openai_istek: kervan_ceviri::OpenAiIstek = match serde_json::from_value(istemci_govdesi) {
         Ok(i) => i,
         Err(e) => {
-            let _ = init_tx.send(Err(YukariHatasi::JsonHatasi(e.to_string())));
+            alici_ayrildiysa_birak(init_tx.send(Err(YukariHatasi::JsonHatasi(e.to_string()))));
             return;
         }
     };
@@ -365,7 +403,7 @@ fn akis_gemini(
     let gemini_istek = match kervan_ceviri::openai_den_gemini_istegi(&openai_istek, &yukari_model) {
         Ok(g) => g,
         Err(e) => {
-            let _ = init_tx.send(Err(YukariHatasi::Desteklenmiyor(e.to_string())));
+            alici_ayrildiysa_birak(init_tx.send(Err(YukariHatasi::Desteklenmiyor(e.to_string()))));
             return;
         }
     };
@@ -391,16 +429,16 @@ fn akis_gemini(
         Ok(r) => r,
         Err(e) => {
             direnc.blocking_lock().hata_kaydet(&hedef.ad, None, None);
-            let _ = init_tx.send(Err(YukariHatasi::AgHatasi(temizle_hata(
+            alici_ayrildiysa_birak(init_tx.send(Err(YukariHatasi::AgHatasi(temizle_hata(
                 &e.to_string(),
                 &anahtar,
-            ))));
+            )))));
             return;
         }
     };
 
     let durum = response.status().as_u16();
-    if durum < 200 || durum >= 300 {
+    if !(200..300).contains(&durum) {
         let retry_after = response
             .headers()
             .get("retry-after")
@@ -408,19 +446,29 @@ fn akis_gemini(
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.trim().parse::<u64>().ok());
         let mut err_body = String::new();
-        let _ = response
+        if let Err(e) = response
             .into_body()
             .into_reader()
-            .read_to_string(&mut err_body);
+            .read_to_string(&mut err_body)
+        {
+            err_body = format!("(hata gövdesi okunamadı: {e})");
+        }
         let temiz = temizle_hata(&err_body, &anahtar);
         direnc
             .blocking_lock()
             .hata_kaydet(&hedef.ad, Some(durum), retry_after);
-        let _ = init_tx.send(Err(YukariHatasi::HttpHatasi(durum, temiz, retry_after)));
+        alici_ayrildiysa_birak(init_tx.send(Err(YukariHatasi::HttpHatasi(
+            durum,
+            temiz,
+            retry_after,
+        ))));
         return;
     }
 
-    let _ = init_tx.send(Ok(()));
+    if init_tx.send(Ok(())).is_err() {
+        // Çağıran ayrıldı: yukarı akışı okumanın alıcısı yok.
+        return;
+    }
 
     let reader = BufReader::new(response.into_body().into_reader());
     let simdi = std::time::SystemTime::now()
@@ -442,34 +490,29 @@ fn akis_gemini(
                         break;
                     }
                     if let Ok(yanit) = serde_json::from_str::<kervan_ceviri::GeminiYanit>(json_str)
-                    {
-                        if let Ok(Some(parca)) = kervan_ceviri::gemini_den_openai_parcasi(
+                        && let Ok(Some(parca)) = kervan_ceviri::gemini_den_openai_parcasi(
                             &yanit,
                             &istek_id,
                             &yukari_model,
-                        ) {
-                            if let Ok(parca_json) = serde_json::to_string(&parca) {
-                                if tx
-                                    .blocking_send(Ok(format!("data: {}\n\n", parca_json)))
-                                    .is_err()
-                                {
-                                    return;
-                                }
-                            }
-                        }
+                        )
+                        && let Ok(parca_json) = serde_json::to_string(&parca)
+                        && tx
+                            .blocking_send(Ok(format!("data: {}\n\n", parca_json)))
+                            .is_err()
+                    {
+                        return;
                     }
                 }
             }
             Err(e) => {
-                let _ = tx.blocking_send(Err(YukariHatasi::AgHatasi(temizle_hata(
-                    &e.to_string(),
-                    &anahtar,
+                alici_ayrildiysa_birak(tx.blocking_send(Err(YukariHatasi::AgHatasi(
+                    temizle_hata(&e.to_string(), &anahtar),
                 ))));
                 return;
             }
         }
     }
 
-    let _ = tx.blocking_send(Ok("data: [DONE]\n\n".to_string()));
+    alici_ayrildiysa_birak(tx.blocking_send(Ok("data: [DONE]\n\n".to_string())));
     direnc.blocking_lock().basari_kaydet(&hedef.ad);
 }

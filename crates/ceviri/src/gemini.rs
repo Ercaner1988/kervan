@@ -16,19 +16,19 @@ pub fn openai_den_gemini_istegi(
     hedef_model: &str,
 ) -> Result<GeminiIstek, CeviriHatasi> {
     // 1. Desteklenmeyen alan denetimleri (FR-5.3)
-    if let Some(ref tools) = istek.tools {
-        if !tools.is_empty() {
-            return Err(CeviriHatasi::Desteklenmiyor("tools".to_string()));
-        }
+    if let Some(ref tools) = istek.tools
+        && !tools.is_empty()
+    {
+        return Err(CeviriHatasi::Desteklenmiyor("tools".to_string()));
     }
 
     for m in &istek.messages {
-        if let Some(ref c) = m.content {
-            if !c.is_string() {
-                return Err(CeviriHatasi::Desteklenmiyor(
-                    "çok parçalı içerik".to_string(),
-                ));
-            }
+        if let Some(ref c) = m.content
+            && !c.is_string()
+        {
+            return Err(CeviriHatasi::Desteklenmiyor(
+                "çok parçalı içerik".to_string(),
+            ));
         }
     }
 
@@ -57,11 +57,11 @@ pub fn openai_den_gemini_istegi(
     // Arka arkaya gelen aynı rollü içerikleri birleştir (Gemini API şartı)
     let mut birlestirilmis_icerikler: Vec<GeminiIcerik> = Vec::new();
     for icerik in ham_icerikler {
-        if let Some(son) = birlestirilmis_icerikler.last_mut() {
-            if son.role == icerik.role {
-                son.parts.extend(icerik.parts);
-                continue;
-            }
+        if let Some(son) = birlestirilmis_icerikler.last_mut()
+            && son.role == icerik.role
+        {
+            son.parts.extend(icerik.parts);
+            continue;
         }
         birlestirilmis_icerikler.push(icerik);
     }
@@ -132,22 +132,22 @@ pub fn gemini_den_openai_yaniti(
     let mut metin_toplami = String::new();
     let mut finish_reason = Some("stop".to_string());
 
-    if let Some(ref adaylar) = yanit.candidates {
-        if let Some(ilk_aday) = adaylar.first() {
-            if let Some(ref icerik) = ilk_aday.content {
-                for parca in &icerik.parts {
-                    metin_toplami.push_str(&parca.text);
-                }
+    if let Some(ref adaylar) = yanit.candidates
+        && let Some(ilk_aday) = adaylar.first()
+    {
+        if let Some(ref icerik) = ilk_aday.content {
+            for parca in &icerik.parts {
+                metin_toplami.push_str(&parca.text);
             }
+        }
 
-            if let Some(ref sebep) = ilk_aday.finish_reason {
-                finish_reason = Some(match sebep.as_str() {
-                    "STOP" => "stop".to_string(),
-                    "MAX_TOKENS" => "length".to_string(),
-                    "SAFETY" => "content_filter".to_string(),
-                    other => other.to_ascii_lowercase(),
-                });
-            }
+        if let Some(ref sebep) = ilk_aday.finish_reason {
+            finish_reason = Some(match sebep.as_str() {
+                "STOP" => "stop".to_string(),
+                "MAX_TOKENS" => "length".to_string(),
+                "SAFETY" => "content_filter".to_string(),
+                other => other.to_ascii_lowercase(),
+            });
         }
     }
 
@@ -190,20 +190,20 @@ pub fn gemini_den_openai_parcasi(
     let mut metin = String::new();
     let mut finish_reason = None;
 
-    if let Some(ref adaylar) = yanit.candidates {
-        if let Some(ilk_aday) = adaylar.first() {
-            if let Some(ref icerik) = ilk_aday.content {
-                for parca in &icerik.parts {
-                    metin.push_str(&parca.text);
-                }
+    if let Some(ref adaylar) = yanit.candidates
+        && let Some(ilk_aday) = adaylar.first()
+    {
+        if let Some(ref icerik) = ilk_aday.content {
+            for parca in &icerik.parts {
+                metin.push_str(&parca.text);
             }
-            if let Some(ref sebep) = ilk_aday.finish_reason {
-                finish_reason = Some(match sebep.as_str() {
-                    "STOP" => "stop".to_string(),
-                    "MAX_TOKENS" => "length".to_string(),
-                    other => other.to_ascii_lowercase(),
-                });
-            }
+        }
+        if let Some(ref sebep) = ilk_aday.finish_reason {
+            finish_reason = Some(match sebep.as_str() {
+                "STOP" => "stop".to_string(),
+                "MAX_TOKENS" => "length".to_string(),
+                other => other.to_ascii_lowercase(),
+            });
         }
     }
 

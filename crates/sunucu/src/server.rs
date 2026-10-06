@@ -45,10 +45,9 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn rest_hedefi_coz(
-        &self,
-        model_adi: &str,
-    ) -> Option<(kervan_yukari::Hedef, Option<String>)> {
+    // Biçim sabit: port/mutantlar.toml "rest-kancasini-kaldir" bu satırı arar.
+    #[rustfmt::skip]
+    pub fn rest_hedefi_coz(&self, model_adi: &str) -> Option<(kervan_yukari::Hedef, Option<String>)> {
         let sade = model_adi.strip_prefix("kervan/").unwrap_or(model_adi);
         let mut parcalar = sade.splitn(2, '/');
         let saglayici_ad = parcalar.next()?;
@@ -494,9 +493,8 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
                     let stream = futures_util::stream::poll_fn(move |cx| {
                         rx.poll_recv(cx).map(|opt| {
                             opt.map(|res| {
-                                res.map(axum::body::Bytes::from).map_err(|e| {
-                                    std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
-                                })
+                                res.map(axum::body::Bytes::from)
+                                    .map_err(|e| std::io::Error::other(e.to_string()))
                             })
                         })
                     });
@@ -939,11 +937,11 @@ fn yukari_hatasini_don(err: kervan_yukari::YukariHatasi) -> Response {
                 StatusCode::TOO_MANY_REQUESTS,
                 &format!("Yukarı akış 429 hatası: {}", govde),
             );
-            if let Some(sn) = retry_after {
-                if let Ok(val) = axum::http::HeaderValue::from_str(&sn.to_string()) {
-                    resp.headers_mut()
-                        .insert(axum::http::header::RETRY_AFTER, val);
-                }
+            if let Some(sn) = retry_after
+                && let Ok(val) = axum::http::HeaderValue::from_str(&sn.to_string())
+            {
+                resp.headers_mut()
+                    .insert(axum::http::header::RETRY_AFTER, val);
             }
             resp
         }

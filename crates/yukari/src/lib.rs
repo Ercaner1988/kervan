@@ -301,7 +301,7 @@ impl Yukari {
             match res {
                 Ok(mut response) => {
                     let durum = response.status().as_u16();
-                    if durum >= 200 && durum < 300 {
+                    if (200..300).contains(&durum) {
                         response.body_mut().read_json::<Value>().map_err(|e| {
                             YukariHatasi::JsonHatasi(temizle_hata(&e.to_string(), &anahtar_kopya))
                         })
@@ -383,7 +383,7 @@ impl Yukari {
             match res {
                 Ok(mut response) => {
                     let durum = response.status().as_u16();
-                    if durum >= 200 && durum < 300 {
+                    if (200..300).contains(&durum) {
                         let claude_yanit = response
                             .body_mut()
                             .read_json::<kervan_ceviri::ClaudeYanit>()
@@ -483,7 +483,7 @@ impl Yukari {
             match res {
                 Ok(mut response) => {
                     let durum = response.status().as_u16();
-                    if durum >= 200 && durum < 300 {
+                    if (200..300).contains(&durum) {
                         let gemini_yanit = response
                             .body_mut()
                             .read_json::<kervan_ceviri::GeminiYanit>()

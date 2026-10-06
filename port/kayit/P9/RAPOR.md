@@ -51,3 +51,4 @@
 4. **Kanıtı aşan rapor:** Baktım: Bu rapordaki her iddia doğrudan `p9_strateji_test.rs` test satırlarına ve `port/kayit/P9/*.log` kütüklerine bağlanmıştır.
 5. **Gevşetme:** Baktım: Hiçbir kapı kuralı gevşetilmemiştir; [muhur-kontrol.log](file:///C:/Users/buzbe/Desktop/Github/kervan/port/kayit/P9/muhur-kontrol.log) mühürlü kapıların korunduğunu doğrulamıştır.
 6. **Başarısız olamayan test:** Baktım: `strateji-least-used-yonunu-ters-cevir` mutantı uygulandığında `test_fr72_altin_parite_girdi1_ve_girdi2` testinin başarısız olarak mutantı öldürdüğü [mutasyon-kontrol.log](file:///C:/Users/buzbe/Desktop/Github/kervan/port/kayit/P9/mutasyon-kontrol.log) kütüğüyle kanıtlanmıştır.
+

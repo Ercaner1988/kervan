@@ -90,7 +90,7 @@ impl DirencYoneticisi {
         if durum_kodu == Some(429) {
             self.soguma
                 .soguma_baslat_zamaniyla(hedef_ad, Some("429"), retry_after_saniye, simdi);
-        } else if durum_kodu.map_or(true, |kod| kod >= 500) {
+        } else if durum_kodu.is_none_or(|kod| kod >= 500) {
             let ayar = self.varsayilan_kesici_ayar.clone();
             let kesici = self
                 .kesiciler

@@ -56,11 +56,11 @@ impl SogumaTakipcisi {
 
     /// Belirtilen zamana göre kalan süreyi saniye olarak döner.
     pub fn kalan_sure_saniye_zamaniyla(&self, hedef: &str, simdi: Instant) -> u64 {
-        if let Some(kayit) = self.kayitlar.get(hedef) {
-            if simdi < kayit.bitis_zamani {
-                let kalan = kayit.bitis_zamani.duration_since(simdi);
-                return kalan.as_secs().max(1);
-            }
+        if let Some(kayit) = self.kayitlar.get(hedef)
+            && simdi < kayit.bitis_zamani
+        {
+            let kalan = kayit.bitis_zamani.duration_since(simdi);
+            return kalan.as_secs().max(1);
         }
         0
     }

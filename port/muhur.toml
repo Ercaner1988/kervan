@@ -32,11 +32,11 @@ sha256 = "fb7c3a665b29fbc37e33bd003f1081e4e5556342fd22b4535b9cbca13df9afcd"
 
 [[dosya]]
 yol = "araclar/kapilar/muhur-kontrol.ts"
-sha256 = "7a0b136a05dd8a3eec22e558e9dfd97461f48c2c1c9bafd13c73f3e975208dc0"
+sha256 = "638dd3531b8d04d95decbfd304215876a94613b30cc567d62e118ebebfadc3c7"
 
 [[dosya]]
 yol = "araclar/kapilar/muhur-uret.ts"
-sha256 = "c75687b5e14e22d3553a8c334008847b061acb3e8d5d27dd0ebb9f9348c761b0"
+sha256 = "21ac549b59358294dc5a843e0c5ffa7a346a1ac0787f80b10dff570175de725b"
 
 [[dosya]]
 yol = "araclar/kapilar/mutasyon-kontrol.ts"
@@ -81,3 +81,4 @@ sha256 = "8e8e6600b6574b65ca188a82eaca1d270c597dcaa44fee48dfc27f2792e7191d"
 [[dosya]]
 yol = "araclar/kapilar/ulasilabilirlik.ts"
 sha256 = "d2d1aa1a3ddf51e4b8c514150dfc6836ff6149a3365f170d05fad0bd0cc53e91"
+
