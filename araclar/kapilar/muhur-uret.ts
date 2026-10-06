@@ -31,8 +31,10 @@ export function muhurDosyasiUret(cikisYolu = path.join("port", "muhur.toml")): s
 `;
 
   for (const dosya of dosyalar) {
+    // muhur-kontrol.ts dosyaSha256 ile aynı: CRLF → LF (git'teki içerik).
     const buf = fs.readFileSync(dosya);
-    const sha = crypto.createHash("sha256").update(buf).digest("hex");
+    const lf = Buffer.from(buf.toString("latin1").replace(/\r\n/g, "\n"), "latin1");
+    const sha = crypto.createHash("sha256").update(lf).digest("hex");
     cikti += `[[dosya]]\nyol = "${dosya}"\nsha256 = "${sha}"\n\n`;
   }
 

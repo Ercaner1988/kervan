@@ -16,8 +16,10 @@ export interface MuhurDosyasi {
 
 export function dosyaSha256(dosyaYolu: string): string {
   if (!fs.existsSync(dosyaYolu)) return "";
+  // `* text=auto` Windows çıkışında LF'yi CRLF'ye çevirir; özet git'teki (LF) içerik üzerinden alınır.
   const buf = fs.readFileSync(dosyaYolu);
-  return crypto.createHash("sha256").update(buf).digest("hex");
+  const lf = Buffer.from(buf.toString("latin1").replace(/\r\n/g, "\n"), "latin1");
+  return crypto.createHash("sha256").update(lf).digest("hex");
 }
 
 export function muhurTomlOku(dosyaYolu = path.join("port", "muhur.toml")): MuhurDosyasi | null {
