@@ -22,3 +22,6 @@
 # Gecici worktree dizinleri
 /port/kayit/_gecici/
 
+
+# gauntlet harness durumu (yerel)
+/.harness/
