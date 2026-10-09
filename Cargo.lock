@@ -2109,6 +2109,8 @@ dependencies = [
  "num-traits",
  "png",
  "tiff",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -2297,7 +2299,11 @@ version = "0.1.0"
 dependencies = [
  "eframe",
  "kervan-akis-gui",
+ "kervan-pano-ekran",
+ "kervan-pano-veri",
  "kervan-sunucu",
+ "kervan-tani",
+ "kilim-tema",
  "log",
  "tokio",
 ]
@@ -2324,6 +2330,31 @@ dependencies = [
  "katla",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "kervan-pano-ekran"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "kervan-pano-veri",
+ "kervan-tani",
+ "kilim-tema",
+ "log",
+ "serde",
+ "tokio",
+ "toml",
+]
+
+[[package]]
+name = "kervan-pano-veri"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "log",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -2358,6 +2389,19 @@ dependencies = [
  "serde_json",
  "tokio",
  "ureq",
+]
+
+[[package]]
+name = "kervan-tani"
+version = "0.1.0"
+dependencies = [
+ "katla",
+ "log",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml",
 ]
 
 [[package]]
@@ -2405,6 +2449,15 @@ name = "khronos_api"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
+
+[[package]]
+name = "kilim-tema"
+version = "0.1.0"
+source = "git+https://github.com/Ercaner1988/kilim-tema?rev=d7f860278805650683173de3f4eec2b172af7736#d7f860278805650683173de3f4eec2b172af7736"
+dependencies = [
+ "egui",
+ "image",
+]
 
 [[package]]
 name = "kurbo"
