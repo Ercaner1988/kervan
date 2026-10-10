@@ -99,24 +99,36 @@ pub fn sir_temizle(ham_metin: &str) -> String {
 
     // Bearer / API anahtarı desenleri
     for prefix in &["sk-", "key-", "Bearer "] {
-        while let Some(idx) = sonuc.find(prefix) {
+        let mut start = 0;
+        while let Some(rel_idx) = sonuc[start..].find(prefix) {
+            let idx = start + rel_idx;
             let bas = idx + prefix.len();
             let son = sonuc[bas..]
                 .find(|c: char| c.is_whitespace() || c == '"' || c == ',' || c == ';')
                 .map(|i| bas + i)
                 .unwrap_or(sonuc.len());
             sonuc.replace_range(bas..son, "[SIR_TEMIZLENDI]");
+            start = bas + "[SIR_TEMIZLENDI]".len();
+            if start >= sonuc.len() {
+                break;
+            }
         }
     }
 
     // Cookie desenleri
-    while let Some(idx) = sonuc.to_lowercase().find("cookie:") {
+    let mut start = 0;
+    while let Some(rel_idx) = sonuc[start..].to_lowercase().find("cookie:") {
+        let idx = start + rel_idx;
         let bas = idx + 7;
         let son = sonuc[bas..]
             .find(|c: char| c == '\n' || c == '\r' || c == '"')
             .map(|i| bas + i)
             .unwrap_or(sonuc.len());
         sonuc.replace_range(bas..son, " [COOKIE_TEMIZLENDI]");
+        start = bas + " [COOKIE_TEMIZLENDI]".len();
+        if start >= sonuc.len() {
+            break;
+        }
     }
 
     sonuc
