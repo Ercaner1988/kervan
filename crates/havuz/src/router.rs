@@ -93,8 +93,9 @@ impl RoutingStrategy {
         }
     }
 
+    /// Yalnız tam kanonik ad (kırpma/küçültme yok); kullanıcı girdisi için `normallestir`.
     pub fn from_str_canonical(s: &str) -> Option<Self> {
-        match s.trim().to_ascii_lowercase().as_str() {
+        match s {
             "priority" => Some(Self::Priority),
             "weighted" => Some(Self::Weighted),
             "round-robin" => Some(Self::RoundRobin),
@@ -122,9 +123,11 @@ impl RoutingStrategy {
 
     /// OmniRoute `normalizeRoutingStrategy`: takma adlar çözülür, bilinmeyen ad `priority` olur.
     pub fn normallestir(s: &str) -> Self {
-        // JS trim() U+FEFF'i de kırpar; Rust'ın trim()'i kırpmaz.
-        let kirpik = s.trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}');
-        match kirpik.to_ascii_lowercase().as_str() {
+        // JS trim(): U+FEFF kırpılır, U+0085 kırpılmaz (Rust is_whitespace tersini yapar).
+        let kirpik =
+            s.trim_matches(|c: char| (c.is_whitespace() && c != '\u{85}') || c == '\u{feff}');
+        // JS toLowerCase yerelden bağımsız Unicode küçültmedir; Türkçe metin değil, strateji adı.
+        match kirpik.to_lowercase().as_str() {
             "usage" => Self::LeastUsed,
             "context" => Self::ContextOptimized,
             "weekly-reset" | "reset-window-order" => Self::ResetWindow,
@@ -167,22 +170,26 @@ impl RoutingStrategy {
         }
         match self {
             Self::Weighted => {
-                let toplam: f64 = sonuc.iter().map(|h| h.weight).sum();
+                // OmniRoute toWeight (steps.ts): sonlu değilse 0, [0, 100] aralığına kırpılır.
+                let w = |h: &Hedef| if h.weight.is_finite() { h.weight.clamp(0.0, 100.0) } else { 0.0 };
+                let toplam: f64 = sonuc.iter().map(w).sum();
                 let secilen = if toplam <= 0.0 {
                     rastgele_tam(rastgele, n)
                 } else {
                     let mut x = rastgele() * toplam;
                     let mut s = n - 1;
                     for (i, h) in sonuc.iter().enumerate() {
-                        x -= h.weight;
+                        x -= w(h);
                         if x <= 0.0 { s = i; break; }
                     }
                     s
                 };
                 let anahtar = sonuc[secilen].execution_key.clone();
                 let mut kalan: Vec<Hedef> = sonuc.iter().filter(|h| h.execution_key != anahtar).cloned().collect();
-                kalan.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap_or(Ordering::Equal));
-                sonuc = std::iter::once(sonuc[secilen].clone()).chain(kalan).collect();
+                kalan.sort_by(|a, b| w(b).partial_cmp(&w(a)).unwrap_or(Ordering::Equal));
+                // JS find: aynı anahtarlı hedeflerden ilki başa geçer.
+                let ilk = sonuc.iter().find(|h| h.execution_key == anahtar).cloned();
+                sonuc = ilk.into_iter().chain(kalan).collect();
             }
             Self::RoundRobin => sonuc.rotate_left((durum.rr_sayac % n as u64) as usize),
             Self::P2c => {
@@ -215,7 +222,7 @@ impl RoutingStrategy {
                 }
             }
             Self::CostOptimized => {
-                let fiyat = |h: &Hedef| durum.fiyat.get(&h.model_str).copied().filter(|f| f.is_finite()).unwrap_or(f64::INFINITY);
+                let fiyat = |h: &Hedef| durum.fiyat_bul(&h.model_str).filter(|f| f.is_finite()).unwrap_or(f64::INFINITY);
                 sonuc.sort_by(|a, b| fiyat(a).partial_cmp(&fiyat(b)).unwrap_or(Ordering::Equal));
             }
             Self::Lkgp => {
@@ -261,9 +268,11 @@ fn karistir<T>(l: &mut [T], rastgele: &mut dyn FnMut() -> f64) {
     }
 }
 
-/// JS `Math.round` (pozitif sayılar için yarımı yukarı).
+/// JS `Math.round` (pozitif sayılar için yarımı yukarı). floor(x + 0.5) değil:
+/// 0.49999999999999994 + 0.5 kayan noktada 1 olur.
 fn js_yuvarla(x: f64) -> f64 {
-    (x + 0.5).floor()
+    let f = x.floor();
+    if x - f >= 0.5 { f + 1.0 } else { f }
 }
 
 /// Bir yönlendirme hedefi (OmniRoute `ResolvedComboTarget`'in sıralamada kullanılan alanları).
@@ -322,6 +331,15 @@ impl StratejiDurumu {
         basarili: bool,
         gecikme_ms: f64,
     ) {
+        // comboMetrics: model_str boşsa kayıt atlanır; execution_key boşsa model_str kullanılır.
+        if model_str.is_empty() {
+            return;
+        }
+        let execution_key = if execution_key.is_empty() {
+            model_str
+        } else {
+            execution_key
+        };
         let m = self.model.entry(model_str.to_string()).or_default();
         m.istek += 1;
         m.toplam_gecikme_ms += gecikme_ms;
@@ -332,6 +350,26 @@ impl StratejiDurumu {
             .hedef_istek
             .entry(execution_key.to_string())
             .or_default() += 1;
+    }
+
+    /// OmniRoute `getPricingForModel`: sağlayıcı ve model büyük/küçük harfe duyarsız; model
+    /// bulunmazsa "." → "-" ile yeniden denenir. ponytail: sağlayıcı takma adları çözülmez.
+    fn fiyat_bul(&self, model_str: &str) -> Option<f64> {
+        if let Some(f) = self.fiyat.get(model_str) {
+            return Some(*f);
+        }
+        let bol = |x: &str| {
+            let (p, m) = x.split_once('/').unwrap_or(("", x));
+            (p.to_lowercase(), m.to_lowercase())
+        };
+        let (p, m) = bol(model_str);
+        let tireli = m.replace('.', "-");
+        [m, tireli].into_iter().find_map(|aday| {
+            self.fiyat
+                .iter()
+                .find(|(k, _)| bol(k) == (p.clone(), aday.clone()))
+                .map(|(_, f)| *f)
+        })
     }
 
     // ponytail: devre kesici HALF_OPEN cezası (-0,25) yok; açık devreler select_provider'da elenir.
@@ -434,8 +472,9 @@ impl SmartRouter {
     }
 
     /// Adaylar arasından stratejinin (OmniRoute çekirdeği, `RoutingStrategy::sirala`) ilk hedefini seçer.
-    /// Aday = sağlayıcı adı; fiyat ve bağlam tablosu üretimde yok, OmniRoute'taki gibi
-    /// bilinmeyen sayılır (cost-optimized ve context-optimized sırayı değiştirmez).
+    /// Aday = sağlayıcı adı. Üretimde fiyat ve bağlam tablosu YOK (OmniRoute'ta varsayılan,
+    /// LiteLLM ve models.dev katmanları var): cost-optimized ve context-optimized burada sırayı
+    /// değiştirmez. Strateji sunucuda şimdilik sabit lkgp kurulur; seçme yolu henüz yok.
     pub async fn select_provider(&self, candidates: &[String]) -> Option<String> {
         if candidates.is_empty() {
             return None;
@@ -584,6 +623,14 @@ mod tests {
         az.record_success("a", 10).await;
         az.record_success("b", 10).await;
         assert_eq!(az.select_provider(&adaylar).await.as_deref(), Some("c"));
+    }
+
+    #[test]
+    fn js_yuvarla_math_round_ile_ayni() {
+        // Math.round(0.49999999999999994) === 0; floor(x + 0.5) 1 verirdi.
+        assert_eq!(js_yuvarla(0.499_999_999_999_999_94), 0.0);
+        assert_eq!(js_yuvarla(2.5), 3.0);
+        assert_eq!(js_yuvarla(2.4), 2.0);
     }
 
     #[tokio::test]

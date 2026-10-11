@@ -6,9 +6,12 @@
     "open-sse/services/combo/rrState.ts",
     "open-sse/services/combo/roundRobinCombo.ts",
     "src/shared/utils/shuffleDeck.ts",
-    "src/shared/constants/routingStrategies.ts"
+    "src/shared/constants/routingStrategies.ts",
+    "src/lib/combos/steps.ts",
+    "open-sse/services/comboMetrics.ts",
+    "src/lib/db/settings/pricing.ts"
   ],
-  "uretici_ozeti": "sha256:b4f8a483d15d64819e43d7bff662cd7fdbe42dcd63526fd011dbf2538743567a",
+  "uretici_ozeti": "sha256:a670f8cb0ec008dab0bc9d7fec826bc1119292237282c7fba1482c0b370302ec",
   "girdi_id": "strateji_girdi2",
   "hedefler": [
     {
@@ -211,7 +214,11 @@
     "bilinmeyen": "priority",
     "": "priority",
     "fusion": "fusion",
-    "least-used": "least-used"
+    "least-used": "least-used",
+    "LKGP": "lkgp",
+    "round-robin": "priority",
+    "﻿random": "random",
+    " p2c　": "p2c"
   },
   "tuketim": {
     "priority": 0,
@@ -224,298 +231,333 @@
     "lkgp": 0,
     "context-optimized": 0,
     "strict-random": 46,
-    "weighted": 3,
+    "weighted": 8,
     "round-robin": 0
   },
   "sonuclar": {
     "priority": [
       [
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ]
     ],
     "fill-first": [
       [
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ]
     ],
     "context-relay": [
       [
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ]
     ],
     "p2c": [
       [
-        "kvd/model-ortak#d2",
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ],
       [
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1"
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ],
       [
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ],
       [
-        "kvd/model-ortak#d2",
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ],
       [
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ],
       [
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit"
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit"
       ],
       [
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit"
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit"
       ],
       [
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ]
     ],
     "random": [
       [
-        "kve/model-fiyatsiz#e1",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d1",
-        "kvd/model-ortak#d2"
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvd/model-ortak#d2@kvd/model-ortak"
       ],
       [
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d2",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d1",
-        "kvf/model-esit"
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit"
       ],
       [
-        "kvd/model-ortak#d2",
-        "kve/model-fiyatsiz#e1",
-        "kvf/model-esit",
-        "kvd/model-ortak#d1",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ]
     ],
     "least-used": [
       [
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ]
     ],
     "cost-optimized": [
       [
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit",
-        "kve/model-fiyatsiz#e1"
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz"
       ]
     ],
     "lkgp": [
       [
-        "kvd/model-ortak#d2",
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ]
     ],
     "context-optimized": [
       [
-        "kvd/model-ortak#d1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1",
-        "kve/model-fiyatsiz#e1"
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz"
       ]
     ],
     "strict-random": [
       [
-        "kve/model-fiyatsiz#e1",
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d2",
-        "kvd/model-ortak#d1",
-        "kvf/model-esit"
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit"
       ],
       [
-        "kvf/model-esit",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d1",
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d2"
+        "kvf/model-esit@kvf/model-esit",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d2@kvd/model-ortak"
       ],
       [
-        "kvg/model-ucuz#g1",
-        "kve/model-fiyatsiz#e1",
-        "kvf/model-esit",
-        "kvd/model-ortak#d2",
-        "kvd/model-ortak#d1"
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak"
       ],
       [
-        "kvd/model-ortak#d1",
-        "kvf/model-esit",
-        "kvd/model-ortak#d2",
-        "kve/model-fiyatsiz#e1",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ],
       [
-        "kvd/model-ortak#d2",
-        "kve/model-fiyatsiz#e1",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d1"
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak"
       ],
       [
-        "kvf/model-esit",
-        "kvd/model-ortak#d1",
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d2",
-        "kve/model-fiyatsiz#e1"
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz"
       ],
       [
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvf/model-esit",
-        "kvd/model-ortak#d2",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ],
       [
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d1",
-        "kvf/model-esit",
-        "kvd/model-ortak#d2",
-        "kvg/model-ucuz#g1"
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ],
       [
-        "kvd/model-ortak#d2",
-        "kvg/model-ucuz#g1",
-        "kvf/model-esit",
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1"
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz"
       ],
       [
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d2",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d1",
-        "kvf/model-esit"
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit"
       ],
       [
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d1",
-        "kvg/model-ucuz#g1",
-        "kvf/model-esit",
-        "kvd/model-ortak#d2"
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d2@kvd/model-ortak"
       ]
     ],
     "weighted": [
       [
-        "kvd/model-ortak#d2",
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvf/model-esit"
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit"
       ],
       [
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2",
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d1",
-        "kvf/model-esit"
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit"
       ],
       [
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d2",
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvf/model-esit"
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit"
       ]
     ],
     "round-robin": [
       [
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ],
       [
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d1"
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak"
       ],
       [
-        "kvd/model-ortak#d2",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1"
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz"
       ],
       [
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2"
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak"
       ],
       [
-        "kvg/model-ucuz#g1",
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit"
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit"
       ],
       [
-        "kvd/model-ortak#d1",
-        "kve/model-fiyatsiz#e1",
-        "kvd/model-ortak#d2",
-        "kvf/model-esit",
-        "kvg/model-ucuz#g1"
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ]
     ]
   }

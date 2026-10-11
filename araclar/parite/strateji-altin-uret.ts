@@ -32,6 +32,7 @@ const { _resetAllDecks } = await yukle("src/shared/utils/shuffleDeck.ts");
 const { normalizeRoutingStrategy } = await yukle("src/shared/constants/routingStrategies.ts");
 const { updatePricing, getPricingForModel, setLKGP } = await yukle("src/lib/db/settings.ts");
 const { setModelContextOverride } = await yukle("src/lib/db/modelContextOverrides.ts");
+const { getComboStepWeight } = await yukle("src/lib/combos/steps.ts");
 
 export const KAYNAK_YOLLAR = [
   "open-sse/services/combo/applyStrategyOrdering.ts",
@@ -40,6 +41,9 @@ export const KAYNAK_YOLLAR = [
   "open-sse/services/combo/roundRobinCombo.ts",
   "src/shared/utils/shuffleDeck.ts",
   "src/shared/constants/routingStrategies.ts",
+  "src/lib/combos/steps.ts",
+  "open-sse/services/comboMetrics.ts",
+  "src/lib/db/settings/pricing.ts",
 ];
 
 /** applyStrategyOrdering'den geçen ve altını üretilen stratejiler (adım sayısı = 1). */
@@ -118,11 +122,33 @@ export const GIRDILER: Girdi[] = [
     ],
     durum: { fiyat: {}, baglam: {}, kayitlar: [], lkgp: { provider: "kvj", connection_id: "olmayan" } },
   },
+  {
+    // Kenarlar: ağırlık kırpma (150, -200), aynı execution_key iki hedefte, fiyat anahtarı
+    // büyük harf + "-" (hedef "."), boş execution_key/model_str kayıtları.
+    girdi_id: "strateji_girdi4",
+    hedefler: [
+      h("kvk/model.1", "kvk/model.1#k1", "k1", 150),
+      h("kvl/model-2", "ortak", "l1", -200),
+      h("kvm/model-3", "ortak", "m1", 20),
+      h("kvn/model-4", "kvn/model-4", null, 20),
+    ],
+    durum: {
+      fiyat: { "kvk/Model-1": 2, "kvn/model-4": 1, "kvl/model-2": 3 },
+      baglam: {},
+      kayitlar: [
+        ...k("kvk/model.1", "kvk/model.1#k1", true, 10),
+        ...k("kvn/model-4", "", true, 10, 3),
+        ...k("", "kvk/model.1#k1", true, 10, 4),
+      ],
+      lkgp: null,
+    },
+  },
 ];
 
 export const TAKMA_AD_GIRDILERI = [
   "usage", "context", "weekly-reset", "reset-window-order", "  Priority ", "ROUND-ROBIN",
   "roundrobin", "quota-share", "bilinmeyen", "", "fusion", "least-used",
+  "LKGP", "round-robin\u0085", "﻿random", " p2c　",
 ];
 
 /** Girdiye özgü sabit rastgele akış: 48 bitlik tamsayılar; kayan = n / 2^48 (iki tarafta kesin). */
@@ -159,11 +185,11 @@ async function durumuYaz(g: Girdi): Promise<void> {
     if (!setModelContextOverride(p.provider || p.providerAlias, p.model, c)) throw new Error(`bağlam yazılamadı: ${m}`);
   }
   for (const kayit of g.durum.kayitlar) {
-    const hedef = g.hedefler.find((x) => x.execution_key === kayit.execution_key)!;
+    const hedef = g.hedefler.find((x) => x.execution_key === kayit.execution_key);
     recordComboRequest(g.girdi_id, kayit.model_str, {
       success: kayit.basarili,
       latencyMs: kayit.gecikme_ms,
-      target: { executionKey: kayit.execution_key, provider: hedef.provider, connectionId: hedef.connection_id },
+      target: { executionKey: kayit.execution_key, provider: hedef?.provider ?? null, connectionId: hedef?.connection_id ?? null },
     });
   }
   if (g.durum.lkgp) await setLKGP(g.girdi_id, g.girdi_id, g.durum.lkgp.provider, g.durum.lkgp.connection_id ?? undefined);
@@ -172,7 +198,11 @@ async function durumuYaz(g: Girdi): Promise<void> {
   for (const x of g.hedefler) {
     const p = parseModel(x.model_str);
     const fiyat = Number((await getPricingForModel(p.provider || p.providerAlias, p.model))?.input);
-    const beklenenFiyat = g.durum.fiyat[x.model_str];
+    // Tam anahtar yoksa büyük/küçük harf ve "." → "-" eşdeğeri aranır (getPricingForModel kuralı).
+    const kucuk = x.model_str.toLowerCase();
+    const anahtar = Object.keys(g.durum.fiyat).find((a) => a === x.model_str)
+      ?? Object.keys(g.durum.fiyat).find((a) => a.toLowerCase() === kucuk || a.toLowerCase() === kucuk.replace(/\./g, "-"));
+    const beklenenFiyat = anahtar === undefined ? undefined : g.durum.fiyat[anahtar];
     if (beklenenFiyat === undefined ? Number.isFinite(fiyat) : fiyat !== beklenenFiyat)
       throw new Error(`fiyat geri okunamadı: ${x.model_str} → ${fiyat}`);
     const baglam = getModelContextLimitForModelString(x.model_str);
@@ -180,8 +210,10 @@ async function durumuYaz(g: Girdi): Promise<void> {
   }
 }
 
-const hedefNesnesi = (x: Hedef) => ({ kind: "model", modelStr: x.model_str, provider: x.provider, executionKey: x.execution_key, connectionId: x.connection_id, weight: x.weight });
-const anahtarlar = (l: Array<{ executionKey: string }>) => l.map((t) => t.executionKey);
+// Ağırlık, combo adımı ayrıştırılırken OmniRoute'un kendi toWeight'inden geçer (kırpma).
+const hedefNesnesi = (x: Hedef) => ({ kind: "model", modelStr: x.model_str, provider: x.provider, executionKey: x.execution_key, connectionId: x.connection_id, weight: getComboStepWeight({ weight: x.weight }) });
+// Kimlik = execution_key@model_str: aynı anahtarlı hedefler de ayırt edilir.
+const anahtarlar = (l: Array<{ executionKey: string; modelStr: string }>) => l.map((t) => `${t.executionKey}@${t.modelStr}`);
 
 export async function girdiyiUret(g: Girdi) {
   await durumuYaz(g);
@@ -211,7 +243,7 @@ export async function girdiyiUret(g: Girdi) {
   {
     const sayac = akisiBagla(akis);
     const adimlar: string[][] = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 8; i++) {
       const hedefler = g.hedefler.map(hedefNesnesi);
       const secilen = selectWeightedTarget(hedefler);
       adimlar.push(anahtarlar(orderTargetsForWeightedFallback(hedefler, secilen.executionKey, false)));

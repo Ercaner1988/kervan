@@ -6,9 +6,12 @@
     "open-sse/services/combo/rrState.ts",
     "open-sse/services/combo/roundRobinCombo.ts",
     "src/shared/utils/shuffleDeck.ts",
-    "src/shared/constants/routingStrategies.ts"
+    "src/shared/constants/routingStrategies.ts",
+    "src/lib/combos/steps.ts",
+    "open-sse/services/comboMetrics.ts",
+    "src/lib/db/settings/pricing.ts"
   ],
-  "uretici_ozeti": "sha256:b4f8a483d15d64819e43d7bff662cd7fdbe42dcd63526fd011dbf2538743567a",
+  "uretici_ozeti": "sha256:a670f8cb0ec008dab0bc9d7fec826bc1119292237282c7fba1482c0b370302ec",
   "girdi_id": "strateji_girdi3",
   "hedefler": [
     {
@@ -152,7 +155,11 @@
     "bilinmeyen": "priority",
     "": "priority",
     "fusion": "fusion",
-    "least-used": "least-used"
+    "least-used": "least-used",
+    "LKGP": "lkgp",
+    "round-robin": "priority",
+    "﻿random": "random",
+    " p2c　": "p2c"
   },
   "tuketim": {
     "priority": 0,
@@ -165,192 +172,217 @@
     "lkgp": 0,
     "context-optimized": 0,
     "strict-random": 13,
-    "weighted": 3,
+    "weighted": 8,
     "round-robin": 0
   },
   "sonuclar": {
     "priority": [
       [
-        "kvh/model-1",
-        "kvi/model-2#i1",
-        "kvj/model-3"
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
       ]
     ],
     "fill-first": [
       [
-        "kvh/model-1",
-        "kvi/model-2#i1",
-        "kvj/model-3"
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
       ]
     ],
     "context-relay": [
       [
-        "kvh/model-1",
-        "kvi/model-2#i1",
-        "kvj/model-3"
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
       ]
     ],
     "p2c": [
       [
-        "kvi/model-2#i1",
-        "kvh/model-1",
-        "kvj/model-3"
+        "kvi/model-2#i1@kvi/model-2",
+        "kvh/model-1@kvh/model-1",
+        "kvj/model-3@kvj/model-3"
       ],
       [
-        "kvj/model-3",
-        "kvh/model-1",
-        "kvi/model-2#i1"
+        "kvj/model-3@kvj/model-3",
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2"
       ],
       [
-        "kvh/model-1",
-        "kvi/model-2#i1",
-        "kvj/model-3"
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
       ],
       [
-        "kvh/model-1",
-        "kvi/model-2#i1",
-        "kvj/model-3"
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
       ],
       [
-        "kvh/model-1",
-        "kvi/model-2#i1",
-        "kvj/model-3"
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
       ],
       [
-        "kvj/model-3",
-        "kvh/model-1",
-        "kvi/model-2#i1"
+        "kvj/model-3@kvj/model-3",
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2"
       ],
       [
-        "kvi/model-2#i1",
-        "kvh/model-1",
-        "kvj/model-3"
+        "kvi/model-2#i1@kvi/model-2",
+        "kvh/model-1@kvh/model-1",
+        "kvj/model-3@kvj/model-3"
       ],
       [
-        "kvi/model-2#i1",
-        "kvh/model-1",
-        "kvj/model-3"
+        "kvi/model-2#i1@kvi/model-2",
+        "kvh/model-1@kvh/model-1",
+        "kvj/model-3@kvj/model-3"
       ]
     ],
     "random": [
       [
-        "kvh/model-1",
-        "kvj/model-3",
-        "kvi/model-2#i1"
+        "kvh/model-1@kvh/model-1",
+        "kvj/model-3@kvj/model-3",
+        "kvi/model-2#i1@kvi/model-2"
       ],
       [
-        "kvi/model-2#i1",
-        "kvh/model-1",
-        "kvj/model-3"
+        "kvi/model-2#i1@kvi/model-2",
+        "kvh/model-1@kvh/model-1",
+        "kvj/model-3@kvj/model-3"
       ],
       [
-        "kvj/model-3",
-        "kvi/model-2#i1",
-        "kvh/model-1"
+        "kvj/model-3@kvj/model-3",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvh/model-1@kvh/model-1"
       ]
     ],
     "least-used": [
       [
-        "kvh/model-1",
-        "kvi/model-2#i1",
-        "kvj/model-3"
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
       ]
     ],
     "cost-optimized": [
       [
-        "kvh/model-1",
-        "kvi/model-2#i1",
-        "kvj/model-3"
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
       ]
     ],
     "lkgp": [
       [
-        "kvj/model-3",
-        "kvh/model-1",
-        "kvi/model-2#i1"
+        "kvj/model-3@kvj/model-3",
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2"
       ]
     ],
     "context-optimized": [
       [
-        "kvh/model-1",
-        "kvi/model-2#i1",
-        "kvj/model-3"
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
       ]
     ],
     "strict-random": [
       [
-        "kvh/model-1",
-        "kvi/model-2#i1",
-        "kvj/model-3"
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
       ],
       [
-        "kvj/model-3",
-        "kvi/model-2#i1",
-        "kvh/model-1"
+        "kvj/model-3@kvj/model-3",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvh/model-1@kvh/model-1"
       ],
       [
-        "kvi/model-2#i1",
-        "kvj/model-3",
-        "kvh/model-1"
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3",
+        "kvh/model-1@kvh/model-1"
       ],
       [
-        "kvj/model-3",
-        "kvh/model-1",
-        "kvi/model-2#i1"
+        "kvj/model-3@kvj/model-3",
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2"
       ],
       [
-        "kvh/model-1",
-        "kvj/model-3",
-        "kvi/model-2#i1"
+        "kvh/model-1@kvh/model-1",
+        "kvj/model-3@kvj/model-3",
+        "kvi/model-2#i1@kvi/model-2"
       ],
       [
-        "kvi/model-2#i1",
-        "kvj/model-3",
-        "kvh/model-1"
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3",
+        "kvh/model-1@kvh/model-1"
       ],
       [
-        "kvh/model-1",
-        "kvi/model-2#i1",
-        "kvj/model-3"
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
       ]
     ],
     "weighted": [
       [
-        "kvi/model-2#i1",
-        "kvh/model-1",
-        "kvj/model-3"
+        "kvi/model-2#i1@kvi/model-2",
+        "kvh/model-1@kvh/model-1",
+        "kvj/model-3@kvj/model-3"
       ],
       [
-        "kvi/model-2#i1",
-        "kvh/model-1",
-        "kvj/model-3"
+        "kvi/model-2#i1@kvi/model-2",
+        "kvh/model-1@kvh/model-1",
+        "kvj/model-3@kvj/model-3"
       ],
       [
-        "kvj/model-3",
-        "kvh/model-1",
-        "kvi/model-2#i1"
+        "kvj/model-3@kvj/model-3",
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2"
+      ],
+      [
+        "kvi/model-2#i1@kvi/model-2",
+        "kvh/model-1@kvh/model-1",
+        "kvj/model-3@kvj/model-3"
+      ],
+      [
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
+      ],
+      [
+        "kvi/model-2#i1@kvi/model-2",
+        "kvh/model-1@kvh/model-1",
+        "kvj/model-3@kvj/model-3"
+      ],
+      [
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
+      ],
+      [
+        "kvj/model-3@kvj/model-3",
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2"
       ]
     ],
     "round-robin": [
       [
-        "kvh/model-1",
-        "kvi/model-2#i1",
-        "kvj/model-3"
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
       ],
       [
-        "kvi/model-2#i1",
-        "kvj/model-3",
-        "kvh/model-1"
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3",
+        "kvh/model-1@kvh/model-1"
       ],
       [
-        "kvj/model-3",
-        "kvh/model-1",
-        "kvi/model-2#i1"
+        "kvj/model-3@kvj/model-3",
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2"
       ],
       [
-        "kvh/model-1",
-        "kvi/model-2#i1",
-        "kvj/model-3"
+        "kvh/model-1@kvh/model-1",
+        "kvi/model-2#i1@kvi/model-2",
+        "kvj/model-3@kvj/model-3"
       ]
     ]
   }

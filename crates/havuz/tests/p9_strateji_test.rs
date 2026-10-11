@@ -5,10 +5,11 @@ use kervan_havuz::router::{Hedef, RoutingStrategy, StratejiDurumu};
 use std::collections::HashMap;
 use std::fs;
 
-const ALTINLAR: [&str; 3] = [
+const ALTINLAR: [&str; 4] = [
     "strateji_girdi1.json",
     "strateji_girdi2.json",
     "strateji_girdi3.json",
+    "strateji_girdi4.json",
 ];
 
 #[derive(serde::Deserialize)]
@@ -93,7 +94,7 @@ fn kostur(
     for a in 0..adim {
         durum.rr_sayac = a as u64;
         let sirali = strat.sirala(&altin.hedefler, &mut durum, &mut rastgele);
-        sonuc.push(sirali.into_iter().map(|h| h.execution_key).collect());
+        sonuc.push(sirali.iter().map(kimlik).collect());
     }
     (sonuc, i)
 }
@@ -200,11 +201,7 @@ fn test_fr73_ikizler_fark_kaniti() {
     assert_ne!(s["random"][0], s["strict-random"][0]);
     assert_ne!(s["context-relay"], s["context-optimized"]);
 
-    let girdi_sirasi: Vec<String> = altin
-        .hedefler
-        .iter()
-        .map(|h| h.execution_key.clone())
-        .collect();
+    let girdi_sirasi: Vec<String> = altin.hedefler.iter().map(kimlik).collect();
     for &ad in RoutingStrategy::KAMUYA_ACIK
         .iter()
         .chain(&RoutingStrategy::DAHILI)
@@ -218,4 +215,9 @@ fn test_fr73_ikizler_fark_kaniti() {
             );
         }
     }
+}
+
+/// Altındaki hedef kimliği: execution_key@model_str (aynı anahtarlı hedefler ayrışır).
+fn kimlik(h: &Hedef) -> String {
+    format!("{}@{}", h.execution_key, h.model_str)
 }

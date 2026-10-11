@@ -6,9 +6,12 @@
     "open-sse/services/combo/rrState.ts",
     "open-sse/services/combo/roundRobinCombo.ts",
     "src/shared/utils/shuffleDeck.ts",
-    "src/shared/constants/routingStrategies.ts"
+    "src/shared/constants/routingStrategies.ts",
+    "src/lib/combos/steps.ts",
+    "open-sse/services/comboMetrics.ts",
+    "src/lib/db/settings/pricing.ts"
   ],
-  "uretici_ozeti": "sha256:b4f8a483d15d64819e43d7bff662cd7fdbe42dcd63526fd011dbf2538743567a",
+  "uretici_ozeti": "sha256:a670f8cb0ec008dab0bc9d7fec826bc1119292237282c7fba1482c0b370302ec",
   "girdi_id": "strateji_girdi1",
   "hedefler": [
     {
@@ -221,7 +224,11 @@
     "bilinmeyen": "priority",
     "": "priority",
     "fusion": "fusion",
-    "least-used": "least-used"
+    "least-used": "least-used",
+    "LKGP": "lkgp",
+    "round-robin": "priority",
+    "﻿random": "random",
+    " p2c　": "p2c"
   },
   "tuketim": {
     "priority": 0,
@@ -234,192 +241,217 @@
     "lkgp": 0,
     "context-optimized": 0,
     "strict-random": 13,
-    "weighted": 3,
+    "weighted": 8,
     "round-robin": 0
   },
   "sonuclar": {
     "priority": [
       [
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2",
-        "kvc/model-genis"
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kvc/model-genis@kvc/model-genis"
       ]
     ],
     "fill-first": [
       [
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2",
-        "kvc/model-genis"
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kvc/model-genis@kvc/model-genis"
       ]
     ],
     "context-relay": [
       [
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2",
-        "kvc/model-genis"
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kvc/model-genis@kvc/model-genis"
       ]
     ],
     "p2c": [
       [
-        "kvc/model-genis",
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2"
+        "kvc/model-genis@kvc/model-genis",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta"
       ],
       [
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2",
-        "kvc/model-genis"
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kvc/model-genis@kvc/model-genis"
       ],
       [
-        "kvc/model-genis",
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2"
+        "kvc/model-genis@kvc/model-genis",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta"
       ],
       [
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2",
-        "kvc/model-genis"
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kvc/model-genis@kvc/model-genis"
       ],
       [
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2",
-        "kvc/model-genis"
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kvc/model-genis@kvc/model-genis"
       ],
       [
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2",
-        "kvc/model-genis"
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kvc/model-genis@kvc/model-genis"
       ],
       [
-        "kvc/model-genis",
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2"
+        "kvc/model-genis@kvc/model-genis",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta"
       ],
       [
-        "kvc/model-genis",
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2"
+        "kvc/model-genis@kvc/model-genis",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta"
       ]
     ],
     "random": [
       [
-        "kva/model-hizli#h1",
-        "kvc/model-genis",
-        "kvb/model-orta#h2"
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvc/model-genis@kvc/model-genis",
+        "kvb/model-orta#h2@kvb/model-orta"
       ],
       [
-        "kvc/model-genis",
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2"
+        "kvc/model-genis@kvc/model-genis",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta"
       ],
       [
-        "kvc/model-genis",
-        "kvb/model-orta#h2",
-        "kva/model-hizli#h1"
+        "kvc/model-genis@kvc/model-genis",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kva/model-hizli#h1@kva/model-hizli"
       ]
     ],
     "least-used": [
       [
-        "kvb/model-orta#h2",
-        "kva/model-hizli#h1",
-        "kvc/model-genis"
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvc/model-genis@kvc/model-genis"
       ]
     ],
     "cost-optimized": [
       [
-        "kvc/model-genis",
-        "kvb/model-orta#h2",
-        "kva/model-hizli#h1"
+        "kvc/model-genis@kvc/model-genis",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kva/model-hizli#h1@kva/model-hizli"
       ]
     ],
     "lkgp": [
       [
-        "kvb/model-orta#h2",
-        "kva/model-hizli#h1",
-        "kvc/model-genis"
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvc/model-genis@kvc/model-genis"
       ]
     ],
     "context-optimized": [
       [
-        "kvc/model-genis",
-        "kvb/model-orta#h2",
-        "kva/model-hizli#h1"
+        "kvc/model-genis@kvc/model-genis",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kva/model-hizli#h1@kva/model-hizli"
       ]
     ],
     "strict-random": [
       [
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2",
-        "kvc/model-genis"
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kvc/model-genis@kvc/model-genis"
       ],
       [
-        "kvc/model-genis",
-        "kvb/model-orta#h2",
-        "kva/model-hizli#h1"
+        "kvc/model-genis@kvc/model-genis",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kva/model-hizli#h1@kva/model-hizli"
       ],
       [
-        "kvb/model-orta#h2",
-        "kvc/model-genis",
-        "kva/model-hizli#h1"
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kvc/model-genis@kvc/model-genis",
+        "kva/model-hizli#h1@kva/model-hizli"
       ],
       [
-        "kvc/model-genis",
-        "kvb/model-orta#h2",
-        "kva/model-hizli#h1"
+        "kvc/model-genis@kvc/model-genis",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kva/model-hizli#h1@kva/model-hizli"
       ],
       [
-        "kva/model-hizli#h1",
-        "kvc/model-genis",
-        "kvb/model-orta#h2"
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvc/model-genis@kvc/model-genis",
+        "kvb/model-orta#h2@kvb/model-orta"
       ],
       [
-        "kvb/model-orta#h2",
-        "kvc/model-genis",
-        "kva/model-hizli#h1"
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kvc/model-genis@kvc/model-genis",
+        "kva/model-hizli#h1@kva/model-hizli"
       ],
       [
-        "kvc/model-genis",
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2"
+        "kvc/model-genis@kvc/model-genis",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta"
       ]
     ],
     "weighted": [
       [
-        "kvb/model-orta#h2",
-        "kva/model-hizli#h1",
-        "kvc/model-genis"
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvc/model-genis@kvc/model-genis"
       ],
       [
-        "kvc/model-genis",
-        "kvb/model-orta#h2",
-        "kva/model-hizli#h1"
+        "kvc/model-genis@kvc/model-genis",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kva/model-hizli#h1@kva/model-hizli"
       ],
       [
-        "kvb/model-orta#h2",
-        "kva/model-hizli#h1",
-        "kvc/model-genis"
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvc/model-genis@kvc/model-genis"
+      ],
+      [
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvc/model-genis@kvc/model-genis"
+      ],
+      [
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kvc/model-genis@kvc/model-genis"
+      ],
+      [
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvc/model-genis@kvc/model-genis"
+      ],
+      [
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvc/model-genis@kvc/model-genis"
+      ],
+      [
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvc/model-genis@kvc/model-genis"
       ]
     ],
     "round-robin": [
       [
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2",
-        "kvc/model-genis"
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kvc/model-genis@kvc/model-genis"
       ],
       [
-        "kvb/model-orta#h2",
-        "kvc/model-genis",
-        "kva/model-hizli#h1"
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kvc/model-genis@kvc/model-genis",
+        "kva/model-hizli#h1@kva/model-hizli"
       ],
       [
-        "kvc/model-genis",
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2"
+        "kvc/model-genis@kvc/model-genis",
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta"
       ],
       [
-        "kva/model-hizli#h1",
-        "kvb/model-orta#h2",
-        "kvc/model-genis"
+        "kva/model-hizli#h1@kva/model-hizli",
+        "kvb/model-orta#h2@kvb/model-orta",
+        "kvc/model-genis@kvc/model-genis"
       ]
     ]
   }
