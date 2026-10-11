@@ -2,8 +2,8 @@
 # Onay alanlarını yalnız Ercan doldurur: onay_bekliyor = false ve onay = "<ad, tarih>", commit,
 # ardından imzalı etiket: git -c gpg.format=ssh tag -s -f muhur-onay -m "<ad, tarih>"
 # (genel anahtar depo dışında: ~/.config/kervan/muhur-imzacilar, allowed-signers biçimi).
-onay_bekliyor = false
-onay = "Ercan, 2026-10-11 (sohbette onaylandı; imzalı muhur-onay etiketi)"
+onay_bekliyor = true
+onay = ""
 
 [ref]
 ozet = "11be456a1f799ad76a8a1438a51daecc5087f03d989ddc16b017027d3ca8c504"
@@ -135,7 +135,7 @@ sha256 = "df30ea3fff376edcc406053cc6cfb3797a5e7e6d9e2f090b58ac0763af3106f1"
 
 [[dosya]]
 yol = "araclar/parite/strateji-altin-uret.ts"
-sha256 = "7be7201a4114de065b4bb683a45e2043404618f87722f8cab6eb9582b28ddbcd"
+sha256 = "a670f8cb0ec008dab0bc9d7fec826bc1119292237282c7fba1482c0b370302ec"
 
 [[dosya]]
 yol = "port/altin/claude_1_sade.json"
@@ -191,9 +191,17 @@ sha256 = "ada3ebf26bf18691a770188dbedc2fec481f626ceb9c833adb73f0e2b46df765"
 
 [[dosya]]
 yol = "port/altin/strateji_girdi1.json"
-sha256 = "e831ca9c60788ada5bc724c308bd9d66f67163596f99fc34216e2a99a8215720"
+sha256 = "d8f80bdd37fd74750146aa92a888580e4393b0bac27c6514ec03d013b54a7b7a"
 
 [[dosya]]
 yol = "port/altin/strateji_girdi2.json"
-sha256 = "70f060f5db8015ea670e47bb9b58f3af8878bd3d0fc69c2070866c7d32bc06e7"
+sha256 = "cf5677e1932b7f52bd7ef515d8d23434c5c90c2eae89977d01b69e606075fec4"
+
+[[dosya]]
+yol = "port/altin/strateji_girdi3.json"
+sha256 = "7a4d53087d6921a839479651cef7632a1cac963223944dfd0f51114d057ee4b6"
+
+[[dosya]]
+yol = "port/altin/strateji_girdi4.json"
+sha256 = "05c0d5345edc4be2b10544ac77a15ffa79cf53826c9b5ef323f3f89047ccd075"
 
