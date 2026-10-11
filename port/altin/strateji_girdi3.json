@@ -1,0 +1,357 @@
+{
+  "kaynak_sha": "dbe703a",
+  "kaynak_yollar": [
+    "open-sse/services/combo/applyStrategyOrdering.ts",
+    "open-sse/services/combo/targetSorters.ts",
+    "open-sse/services/combo/rrState.ts",
+    "open-sse/services/combo/roundRobinCombo.ts",
+    "src/shared/utils/shuffleDeck.ts",
+    "src/shared/constants/routingStrategies.ts"
+  ],
+  "uretici_ozeti": "sha256:b4f8a483d15d64819e43d7bff662cd7fdbe42dcd63526fd011dbf2538743567a",
+  "girdi_id": "strateji_girdi3",
+  "hedefler": [
+    {
+      "model_str": "kvh/model-1",
+      "provider": "kvh",
+      "execution_key": "kvh/model-1",
+      "connection_id": null,
+      "weight": 0
+    },
+    {
+      "model_str": "kvi/model-2",
+      "provider": "kvi",
+      "execution_key": "kvi/model-2#i1",
+      "connection_id": "i1",
+      "weight": 0
+    },
+    {
+      "model_str": "kvj/model-3",
+      "provider": "kvj",
+      "execution_key": "kvj/model-3",
+      "connection_id": null,
+      "weight": 0
+    }
+  ],
+  "durum": {
+    "fiyat": {},
+    "baglam": {},
+    "kayitlar": [],
+    "lkgp": {
+      "provider": "kvj",
+      "connection_id": "olmayan"
+    }
+  },
+  "rastgele_48": [
+    145145517324661,
+    160415166392073,
+    227882042908437,
+    110511843118141,
+    61698273210282,
+    143866436122874,
+    87990772812235,
+    250984325249670,
+    7151758330754,
+    11435577954664,
+    192466053604094,
+    195353653370549,
+    155388830409885,
+    50629068273828,
+    177357837486555,
+    191471269373961,
+    131396330196742,
+    113642703253849,
+    107140349381873,
+    116826678270221,
+    47356454544530,
+    121157221650691,
+    243677947844769,
+    39515022509798,
+    57612342140203,
+    121434850809110,
+    229392768208800,
+    224514857293293,
+    276553661716481,
+    79875307068982,
+    278869293336736,
+    220510656360285,
+    227825650697036,
+    273921177010974,
+    232706094372030,
+    93215609978019,
+    5744267289192,
+    199117834877354,
+    14934324570101,
+    181232103141813,
+    132181609163264,
+    196375278319354,
+    125172482900727,
+    60656792850323,
+    35460798726151,
+    66135477450435,
+    191809484986995,
+    81095804584564,
+    194726785908844,
+    271601673588363,
+    155765665241725,
+    204269337499816,
+    224072847696550,
+    19485953211973,
+    65347182891307,
+    217217138250606,
+    72963201465563,
+    199628350908677,
+    103749917989060,
+    222072143756723,
+    239148662219678,
+    9303776743353,
+    99088247846875,
+    62971142465196,
+    42500427559188,
+    194863511337305,
+    267939514783982,
+    57236460738703,
+    279075019446932,
+    33146195552955,
+    237374036915348,
+    84422372509931,
+    274865111331032,
+    213321376314400,
+    237998442246476,
+    22011951213770,
+    214800875387778,
+    143431454664383,
+    95009381819829,
+    106825179196520,
+    99357942098912,
+    153809856185043,
+    136310952953785,
+    99364728034548,
+    55180259532988,
+    9555517044222,
+    187380131746502,
+    72808246028901,
+    163128568611348,
+    156688400094812,
+    252831440482699,
+    217108920837893,
+    113863118297733,
+    234597363745956,
+    145872332932891,
+    38412741182847
+  ],
+  "takma_adlar": {
+    "usage": "least-used",
+    "context": "context-optimized",
+    "weekly-reset": "reset-window",
+    "reset-window-order": "reset-window",
+    "  Priority ": "priority",
+    "ROUND-ROBIN": "round-robin",
+    "roundrobin": "priority",
+    "quota-share": "quota-share",
+    "bilinmeyen": "priority",
+    "": "priority",
+    "fusion": "fusion",
+    "least-used": "least-used"
+  },
+  "tuketim": {
+    "priority": 0,
+    "fill-first": 0,
+    "context-relay": 0,
+    "p2c": 16,
+    "random": 6,
+    "least-used": 0,
+    "cost-optimized": 0,
+    "lkgp": 0,
+    "context-optimized": 0,
+    "strict-random": 13,
+    "weighted": 3,
+    "round-robin": 0
+  },
+  "sonuclar": {
+    "priority": [
+      [
+        "kvh/model-1",
+        "kvi/model-2#i1",
+        "kvj/model-3"
+      ]
+    ],
+    "fill-first": [
+      [
+        "kvh/model-1",
+        "kvi/model-2#i1",
+        "kvj/model-3"
+      ]
+    ],
+    "context-relay": [
+      [
+        "kvh/model-1",
+        "kvi/model-2#i1",
+        "kvj/model-3"
+      ]
+    ],
+    "p2c": [
+      [
+        "kvi/model-2#i1",
+        "kvh/model-1",
+        "kvj/model-3"
+      ],
+      [
+        "kvj/model-3",
+        "kvh/model-1",
+        "kvi/model-2#i1"
+      ],
+      [
+        "kvh/model-1",
+        "kvi/model-2#i1",
+        "kvj/model-3"
+      ],
+      [
+        "kvh/model-1",
+        "kvi/model-2#i1",
+        "kvj/model-3"
+      ],
+      [
+        "kvh/model-1",
+        "kvi/model-2#i1",
+        "kvj/model-3"
+      ],
+      [
+        "kvj/model-3",
+        "kvh/model-1",
+        "kvi/model-2#i1"
+      ],
+      [
+        "kvi/model-2#i1",
+        "kvh/model-1",
+        "kvj/model-3"
+      ],
+      [
+        "kvi/model-2#i1",
+        "kvh/model-1",
+        "kvj/model-3"
+      ]
+    ],
+    "random": [
+      [
+        "kvh/model-1",
+        "kvj/model-3",
+        "kvi/model-2#i1"
+      ],
+      [
+        "kvi/model-2#i1",
+        "kvh/model-1",
+        "kvj/model-3"
+      ],
+      [
+        "kvj/model-3",
+        "kvi/model-2#i1",
+        "kvh/model-1"
+      ]
+    ],
+    "least-used": [
+      [
+        "kvh/model-1",
+        "kvi/model-2#i1",
+        "kvj/model-3"
+      ]
+    ],
+    "cost-optimized": [
+      [
+        "kvh/model-1",
+        "kvi/model-2#i1",
+        "kvj/model-3"
+      ]
+    ],
+    "lkgp": [
+      [
+        "kvj/model-3",
+        "kvh/model-1",
+        "kvi/model-2#i1"
+      ]
+    ],
+    "context-optimized": [
+      [
+        "kvh/model-1",
+        "kvi/model-2#i1",
+        "kvj/model-3"
+      ]
+    ],
+    "strict-random": [
+      [
+        "kvh/model-1",
+        "kvi/model-2#i1",
+        "kvj/model-3"
+      ],
+      [
+        "kvj/model-3",
+        "kvi/model-2#i1",
+        "kvh/model-1"
+      ],
+      [
+        "kvi/model-2#i1",
+        "kvj/model-3",
+        "kvh/model-1"
+      ],
+      [
+        "kvj/model-3",
+        "kvh/model-1",
+        "kvi/model-2#i1"
+      ],
+      [
+        "kvh/model-1",
+        "kvj/model-3",
+        "kvi/model-2#i1"
+      ],
+      [
+        "kvi/model-2#i1",
+        "kvj/model-3",
+        "kvh/model-1"
+      ],
+      [
+        "kvh/model-1",
+        "kvi/model-2#i1",
+        "kvj/model-3"
+      ]
+    ],
+    "weighted": [
+      [
+        "kvi/model-2#i1",
+        "kvh/model-1",
+        "kvj/model-3"
+      ],
+      [
+        "kvi/model-2#i1",
+        "kvh/model-1",
+        "kvj/model-3"
+      ],
+      [
+        "kvj/model-3",
+        "kvh/model-1",
+        "kvi/model-2#i1"
+      ]
+    ],
+    "round-robin": [
+      [
+        "kvh/model-1",
+        "kvi/model-2#i1",
+        "kvj/model-3"
+      ],
+      [
+        "kvi/model-2#i1",
+        "kvj/model-3",
+        "kvh/model-1"
+      ],
+      [
+        "kvj/model-3",
+        "kvh/model-1",
+        "kvi/model-2#i1"
+      ],
+      [
+        "kvh/model-1",
+        "kvi/model-2#i1",
+        "kvj/model-3"
+      ]
+    ]
+  }
+}

@@ -56,3 +56,10 @@ dosya = "crates/ceviri/src/gemini.rs"
 bul = "let max_output_tokens = istek.max_tokens.unwrap_or(65536);"
 yerine = "let max_output_tokens = istek.max_tokens.unwrap_or(99999);"
 oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-ceviri', '--test', 'p6_parite_test'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]
+
+[[mutant]]
+ad = "strateji-fiyatsiz-modeli-ucuz-say"
+dosya = "crates/havuz/src/router.rs"
+bul = ".unwrap_or(f64::INFINITY)"
+yerine = ".unwrap_or(0.0)"
+oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-havuz', '--test', 'p9_strateji_test', '--', 'test_fr72_altin_parite_girdi1_ve_girdi2'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]

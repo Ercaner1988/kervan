@@ -1,158 +1,426 @@
 {
   "kaynak_sha": "dbe703a",
-  "kaynak_yol": "open-sse/services/combo/applyStrategyOrdering.ts",
-  "uretici_ozeti": "sha256:7be7201a4114de065b4bb683a45e2043404618f87722f8cab6eb9582b28ddbcd",
+  "kaynak_yollar": [
+    "open-sse/services/combo/applyStrategyOrdering.ts",
+    "open-sse/services/combo/targetSorters.ts",
+    "open-sse/services/combo/rrState.ts",
+    "open-sse/services/combo/roundRobinCombo.ts",
+    "src/shared/utils/shuffleDeck.ts",
+    "src/shared/constants/routingStrategies.ts"
+  ],
+  "uretici_ozeti": "sha256:b4f8a483d15d64819e43d7bff662cd7fdbe42dcd63526fd011dbf2538743567a",
   "girdi_id": "strateji_girdi1",
-  "tohum": 42,
-  "adaylar": [
+  "hedefler": [
     {
-      "ad": "openai/gpt-4o",
-      "execution_key": "openai:gpt-4o:acc1",
-      "connection_id": "acc1",
-      "weight": 10,
-      "cost": 5,
-      "context_size": 128000,
-      "latency_ms": 150,
-      "error_count": 0,
-      "request_count": 50,
-      "free_quota": 500000,
-      "reset_seconds": 300,
-      "warm_cache": true
+      "model_str": "kva/model-hizli",
+      "provider": "kva",
+      "execution_key": "kva/model-hizli#h1",
+      "connection_id": "h1",
+      "weight": 10
     },
     {
-      "ad": "claude/claude-3-5-sonnet",
-      "execution_key": "claude:sonnet:acc2",
-      "connection_id": "acc2",
-      "weight": 20,
-      "cost": 3,
-      "context_size": 200000,
-      "latency_ms": 250,
-      "error_count": 1,
-      "request_count": 10,
-      "free_quota": 10000,
-      "reset_seconds": 10,
-      "warm_cache": false
+      "model_str": "kvb/model-orta",
+      "provider": "kvb",
+      "execution_key": "kvb/model-orta#h2",
+      "connection_id": "h2",
+      "weight": 20
     },
     {
-      "ad": "gemini/gemini-2.5-flash",
-      "execution_key": "gemini:flash:acc3",
+      "model_str": "kvc/model-genis",
+      "provider": "kvc",
+      "execution_key": "kvc/model-genis",
       "connection_id": null,
-      "weight": 5,
-      "cost": 0.5,
-      "context_size": 1000000,
-      "latency_ms": 80,
-      "error_count": 0,
-      "request_count": 100,
-      "free_quota": 50000,
-      "reset_seconds": 600,
-      "warm_cache": true
+      "weight": 5
     }
   ],
+  "durum": {
+    "fiyat": {
+      "kva/model-hizli": 5,
+      "kvb/model-orta": 3,
+      "kvc/model-genis": 0.5
+    },
+    "baglam": {
+      "kva/model-hizli": 128000,
+      "kvb/model-orta": 200000,
+      "kvc/model-genis": 1000000
+    },
+    "kayitlar": [
+      {
+        "model_str": "kva/model-hizli",
+        "execution_key": "kva/model-hizli#h1",
+        "basarili": true,
+        "gecikme_ms": 150
+      },
+      {
+        "model_str": "kva/model-hizli",
+        "execution_key": "kva/model-hizli#h1",
+        "basarili": true,
+        "gecikme_ms": 150
+      },
+      {
+        "model_str": "kva/model-hizli",
+        "execution_key": "kva/model-hizli#h1",
+        "basarili": true,
+        "gecikme_ms": 150
+      },
+      {
+        "model_str": "kvb/model-orta",
+        "execution_key": "kvb/model-orta#h2",
+        "basarili": true,
+        "gecikme_ms": 250
+      },
+      {
+        "model_str": "kvb/model-orta",
+        "execution_key": "kvb/model-orta#h2",
+        "basarili": false,
+        "gecikme_ms": 400
+      },
+      {
+        "model_str": "kvc/model-genis",
+        "execution_key": "kvc/model-genis",
+        "basarili": true,
+        "gecikme_ms": 80
+      },
+      {
+        "model_str": "kvc/model-genis",
+        "execution_key": "kvc/model-genis",
+        "basarili": true,
+        "gecikme_ms": 80
+      },
+      {
+        "model_str": "kvc/model-genis",
+        "execution_key": "kvc/model-genis",
+        "basarili": true,
+        "gecikme_ms": 80
+      },
+      {
+        "model_str": "kvc/model-genis",
+        "execution_key": "kvc/model-genis",
+        "basarili": true,
+        "gecikme_ms": 80
+      },
+      {
+        "model_str": "kvc/model-genis",
+        "execution_key": "kvc/model-genis",
+        "basarili": true,
+        "gecikme_ms": 80
+      }
+    ],
+    "lkgp": {
+      "provider": "kvb",
+      "connection_id": "h2"
+    }
+  },
+  "rastgele_48": [
+    160790240222655,
+    256434057059743,
+    149545114792430,
+    98463631196464,
+    59486441181659,
+    151860368535012,
+    104712938672215,
+    97426680067379,
+    55492693007765,
+    33996444880339,
+    173247493956922,
+    46774239273509,
+    151190828813892,
+    212414178268994,
+    201278199983008,
+    74846627652984,
+    159216737751131,
+    224630564927743,
+    251474108767517,
+    8979446888440,
+    75751426009611,
+    157617741738366,
+    29272555883570,
+    32328135203293,
+    188732932259742,
+    264657712238801,
+    122406232305113,
+    128004241287570,
+    266357570172364,
+    92979840884142,
+    1271072638149,
+    44410124408176,
+    263848790545581,
+    234071330477711,
+    84232798794468,
+    119332382630048,
+    215916177284632,
+    122513022402028,
+    95580698871211,
+    153593785612427,
+    152965444512304,
+    10431226892234,
+    103925386695662,
+    208898592506782,
+    26339705177720,
+    43418254987979,
+    178516500403958,
+    171757056713288,
+    30971867137369,
+    202076078032082,
+    36981831443661,
+    260410280411915,
+    123736342218100,
+    44948852342509,
+    73174941073151,
+    7429973552595,
+    232936845507847,
+    154645302490368,
+    246914264847588,
+    24497272728835,
+    258242573834464,
+    89800161622973,
+    108553376443859,
+    234988074959616,
+    200479462092513,
+    238325887416089,
+    23235692736542,
+    105179122089763,
+    68236434466432,
+    180423432778146,
+    17594310295732,
+    12029211752681,
+    269827717375690,
+    21878716937111,
+    114756158330927,
+    249189311675991,
+    210381264792556,
+    121273325088820,
+    184397546664255,
+    65984300342563,
+    241373920957533,
+    122558863922310,
+    142387330930572,
+    82355531365,
+    106230011875744,
+    89872529184054,
+    4948247878929,
+    274245778448268,
+    104547546074951,
+    112887341095717,
+    253196098094111,
+    27354033414256,
+    98525519364077,
+    224903904701431,
+    10134448256422,
+    28326108920972
+  ],
+  "takma_adlar": {
+    "usage": "least-used",
+    "context": "context-optimized",
+    "weekly-reset": "reset-window",
+    "reset-window-order": "reset-window",
+    "  Priority ": "priority",
+    "ROUND-ROBIN": "round-robin",
+    "roundrobin": "priority",
+    "quota-share": "quota-share",
+    "bilinmeyen": "priority",
+    "": "priority",
+    "fusion": "fusion",
+    "least-used": "least-used"
+  },
+  "tuketim": {
+    "priority": 0,
+    "fill-first": 0,
+    "context-relay": 0,
+    "p2c": 16,
+    "random": 6,
+    "least-used": 0,
+    "cost-optimized": 0,
+    "lkgp": 0,
+    "context-optimized": 0,
+    "strict-random": 13,
+    "weighted": 3,
+    "round-robin": 0
+  },
   "sonuclar": {
     "priority": [
-      "openai/gpt-4o",
-      "claude/claude-3-5-sonnet",
-      "gemini/gemini-2.5-flash"
-    ],
-    "weighted": [
-      "claude/claude-3-5-sonnet",
-      "openai/gpt-4o",
-      "gemini/gemini-2.5-flash"
-    ],
-    "round-robin": [
-      "openai/gpt-4o",
-      "claude/claude-3-5-sonnet",
-      "gemini/gemini-2.5-flash"
-    ],
-    "context-relay": [
-      "gemini/gemini-2.5-flash",
-      "claude/claude-3-5-sonnet",
-      "openai/gpt-4o"
+      [
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2",
+        "kvc/model-genis"
+      ]
     ],
     "fill-first": [
-      "openai/gpt-4o",
-      "claude/claude-3-5-sonnet",
-      "gemini/gemini-2.5-flash"
+      [
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2",
+        "kvc/model-genis"
+      ]
+    ],
+    "context-relay": [
+      [
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2",
+        "kvc/model-genis"
+      ]
     ],
     "p2c": [
-      "gemini/gemini-2.5-flash",
-      "openai/gpt-4o",
-      "claude/claude-3-5-sonnet"
+      [
+        "kvc/model-genis",
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2"
+      ],
+      [
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2",
+        "kvc/model-genis"
+      ],
+      [
+        "kvc/model-genis",
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2"
+      ],
+      [
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2",
+        "kvc/model-genis"
+      ],
+      [
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2",
+        "kvc/model-genis"
+      ],
+      [
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2",
+        "kvc/model-genis"
+      ],
+      [
+        "kvc/model-genis",
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2"
+      ],
+      [
+        "kvc/model-genis",
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2"
+      ]
     ],
     "random": [
-      "claude/claude-3-5-sonnet",
-      "openai/gpt-4o",
-      "gemini/gemini-2.5-flash"
+      [
+        "kva/model-hizli#h1",
+        "kvc/model-genis",
+        "kvb/model-orta#h2"
+      ],
+      [
+        "kvc/model-genis",
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2"
+      ],
+      [
+        "kvc/model-genis",
+        "kvb/model-orta#h2",
+        "kva/model-hizli#h1"
+      ]
     ],
     "least-used": [
-      "claude/claude-3-5-sonnet",
-      "openai/gpt-4o",
-      "gemini/gemini-2.5-flash"
+      [
+        "kvb/model-orta#h2",
+        "kva/model-hizli#h1",
+        "kvc/model-genis"
+      ]
     ],
     "cost-optimized": [
-      "gemini/gemini-2.5-flash",
-      "claude/claude-3-5-sonnet",
-      "openai/gpt-4o"
-    ],
-    "reset-aware": [
-      "openai/gpt-4o",
-      "claude/claude-3-5-sonnet",
-      "gemini/gemini-2.5-flash"
-    ],
-    "reset-window": [
-      "claude/claude-3-5-sonnet",
-      "openai/gpt-4o",
-      "gemini/gemini-2.5-flash"
-    ],
-    "headroom": [
-      "openai/gpt-4o",
-      "gemini/gemini-2.5-flash",
-      "claude/claude-3-5-sonnet"
-    ],
-    "quota-weighted": [
-      "openai/gpt-4o",
-      "gemini/gemini-2.5-flash",
-      "claude/claude-3-5-sonnet"
-    ],
-    "strict-random": [
-      "claude/claude-3-5-sonnet",
-      "gemini/gemini-2.5-flash",
-      "openai/gpt-4o"
-    ],
-    "auto": [
-      "gemini/gemini-2.5-flash",
-      "openai/gpt-4o",
-      "claude/claude-3-5-sonnet"
+      [
+        "kvc/model-genis",
+        "kvb/model-orta#h2",
+        "kva/model-hizli#h1"
+      ]
     ],
     "lkgp": [
-      "openai/gpt-4o",
-      "claude/claude-3-5-sonnet",
-      "gemini/gemini-2.5-flash"
+      [
+        "kvb/model-orta#h2",
+        "kva/model-hizli#h1",
+        "kvc/model-genis"
+      ]
     ],
     "context-optimized": [
-      "gemini/gemini-2.5-flash",
-      "claude/claude-3-5-sonnet",
-      "openai/gpt-4o"
+      [
+        "kvc/model-genis",
+        "kvb/model-orta#h2",
+        "kva/model-hizli#h1"
+      ]
     ],
-    "cache-optimized": [
-      "gemini/gemini-2.5-flash",
-      "openai/gpt-4o",
-      "claude/claude-3-5-sonnet"
+    "strict-random": [
+      [
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2",
+        "kvc/model-genis"
+      ],
+      [
+        "kvc/model-genis",
+        "kvb/model-orta#h2",
+        "kva/model-hizli#h1"
+      ],
+      [
+        "kvb/model-orta#h2",
+        "kvc/model-genis",
+        "kva/model-hizli#h1"
+      ],
+      [
+        "kvc/model-genis",
+        "kvb/model-orta#h2",
+        "kva/model-hizli#h1"
+      ],
+      [
+        "kva/model-hizli#h1",
+        "kvc/model-genis",
+        "kvb/model-orta#h2"
+      ],
+      [
+        "kvb/model-orta#h2",
+        "kvc/model-genis",
+        "kva/model-hizli#h1"
+      ],
+      [
+        "kvc/model-genis",
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2"
+      ]
     ],
-    "fusion": [
-      "claude/claude-3-5-sonnet",
-      "gemini/gemini-2.5-flash",
-      "openai/gpt-4o"
+    "weighted": [
+      [
+        "kvb/model-orta#h2",
+        "kva/model-hizli#h1",
+        "kvc/model-genis"
+      ],
+      [
+        "kvc/model-genis",
+        "kvb/model-orta#h2",
+        "kva/model-hizli#h1"
+      ],
+      [
+        "kvb/model-orta#h2",
+        "kva/model-hizli#h1",
+        "kvc/model-genis"
+      ]
     ],
-    "pipeline": [
-      "claude/claude-3-5-sonnet",
-      "openai/gpt-4o",
-      "gemini/gemini-2.5-flash"
-    ],
-    "quota-share": [
-      "openai/gpt-4o",
-      "gemini/gemini-2.5-flash",
-      "claude/claude-3-5-sonnet"
+    "round-robin": [
+      [
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2",
+        "kvc/model-genis"
+      ],
+      [
+        "kvb/model-orta#h2",
+        "kvc/model-genis",
+        "kva/model-hizli#h1"
+      ],
+      [
+        "kvc/model-genis",
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2"
+      ],
+      [
+        "kva/model-hizli#h1",
+        "kvb/model-orta#h2",
+        "kvc/model-genis"
+      ]
     ]
   }
 }
