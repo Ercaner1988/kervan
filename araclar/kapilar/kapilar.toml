@@ -1,0 +1,459 @@
+# Kapı paketi yapılandırması (mühürlenecek: araclar/kapilar/**).
+# hepsi.ts faz -> kapı listesini YALNIZ buradan okur. Eksik/bozuk dosya, bilinmeyen faz,
+# boş liste ya da P4+ listesinin P3 listesini kapsamaması -> hepsi.ts çıkış != 0.
+# Komutlardaki {faz} koşu anında faz adıyla değiştirilir (P4+ üst küme denetimi şablon
+# metni üzerinden yapılır, yani P3'teki komut P4+'da harfi harfine bulunmalıdır).
+# Her kapının stdout'unun son boş olmayan satırı tam olarak "HUKUM: yesil" ya da
+# "HUKUM: kirmizi <neden>" olmalıdır; yoksa kapı kırmızıdır.
+# rapor-kontrol her fazın SON kapısıdır: başarı iddiasını yalnız bu koşuda kendisinden önce koşan
+# kapıların <ad>.log + kosu.json kaydıyla kanıtlatır (koşu başında listedeki eski günlükler silinir).
+
+[kosucu]
+varsayilan_zaman_asimi_sn = 900
+
+# PRD FR-1.4 / §11-O6. Eşikler [Ercan onayı bekliyor: öneri boş RAM >= 6 GB, 60 sn ortalama CPU <= %70].
+# kip = "uyari": eşik dışı UYARI yazar, hüküm yesil (kapı sayılmaz, PRD §5).
+# kip = "zorunlu": eşik dışı HUKUM: kirmizi. Ercan onaylayınca "zorunlu" yapılıp yeniden mühürlenir.
+# Ölçülemeyen/geçersiz eşik ve ölçüm hatası her iki kipte de kırmızıdır.
+# §6 durum.json.sayimlar: route_ts bu anlık görüntüde sayılır (node_modules hariç); defter_*
+# port/defter/dosyalar.jsonl'den. Kaynak yoksa, sıfır route.ts ya da bozuk defter -> hepsi.ts kırmızı.
+[sayim]
+kaynak_dizini = "ref/omniroute-dbe703a"
+
+[makine_sakin]
+min_bos_ram_gb = 6
+max_cpu_pct = 70
+ornek_sn = 60
+kip = "uyari"
+
+# ---------------- P1 ----------------
+[[faz.P1]]
+ad = "makine-sakin"
+komut = "bun araclar/kapilar/makine-sakin.ts"
+zaman_asimi_sn = 180
+
+[[faz.P1]]
+ad = "kabul-haritasi"
+komut = "bun araclar/kapilar/kabul-haritasi.ts {faz}"
+
+# ---------------- P2 ----------------
+[[faz.P2]]
+ad = "makine-sakin"
+komut = "bun araclar/kapilar/makine-sakin.ts"
+zaman_asimi_sn = 180
+
+[[faz.P2]]
+ad = "kabul-haritasi"
+komut = "bun araclar/kapilar/kabul-haritasi.ts {faz}"
+
+[[faz.P2]]
+ad = "ulasilabilirlik"
+komut = "bun araclar/kapilar/ulasilabilirlik.ts"
+
+[[faz.P2]]
+ad = "sabit-yanit"
+komut = "bun araclar/kapilar/sabit-yanit.ts"
+
+[[faz.P2]]
+ad = "uc-kaydi"
+komut = "bun araclar/kapilar/uc-kaydi.ts"
+
+[[faz.P2]]
+ad = "muhur-kontrol"
+komut = "bun araclar/kapilar/muhur-kontrol.ts"
+
+[[faz.P2]]
+ad = "rapor-kontrol"
+komut = "bun araclar/kapilar/rapor-kontrol.ts {faz}"
+
+# ---------------- P3 ----------------
+[[faz.P3]]
+ad = "makine-sakin"
+komut = "bun araclar/kapilar/makine-sakin.ts"
+zaman_asimi_sn = 180
+
+[[faz.P3]]
+ad = "kabul-haritasi"
+komut = "bun araclar/kapilar/kabul-haritasi.ts {faz}"
+
+[[faz.P3]]
+ad = "ulasilabilirlik"
+komut = "bun araclar/kapilar/ulasilabilirlik.ts"
+
+[[faz.P3]]
+ad = "sabit-yanit"
+komut = "bun araclar/kapilar/sabit-yanit.ts"
+
+[[faz.P3]]
+ad = "uc-kaydi"
+komut = "bun araclar/kapilar/uc-kaydi.ts"
+
+[[faz.P3]]
+ad = "muhur-kontrol"
+komut = "bun araclar/kapilar/muhur-kontrol.ts"
+
+[[faz.P3]]
+ad = "kulliyat-tara"
+komut = "bun araclar/kapilar/kulliyat-tara.ts ac2f18d3fa588dad886589ff901ebd1c7ad5afae"
+zaman_asimi_sn = 1800
+
+[[faz.P3]]
+ad = "mutasyon-kontrol"
+komut = "bun araclar/kapilar/mutasyon-kontrol.ts"
+zaman_asimi_sn = 3600
+
+[[faz.P3]]
+ad = "durum-kontrol"
+komut = "bun araclar/kapilar/durum-kontrol.ts"
+
+[[faz.P3]]
+ad = "defter-kontrol"
+komut = "bun araclar/kapilar/defter-kontrol.ts"
+
+[[faz.P3]]
+ad = "rapor-kontrol"
+komut = "bun araclar/kapilar/rapor-kontrol.ts {faz}"
+
+# ---------------- P4..P8 (P3 listesi aynen) ----------------
+[[faz.P4]]
+ad = "makine-sakin"
+komut = "bun araclar/kapilar/makine-sakin.ts"
+zaman_asimi_sn = 180
+
+[[faz.P4]]
+ad = "kabul-haritasi"
+komut = "bun araclar/kapilar/kabul-haritasi.ts {faz}"
+
+[[faz.P4]]
+ad = "ulasilabilirlik"
+komut = "bun araclar/kapilar/ulasilabilirlik.ts"
+
+[[faz.P4]]
+ad = "sabit-yanit"
+komut = "bun araclar/kapilar/sabit-yanit.ts"
+
+[[faz.P4]]
+ad = "uc-kaydi"
+komut = "bun araclar/kapilar/uc-kaydi.ts"
+
+[[faz.P4]]
+ad = "muhur-kontrol"
+komut = "bun araclar/kapilar/muhur-kontrol.ts"
+
+[[faz.P4]]
+ad = "kulliyat-tara"
+komut = "bun araclar/kapilar/kulliyat-tara.ts ac2f18d3fa588dad886589ff901ebd1c7ad5afae"
+zaman_asimi_sn = 1800
+
+[[faz.P4]]
+ad = "mutasyon-kontrol"
+komut = "bun araclar/kapilar/mutasyon-kontrol.ts"
+zaman_asimi_sn = 3600
+
+[[faz.P4]]
+ad = "durum-kontrol"
+komut = "bun araclar/kapilar/durum-kontrol.ts"
+
+[[faz.P4]]
+ad = "defter-kontrol"
+komut = "bun araclar/kapilar/defter-kontrol.ts"
+
+[[faz.P4]]
+ad = "rapor-kontrol"
+komut = "bun araclar/kapilar/rapor-kontrol.ts {faz}"
+
+[[faz.P5]]
+ad = "makine-sakin"
+komut = "bun araclar/kapilar/makine-sakin.ts"
+zaman_asimi_sn = 180
+
+[[faz.P5]]
+ad = "kabul-haritasi"
+komut = "bun araclar/kapilar/kabul-haritasi.ts {faz}"
+
+[[faz.P5]]
+ad = "ulasilabilirlik"
+komut = "bun araclar/kapilar/ulasilabilirlik.ts"
+
+[[faz.P5]]
+ad = "sabit-yanit"
+komut = "bun araclar/kapilar/sabit-yanit.ts"
+
+[[faz.P5]]
+ad = "uc-kaydi"
+komut = "bun araclar/kapilar/uc-kaydi.ts"
+
+[[faz.P5]]
+ad = "muhur-kontrol"
+komut = "bun araclar/kapilar/muhur-kontrol.ts"
+
+[[faz.P5]]
+ad = "kulliyat-tara"
+komut = "bun araclar/kapilar/kulliyat-tara.ts ac2f18d3fa588dad886589ff901ebd1c7ad5afae"
+zaman_asimi_sn = 1800
+
+[[faz.P5]]
+ad = "mutasyon-kontrol"
+komut = "bun araclar/kapilar/mutasyon-kontrol.ts"
+zaman_asimi_sn = 3600
+
+[[faz.P5]]
+ad = "durum-kontrol"
+komut = "bun araclar/kapilar/durum-kontrol.ts"
+
+[[faz.P5]]
+ad = "defter-kontrol"
+komut = "bun araclar/kapilar/defter-kontrol.ts"
+
+[[faz.P5]]
+ad = "rapor-kontrol"
+komut = "bun araclar/kapilar/rapor-kontrol.ts {faz}"
+
+[[faz.P6]]
+ad = "makine-sakin"
+komut = "bun araclar/kapilar/makine-sakin.ts"
+zaman_asimi_sn = 180
+
+[[faz.P6]]
+ad = "kabul-haritasi"
+komut = "bun araclar/kapilar/kabul-haritasi.ts {faz}"
+
+[[faz.P6]]
+ad = "ulasilabilirlik"
+komut = "bun araclar/kapilar/ulasilabilirlik.ts"
+
+[[faz.P6]]
+ad = "sabit-yanit"
+komut = "bun araclar/kapilar/sabit-yanit.ts"
+
+[[faz.P6]]
+ad = "uc-kaydi"
+komut = "bun araclar/kapilar/uc-kaydi.ts"
+
+[[faz.P6]]
+ad = "muhur-kontrol"
+komut = "bun araclar/kapilar/muhur-kontrol.ts"
+
+[[faz.P6]]
+ad = "kulliyat-tara"
+komut = "bun araclar/kapilar/kulliyat-tara.ts ac2f18d3fa588dad886589ff901ebd1c7ad5afae"
+zaman_asimi_sn = 1800
+
+[[faz.P6]]
+ad = "mutasyon-kontrol"
+komut = "bun araclar/kapilar/mutasyon-kontrol.ts"
+zaman_asimi_sn = 3600
+
+[[faz.P6]]
+ad = "durum-kontrol"
+komut = "bun araclar/kapilar/durum-kontrol.ts"
+
+[[faz.P6]]
+ad = "defter-kontrol"
+komut = "bun araclar/kapilar/defter-kontrol.ts"
+
+[[faz.P6]]
+ad = "rapor-kontrol"
+komut = "bun araclar/kapilar/rapor-kontrol.ts {faz}"
+
+[[faz.P7]]
+ad = "makine-sakin"
+komut = "bun araclar/kapilar/makine-sakin.ts"
+zaman_asimi_sn = 180
+
+[[faz.P7]]
+ad = "kabul-haritasi"
+komut = "bun araclar/kapilar/kabul-haritasi.ts {faz}"
+
+[[faz.P7]]
+ad = "ulasilabilirlik"
+komut = "bun araclar/kapilar/ulasilabilirlik.ts"
+
+[[faz.P7]]
+ad = "sabit-yanit"
+komut = "bun araclar/kapilar/sabit-yanit.ts"
+
+[[faz.P7]]
+ad = "uc-kaydi"
+komut = "bun araclar/kapilar/uc-kaydi.ts"
+
+[[faz.P7]]
+ad = "muhur-kontrol"
+komut = "bun araclar/kapilar/muhur-kontrol.ts"
+
+[[faz.P7]]
+ad = "kulliyat-tara"
+komut = "bun araclar/kapilar/kulliyat-tara.ts ac2f18d3fa588dad886589ff901ebd1c7ad5afae"
+zaman_asimi_sn = 1800
+
+[[faz.P7]]
+ad = "mutasyon-kontrol"
+komut = "bun araclar/kapilar/mutasyon-kontrol.ts"
+zaman_asimi_sn = 3600
+
+[[faz.P7]]
+ad = "durum-kontrol"
+komut = "bun araclar/kapilar/durum-kontrol.ts"
+
+[[faz.P7]]
+ad = "defter-kontrol"
+komut = "bun araclar/kapilar/defter-kontrol.ts"
+
+[[faz.P7]]
+ad = "rapor-kontrol"
+komut = "bun araclar/kapilar/rapor-kontrol.ts {faz}"
+
+[[faz.P8]]
+ad = "makine-sakin"
+komut = "bun araclar/kapilar/makine-sakin.ts"
+zaman_asimi_sn = 180
+
+[[faz.P8]]
+ad = "kabul-haritasi"
+komut = "bun araclar/kapilar/kabul-haritasi.ts {faz}"
+
+[[faz.P8]]
+ad = "ulasilabilirlik"
+komut = "bun araclar/kapilar/ulasilabilirlik.ts"
+
+[[faz.P8]]
+ad = "sabit-yanit"
+komut = "bun araclar/kapilar/sabit-yanit.ts"
+
+[[faz.P8]]
+ad = "uc-kaydi"
+komut = "bun araclar/kapilar/uc-kaydi.ts"
+
+[[faz.P8]]
+ad = "muhur-kontrol"
+komut = "bun araclar/kapilar/muhur-kontrol.ts"
+
+[[faz.P8]]
+ad = "kulliyat-tara"
+komut = "bun araclar/kapilar/kulliyat-tara.ts ac2f18d3fa588dad886589ff901ebd1c7ad5afae"
+zaman_asimi_sn = 1800
+
+[[faz.P8]]
+ad = "mutasyon-kontrol"
+komut = "bun araclar/kapilar/mutasyon-kontrol.ts"
+zaman_asimi_sn = 3600
+
+[[faz.P8]]
+ad = "durum-kontrol"
+komut = "bun araclar/kapilar/durum-kontrol.ts"
+
+[[faz.P8]]
+ad = "defter-kontrol"
+komut = "bun araclar/kapilar/defter-kontrol.ts"
+
+[[faz.P8]]
+ad = "rapor-kontrol"
+komut = "bun araclar/kapilar/rapor-kontrol.ts {faz}"
+
+# ---------------- P9 (P3 + strateji-kumesi) ----------------
+[[faz.P9]]
+ad = "makine-sakin"
+komut = "bun araclar/kapilar/makine-sakin.ts"
+zaman_asimi_sn = 180
+
+[[faz.P9]]
+ad = "kabul-haritasi"
+komut = "bun araclar/kapilar/kabul-haritasi.ts {faz}"
+
+[[faz.P9]]
+ad = "ulasilabilirlik"
+komut = "bun araclar/kapilar/ulasilabilirlik.ts"
+
+[[faz.P9]]
+ad = "sabit-yanit"
+komut = "bun araclar/kapilar/sabit-yanit.ts"
+
+[[faz.P9]]
+ad = "uc-kaydi"
+komut = "bun araclar/kapilar/uc-kaydi.ts"
+
+[[faz.P9]]
+ad = "muhur-kontrol"
+komut = "bun araclar/kapilar/muhur-kontrol.ts"
+
+[[faz.P9]]
+ad = "kulliyat-tara"
+komut = "bun araclar/kapilar/kulliyat-tara.ts ac2f18d3fa588dad886589ff901ebd1c7ad5afae"
+zaman_asimi_sn = 1800
+
+[[faz.P9]]
+ad = "mutasyon-kontrol"
+komut = "bun araclar/kapilar/mutasyon-kontrol.ts"
+zaman_asimi_sn = 3600
+
+[[faz.P9]]
+ad = "durum-kontrol"
+komut = "bun araclar/kapilar/durum-kontrol.ts"
+
+[[faz.P9]]
+ad = "defter-kontrol"
+komut = "bun araclar/kapilar/defter-kontrol.ts"
+
+[[faz.P9]]
+ad = "strateji-kumesi"
+komut = "bun araclar/kapilar/strateji-kumesi.ts"
+
+[[faz.P9]]
+ad = "rapor-kontrol"
+komut = "bun araclar/kapilar/rapor-kontrol.ts {faz}"
+
+# ---------------- P10 (P9 + defter-kontrol --final) ----------------
+[[faz.P10]]
+ad = "makine-sakin"
+komut = "bun araclar/kapilar/makine-sakin.ts"
+zaman_asimi_sn = 180
+
+[[faz.P10]]
+ad = "kabul-haritasi"
+komut = "bun araclar/kapilar/kabul-haritasi.ts {faz}"
+
+[[faz.P10]]
+ad = "ulasilabilirlik"
+komut = "bun araclar/kapilar/ulasilabilirlik.ts"
+
+[[faz.P10]]
+ad = "sabit-yanit"
+komut = "bun araclar/kapilar/sabit-yanit.ts"
+
+[[faz.P10]]
+ad = "uc-kaydi"
+komut = "bun araclar/kapilar/uc-kaydi.ts"
+
+[[faz.P10]]
+ad = "muhur-kontrol"
+komut = "bun araclar/kapilar/muhur-kontrol.ts"
+
+[[faz.P10]]
+ad = "kulliyat-tara"
+komut = "bun araclar/kapilar/kulliyat-tara.ts ac2f18d3fa588dad886589ff901ebd1c7ad5afae"
+zaman_asimi_sn = 1800
+
+[[faz.P10]]
+ad = "mutasyon-kontrol"
+komut = "bun araclar/kapilar/mutasyon-kontrol.ts"
+zaman_asimi_sn = 3600
+
+[[faz.P10]]
+ad = "durum-kontrol"
+komut = "bun araclar/kapilar/durum-kontrol.ts"
+
+[[faz.P10]]
+ad = "defter-kontrol"
+komut = "bun araclar/kapilar/defter-kontrol.ts"
+
+[[faz.P10]]
+ad = "strateji-kumesi"
+komut = "bun araclar/kapilar/strateji-kumesi.ts"
+
+[[faz.P10]]
+ad = "defter-kontrol-final"
+komut = "bun araclar/kapilar/defter-kontrol.ts --final"
+
+[[faz.P10]]
+ad = "rapor-kontrol"
+komut = "bun araclar/kapilar/rapor-kontrol.ts {faz}"

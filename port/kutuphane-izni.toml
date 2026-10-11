@@ -1,0 +1,10 @@
+# Varsayılan derlemede `kervan` ikilisine girmeyen ama gerçek bir derleme yoluyla ikiliye bağlanan crate'ler.
+# ulasilabilirlik.ts her satırda gerekçe ister; gerekçe doğrulanabilir bir yol göstermeli.
+
+[[izin]]
+crate = "kervan-gui"
+gerekce = "Kök Cargo.toml [features] gui = [\"dep:kervan-gui\"]; `cargo build --features gui` ile kervan ikilisine girer (masaüstü arayüzü, kervan_gui.log). Varsayılan özellik listesi boş."
+
+[[izin]]
+crate = "kervan-akis-gui"
+gerekce = "kervan-gui'nin normal bağımlılığı (crates/gui/Cargo.toml); gui özelliğiyle kervan ikilisine girer."

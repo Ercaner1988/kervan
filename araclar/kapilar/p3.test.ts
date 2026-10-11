@@ -10,7 +10,7 @@ describe("p3::kapilar", () => {
   // P3-A1: Kırmızı Takım Külliyatı Taraması
   it("p3::a1_kulliyat_taramasi_ac2f18d_5_sinifi_yakalar_ve_temiz_agac_yesildir", () => {
     // 1. ac2f18d (omniroute-aktarim) commitinde 5 sınıfın tamamı kırmızı (yakalandı) olmalı
-    const sonuc = kulliyatCommitiniTara("omniroute-aktarim");
+    const sonuc = kulliyatCommitiniTara("ac2f18d");
     expect(sonuc.sinif1_sabitYanit).toBe(true);
     expect(sonuc.sinif2_bagisizCrate).toBe(true);
     expect(sonuc.sinif3_pariteBaglantisiz).toBe(true);

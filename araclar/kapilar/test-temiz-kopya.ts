@@ -1,50 +1,81 @@
 import { gitDurumunuAl, temizKopyadaKos } from "./temiz-kopya.ts";
 import { spawnSync } from "child_process";
 import fs from "fs";
+import os from "os";
+import path from "path";
 
-async function main() {
-  console.log("=== P1-A2 DOĞRULAMA TESTİ BAŞLADI ===");
+// P1-A2: temiz-kopya yalıtımını kendi kurduğu tek kullanımlık depoda ölçer (os.tmpdir altında,
+// adında 'test-temiz-kopya' geçen dizin). Kervan çalışma ağacına ve port/kayit'e yazmaz; aynı ağaçta
+// koşan başka işlerin git durumunu değiştirmesi sonucu etkilemez.
 
-  const baslangicDurumu = gitDurumunuAl();
-
-  // İzlenmeyen geçici bir dosya oluşturuyoruz (git commit edilmemiş!)
-  const izlenmeyenDosya = "temp_izlenmeyen_gizli_dosya.txt";
-  fs.writeFileSync(izlenmeyenDosya, "bu dosya git commitinde YOKTUR!", "utf-8");
-
-  // Çalışma dizininde bu dosyayı arayan komut:
-  const komut = `bun -e "import fs from 'fs'; if (!fs.existsSync('${izlenmeyenDosya}')) process.exit(1);"`;
-
-  // 1. Çalışma dizininde koş: yeşil olmalı (çünkü dosya burada var)
-  const yerelProc = spawnSync(komut, { shell: true, encoding: "utf-8" });
-  const yerelCikis = yerelProc.status;
-  console.log("1. Çalışma dizininde test sonucu çıkış kodu:", yerelCikis, "(beklenen: 0)");
-  if (yerelCikis !== 0) {
-    fs.unlinkSync(izlenmeyenDosya);
-    process.exit(1);
-  }
-
-  // 2. Temiz kopyada koş: kırmızı olmalı (çünkü worktree commit'ten açılır, izlenmeyen dosya worktree'ye girmez!)
-  const temizSonuc = temizKopyadaKos("HEAD", komut);
-  console.log("2. Temiz kopyada test sonucu çıkış kodu:", temizSonuc.cikis, "(beklenen: != 0, kırmızı)");
-  if (temizSonuc.cikis === 0) {
-    fs.unlinkSync(izlenmeyenDosya);
-    console.error("HATA: Temiz kopyada izlenmeyen dosya bulundu, yalıtım başarısız!");
-    process.exit(2);
-  }
-
-  // İzlenmeyen test dosyasını temizle
-  fs.unlinkSync(izlenmeyenDosya);
-
-  // 3. Betik öncesi ve sonrası çalışma dizininin git status --porcelain çıktısı özdeş olmalı
-  const bitisDurumu = gitDurumunuAl();
-  const ozdesMi = baslangicDurumu === bitisDurumu;
-  console.log("3. Çalışma dizini git status öncesi ve sonrası özdeş mi:", ozdesMi, "(beklenen: true)");
-  if (!ozdesMi) {
-    console.error(`HATA: Çalışma dizini kirlendi!\nBaşlangıç: ${baslangicDurumu}\nBitiş: ${bitisDurumu}`);
-    process.exit(3);
-  }
-
-  console.log("✅ P1-A2 TÜM KABUL KRİTERLERİ BAŞARIYLA DOĞRULANDI.");
+function git(dizin: string, ...a: string[]) {
+  const p = spawnSync("git", ["-c", "user.name=tk", "-c", "user.email=tk@ornek.invalid", "-c", "commit.gpgsign=false", ...a], { cwd: dizin, encoding: "utf-8" });
+  if (p.status !== 0) throw new Error(`git ${a.join(" ")} başarısız: ${p.stderr}`);
+  return p.stdout.trim();
 }
 
-await main();
+function main(kok: string) {
+  console.log("=== P1-A2 DOĞRULAMA TESTİ BAŞLADI ===");
+  const depo = path.join(kok, "depo");
+  fs.mkdirSync(path.join(depo, "araclar", "kapilar"), { recursive: true });
+  git(depo, "init", "-q");
+  // Commit'teki (mühürsüz) kapı: koşarsa HEDEF-KAPISI basar.
+  fs.writeFileSync(path.join(depo, "araclar", "kapilar", "kapi.ts"), 'console.log("HEDEF-KAPISI");\n');
+  fs.writeFileSync(path.join(depo, "izlenen.txt"), "x\n");
+  git(depo, "add", "-A");
+  git(depo, "commit", "-q", "-m", "hedef");
+
+  // Çağıranın (mühürlü) kapısı: izlenmeyen dosyayı görürse 1, görmezse 0 ile çıkar.
+  const kapiKaynagi = path.join(kok, "cagiran-kapilar");
+  fs.mkdirSync(kapiKaynagi, { recursive: true });
+  fs.writeFileSync(
+    path.join(kapiKaynagi, "kapi.ts"),
+    'import fs from "fs"; console.log("CAGIRAN-KAPISI"); process.exit(fs.existsSync("izlenmeyen.txt") || !fs.existsSync("izlenen.txt") ? 1 : 0);\n'
+  );
+  // İzlenmeyen dosya: çalışma ağacında var, commit'te yok.
+  fs.writeFileSync(path.join(depo, "izlenmeyen.txt"), "bu dosya git commitinde YOKTUR!\n");
+
+  const baslangic = gitDurumunuAl(depo);
+  const yerel = spawnSync("bun", [path.join(kapiKaynagi, "kapi.ts")], { cwd: depo, encoding: "utf-8" });
+  console.log("1. Çalışma dizininde kapı çıkışı:", yerel.status, "(beklenen: 1, izlenmeyen dosya görünür)");
+  if (yerel.status !== 1) return "çalışma dizininde izlenmeyen dosya görünmedi; düzenek ölçmüyor";
+
+  const s = temizKopyadaKos("HEAD", "bun araclar/kapilar/kapi.ts", path.join(kok, "gecici"), { depo, kapiKaynagi, zamanAsimiMs: 60_000 });
+  console.log("2. Temiz kopyada çıkış:", s.cikis, "(beklenen: 0, izlenmeyen dosya kopyada yok)");
+  if (s.cikis !== 0) return `temiz kopyada kapı yeşil değil: ${s.neden}`;
+  if (!s.stdout.includes("CAGIRAN-KAPISI") || s.stdout.includes("HEDEF-KAPISI")) {
+    return "temiz kopyada çağıranın kapısı yerine hedefin kendi kapısı koştu";
+  }
+  console.log("3. Koşan kapı çağıranınki: evet");
+
+  const bitis = gitDurumunuAl(depo);
+  console.log("4. Depo git durumu özdeş mi:", baslangic === bitis);
+  if (baslangic !== bitis) return `depo kirlendi: '${baslangic}' → '${bitis}'`;
+  if (s.calismaDiziniDegistiMi) return "temiz-kopya çalışma dizini değişti diyor";
+
+  // Koşu sırasında kapıyı değiştirip aslını geri yazan komut: koşu sonu bayt karşılaştırması bunu göremez, izleyici görmeli.
+  const degistirGeriYaz =
+    `bun -e "const fs=require('fs');const y='araclar/kapilar/kapi.ts';const a=fs.readFileSync(y);fs.writeFileSync(y,'process.exit(0)');fs.writeFileSync(y,a)"`;
+  const d = temizKopyadaKos("HEAD", degistirGeriYaz, path.join(kok, "gecici"), { depo, kapiKaynagi, zamanAsimiMs: 60_000 });
+  console.log("5. Koşu sırasında değiştirilip geri yazılan kapı:", d.hukum, d.neden, "(beklenen: kirmizi kapi-degisti)");
+  if (d.hukum !== "kirmizi" || !d.neden.includes("kapi-degisti")) return "koşu sırasında değiştirilip geri yazılan kapı yakalanmadı";
+  return "";
+}
+
+const kok = fs.mkdtempSync(path.join(os.tmpdir(), "test-temiz-kopya-"));
+let neden: string;
+try {
+  neden = main(kok);
+} catch (e: any) {
+  neden = `test-temiz-kopya çöktü: ${e?.message ?? e}`;
+} finally {
+  try {
+    fs.rmSync(kok, { recursive: true, force: true });
+  } catch {}
+}
+if (neden) {
+  console.log(`HUKUM: kirmizi ${neden.replace(/\s+/g, " ")}`);
+  process.exit(1);
+}
+console.log("P1-A2 tüm kabul kriterleri doğrulandı.");
+console.log("HUKUM: yesil");

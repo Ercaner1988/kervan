@@ -1,53 +1,44 @@
-import crypto from "crypto";
 import fs from "fs";
 import path from "path";
+import { MUHUR_YOLU, muhurKumesi, refOzeti } from "./muhur-kontrol.ts";
 
-// PRD FR-2.4: Mühür Üretici (muhur-uret.ts)
-// Tam mühürlü dosyaların (araclar/kapilar/**, ref/**) SHA-256 özetlerini port/muhur.toml dosyasına yazar.
+// PRD FR-2.4: Mühür üretici. Tam mühürlü kümenin (araclar/kapilar/**, port/altin/**, altın üreticileri)
+// SHA-256 listesini ve ref/** ağaç özetini port/muhur.toml'a yazar. Onay YAZMAZ: onay_bekliyor = true
+// bırakır. Onay, muhur.toml'u içeren commit'e Ercan'ın SSH anahtarıyla attığı 'muhur-onay' etiketidir
+// (muhur-kontrol.ts, imzaliMuhurCommiti); muhur.toml'daki alanlar tek başına onay sayılmaz.
 
-export function tumDosyalariListele(dizin: string): string[] {
-  const sonuclar: string[] = [];
-  if (!fs.existsSync(dizin)) return sonuclar;
+export function muhurDosyasiUret(kok: string = process.cwd(), cikisYolu = path.join(kok, MUHUR_YOLU)): string {
+  const kume = muhurKumesi(kok);
+  if (kume.hatalar.length) throw new Error(`Mühür üretilemez:\n  - ${kume.hatalar.join("\n  - ")}`);
+  const ref = refOzeti(kok); // ref yoksa/boşsa fırlatır
 
-  const entries = fs.readdirSync(dizin, { withFileTypes: true });
-  for (const entry of entries) {
-    const tamYol = path.join(dizin, entry.name);
-    if (entry.isDirectory()) {
-      sonuclar.push(...tumDosyalariListele(tamYol));
-    } else if (entry.isFile()) {
-      sonuclar.push(tamYol.replace(/\\/g, "/"));
-    }
-  }
-  return sonuclar.sort();
-}
+  let cikti = `# port/muhur.toml - SHA-256 mühür listesi (PRD FR-2.4), muhur-uret.ts çıktısı.
+# Onay alanlarını yalnız Ercan doldurur: onay_bekliyor = false ve onay = "<ad, tarih>", commit,
+# ardından imzalı etiket: git -c gpg.format=ssh tag -s -f muhur-onay -m "<ad, tarih>"
+# (genel anahtar depo dışında: ~/.config/kervan/muhur-imzacilar, allowed-signers biçimi).
+onay_bekliyor = true
+onay = ""
 
-export function muhurDosyasiUret(cikisYolu = path.join("port", "muhur.toml")): string {
-  const dosyalar = tumDosyalariListele("araclar/kapilar");
-
-  let cikti = `# port/muhur.toml - SHA-256 Mühür Listesi
-# PRD FR-2.4: P3'ün insan kapısında Ercan onayı ile mühürlenmiştir.
-# Bu dosyada listelenen dosyalar P4 ve sonrasında DEĞİŞTİRİLEMEZ.
+[ref]
+ozet = "${ref.ozet}"
+dosya_sayisi = ${ref.dosya_sayisi}
 
 `;
-
-  for (const dosya of dosyalar) {
-    // muhur-kontrol.ts dosyaSha256 ile aynı: CRLF → LF (git'teki içerik).
-    const buf = fs.readFileSync(dosya);
-    const lf = Buffer.from(buf.toString("latin1").replace(/\r\n/g, "\n"), "latin1");
-    const sha = crypto.createHash("sha256").update(lf).digest("hex");
-    cikti += `[[dosya]]\nyol = "${dosya}"\nsha256 = "${sha}"\n\n`;
+  for (const yol of [...kume.dosyalar.keys()].sort()) {
+    cikti += `[[dosya]]\nyol = "${yol}"\nsha256 = "${kume.dosyalar.get(yol)}"\n\n`;
   }
 
-  const cikisDir = path.dirname(cikisYolu);
-  if (!fs.existsSync(cikisDir)) {
-    fs.mkdirSync(cikisDir, { recursive: true });
-  }
-
+  fs.mkdirSync(path.dirname(cikisYolu), { recursive: true });
   fs.writeFileSync(cikisYolu, cikti, "utf-8");
   return cikti;
 }
 
 if (import.meta.main) {
-  muhurDosyasiUret();
-  console.log("✅ [muhur-uret] port/muhur.toml başarıyla üretildi.");
+  try {
+    muhurDosyasiUret();
+    console.log(`[muhur-uret] ${MUHUR_YOLU} üretildi; Ercan onayı bekliyor (onay_bekliyor = true; imzalı muhur-onay etiketi gerekli).`);
+  } catch (e: any) {
+    console.error(`[muhur-uret] ${e?.message ?? e}`);
+    process.exit(1);
+  }
 }
