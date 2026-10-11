@@ -1,4 +1,4 @@
-//! Hesap basina yalitilmis Firefox oturumu (WebDriver / geckodriver uzerinden).
+﻿//! Hesap basina yalitilmis Firefox oturumu (WebDriver / geckodriver uzerinden).
 //!
 //! NEDEN FIREFOX: Ercan'in gunluk tarayicisi Zen (Firefox tabanli). Sistemi kendi
 //! ortamiyla tutarli tutmak istedi. Bedeli: CDP kullanilamiyor, geckodriver adli ayri
@@ -593,7 +593,7 @@ pub async fn ask(
         let (sayi, metin) = son_balon(c, sel).await;
         if let Some(t) = dedektor.gozlem(sayi, &metin) {
             // Sayfa cevap yerine dogrulama hatasi bastiysa bunu CEVAP diye dondurmek
-            // sessiz basarisizlik olurdu; hata donuyoruz ki Hermes'in fallback
+            // sessiz basarisizlik olurdu; hata donuyoruz ki istemcinin fallback
             // zinciri siradaki saglayiciya gecebilsin.
             if dogrulama_duvari_mi(&t) {
                 bail!(
@@ -639,7 +639,7 @@ async fn istemi_yaz(
 ) -> Result<()> {
     // UZUN ya da COK SATIRLI istemde once JS.
     //
-    // Uzunluk: olculdu, Hermes'in 2768 karakterlik istemi tus tus yazildiginda
+    // Uzunluk: olculdu, 2768 karakterlik istem tus tus yazildiginda
     // kutuya 2697 karakter dusuyordu — editor kendini yeniden cizerken tuslari
     // yutuyor. Yavas yazim asabilirdi ama 2700 x 35 ms = 95 saniye.
     //
@@ -872,7 +872,7 @@ async fn temizle(e: &fantoccini::elements::Element) {
 ///
 /// Iki ayri ariza uretiyordu: (a) "Thought Process\nAnkara" -> cevabin basina
 /// gurultu; (b) "Thinking... Skip" -> HENUZ CEVAP YOKKEN kararli gorunup cevap
-/// diye donuyordu. Ikincisi tehlikeli olani: Hermes bunu modelin cevabi saniyor.
+/// diye donuyordu. Ikincisi tehlikeli olani: istemci bunu modelin cevabi saniyor.
 const DUSUNME_KELIMELERI: [&str; 4] = ["thought", "process", "thinking", "skip"];
 
 /// Bastaki dusunme satirlarini atar. Bir satir ancak TAMAMEN isaret kelimelerinden

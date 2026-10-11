@@ -1,4 +1,4 @@
-//! Saglayici tanimlari ve kayit defteri.
+﻿//! Saglayici tanimlari ve kayit defteri.
 //!
 //! SECICILER KODA GOMULU DEGIL: buradakiler yalnizca VARSAYILAN. Site arayuzu
 //! degistiginde ya da bir secici yanlis ciktiginda `kervan.toml` duzenlenir, yeniden
@@ -277,7 +277,7 @@ pub fn bul(defter: &HashMap<String, Arc<Provider>>, ad: &str) -> Result<Arc<Prov
 ///
 /// Esitlik degil ICERME araniyor, cunku model kimlikleri surum eki tasiyor
 /// (`kervan/gemini-3.1-pro`). Boylece yeni saglayicilar eklenirken var olan
-/// yapilandirmalar — ornegin Hermes'inki — kirilmiyor.
+/// yapilandirmalar kirilmiyor.
 pub fn model_saglayicisi(model: &str, defter: &HashMap<String, Arc<Provider>>) -> Option<String> {
     let m = model.to_ascii_lowercase();
     let mut eslesen: Vec<&String> = defter.keys().filter(|ad| m.contains(ad.as_str())).collect();
@@ -295,7 +295,7 @@ mod tests {
         kayit_defteri(&HashMap::new())
     }
 
-    /// Hermes'in yapilandirmasindaki eski kimlik calismaya devam etmeli; yeni
+    /// Eski yapilandirmalardaki model kimligi calismaya devam etmeli; yeni
     /// saglayici eklemek var olan kurulumu kirmamali.
     #[test]
     fn surum_ekli_model_kimligi_eslesir() {
