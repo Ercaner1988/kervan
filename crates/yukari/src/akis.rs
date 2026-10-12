@@ -377,6 +377,18 @@ fn akis_claude(
                         break;
                     }
                     if let Ok(olay) = serde_json::from_str::<kervan_ceviri::ClaudeOlay>(json_str) {
+                        if let kervan_ceviri::ClaudeOlay::Hata { error } = &olay {
+                            // Yukarı akış akışı hatayla kesti: istemciye hata, [DONE] yok,
+                            // başarı değil; kesiciyi besler (aşırı yük vb. sunucu tarafı).
+                            direnc.blocking_lock().hata_kaydet(&hedef.ad, None, None);
+                            alici_ayrildiysa_birak(tx.blocking_send(Err(YukariHatasi::AgHatasi(
+                                format!(
+                                    "Claude akış hatası: {}",
+                                    temizle_hata(&error.to_string(), &anahtar)
+                                ),
+                            ))));
+                            return;
+                        }
                         let bitti = matches!(olay, kervan_ceviri::ClaudeOlay::MesajBitti);
                         if let Ok(Some(parca)) = kervan_ceviri::claude_dan_openai_parcasi(
                             &olay,

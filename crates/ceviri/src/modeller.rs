@@ -231,6 +231,9 @@ pub enum ClaudeOlay {
     },
     #[serde(rename = "message_stop")]
     MesajBitti,
+    /// Akış ortası hata (ör. overloaded_error): sessizce yutulmaz, akış başarı sayılmaz.
+    #[serde(rename = "error")]
+    Hata { error: serde_json::Value },
     #[serde(other)]
     Diger,
 }

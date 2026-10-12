@@ -195,6 +195,7 @@ pub fn claude_dan_openai_parcasi(
             }))
         }
         ClaudeOlay::MesajBitti => Ok(None),
-        ClaudeOlay::Diger => Ok(None),
+        // Hata olayı parça değildir; akış yöneticisi onu istemciye hata olarak iletir.
+        ClaudeOlay::Hata { .. } | ClaudeOlay::Diger => Ok(None),
     }
 }

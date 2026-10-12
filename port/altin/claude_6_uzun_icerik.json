@@ -1,7 +1,7 @@
 {
   "kaynak_sha": "dbe703a",
   "kaynak_yol": "open-sse/translator/request/openai-to-claude.ts",
-  "uretici_ozeti": "sha256:46c8b54508399e195720f48bcdee726be751a7af8e8f7582e1b599a48cd844fd",
+  "uretici_ozeti": "sha256:aae575c6af41a814b51a8d9960fd7bb2fabca1871bec09522bf7aad00a868ee6",
   "girdi_id": "claude_6_uzun_icerik",
   "girdi": {
     "model": "gpt-4o",

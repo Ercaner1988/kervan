@@ -496,3 +496,74 @@ async fn test_p7_yari_acik_akista_istemci_ayrilinca_kilitlenmez() {
     );
     assert_eq!(sayac_akis.load(Ordering::SeqCst), 2);
 }
+
+/// Claude akışı ortada `error` olayıyla kesilirse: istemci hata alır, `[DONE]` gelmez,
+/// istek başarı sayılmaz ve kesici beslenir (eşik 1: sonraki istek DevreAcik).
+#[tokio::test]
+async fn test_p7_claude_akis_hata_olayi_yutulmaz() {
+    let sse = [
+        r#"{"type":"message_start","message":{"id":"m1","type":"message","role":"assistant","content":[],"model":"c"}}"#,
+        r#"{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"yarım"}}"#,
+        r#"{"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}"#,
+    ]
+    .iter()
+    .map(|d| format!("data: {d}\n\n"))
+    .collect::<String>();
+    let (url, _) = baslat_sahte_sunucu_sayacli(200, "OK", sse, vec![]);
+
+    let direnc = DirencYoneticisi::yeni(
+        Arc::new(TestSaati::yeni(Instant::now())),
+        Some(DevreKesiciYapilandirma {
+            hata_esigi: 1,
+            bozulma_esigi: 1,
+            soguma_suresi: Duration::from_secs(30),
+            yari_acik_izin: 1,
+        }),
+    );
+    let yukari = Yukari::yeni_direncli(direnc);
+    let env_key = "TEST_P7_CLAUDE_HATA_OLAYI_KEY";
+    unsafe { std::env::set_var(env_key, "sk-ant-hata-olayi") };
+    let hedef = Hedef {
+        ad: "test-claude-hata-olayi".to_string(),
+        bicim: "claude".to_string(),
+        taban_url: url,
+        anahtar_env: env_key.to_string(),
+        model: "claude-3-7-sonnet".to_string(),
+        yol: Some("/v1/messages".to_string()),
+        zaman_asimi: Duration::from_secs(5),
+    };
+    let govde =
+        json!({"model": "c", "messages": [{"role": "user", "content": "selam"}], "stream": true});
+
+    let mut alici = yukari
+        .gonder_akis(&hedef, &govde, None)
+        .await
+        .expect("akış başlamalı");
+    let mut parcalar = Vec::new();
+    while let Some(p) = alici.recv().await {
+        parcalar.push(p);
+    }
+    assert!(
+        parcalar
+            .iter()
+            .any(|p| matches!(p, Ok(s) if s.contains("yarım"))),
+        "{parcalar:?}"
+    );
+    assert!(
+        matches!(parcalar.last(), Some(Err(YukariHatasi::AgHatasi(m))) if m.contains("overloaded_error")),
+        "son öğe hata olmalı: {parcalar:?}"
+    );
+    assert!(
+        !parcalar
+            .iter()
+            .any(|p| matches!(p, Ok(s) if s.contains("[DONE]"))),
+        "[DONE] gelmemeli"
+    );
+    assert!(
+        matches!(
+            yukari.gonder_akis(&hedef, &govde, None).await,
+            Err(YukariHatasi::DevreAcik { .. })
+        ),
+        "hata olayı kesiciyi beslemeli"
+    );
+}
