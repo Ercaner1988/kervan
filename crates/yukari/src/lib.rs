@@ -50,6 +50,17 @@ pub enum YukariHatasi {
     Sogumada { ad: String, retry_after_saniye: u64 },
 }
 
+/// Çeviri hatası: desteklenmeyen alan adıyla iletilir (yeniden sarılmaz), diğerleri istemci JSON hatası.
+impl From<kervan_ceviri::CeviriHatasi> for YukariHatasi {
+    fn from(e: kervan_ceviri::CeviriHatasi) -> Self {
+        match e {
+            kervan_ceviri::CeviriHatasi::Desteklenmiyor(alan) => Self::Desteklenmiyor(alan),
+            kervan_ceviri::CeviriHatasi::GecersizIstek(m)
+            | kervan_ceviri::CeviriHatasi::AyrirmaHatasi(m) => Self::JsonHatasi(m),
+        }
+    }
+}
+
 impl fmt::Display for YukariHatasi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -133,9 +144,9 @@ pub fn temizle_hata(govde: &str, gizli_anahtar: &str) -> String {
         temiz = re_unix.replace_all(&temiz, "[GIZLI_YOL]").to_string();
     }
 
-    // 4. Kısaltma (azami 500 karakter)
+    // 4. Kısaltma (azami 500 bayt, karakter sınırında: çok baytlı harfin ortasından kesilmez)
     if temiz.len() > 500 {
-        format!("{}...", &temiz[..500])
+        format!("{}...", &temiz[..temiz.floor_char_boundary(500)])
     } else {
         temiz
     }
@@ -179,6 +190,9 @@ impl Yukari {
         istemci_govdesi: &Value,
         istenen_model: Option<&str>,
     ) -> Result<Value, YukariHatasi> {
+        // 0. Desteklenmeyen alanlar anahtar, izin ve ağdan önce
+        akis::on_denetim(hedef, istemci_govdesi)?;
+
         // 1. Anahtarı ortam değişkeninden oku
         let anahtar = std::env::var(&hedef.anahtar_env)
             .map_err(|_| YukariHatasi::AnahtarYok(hedef.anahtar_env.clone()))?;
@@ -249,7 +263,8 @@ impl Yukari {
                 Err(YukariHatasi::AgHatasi(_)) => {
                     d.hata_kaydet(&hedef.ad, None, None);
                 }
-                Err(_) => {}
+                // Anahtar, JSON, desteklenmeyen alan: kesiciyi beslemez, yarı-açık yuvasını bırakır.
+                Err(_) => d.notr_kaydet(&hedef.ad),
             }
         }
 
@@ -348,14 +363,7 @@ impl Yukari {
                 YukariHatasi::JsonHatasi(format!("İstemci gövdesi ayrıştırılamadı: {}", e))
             })?;
 
-        let claude_istek = kervan_ceviri::openai_den_claude_istegi(&openai_istek, yukari_model)
-            .map_err(|e| match e {
-                kervan_ceviri::CeviriHatasi::Desteklenmiyor(alan) => {
-                    YukariHatasi::Desteklenmiyor(alan)
-                }
-                kervan_ceviri::CeviriHatasi::GecersizIstek(m) => YukariHatasi::JsonHatasi(m),
-                kervan_ceviri::CeviriHatasi::AyrirmaHatasi(m) => YukariHatasi::JsonHatasi(m),
-            })?;
+        let claude_istek = kervan_ceviri::openai_den_claude_istegi(&openai_istek, yukari_model)?;
 
         let yukari_govde = serde_json::to_value(&claude_istek)
             .map_err(|e| YukariHatasi::JsonHatasi(e.to_string()))?;
@@ -446,14 +454,7 @@ impl Yukari {
                 YukariHatasi::JsonHatasi(format!("İstemci gövdesi ayrıştırılamadı: {}", e))
             })?;
 
-        let gemini_istek = kervan_ceviri::openai_den_gemini_istegi(&openai_istek, yukari_model)
-            .map_err(|e| match e {
-                kervan_ceviri::CeviriHatasi::Desteklenmiyor(alan) => {
-                    YukariHatasi::Desteklenmiyor(alan)
-                }
-                kervan_ceviri::CeviriHatasi::GecersizIstek(m) => YukariHatasi::JsonHatasi(m),
-                kervan_ceviri::CeviriHatasi::AyrirmaHatasi(m) => YukariHatasi::JsonHatasi(m),
-            })?;
+        let gemini_istek = kervan_ceviri::openai_den_gemini_istegi(&openai_istek, yukari_model)?;
 
         let yukari_govde = serde_json::to_value(&gemini_istek)
             .map_err(|e| YukariHatasi::JsonHatasi(e.to_string()))?;

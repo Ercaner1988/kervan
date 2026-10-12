@@ -22,8 +22,8 @@ import path from "path";
 //  3. port/mutantlar.toml yalnız-ekleme: mühür commit'indeki girdiler yerinde ve aynen durmalı.
 //  4. muhur.toml'daki onay_bekliyor = false / onay alanı insan içindir; tek başına onay sayılmaz.
 
-export const MUHURLU_DIZINLER = ["araclar/kapilar", "port/altin"];
-export const MUHURLU_DOSYALAR = ["araclar/parite/altin-uret.ts", "araclar/parite/strateji-altin-uret.ts"];
+export const MUHURLU_DIZINLER = ["araclar/kapilar", "araclar/parite", "port/altin"];
+export const MUHURLU_DOSYALAR = ["araclar/uretec/altin-uret.ts", "araclar/uretec/strateji-altin-uret.ts"];
 export const REF_DIZINI = "ref";
 export const MUHUR_YOLU = "port/muhur.toml";
 export const MUTANTLAR_YOLU = "port/mutantlar.toml";

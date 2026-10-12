@@ -27,6 +27,10 @@ export interface MutantTanimi {
   bul: string;
   yerine: string;
   oldurmesi_gereken_test: string[];
+  /** [[emekli]] kaydı: liste yalnız-ekleme olduğu için bozuk (derlenmeyen) mutant silinmez,
+   *  emekli edilir. Kapı emekliliği doğrular: mutant gerçekten derlenmemeli ve yerine geçen
+   *  mutant öldürülmeli; yoksa kırmızı. Sağlam bir mutant böylece susturulamaz. */
+  emekli?: { neden: string; yerine_gecen: string };
 }
 
 export const ASGARI_MUTANT_SAYISI = 8;
@@ -47,7 +51,7 @@ export function mutantlarTomlOku(dosyaYolu = path.join("port", "mutantlar.toml")
   if (!Array.isArray(girdiler)) throw new Error(`${dosyaYolu} içinde [[mutant]] listesi yok`);
 
   const adlar = new Set<string>();
-  return girdiler.map((g: any, i: number) => {
+  const mutantlar: MutantTanimi[] = girdiler.map((g: any, i: number) => {
     const yer = `${dosyaYolu} [[mutant]] #${i + 1}${typeof g?.ad === "string" ? ` (${g.ad})` : ""}`;
     for (const alan of ["ad", "dosya", "bul"]) {
       if (typeof g?.[alan] !== "string" || !g[alan]) throw new Error(`${yer}: '${alan}' eksik ya da boş`);
@@ -61,12 +65,32 @@ export function mutantlarTomlOku(dosyaYolu = path.join("port", "mutantlar.toml")
     adlar.add(g.ad);
     return { ad: g.ad, dosya: g.dosya, bul: g.bul, yerine: g.yerine, oldurmesi_gereken_test: testler.map((t: string) => t.trim()) };
   });
+
+  const emekliler = veri?.emekli ?? [];
+  if (!Array.isArray(emekliler)) throw new Error(`${dosyaYolu}: 'emekli' [[emekli]] tablo dizisi olmalı`);
+  for (const [i, e] of emekliler.entries()) {
+    const yer = `${dosyaYolu} [[emekli]] #${i + 1}`;
+    for (const alan of ["ad", "neden", "yerine_gecen"]) {
+      if (typeof e?.[alan] !== "string" || !e[alan].trim()) throw new Error(`${yer}: '${alan}' eksik ya da boş`);
+    }
+    const m = mutantlar.find((x) => x.ad === e.ad);
+    if (!m) throw new Error(`${yer}: emekli edilen mutant '${e.ad}' listede yok`);
+    if (m.emekli) throw new Error(`${yer}: '${e.ad}' iki kez emekli edilmiş`);
+    const yeni = mutantlar.find((x) => x.ad === e.yerine_gecen);
+    if (!yeni) throw new Error(`${yer}: yerine geçen mutant '${e.yerine_gecen}' listede yok`);
+    if (yeni === m || emekliler.some((x: any) => x?.ad === e.yerine_gecen)) {
+      throw new Error(`${yer}: yerine geçen '${e.yerine_gecen}' kendisi emekli olamaz`);
+    }
+    m.emekli = { neden: e.neden.trim(), yerine_gecen: e.yerine_gecen };
+  }
+  return mutantlar;
 }
 
 export function mutantKumesiniDenetle(mutantlar: MutantTanimi[]): string[] {
   const hatalar: string[] = [];
-  if (mutantlar.length < ASGARI_MUTANT_SAYISI) {
-    hatalar.push(`Mutant sayısı ${mutantlar.length}; en az ${ASGARI_MUTANT_SAYISI} gerekli`);
+  const etkin = mutantlar.filter((m) => !m.emekli).length;
+  if (etkin < ASGARI_MUTANT_SAYISI) {
+    hatalar.push(`Etkin (emekli olmayan) mutant sayısı ${etkin}; en az ${ASGARI_MUTANT_SAYISI} gerekli`);
   }
   for (const ad of ZORUNLU_MUTANTLAR) {
     if (!mutantlar.some((m) => m.ad === ad)) hatalar.push(`Zorunlu mutant listede yok: '${ad}'`);
@@ -563,9 +587,9 @@ export function mutantlariDene(
   uygun: boolean;
   hatalar: string[];
   oldurulenSayisi: number;
-  sonuclar: { ad: string; sinif: Sinif | "yasadi"; neden: string }[];
+  sonuclar: { ad: string; sinif: Sinif | "yasadi" | "emekli"; neden: string }[];
 } {
-  const sonuclar: { ad: string; sinif: Sinif | "yasadi"; neden: string }[] = [];
+  const sonuclar: { ad: string; sinif: Sinif | "yasadi" | "emekli"; neden: string }[] = [];
   const kirmizi = (hatalar: string[]) => ({ uygun: false, hatalar, oldurulenSayisi: 0, sonuclar });
 
   if (!secenekler?.gunlukDizini) return kirmizi(["Günlük dizini verilmedi (--gunluk <dizin>): ham çıktısız mutasyon sonucu kabul edilmez"]);
@@ -650,6 +674,17 @@ export function mutantlariDene(
     fs.rmSync(path.join(yedekDizini, `${anahtar}.yol`), { force: true });
 
     const belirsiz = siniflar.filter((s) => s.sinif === "belirsiz");
+    if (m.emekli) {
+      // Emeklilik yalnız gerçekten derlenmeyen mutant için geçerli; koşan mutant susturulamaz.
+      const derlenmedi = siniflar.length > 0 && siniflar.every((s) => s.sinif === "belirsiz" && s.neden.startsWith("derleme/hedef hatası"));
+      if (derlenmedi) {
+        sonuclar.push({ ad: m.ad, sinif: "emekli", neden: `derlenmiyor (doğrulandı); yerine '${m.emekli.yerine_gecen}': ${m.emekli.neden}` });
+      } else {
+        hatalar.push(`Mutant '${m.ad}' emekli edilmiş ama derleniyor ve koşuyor (${siniflar.map((s) => s.sinif).join(", ")}); emeklilik geçersiz`);
+        sonuclar.push({ ad: m.ad, sinif: "belirsiz", neden: "emekli ama derleniyor" });
+      }
+      continue;
+    }
     if (belirsiz.length > 0) {
       const neden = belirsiz.map((s) => `'${s.t}': ${s.neden}`).join("; ");
       hatalar.push(`Mutant '${m.ad}' sonucu belirsiz (ölüm sayılmaz): ${neden}`);
@@ -660,6 +695,15 @@ export function mutantlariDene(
     } else {
       hatalar.push(`Mutant '${m.ad}' YAŞADI! Eşleşen testler mutasyona rağmen yeşil kaldı.`);
       sonuclar.push({ ad: m.ad, sinif: "yasadi", neden: "tüm testler geçti" });
+    }
+  }
+
+  // Emekli mutantın yerine geçen bu koşuda öldürülmüş olmalı (yoksa emeklilik boşluk bırakır).
+  for (const m of mutantlar) {
+    if (!m.emekli) continue;
+    const yeni = sonuclar.find((s) => s.ad === m.emekli!.yerine_gecen);
+    if (yeni?.sinif !== "oldu") {
+      hatalar.push(`Emekli '${m.ad}' mutantının yerine geçen '${m.emekli.yerine_gecen}' öldürülmedi (${yeni?.sinif ?? "koşulmadı"})`);
     }
   }
 

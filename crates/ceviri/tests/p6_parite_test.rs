@@ -197,3 +197,32 @@ fn p6_yanit_donusumleri_testi() {
     );
     assert_eq!(openai_gemini.usage.as_ref().unwrap().total_tokens, 40);
 }
+
+/// FR-5.3: araç mesajları (role=tool, assistant.tool_calls, tool_call_id) sessizce
+/// user/"." metnine dönüştürülmez; iki çeviri de açık hata verir.
+#[test]
+fn p6_arac_mesajlari_acik_hata() {
+    let ornekler = [
+        serde_json::json!({"model": "m", "messages": [
+            {"role": "user", "content": "hava?"},
+            {"role": "tool", "tool_call_id": "c1", "content": "25 derece"}]}),
+        serde_json::json!({"model": "m", "messages": [
+            {"role": "user", "content": "hava?"},
+            {"role": "assistant", "content": null, "tool_calls": [
+                {"id": "c1", "type": "function", "function": {"name": "hava", "arguments": "{}"}}]}]}),
+    ];
+    for o in ornekler {
+        let istek: OpenAiIstek = serde_json::from_value(o.clone()).expect("istek ayrıştırılamadı");
+        let beklenen = CeviriHatasi::Desteklenmiyor("araç mesajı".to_string());
+        assert_eq!(
+            openai_den_claude_istegi(&istek, "c").unwrap_err(),
+            beklenen,
+            "{o}"
+        );
+        assert_eq!(
+            openai_den_gemini_istegi(&istek, "g").unwrap_err(),
+            beklenen,
+            "{o}"
+        );
+    }
+}

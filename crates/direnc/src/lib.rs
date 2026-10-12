@@ -90,13 +90,23 @@ impl DirencYoneticisi {
         if durum_kodu == Some(429) {
             self.soguma
                 .soguma_baslat_zamaniyla(hedef_ad, Some("429"), retry_after_saniye, simdi);
-        } else if durum_kodu.is_none_or(|kod| kod >= 500) {
+            self.notr_kaydet(hedef_ad);
+        } else if durum_kodu.is_some_and(|kod| kod < 500) {
+            self.notr_kaydet(hedef_ad);
+        } else {
             let ayar = self.varsayilan_kesici_ayar.clone();
             let kesici = self
                 .kesiciler
                 .entry(hedef_ad.to_string())
                 .or_insert_with(|| DevreKesici::yeni(hedef_ad, Some(ayar)));
             kesici.hata_kaydet_zamaniyla(simdi);
+        }
+    }
+
+    /// Kesiciyi beslemeyen sonuç: izin alındıysa yarı-açık deneme yuvasını bırakır.
+    pub fn notr_kaydet(&mut self, hedef_ad: &str) {
+        if let Some(kesici) = self.kesiciler.get_mut(hedef_ad) {
+            kesici.deneme_birak();
         }
     }
 

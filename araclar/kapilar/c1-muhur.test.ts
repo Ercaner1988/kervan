@@ -105,8 +105,8 @@ function depoKur(): string {
   yaz(dir, ".gitignore", "/ref\n");
   yaz(dir, "araclar/kapilar/a.ts", "export const a = 1;\n");
   yaz(dir, "araclar/kapilar/alt/b.ts", "export const b = 2;\n");
-  yaz(dir, "araclar/parite/altin-uret.ts", "// altin uretici\n");
-  yaz(dir, "araclar/parite/strateji-altin-uret.ts", "// strateji altin uretici\n");
+  yaz(dir, "araclar/uretec/altin-uret.ts", "// altin uretici\n");
+  yaz(dir, "araclar/uretec/strateji-altin-uret.ts", "// strateji altin uretici\n");
   yaz(dir, "port/altin/x.json", JSON.stringify({ uretici_ozeti: "abc", cikti: 1 }) + "\n");
   yaz(dir, "port/mutantlar.toml", MUTANTLAR);
   yaz(dir, "ref/omni/f.txt", "ref icerigi\n");
@@ -146,8 +146,8 @@ describe("c1-muhur", () => {
     fs.mkdirSync(dir, { recursive: true });
     git(dir, "init", "-q");
     yaz(dir, "araclar/kapilar/a.ts", "1\n");
-    yaz(dir, "araclar/parite/altin-uret.ts", "1\n");
-    yaz(dir, "araclar/parite/strateji-altin-uret.ts", "1\n");
+    yaz(dir, "araclar/uretec/altin-uret.ts", "1\n");
+    yaz(dir, "araclar/uretec/strateji-altin-uret.ts", "1\n");
     yaz(dir, "ref/omni/f.txt", "r\n");
     const u = kos(dir, URET);
     expect(u.kod).toBe(0);
@@ -156,8 +156,8 @@ describe("c1-muhur", () => {
     const t = Bun.TOML.parse(m) as any;
     expect(t.onay_bekliyor).toBe(true);
     const yollar = t.dosya.map((d: any) => d.yol);
-    expect(yollar).toContain("araclar/parite/altin-uret.ts");
-    expect(yollar).toContain("araclar/parite/strateji-altin-uret.ts");
+    expect(yollar).toContain("araclar/uretec/altin-uret.ts");
+    expect(yollar).toContain("araclar/uretec/strateji-altin-uret.ts");
     expect(typeof t.ref?.ozet).toBe("string");
   }, 60000);
 

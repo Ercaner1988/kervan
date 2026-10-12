@@ -1,5 +1,5 @@
 //! P9 Yönlendirme Stratejileri Parite ve İkiz Testleri (FR-7.1, FR-7.2, FR-7.3).
-//! Altınlar gerçek OmniRoute kodundan üretilir: araclar/parite/strateji-altin-uret.ts.
+//! Altınlar gerçek OmniRoute kodundan üretilir: araclar/uretec/strateji-altin-uret.ts.
 
 use kervan_havuz::router::{Hedef, RoutingStrategy, StratejiDurumu};
 use std::collections::HashMap;

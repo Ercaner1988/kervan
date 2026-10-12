@@ -35,6 +35,10 @@ const bas = (c) => {
 };
 if (argv[0] === "metadata") bas({ stdout: s.metadata ?? "{}", kod: s.metadataKod ?? 0 });
 if (argv[0] === "test" && argv.includes("--list")) bas({ stdout: s.liste ?? "", kod: s.listeKod ?? 0 });
+if (argv[0] === "test" && s.isaretler && s.hedef && fs.existsSync(s.hedef)) {
+  const icerik = fs.readFileSync(s.hedef, "latin1");
+  for (const [isaret, c] of Object.entries(s.isaretler)) if (icerik.includes(isaret)) bas(c);
+}
 if (argv[0] === "test") {
   const mutasyonlu = !!s.hedef && fs.existsSync(s.hedef) && fs.readFileSync(s.hedef, "latin1").includes(s.isaret);
   bas(mutasyonlu ? s.mutantCikti : s.temizCikti);
@@ -227,6 +231,51 @@ describe("c1-mutasyon::mutasyon-kontrol", () => {
     expect(s.uygun).toBe(false);
     expect(s.hatalar.join("\n")).toContain("yarıda");
   }, 60000);
+
+  // Emeklilik fikstürü: iki mutant aynı dosyada; A (emekli) C1_BOZUK, B (yerine geçen) C1_MUTANT yazar.
+  function emekliFiksturu(ad: string) {
+    const f = mutantFiksturu(ad, ["c1::t"], Buffer.from("fn f() {\n    let x = 1;\n    let y = 1;\n}\n"));
+    const a = { ...f.mutant, ad: `${ad}-a`, yerine: "let x = 2; // C1_BOZUK", emekli: { neden: "derlenmiyor", yerine_gecen: `${ad}-b` } };
+    const b = { ...f.mutant, ad: `${ad}-b`, bul: "let y = 1;", yerine: "let y = 2; // C1_MUTANT" };
+    return { f, a, b };
+  }
+  const emekliSenaryo = (f: { hedef: string }, bozuk: unknown, yeni: unknown) =>
+    senaryo({ liste: "c1::t: test\n", metadata: META_CEVIRI, hedef: f.hedef, isaretler: { C1_BOZUK: bozuk, C1_MUTANT: yeni }, temizCikti: OK });
+
+  it("c1::m21_derlenmeyen_mutant_emekli_ve_yerine_gecen_olunce_yesil", () => {
+    const { f, a, b } = emekliFiksturu("m21");
+    emekliSenaryo(f, DERLENMEDI, DUSTU);
+    const s = mutantlariDene([a, b], { gunlukDizini: f.gunluk, kokDizin: f.dizin, yedekDizini: f.yedek } as any);
+    expect(s.hatalar).toEqual([]);
+    expect(s.sonuclar.map((r) => r.sinif)).toEqual(["emekli", "oldu"]);
+  }, 60000);
+
+  it("c1::m22_derlenen_mutant_emekli_edilemez", () => {
+    const { f, a, b } = emekliFiksturu("m22");
+    emekliSenaryo(f, OK, DUSTU);
+    const s = mutantlariDene([a, b], { gunlukDizini: f.gunluk, kokDizin: f.dizin, yedekDizini: f.yedek } as any);
+    expect(s.uygun).toBe(false);
+    expect(s.hatalar.join("\n")).toContain("emeklilik geçersiz");
+  }, 60000);
+
+  it("c1::m23_yerine_gecen_yasarsa_emeklilik_kirmizi", () => {
+    const { f, a, b } = emekliFiksturu("m23");
+    emekliSenaryo(f, DERLENMEDI, OK);
+    const s = mutantlariDene([a, b], { gunlukDizini: f.gunluk, kokDizin: f.dizin, yedekDizini: f.yedek } as any);
+    expect(s.uygun).toBe(false);
+    expect(s.hatalar.join("\n")).toContain("öldürülmedi");
+  }, 60000);
+
+  it("c1::m24_emekli_kaydi_dogrulanir", () => {
+    const d = yeniDizin("m24");
+    const toml = path.join(d, "mutantlar.toml");
+    const m = (ad: string) => `[[mutant]]\nad = "${ad}"\ndosya = "b.rs"\nbul = "c"\nyerine = "d"\noldurmesi_gereken_test = ["t"]\n`;
+    const dene = (ek: string) => { fs.writeFileSync(toml, m("a") + m("b") + ek); return () => mutantlarTomlOku(toml); };
+    expect(dene(`[[emekli]]\nad = "a"\nneden = "n"\nyerine_gecen = "yok"\n`)).toThrow("listede yok");
+    expect(dene(`[[emekli]]\nad = "a"\nneden = "n"\nyerine_gecen = "a"\n`)).toThrow("emekli olamaz");
+    expect(dene(`[[emekli]]\nad = "a"\nneden = ""\nyerine_gecen = "b"\n`)).toThrow("'neden'");
+    expect(dene(`[[emekli]]\nad = "a"\nneden = "n"\nyerine_gecen = "b"\n`)()[0].emekli).toEqual({ neden: "n", yerine_gecen: "b" });
+  });
 
   it("c1::m9_toml_virgullu_ve_koseli_ayracli_test_komutunu_bozmadan_okur", () => {
     const d = yeniDizin("m9");

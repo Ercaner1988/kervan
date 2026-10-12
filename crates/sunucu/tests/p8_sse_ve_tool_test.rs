@@ -744,6 +744,24 @@ pub async fn test_p8_claude_akista_arac_acik_hata() {
         },
     );
 
+    // Anahtarı tanımlı olmayan ikinci hedef: desteklenmeyen alan anahtar denetiminden ÖNCE
+    // reddedilmeli (FR-5.3); yoksa istemci 'anahtar yok' hatası alır.
+    unsafe {
+        std::env::remove_var("TEST_P8_CLAUDE_TOOL_YOK_KEY");
+    }
+    rest_map.insert(
+        "test-claude-tool-anahtarsiz".to_string(),
+        kervan_yukari::Hedef {
+            ad: "test-claude-tool-anahtarsiz".into(),
+            bicim: "claude".into(),
+            taban_url: format!("http://{}", upstream_addr),
+            anahtar_env: "TEST_P8_CLAUDE_TOOL_YOK_KEY".into(),
+            model: "claude-3-7-sonnet".into(),
+            yol: Some("/v1/messages".into()),
+            zaman_asimi: Duration::from_secs(5),
+        },
+    );
+
     let state = kur_test_state(rest_map, kervan_yukari::Yukari::new());
     let router = server::router(state);
 
@@ -784,4 +802,25 @@ pub async fn test_p8_claude_akista_arac_acik_hata() {
         0,
         "Yukarı akışa hiç istek gitmemeli (sayaç 0)"
     );
+
+    let resp = client
+        .post(&format!("http://{}/v1/chat/completions", kervan_addr))
+        .send_json(json!({
+            "model": "kervan/test-claude-tool-anahtarsiz",
+            "messages": [{"role": "user", "content": "hava nasıl?"}],
+            "tools": [{"type": "function", "function": {"name": "test_fonk"}}],
+            "stream": true
+        }))
+        .unwrap();
+    assert_eq!(
+        resp.status().as_u16(),
+        501,
+        "anahtar denetiminden önce 501 bekleniyordu"
+    );
+    let govde = resp.into_body().read_to_string().unwrap();
+    assert!(
+        govde.contains("desteklenmiyor: tools"),
+        "anahtarsız hedef: {govde}"
+    );
+    assert_eq!(istek_sayaci.load(Ordering::SeqCst), 0);
 }

@@ -1,10 +1,9 @@
-import { spawnSync } from "child_process";
 import crypto from "crypto";
 import fs from "fs";
 import os from "os";
 import path from "path";
 
-// PRD FR-5.1: Altın Üretim Aracı (araclar/parite/altin-uret.ts)
+// PRD FR-5.1: Altın Üretim Aracı (araclar/uretec/altin-uret.ts)
 // OmniRoute referans kodunu (dbe703a) yalıtılmış ortamda çalıştırıp port/altin/*.json dosyalarını üretir.
 
 // Canlı OmniRoute ve ~/.omniroute'a ASLA dokunulmaz
@@ -171,21 +170,6 @@ export function altinDosyalariDogrula(): boolean {
   }
 
   return true;
-}
-
-export function kervanCevirisiniCagir(hedef: "claude" | "gemini", girdiJson: any): any {
-  const proc = spawnSync("cargo", ["run", "-q", "-p", "kervan-ceviri", "--", hedef], {
-    input: JSON.stringify(girdiJson),
-    encoding: "utf-8",
-  });
-  if (proc.status === 0 && proc.stdout) {
-    try {
-      return JSON.parse(proc.stdout);
-    } catch {
-      return null;
-    }
-  }
-  return null;
 }
 
 if (import.meta.main) {

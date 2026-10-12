@@ -9,7 +9,7 @@ import path from "path";
 // OmniRoute'un test kancası _setSecureRandomFloatSource ile altına yazılan akıştan gelir.
 // Altın, "strateji çekirdeği" sırasıdır (applyStrategyOrdering + weighted/round-robin
 // çekirdekleri); priority ön taraması, süreklilik filtreleri gibi çekirdek dışı adımlar kapsam dışı.
-// Kullanım: bun araclar/parite/strateji-altin-uret.ts [--kontrol]
+// Kullanım: bun araclar/uretec/strateji-altin-uret.ts [--kontrol]
 
 const KAYNAK_SHA = "dbe703a";
 const REF = path.resolve(import.meta.dir, "../../ref/omniroute-dbe703a");

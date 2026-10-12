@@ -56,6 +56,26 @@ pub struct OpenAiMesaj {
     pub tool_call_id: Option<String>,
 }
 
+impl OpenAiIstek {
+    /// FR-5.3: Claude/Gemini çevirisinin taşımadığı alanlar yukarı akışa gitmeden açık hata
+    /// olur; sessizce düşürülmez ya da başka bir role dönüştürülmez.
+    pub fn desteklenmeyeni_denetle(&self) -> Result<(), CeviriHatasi> {
+        let hata = |alan: &str| Err(CeviriHatasi::Desteklenmiyor(alan.to_string()));
+        if self.tools.as_ref().is_some_and(|t| !t.is_empty()) {
+            return hata("tools");
+        }
+        for m in &self.messages {
+            if m.role == "tool" || m.tool_calls.is_some() || m.tool_call_id.is_some() {
+                return hata("araç mesajı");
+            }
+            if m.content.as_ref().is_some_and(|c| !c.is_string()) {
+                return hata("çok parçalı içerik");
+            }
+        }
+        Ok(())
+    }
+}
+
 impl OpenAiMesaj {
     pub fn duz_metin(&self) -> Option<String> {
         match &self.content {
