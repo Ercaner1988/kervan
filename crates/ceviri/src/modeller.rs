@@ -136,6 +136,8 @@ pub struct OpenAiParca {
     pub created: u64,
     pub model: String,
     pub choices: Vec<OpenAiParcaSecenek>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usage: Option<OpenAiKullanim>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -213,7 +215,11 @@ pub struct ClaudeYanit {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ClaudeKullanim {
+    // message_delta yalnız output_tokens taşır: alan zorunlu olsaydı bitiş olayı ayrıştırılamaz,
+    // akışta sessizce atlanır ve finish_reason istemciye hiç gitmezdi.
+    #[serde(default)]
     pub input_tokens: u32,
+    #[serde(default)]
     pub output_tokens: u32,
 }
 
@@ -316,6 +322,10 @@ pub struct GeminiYanit {
     pub candidates: Option<Vec<GeminiAday>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage_metadata: Option<GeminiKullanim>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub response_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_version: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

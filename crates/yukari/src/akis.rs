@@ -42,6 +42,23 @@ pub(crate) fn on_denetim(hedef: &Hedef, govde: &Value) -> Result<(), YukariHatas
     Ok(())
 }
 
+fn simdi_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as u64)
+}
+
+/// Çevrilmiş parçaları istemciye SSE satırı olarak yollar; alıcı ayrıldıysa false.
+fn parcalari_gonder(
+    tx: &mpsc::Sender<Result<String, YukariHatasi>>,
+    parcalar: Vec<kervan_ceviri::OpenAiParca>,
+) -> bool {
+    parcalar.iter().all(|p| match serde_json::to_string(p) {
+        Ok(json) => tx.blocking_send(Ok(format!("data: {json}\n\n"))).is_ok(),
+        Err(_) => true,
+    })
+}
+
 /// İzin alınmış akış denemesi. İşçi hangi yoldan biterse bitsin (erken dönüş, istemci
 /// ayrılması) düşerken yarı-açık deneme yuvasını bırakır. Koşulsuz güvenli: deneme_birak
 /// yalnız devre hâlâ yarı-açıksa etki eder; başarı ya da hata kaydı devreyi zaten kapatır/açar.
@@ -358,11 +375,7 @@ fn akis_claude(
     }
 
     let reader = BufReader::new(response.into_body().into_reader());
-    let simdi = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    let istek_id = format!("chatcmpl-claude-{}", simdi);
+    let mut cevirici = kervan_ceviri::ClaudeAkisCevirici::default();
 
     for line_res in reader.lines() {
         match line_res {
@@ -390,15 +403,7 @@ fn akis_claude(
                             return;
                         }
                         let bitti = matches!(olay, kervan_ceviri::ClaudeOlay::MesajBitti);
-                        if let Ok(Some(parca)) = kervan_ceviri::claude_dan_openai_parcasi(
-                            &olay,
-                            &istek_id,
-                            &yukari_model,
-                        ) && let Ok(parca_json) = serde_json::to_string(&parca)
-                            && tx
-                                .blocking_send(Ok(format!("data: {}\n\n", parca_json)))
-                                .is_err()
-                        {
+                        if !parcalari_gonder(&tx, cevirici.cevir(&olay, simdi_ms() / 1000)) {
                             return;
                         }
                         if bitti {
@@ -516,11 +521,7 @@ fn akis_gemini(
     }
 
     let reader = BufReader::new(response.into_body().into_reader());
-    let simdi = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    let istek_id = format!("chatcmpl-gemini-{}", simdi);
+    let mut cevirici = kervan_ceviri::GeminiAkisCevirici::default();
 
     for line_res in reader.lines() {
         match line_res {
@@ -535,15 +536,7 @@ fn akis_gemini(
                         break;
                     }
                     if let Ok(yanit) = serde_json::from_str::<kervan_ceviri::GeminiYanit>(json_str)
-                        && let Ok(Some(parca)) = kervan_ceviri::gemini_den_openai_parcasi(
-                            &yanit,
-                            &istek_id,
-                            &yukari_model,
-                        )
-                        && let Ok(parca_json) = serde_json::to_string(&parca)
-                        && tx
-                            .blocking_send(Ok(format!("data: {}\n\n", parca_json)))
-                            .is_err()
+                        && !parcalari_gonder(&tx, cevirici.cevir(&yanit, simdi_ms()))
                     {
                         return;
                     }

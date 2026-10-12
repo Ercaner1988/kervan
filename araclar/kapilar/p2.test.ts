@@ -55,7 +55,7 @@ describe("p2::kapilar", () => {
   // P2-A3: Uç kaydı
   it("p2::a3_uc_kaydi_eksik_rota_ve_test_hatalarinda_kirmizidir", () => {
     // 1. Mevcut port/uclar.toml geçerli olmalı
-    const onbellekliTestler = new Set(["server::tests::tohum_gecmisi_ve_asil_soruyu_tasir"]);
+    const onbellekliTestler = new Set(["server::tests::tohum_gecmisi_ve_asil_soruyu_tasir", "p5_e2e_nonce_testi", "p5_models_testi"]);
     const gecerliSonuc = ucKaydiniDenetle(process.cwd(), undefined, onbellekliTestler);
     expect(gecerliSonuc.gecerli).toBe(true);
 

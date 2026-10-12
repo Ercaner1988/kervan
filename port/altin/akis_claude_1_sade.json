@@ -1,0 +1,146 @@
+{
+  "kaynak_sha": "dbe703a",
+  "kaynak_yollar": [
+    "open-sse/translator/index.ts",
+    "open-sse/translator/response/claude-to-openai.ts",
+    "open-sse/translator/response/gemini-to-openai.ts",
+    "open-sse/utils/finishReason.ts"
+  ],
+  "uretici_ozeti": "sha256:b79fc199aebad784bae95b6852b2393dc5398131af1930dfc108cf14dce1273e",
+  "girdi_id": "akis_claude_1_sade",
+  "bicim": "claude",
+  "sabit_saat_ms": 1700000000000,
+  "olaylar": [
+    {
+      "type": "message_start",
+      "message": {
+        "id": "msg_1",
+        "type": "message",
+        "role": "assistant",
+        "content": [],
+        "model": "claude-x",
+        "usage": {
+          "input_tokens": 5,
+          "output_tokens": 0
+        }
+      }
+    },
+    {
+      "type": "content_block_start",
+      "index": 0,
+      "content_block": {
+        "type": "text",
+        "text": ""
+      }
+    },
+    {
+      "type": "content_block_delta",
+      "index": 0,
+      "delta": {
+        "type": "text_delta",
+        "text": "Merhaba"
+      }
+    },
+    {
+      "type": "content_block_delta",
+      "index": 0,
+      "delta": {
+        "type": "text_delta",
+        "text": " dünya"
+      }
+    },
+    {
+      "type": "content_block_stop",
+      "index": 0
+    },
+    {
+      "type": "message_delta",
+      "delta": {
+        "stop_reason": "end_turn"
+      },
+      "usage": {
+        "output_tokens": 3
+      }
+    },
+    {
+      "type": "message_stop"
+    }
+  ],
+  "parcalar": [
+    [
+      {
+        "id": "chatcmpl-msg_1",
+        "object": "chat.completion.chunk",
+        "created": 1700000000,
+        "model": "claude-x",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "role": "assistant"
+            },
+            "finish_reason": null
+          }
+        ]
+      }
+    ],
+    [],
+    [
+      {
+        "id": "chatcmpl-msg_1",
+        "object": "chat.completion.chunk",
+        "created": 1700000000,
+        "model": "claude-x",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "Merhaba"
+            },
+            "finish_reason": null
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "id": "chatcmpl-msg_1",
+        "object": "chat.completion.chunk",
+        "created": 1700000000,
+        "model": "claude-x",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " dünya"
+            },
+            "finish_reason": null
+          }
+        ]
+      }
+    ],
+    [],
+    [
+      {
+        "id": "chatcmpl-msg_1",
+        "object": "chat.completion.chunk",
+        "created": 1700000000,
+        "model": "claude-x",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {},
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 5,
+          "completion_tokens": 3,
+          "total_tokens": 8
+        }
+      }
+    ],
+    []
+  ],
+  "bosaltma": []
+}

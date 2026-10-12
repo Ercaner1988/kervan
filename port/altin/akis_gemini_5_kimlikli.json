@@ -1,0 +1,102 @@
+{
+  "kaynak_sha": "dbe703a",
+  "kaynak_yollar": [
+    "open-sse/translator/index.ts",
+    "open-sse/translator/response/claude-to-openai.ts",
+    "open-sse/translator/response/gemini-to-openai.ts",
+    "open-sse/utils/finishReason.ts"
+  ],
+  "uretici_ozeti": "sha256:b79fc199aebad784bae95b6852b2393dc5398131af1930dfc108cf14dce1273e",
+  "girdi_id": "akis_gemini_5_kimlikli",
+  "bicim": "gemini",
+  "sabit_saat_ms": 1700000000000,
+  "olaylar": [
+    {
+      "candidates": [
+        {
+          "content": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Kimlik"
+              }
+            ]
+          }
+        }
+      ],
+      "responseId": "yanit-9",
+      "modelVersion": "gemini-2.5-flash"
+    },
+    {
+      "candidates": [
+        {
+          "content": {
+            "role": "model",
+            "parts": []
+          },
+          "finishReason": "STOP"
+        }
+      ],
+      "usageMetadata": {
+        "promptTokenCount": 3,
+        "candidatesTokenCount": 1,
+        "totalTokenCount": 4
+      }
+    }
+  ],
+  "parcalar": [
+    [
+      {
+        "id": "chatcmpl-yanit-9",
+        "object": "chat.completion.chunk",
+        "created": 1700000000,
+        "model": "gemini-2.5-flash",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "role": "assistant"
+            },
+            "finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-yanit-9",
+        "object": "chat.completion.chunk",
+        "created": 1700000000,
+        "model": "gemini-2.5-flash",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "Kimlik"
+            },
+            "finish_reason": null
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "id": "chatcmpl-yanit-9",
+        "object": "chat.completion.chunk",
+        "created": 1700000000,
+        "model": "gemini-2.5-flash",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {},
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 3,
+          "completion_tokens": 1,
+          "total_tokens": 4
+        }
+      }
+    ]
+  ],
+  "bosaltma": []
+}

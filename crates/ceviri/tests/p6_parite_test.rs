@@ -181,6 +181,8 @@ fn p6_yanit_donusumleri_testi() {
             candidates_token_count: Some(25),
             total_token_count: Some(40),
         }),
+        response_id: None,
+        model_version: None,
     };
 
     let openai_gemini = gemini_den_openai_yaniti(&gemini_yanit, "kervan/gemini-test")

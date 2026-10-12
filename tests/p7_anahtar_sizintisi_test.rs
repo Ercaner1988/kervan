@@ -16,9 +16,29 @@ fn yansitan_yukari() -> u16 {
     std::thread::spawn(move || {
         for akis in dinleyici.incoming() {
             let Ok(mut s) = akis else { break };
+            // İstek tümüyle okunmalı: okunmamış gövdeyle kapanan soket Windows'ta RST (10054) yollar.
+            let mut okunan = Vec::new();
             let mut tampon = [0u8; 8192];
-            let n = s.read(&mut tampon).unwrap_or(0);
-            let istek = String::from_utf8_lossy(&tampon[..n]).into_owned();
+            loop {
+                let n = s.read(&mut tampon).unwrap_or(0);
+                okunan.extend_from_slice(&tampon[..n]);
+                let metin = String::from_utf8_lossy(&okunan);
+                let tamam = metin.find("\r\n\r\n").is_some_and(|son| {
+                    let uzunluk = metin[..son]
+                        .lines()
+                        .find_map(|l| {
+                            l.to_ascii_lowercase()
+                                .strip_prefix("content-length:")
+                                .map(|v| v.trim().parse::<usize>().unwrap_or(0))
+                        })
+                        .unwrap_or(0);
+                    okunan.len() >= son + 4 + uzunluk
+                });
+                if n == 0 || tamam {
+                    break;
+                }
+            }
+            let istek = String::from_utf8_lossy(&okunan).into_owned();
             let yetki = istek
                 .lines()
                 .find_map(|l| {

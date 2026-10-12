@@ -1,0 +1,82 @@
+{
+  "kaynak_sha": "dbe703a",
+  "kaynak_yollar": [
+    "open-sse/translator/index.ts",
+    "open-sse/translator/response/claude-to-openai.ts",
+    "open-sse/translator/response/gemini-to-openai.ts",
+    "open-sse/utils/finishReason.ts"
+  ],
+  "uretici_ozeti": "sha256:b79fc199aebad784bae95b6852b2393dc5398131af1930dfc108cf14dce1273e",
+  "girdi_id": "akis_claude_3_ret",
+  "bicim": "claude",
+  "sabit_saat_ms": 1700000000000,
+  "olaylar": [
+    {
+      "type": "message_start",
+      "message": {
+        "id": "msg_3",
+        "type": "message",
+        "role": "assistant",
+        "content": [],
+        "model": "claude-z",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 0
+        }
+      }
+    },
+    {
+      "type": "message_delta",
+      "delta": {
+        "stop_reason": "refusal"
+      },
+      "usage": {
+        "output_tokens": 0
+      }
+    },
+    {
+      "type": "message_stop"
+    }
+  ],
+  "parcalar": [
+    [
+      {
+        "id": "chatcmpl-msg_3",
+        "object": "chat.completion.chunk",
+        "created": 1700000000,
+        "model": "claude-z",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "role": "assistant"
+            },
+            "finish_reason": null
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "id": "chatcmpl-msg_3",
+        "object": "chat.completion.chunk",
+        "created": 1700000000,
+        "model": "claude-z",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {},
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 4,
+          "completion_tokens": 0,
+          "total_tokens": 4
+        }
+      }
+    ],
+    []
+  ],
+  "bosaltma": []
+}

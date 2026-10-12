@@ -89,3 +89,10 @@ yerine_gecen = "tohum-istemi-govdesini-bosalt"
 ad = "rest-kancasini-kaldir"
 neden = "Parametreyi _model_adi diye yeniden adlandırıyor ama gövde model_adi kullanıyor: derlenmiyor. Ayrıca chat kancasını değil çözücüyü hedefliyordu (denetim bulgusu)."
 yerine_gecen = "rest-kancasini-chatten-kaldir"
+
+[[mutant]]
+ad = "claude-akis-uzunluk-nedenini-boz"
+dosya = "crates/ceviri/src/akis.rs"
+bul = "\"max_tokens\" => \"length\","
+yerine = "\"max_tokens\" => \"stop\","
+oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-ceviri', '--test', 'p8_akis_altin_test'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]
