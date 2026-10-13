@@ -148,10 +148,15 @@ export function durumJsonKontrol(kokDizin = process.cwd(), refDizinArg?: string)
     const gercek = "sha256:" + sha256(lf(fs.readFileSync(hepsi, "utf-8"))); // hepsi.ts dosyaOzeti ile aynı: CRLF→LF
     if (d.uretici_ozeti !== gercek) h.push(`durum.json uretici_ozeti (${d.uretici_ozeti}) araclar/kapilar/hepsi.ts özetiyle (${gercek}) eşleşmiyor; durum.json bu kapı çalıştırıcısının çıktısı değil`);
   }
-  for (const k of d.kapilar) {
+  // Koşu içinde (hepsi.ts KERVAN_KOSU_KAPI verir) durum.json bir önceki koşunundur; koşan kapının ve sonrakilerin günlüğü
+  // yazılıyor ya da silinmiş olur. Yalnız ondan ÖNCEKİ kapıların günlüğü doğrulanır; tek başına koşuda (ortam boş) hepsi doğrulanır.
+  const kosan = process.env.KERVAN_KOSU_KAPI;
+  const kosanSira = kosan ? d.kapilar.findIndex((k) => k.ad === kosan) : -1;
+  d.kapilar.forEach((k, i) => {
+    if (kosanSira >= 0 && i >= kosanSira) return;
     const hata = kapiLoguDenetle(k, kokDizin);
     if (hata) h.push(hata);
-  }
+  });
   h.push(...kapiListesiKontrol(d, kokDizin), ...fazCommitKontrol(d, kokDizin));
   // Ref yalnız açık argümanla (--ref) değişir; ortam değişkeni okunmaz (Bun cwd'deki .env'i kendiliğinden yükler).
   const refDizin = path.resolve(refDizinArg ?? path.join(kokDizin, "ref", "omniroute-dbe703a"));

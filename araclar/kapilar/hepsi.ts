@@ -201,6 +201,8 @@ export async function tekKapiKos(
     let kuyruk = ""; // stdout'un son 16 KB'ı: hüküm satırı için
     const proc = spawn(gorev.komut, gorev.argumanlar || [], {
       shell: true,
+      // Kapıya hangi kapının koştuğunu bildirir: durum-kontrol, bu kapı ve sonrakilerin günlüğünü (henüz yok/yazılıyor) aramaz.
+      env: { ...process.env, KERVAN_KOSU_KAPI: gorev.ad },
       stdio: ["ignore", "pipe", "pipe"],
       detached: process.platform !== "win32",
     });
