@@ -29,3 +29,6 @@ ek_cargo = [
   ["clippy", "--workspace", "--all-targets", "--all-features", "--", "-D", "warnings"],
   ["test", "--workspace", "--all-features"],
 ]
+
+[karakter.muaf]
+"crates/havuz/src/router.rs" = "Strateji adı ve model/sağlayıcı kimliği eşleştirmesi Türkçe metin değil; OmniRoute'un yerelden bağımsız JS toLowerCase davranışını (C2 altın paritesi) birebir yansıtır. to_ascii_lowercase Unicode kenar durumlarını (örn. Kelvin işareti) ayırırdı"
