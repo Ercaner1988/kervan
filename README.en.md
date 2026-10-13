@@ -90,6 +90,11 @@ Defined: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, `d
 
 #### Provider Status
 
+<!-- DURUM:BASLA -->
+<!-- DURUM:BITIS -->
+
+##### Provider notes (hand-written; not verified by a gate)
+
 | Provider | Status |
 |---|---|
 | `gemini` | ✅ In pool — multiple accounts, ~11s |

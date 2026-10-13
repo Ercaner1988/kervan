@@ -90,6 +90,11 @@ Tanımlı: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, 
 
 #### Sağlayıcı Durumu
 
+<!-- DURUM:BASLA -->
+<!-- DURUM:BITIS -->
+
+##### Sağlayıcı notları (elle yazılmış; kapı doğrulamaz)
+
 | Sağlayıcı | Durum |
 |---|---|
 | `gemini` | ✅ Havuzda — çok hesap, ~11 sn |
