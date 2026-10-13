@@ -2,8 +2,8 @@
 # Onay alanlarını yalnız Ercan doldurur: onay_bekliyor = false ve onay = "<ad, tarih>", commit,
 # ardından imzalı etiket: git -c gpg.format=ssh tag -s -f muhur-onay -m "<ad, tarih>"
 # (genel anahtar depo dışında: ~/.config/kervan/muhur-imzacilar, allowed-signers biçimi).
-onay_bekliyor = true
-onay = ""
+onay_bekliyor = false
+onay = "Ercan, 2026-10-13"
 
 [ref]
 ozet = "11be456a1f799ad76a8a1438a51daecc5087f03d989ddc16b017027d3ca8c504"
