@@ -1,83 +1,83 @@
 {
   "faz": "P3",
   "kip": "faz",
-  "baslangic": "2026-10-13T14:58:47.705Z",
+  "baslangic": "2026-10-13T22:15:44.567Z",
   "kapilar": [
     {
       "ad": "makine-sakin",
       "cikis": 0,
       "hukum": "yesil",
-      "baslangic": "2026-10-13T14:58:47.707Z",
+      "baslangic": "2026-10-13T22:15:44.568Z",
       "log": "port\\kayit\\P3\\makine-sakin.log"
     },
     {
       "ad": "kabul-haritasi",
-      "cikis": 1,
+      "cikis": 124,
       "hukum": "kirmizi",
-      "baslangic": "2026-10-13T14:59:48.074Z",
+      "baslangic": "2026-10-13T22:16:44.719Z",
       "log": "port\\kayit\\P3\\kabul-haritasi.log"
     },
     {
       "ad": "ulasilabilirlik",
       "cikis": 0,
       "hukum": "yesil",
-      "baslangic": "2026-10-13T15:06:40.698Z",
+      "baslangic": "2026-10-13T22:31:45.276Z",
       "log": "port\\kayit\\P3\\ulasilabilirlik.log"
     },
     {
       "ad": "sabit-yanit",
       "cikis": 0,
       "hukum": "yesil",
-      "baslangic": "2026-10-13T15:06:41.908Z",
+      "baslangic": "2026-10-13T22:31:46.756Z",
       "log": "port\\kayit\\P3\\sabit-yanit.log"
     },
     {
       "ad": "uc-kaydi",
       "cikis": 0,
       "hukum": "yesil",
-      "baslangic": "2026-10-13T15:06:42.038Z",
+      "baslangic": "2026-10-13T22:31:46.896Z",
       "log": "port\\kayit\\P3\\uc-kaydi.log"
     },
     {
       "ad": "muhur-kontrol",
-      "cikis": 1,
-      "hukum": "kirmizi",
-      "baslangic": "2026-10-13T15:06:47.931Z",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-13T22:31:49.551Z",
       "log": "port\\kayit\\P3\\muhur-kontrol.log"
     },
     {
       "ad": "kulliyat-tara",
       "cikis": 0,
       "hukum": "yesil",
-      "baslangic": "2026-10-13T15:07:09.307Z",
+      "baslangic": "2026-10-13T22:32:06.520Z",
       "log": "port\\kayit\\P3\\kulliyat-tara.log"
     },
     {
       "ad": "mutasyon-kontrol",
       "cikis": 0,
       "hukum": "yesil",
-      "baslangic": "2026-10-13T15:07:18.915Z",
+      "baslangic": "2026-10-13T22:32:15.940Z",
       "log": "port\\kayit\\P3\\mutasyon-kontrol.log"
     },
     {
       "ad": "durum-kontrol",
       "cikis": 1,
       "hukum": "kirmizi",
-      "baslangic": "2026-10-13T15:09:06.261Z",
+      "baslangic": "2026-10-13T22:35:34.470Z",
       "log": "port\\kayit\\P3\\durum-kontrol.log"
     },
     {
       "ad": "defter-kontrol",
       "cikis": 0,
       "hukum": "yesil",
-      "baslangic": "2026-10-13T15:09:06.346Z",
+      "baslangic": "2026-10-13T22:35:35.013Z",
       "log": "port\\kayit\\P3\\defter-kontrol.log"
     },
     {
       "ad": "rapor-kontrol",
       "cikis": 1,
       "hukum": "kirmizi",
-      "baslangic": "2026-10-13T15:09:34.294Z",
+      "baslangic": "2026-10-13T22:36:05.135Z",
       "log": "port\\kayit\\P3\\rapor-kontrol.log"
     }
   ]
