@@ -1,0 +1,84 @@
+{
+  "faz": "P3",
+  "kip": "faz",
+  "baslangic": "2026-10-13T14:58:47.705Z",
+  "kapilar": [
+    {
+      "ad": "makine-sakin",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-13T14:58:47.707Z",
+      "log": "port\\kayit\\P3\\makine-sakin.log"
+    },
+    {
+      "ad": "kabul-haritasi",
+      "cikis": 1,
+      "hukum": "kirmizi",
+      "baslangic": "2026-10-13T14:59:48.074Z",
+      "log": "port\\kayit\\P3\\kabul-haritasi.log"
+    },
+    {
+      "ad": "ulasilabilirlik",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-13T15:06:40.698Z",
+      "log": "port\\kayit\\P3\\ulasilabilirlik.log"
+    },
+    {
+      "ad": "sabit-yanit",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-13T15:06:41.908Z",
+      "log": "port\\kayit\\P3\\sabit-yanit.log"
+    },
+    {
+      "ad": "uc-kaydi",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-13T15:06:42.038Z",
+      "log": "port\\kayit\\P3\\uc-kaydi.log"
+    },
+    {
+      "ad": "muhur-kontrol",
+      "cikis": 1,
+      "hukum": "kirmizi",
+      "baslangic": "2026-10-13T15:06:47.931Z",
+      "log": "port\\kayit\\P3\\muhur-kontrol.log"
+    },
+    {
+      "ad": "kulliyat-tara",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-13T15:07:09.307Z",
+      "log": "port\\kayit\\P3\\kulliyat-tara.log"
+    },
+    {
+      "ad": "mutasyon-kontrol",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-13T15:07:18.915Z",
+      "log": "port\\kayit\\P3\\mutasyon-kontrol.log"
+    },
+    {
+      "ad": "durum-kontrol",
+      "cikis": 1,
+      "hukum": "kirmizi",
+      "baslangic": "2026-10-13T15:09:06.261Z",
+      "log": "port\\kayit\\P3\\durum-kontrol.log"
+    },
+    {
+      "ad": "defter-kontrol",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-13T15:09:06.346Z",
+      "log": "port\\kayit\\P3\\defter-kontrol.log"
+    },
+    {
+      "ad": "rapor-kontrol",
+      "cikis": 1,
+      "hukum": "kirmizi",
+      "baslangic": "2026-10-13T15:09:34.294Z",
+      "log": "port\\kayit\\P3\\rapor-kontrol.log"
+    }
+  ]
+}

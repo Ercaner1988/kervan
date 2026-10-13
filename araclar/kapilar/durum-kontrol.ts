@@ -28,7 +28,7 @@ const SAGLAYICI_BOLUMU = "Sağlayıcı Durumu";
 export function routeTsSay(dizin: string): number {
   let n = 0;
   for (const g of fs.readdirSync(dizin, { withFileTypes: true })) {
-    if (g.name === "node_modules" || g.name.startsWith(".")) continue;
+    if (g.name === "node_modules") continue; // hepsi.ts sayimlariOlc ile aynı: nokta dizinleri de sayılır
     if (g.isDirectory()) n += routeTsSay(path.join(dizin, g.name));
     else if (g.isFile() && g.name === "route.ts") n++;
   }
@@ -163,10 +163,8 @@ export function durumJsonKontrol(kokDizin = process.cwd(), refDizinArg?: string)
   }
   const okumaHatalari: string[] = [];
   const defterDizini = path.join(kokDizin, "port", "defter");
-  const kayitlar = [
-    ...defterSatirlariniOku(path.join(defterDizini, "dosyalar.jsonl"), okumaHatalari),
-    ...defterSatirlariniOku(path.join(defterDizini, "davranislar.jsonl"), okumaHatalari),
-  ];
+  // hepsi.ts sayimlariOlc ile aynı kaynak: yalnız dosyalar.jsonl (davranislar.jsonl dosya pencereleri değildir).
+  const kayitlar = defterSatirlariniOku(path.join(defterDizini, "dosyalar.jsonl"), okumaHatalari);
   if (okumaHatalari.length) h.push(`sayimlar doğrulanamadı: ${okumaHatalari.join("; ")}`);
   else {
     const say = (x: string) => kayitlar.filter((k) => k.durum === x).length;
