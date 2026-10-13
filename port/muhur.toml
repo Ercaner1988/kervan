@@ -2,8 +2,8 @@
 # Onay alanlarını yalnız Ercan doldurur: onay_bekliyor = false ve onay = "<ad, tarih>", commit,
 # ardından imzalı etiket: git -c gpg.format=ssh tag -s -f muhur-onay -m "<ad, tarih>"
 # (genel anahtar depo dışında: ~/.config/kervan/muhur-imzacilar, allowed-signers biçimi).
-onay_bekliyor = false
-onay = "Ercan, 2026-10-11 (C2 strateji altınları)"
+onay_bekliyor = true
+onay = ""
 
 [ref]
 ozet = "11be456a1f799ad76a8a1438a51daecc5087f03d989ddc16b017027d3ca8c504"
@@ -27,11 +27,11 @@ sha256 = "98ba9e1120677e71b6a7c3eeb397389ed2bf7ae96fdace3c354ffd39217df687"
 
 [[dosya]]
 yol = "araclar/kapilar/c1-muhur.test.ts"
-sha256 = "25d26bca83b25716b6ae9960ed351a3e42ef62b88d141ed11bc77b42fcf5c12d"
+sha256 = "ba44da9e803eb2419f16feac1ddfd127369168bfde58e997b9e1bb6ee0208bc3"
 
 [[dosya]]
 yol = "araclar/kapilar/c1-mutasyon.test.ts"
-sha256 = "5d4b3dc7017d97e21171a4f0133923db739a501f20db1c1ffc5b52f05298edd5"
+sha256 = "1aaa22c4862519956deab73b5d72eb5263e67d9ec5a48bcce430bac5b43ed4ce"
 
 [[dosya]]
 yol = "araclar/kapilar/c1-sabit-cfg.test.ts"
@@ -47,7 +47,7 @@ sha256 = "e06171365ba99f03e17e4aaddb2cae68662e56e2be2ac65008a950a3be527085"
 
 [[dosya]]
 yol = "araclar/kapilar/durum-kontrol.ts"
-sha256 = "573f4a16540bdf5e329f103f821c40d198b8b08791e03f3f2655df071f88ea82"
+sha256 = "b4a7e8a013f8598b1ee5ca416a9378a6ad7fa0a51e628c48d1ea47c1198ddc68"
 
 [[dosya]]
 yol = "araclar/kapilar/durum-uret.ts"
@@ -67,7 +67,7 @@ sha256 = "7ce9f54f964dd6301a0824f9f7834d234e79e4f133f2f7be69dc3dedcad6710e"
 
 [[dosya]]
 yol = "araclar/kapilar/kulliyat-tara.ts"
-sha256 = "7a27bb4234651aeb3c2b19d3c421d883f06a54ae0537ca106deb40d4b53e170c"
+sha256 = "1aa685cdc5d8dccc2fe60537872687dc463766e582366897685548b36478b6be"
 
 [[dosya]]
 yol = "araclar/kapilar/makine-sakin.ts"
@@ -75,7 +75,7 @@ sha256 = "73efc9b2635ab2fc14d04e0a76922a5019ff2a4d695ba59b7f9204783e2e74e1"
 
 [[dosya]]
 yol = "araclar/kapilar/muhur-kontrol.ts"
-sha256 = "cdb2a92c895f44c2909909549bbfa15ac21fec8ef6c742686fa3565da39e1339"
+sha256 = "4ca342c03976cdccf20e57501db2ee89bcc1e824d85c8d5459fe40d7d6bd71c5"
 
 [[dosya]]
 yol = "araclar/kapilar/muhur-uret.ts"
@@ -83,7 +83,7 @@ sha256 = "45792d1d700228beee9b7f0df7e01346402dfacd2255d3203580f49b280e8503"
 
 [[dosya]]
 yol = "araclar/kapilar/mutasyon-kontrol.ts"
-sha256 = "235b723b22f1b234f20382b753254cc63691967743c082a3ea100bdc69df74ad"
+sha256 = "af693f6d9bdefddd9c1463a52fa3a32405a77a46ea737a3fd07428097c8112da"
 
 [[dosya]]
 yol = "araclar/kapilar/p1.test.ts"
@@ -91,11 +91,11 @@ sha256 = "65790463aa08dd41546ce8c2b9cc657a57124238f1c8e218408745ee654f8b47"
 
 [[dosya]]
 yol = "araclar/kapilar/p2.test.ts"
-sha256 = "41a5628bd2eb22a5e686ff7cc3727a7feb1fd7d6ae8083cfa938ee7cf849b390"
+sha256 = "07015a7e4bd63078bcf765479388b687e19797a59257a54e46d05cf27a0b86e3"
 
 [[dosya]]
 yol = "araclar/kapilar/p3.test.ts"
-sha256 = "00f10510254c90160f4c2d8f1707647f2ed71469edc265593813e55278225723"
+sha256 = "252a0b1b62189bf28502d8510b23e8711f69e5b43e462a8d63ed1c703152e946"
 
 [[dosya]]
 yol = "araclar/kapilar/rapor-kontrol.ts"
@@ -130,64 +130,104 @@ yol = "araclar/kapilar/ulasilabilirlik.ts"
 sha256 = "5c4d4d32fa4f6fbfa2cfb23d01edc9c20ba5a338cef8056de431f57dbcf0292c"
 
 [[dosya]]
-yol = "araclar/parite/altin-uret.ts"
-sha256 = "df30ea3fff376edcc406053cc6cfb3797a5e7e6d9e2f090b58ac0763af3106f1"
+yol = "araclar/parite/ceviri-karsilastir.ts"
+sha256 = "277a0ff403da340de68429b13e414ca17ba28b82a4a50d0740c68822deb3a916"
 
 [[dosya]]
-yol = "araclar/parite/strateji-altin-uret.ts"
-sha256 = "a670f8cb0ec008dab0bc9d7fec826bc1119292237282c7fba1482c0b370302ec"
+yol = "araclar/uretec/altin-uret.ts"
+sha256 = "aae575c6af41a814b51a8d9960fd7bb2fabca1871bec09522bf7aad00a868ee6"
+
+[[dosya]]
+yol = "araclar/uretec/strateji-altin-uret.ts"
+sha256 = "b4f1087ea04bad517459d7ed0feaee511d68db6c41d2cedacc8dc4b0ed418b2e"
+
+[[dosya]]
+yol = "port/altin/akis_claude_1_sade.json"
+sha256 = "90e1a4fca0730e0a30b3d7644e337d62bba40dd8e3750ce857d3f5a33fca8840"
+
+[[dosya]]
+yol = "port/altin/akis_claude_2_uzunluk.json"
+sha256 = "b2a4ef63e73669e73db7692bed6456b596b1a42378bd4b641b514ae95ea81a80"
+
+[[dosya]]
+yol = "port/altin/akis_claude_3_ret.json"
+sha256 = "cf6612e00121d71ce1bfc408749b8449abb207aa8f80dc5f1fab0c2c73604ac0"
+
+[[dosya]]
+yol = "port/altin/akis_claude_4_durdurma_dizisi.json"
+sha256 = "e1b6aa5d4ec64320cd5549ea9c3751f0fa4ba61b08400ffce355bf0a6c5f4fcc"
+
+[[dosya]]
+yol = "port/altin/akis_gemini_1_sade.json"
+sha256 = "e76ceb10302998364d73c64570d776d6fe40696092265e33873e1bfb680f323c"
+
+[[dosya]]
+yol = "port/altin/akis_gemini_2_uzunluk.json"
+sha256 = "affc164711d492c4f1a63a3a8ff20b1d12db056df70b132cec6f141a54d48ba5"
+
+[[dosya]]
+yol = "port/altin/akis_gemini_3_guvenlik.json"
+sha256 = "88ab5205ad3fc4f273ca53a0fa3099cd063adeff4bab234897370ab7ea732424"
+
+[[dosya]]
+yol = "port/altin/akis_gemini_4_tek_olay.json"
+sha256 = "749a8313b111d37219f09c5e93fa14e01c5899cf004e63a773cc197f75d7298c"
+
+[[dosya]]
+yol = "port/altin/akis_gemini_5_kimlikli.json"
+sha256 = "c7959a3dadb862d2bd56041525256801e2418c3c1c10ae67511b04d06d601882"
 
 [[dosya]]
 yol = "port/altin/claude_1_sade.json"
-sha256 = "403d14143ccfadfd9e8c20b1d30daf2103b375f923caafd6f0f46a3f4852b0bf"
+sha256 = "ee3975208a42d0f62956cfbc9b2353819c66fbf40e2cb38ae012c5ebe2ede6b5"
 
 [[dosya]]
 yol = "port/altin/claude_2_system_coktur.json"
-sha256 = "192cb78040d6bedd9fade3a8008ebc82e12c2f219badf7ff201c29029911e44a"
+sha256 = "8a95126bc2fd43e01dcdc2b0040bdbaaf7b4602ce8f655bf1a898e6e08f100cd"
 
 [[dosya]]
 yol = "port/altin/claude_3_parametreler.json"
-sha256 = "085c307a09b2014453b0e855ca177c03f252a93452d4144a29df01e99eff7b4d"
+sha256 = "5c1b19d92c3282a9dbee2de3fd414908f48d714131b67740696e512bd78aaa42"
 
 [[dosya]]
 yol = "port/altin/claude_4_bos_icerik.json"
-sha256 = "395204ab32f076bc8fde89b18892728fadd9e3dad8239cb53fe66746b28d964d"
+sha256 = "a86908d48e8445bbf7ff9f36cf0ade06775d8e0a628819d3175cc62baccd37f3"
 
 [[dosya]]
 yol = "port/altin/claude_5_arac_tanimi.json"
-sha256 = "dd3e22b5c02baefa4875018764c8d5cf93718ab38f40edb810ab8875d63fcc15"
+sha256 = "d020a2c4a88501bf26937e4a51ab98227f94cfecfb8a60037b9f3225c497d44f"
 
 [[dosya]]
 yol = "port/altin/claude_6_uzun_icerik.json"
-sha256 = "2df324cb7481635efd65fe9a0d834df520b55379aed533a447407259aed29a93"
+sha256 = "0a22e37c6d68fde55b76318cbb7a280769411145f55c73fe4c40da4d8ac85647"
 
 [[dosya]]
 yol = "port/altin/gemini_1_sade.json"
-sha256 = "d827de6c7703eac3d270f79157edc98af144b1a4cfdb6cfab553f9636e526d0b"
+sha256 = "9b6903b89db8f8cd550a283741ee6f91b04042cf560ad6eb01d6d24f22339b42"
 
 [[dosya]]
 yol = "port/altin/gemini_2_system_coktur.json"
-sha256 = "53faa920826b6427606c231d3e3a2501f69d1b95ad65748f4da80b4e59822287"
+sha256 = "ce08dc3f19321c0074c50c4df388da0de4b9476e78776afc0207f350f7e20654"
 
 [[dosya]]
 yol = "port/altin/gemini_3_parametreler.json"
-sha256 = "9348363d37274c16104496fb5ec40d18d31412c64d9113039f695d1f117d2518"
+sha256 = "61ec370751b390a1937a9b31e12379c14f21f24db7f6428754a3467624689743"
 
 [[dosya]]
 yol = "port/altin/gemini_4_bos_icerik.json"
-sha256 = "8c3e828b2416c73197628e8891bdeb638b7ae773da5df99357a0d8b09c1e3f35"
+sha256 = "6ae4957979e43e6f8eac48304653544bd5994a9a1c447f196e3a0164144a482b"
 
 [[dosya]]
 yol = "port/altin/gemini_5_arac_tanimi.json"
-sha256 = "69b9c4214db5ab9556a21fd2578d1f0e209b7e898af34de5c5f1f5b98cec7501"
+sha256 = "730e2f822aff953a729b99d976fae75c5d160e18ac6ca3aeae0becf7c41b4661"
 
 [[dosya]]
 yol = "port/altin/gemini_6_uzun_icerik.json"
-sha256 = "119c5b5ec0c60eec4fe3de92857109888ebb62b60206d7f723e7fe13f984a8c1"
+sha256 = "1942c309605f63400c24e6a4631f118e82dad7e1d7e11a92bf0d656af45bc6bf"
 
 [[dosya]]
 yol = "port/altin/sapmalar.toml"
-sha256 = "ada3ebf26bf18691a770188dbedc2fec481f626ceb9c833adb73f0e2b46df765"
+sha256 = "e8407c8ce281d135beb17184bb277f8e3e4fecb0e2eba1185692ede9789e639e"
 
 [[dosya]]
 yol = "port/altin/strateji_girdi1.json"
