@@ -4,6 +4,7 @@ import { mutantlarTomlOku, pariteBaglantisiniDenetle, mutantlariDene, MutantTani
 import { durumMdKontrol, readmeKontrol, durumDenetle } from "./durum-kontrol.ts";
 import { defteriDenetle, DefterKaydi } from "./defter-kontrol.ts";
 import fs from "fs";
+import os from "os";
 import path from "path";
 
 describe("p3::kapilar", () => {
@@ -22,7 +23,7 @@ describe("p3::kapilar", () => {
     // 2. Mevcut temiz ağaçta (HEAD) sahte teslim iddiaları tetiklenmemeli
     const temizSonuc = kulliyatCommitiniTara("HEAD");
     expect(temizSonuc.tumSiniflarYakalandiMi).toBe(false);
-  }, 30000);
+  }, 300000); // ölçüm: ısınmış target/kulliyat ile ~20 sn + ~130 sn (soğuk ilk koşu ~10 dk)
 
   // P3-A2: Mutasyon Kapısı ve Parite Bağlantısı
   it("p3::a2_mutasyon_ve_parite_baglantisi", () => {
@@ -55,8 +56,12 @@ describe("p3::kapilar", () => {
     fs.rmdirSync(tempPariteDizini);
 
     // 4. Bilerek zayıf bırakılmış testte yaşayan mutant testi kırmızıya çevirir
+    // Geçici kökte koşar (depoda başıboş dosya bırakmaz); günlük dizini mutasyon kapısında zorunlu.
+    const tempKok = fs.mkdtempSync(path.join(os.tmpdir(), "kervan_a2_"));
     const tempMutantDosya = "temp_mutant_hedef.txt";
-    fs.writeFileSync(tempMutantDosya, "export const DEGER = 42;", "utf-8");
+    fs.writeFileSync(path.join(tempKok, tempMutantDosya), "export const DEGER = 42;", "utf-8");
+    // Kapı yalnız cargo test hedefi ya da var olan betik dosyası kabul eder: mutasyondan etkilenmeyen betik.
+    fs.writeFileSync(path.join(tempKok, "zayif.ts"), "console.log(\"HUKUM: yesil\");", "utf-8");
 
     const zayifMutant: MutantTanimi = {
       ad: "zayif-test-yasayan-mutant",
@@ -64,16 +69,14 @@ describe("p3::kapilar", () => {
       bul: "42",
       yerine: "999",
       // Test mutasyondan etkilenmiyor (her zaman yeşil) -> mutant YAŞAR -> mutantlariDene HATA verir
-      oldurmesi_gereken_test: ["bun -e \"process.exit(0)\""],
+      oldurmesi_gereken_test: ["bun zayif.ts"],
     };
 
-    const denemeSonuc = mutantlariDene([zayifMutant]);
+    const denemeSonuc = mutantlariDene([zayifMutant], { gunlukDizini: path.join(tempKok, "gunluk"), kokDizin: tempKok });
     expect(denemeSonuc.uygun).toBe(false);
     expect(denemeSonuc.hatalar.some((h) => h.includes("YAŞADI"))).toBe(true);
 
-    if (fs.existsSync(tempMutantDosya)) {
-      fs.unlinkSync(tempMutantDosya);
-    }
+    fs.rmSync(tempKok, { recursive: true, force: true });
   }, 30000);
 
   // P3-A3: Üretilmiş Durum ve Belge Bütünlüğü

@@ -337,7 +337,10 @@ export function kulliyatCommitiniTara(ref = KULLIYAT_REF, secenek: KulliyatSecen
   const betik = path.join(geciciKok, `kosucu_${process.pid}_${crypto.randomBytes(4).toString("hex")}.mjs`);
   const nonce = `@@KULLIYAT_${crypto.randomBytes(12).toString("hex")}@@`;
   fs.writeFileSync(betik, KOSUCU);
-  const eskiEnv = { n: process.env.KULLIYAT_NONCE, p: process.env.KULLIYAT_PAKET, m: process.env.KULLIYAT_KAPI_MS };
+  const eskiEnv = { n: process.env.KULLIYAT_NONCE, p: process.env.KULLIYAT_PAKET, m: process.env.KULLIYAT_KAPI_MS, t: process.env.CARGO_TARGET_DIR };
+  // Temiz kopya her koşuda boş target/ ile derlerdi (~9 dk). Kaynak yine temiz kopyadan gelir; yalnız bağımlılıkların
+  // derlenmiş hali depodaki target/kulliyat'ta yeniden kullanılır (cargo parmak izi yol+özet bazlıdır, kopya kodu eski derlemeyi taşıyamaz).
+  process.env.CARGO_TARGET_DIR = path.resolve(secenek.depo ?? ".", "target", "kulliyat");
   process.env.KULLIYAT_NONCE = nonce;
   process.env.KULLIYAT_PAKET = JSON.stringify(paket);
   process.env.KULLIYAT_KAPI_MS = String(secenek.kapiZamanAsimiMs ?? 900_000);
@@ -348,7 +351,7 @@ export function kulliyatCommitiniTara(ref = KULLIYAT_REF, secenek: KulliyatSecen
       zamanAsimiMs: secenek.zamanAsimiMs ?? 1_700_000,
     });
   } finally {
-    for (const [k, v] of [["KULLIYAT_NONCE", eskiEnv.n], ["KULLIYAT_PAKET", eskiEnv.p], ["KULLIYAT_KAPI_MS", eskiEnv.m]] as const) {
+    for (const [k, v] of [["KULLIYAT_NONCE", eskiEnv.n], ["KULLIYAT_PAKET", eskiEnv.p], ["KULLIYAT_KAPI_MS", eskiEnv.m], ["CARGO_TARGET_DIR", eskiEnv.t]] as const) {
       if (v === undefined) delete process.env[k];
       else process.env[k] = v;
     }
