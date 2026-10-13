@@ -2,8 +2,8 @@
 # Onay alanlarını yalnız Ercan doldurur: onay_bekliyor = false ve onay = "<ad, tarih>", commit,
 # ardından imzalı etiket: git -c gpg.format=ssh tag -s -f muhur-onay -m "<ad, tarih>"
 # (genel anahtar depo dışında: ~/.config/kervan/muhur-imzacilar, allowed-signers biçimi).
-onay_bekliyor = false
-onay = "Ercan, 2026-10-13"
+onay_bekliyor = true
+onay = ""
 
 [ref]
 ozet = "11be456a1f799ad76a8a1438a51daecc5087f03d989ddc16b017027d3ca8c504"
@@ -47,7 +47,7 @@ sha256 = "e06171365ba99f03e17e4aaddb2cae68662e56e2be2ac65008a950a3be527085"
 
 [[dosya]]
 yol = "araclar/kapilar/durum-kontrol.ts"
-sha256 = "b4a7e8a013f8598b1ee5ca416a9378a6ad7fa0a51e628c48d1ea47c1198ddc68"
+sha256 = "8217697483c4bf234d05b6924479e30c629217f909c8bedc6b8f54114a62966e"
 
 [[dosya]]
 yol = "araclar/kapilar/durum-uret.ts"
@@ -55,7 +55,7 @@ sha256 = "da1476bb3ed3828aa4aa1c3f3471dc704de88af8ba733c475da1b35fbafd588e"
 
 [[dosya]]
 yol = "araclar/kapilar/hepsi.ts"
-sha256 = "5e89ad0927f0977ac3956950facc362696202bc8bb589a30d30d946b247dafd6"
+sha256 = "a9b4a56d5170899a65c47db3b903d5561728b859572da9ad9ffc547b6f9f0612"
 
 [[dosya]]
 yol = "araclar/kapilar/kabul-haritasi.ts"
