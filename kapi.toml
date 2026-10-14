@@ -32,3 +32,5 @@ ek_cargo = [
 
 [karakter.muaf]
 "crates/havuz/src/router.rs" = "Strateji adı ve model/sağlayıcı kimliği eşleştirmesi Türkçe metin değil; OmniRoute'un yerelden bağımsız JS toLowerCase davranışını (C2 altın paritesi) birebir yansıtır. to_ascii_lowercase Unicode kenar durumlarını (örn. Kelvin işareti) ayırırdı"
+"araclar/node_modules/typescript/lib/_tsc.js" = "Üçüncü taraf derlenmiş TypeScript (4 MiB üstü, kapı okuyamaz); depoda izlenen bağımlılık, bu projenin kaynağı değildir"
+"araclar/node_modules/typescript/lib/typescript.js" = "Üçüncü taraf derlenmiş TypeScript (4 MiB üstü, kapı okuyamaz); depoda izlenen bağımlılık, bu projenin kaynağı değildir"
