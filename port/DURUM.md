@@ -1,13 +1,13 @@
-<!-- URETILMIS_DURUM_HASH: 4a54b87605f7ecede36fa32d49807b43fa9feb80ad7d8f4a40a0198be95bdef6 -->
+<!-- URETILMIS_DURUM_HASH: 295fbd5441eee05e97fd9027df4d8d13fac9afb68978302505c36ade4f9c7275 -->
 # DURUM.md — Kervan Aktarım Durum Defteri (ÜRETİLMİŞTİR)
 
 > ⚠️ BU DOSYA araclar/kapilar/durum-uret.ts ÇIKTISIDIR. ELLE DÜZENLEMEYİNİZ.
 > durum-kontrol bu dosyayı port/durum.json'dan yeniden üretip bayt bayt karşılaştırır.
 
 - **Mevcut Faz:** P3
-- **Üretim Zamanı (durum.json):** 2026-10-14T06:41:51.491Z
+- **Üretim Zamanı (durum.json):** 2026-10-14T06:59:26.257Z
 - **Üretici Özeti:** sha256:a9b4a56d5170899a65c47db3b903d5561728b859572da9ad9ffc547b6f9f0612
-- **Tüm Kapılar Yeşil mi:** ❌ HAYIR
+- **Tüm Kapılar Yeşil mi:** ✅ EVET
 
 ---
 
@@ -15,17 +15,17 @@
 
 | Kapı Adı | Çıkış Kodu | Süre (ms) | Log Dosyası |
 |---|:---:|:---:|---|
-| makine-sakin | ✅ 0 | 60178 | port\kayit\P3\makine-sakin.log |
-| kabul-haritasi | ✅ 0 | 383432 | port\kayit\P3\kabul-haritasi.log |
-| ulasilabilirlik | ✅ 0 | 907 | port\kayit\P3\ulasilabilirlik.log |
-| sabit-yanit | ✅ 0 | 115 | port\kayit\P3\sabit-yanit.log |
-| uc-kaydi | ✅ 0 | 6465 | port\kayit\P3\uc-kaydi.log |
-| muhur-kontrol | ✅ 0 | 15494 | port\kayit\P3\muhur-kontrol.log |
-| kulliyat-tara | ✅ 0 | 7520 | port\kayit\P3\kulliyat-tara.log |
-| mutasyon-kontrol | ✅ 0 | 97988 | port\kayit\P3\mutasyon-kontrol.log |
-| durum-kontrol | ❌ 1 | 763 | port\kayit\P3\durum-kontrol.log |
-| defter-kontrol | ✅ 0 | 25701 | port\kayit\P3\defter-kontrol.log |
-| rapor-kontrol | ❌ 1 | 131 | port\kayit\P3\rapor-kontrol.log |
+| makine-sakin | ✅ 0 | 60131 | port\kayit\P3\makine-sakin.log |
+| kabul-haritasi | ✅ 0 | 476504 | port\kayit\P3\kabul-haritasi.log |
+| ulasilabilirlik | ✅ 0 | 957 | port\kayit\P3\ulasilabilirlik.log |
+| sabit-yanit | ✅ 0 | 107 | port\kayit\P3\sabit-yanit.log |
+| uc-kaydi | ✅ 0 | 4815 | port\kayit\P3\uc-kaydi.log |
+| muhur-kontrol | ✅ 0 | 15462 | port\kayit\P3\muhur-kontrol.log |
+| kulliyat-tara | ✅ 0 | 7361 | port\kayit\P3\kulliyat-tara.log |
+| mutasyon-kontrol | ✅ 0 | 111135 | port\kayit\P3\mutasyon-kontrol.log |
+| durum-kontrol | ✅ 0 | 446 | port\kayit\P3\durum-kontrol.log |
+| defter-kontrol | ✅ 0 | 36399 | port\kayit\P3\defter-kontrol.log |
+| rapor-kontrol | ✅ 0 | 89 | port\kayit\P3\rapor-kontrol.log |
 
 ## 2. Fazlar
 
