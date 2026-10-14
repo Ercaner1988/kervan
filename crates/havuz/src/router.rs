@@ -161,7 +161,7 @@ impl RoutingStrategy {
     /// [0, 1) kayan üretir (üretimde gerçek RNG, testte altındaki akış).
     // Biçim sabit: port/mutantlar.toml "strateji-least-used-yonunu-ters-cevir" bu gövdeyi arar.
     #[rustfmt::skip]
-    #[allow(clippy::unnecessary_sort_by)]
+    #[allow(clippy::unnecessary_sort_by, reason = "sort_by biçimi port/mutantlar.toml mutantının aradığı gövdedir")]
     pub fn sirala(&self, hedefler: &[Hedef], durum: &mut StratejiDurumu, rastgele: &mut dyn FnMut() -> f64) -> Vec<Hedef> {
         let mut sonuc = hedefler.to_vec();
         let n = sonuc.len();
