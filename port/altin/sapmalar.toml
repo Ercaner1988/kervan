@@ -13,3 +13,22 @@ alan = "cok_parcali_icerik"
 neden = "FR-5.3 gereği görsel ve çok parçalı gövdeler bu fazda desteklenmez; açık hata döndürülür."
 omniroute_kaynak_satiri = "open-sse/translator/request/openai-to-claude/imageBlocks.ts:21"
 onaylayan = "Ercan"
+
+# FR-6.3 akış çevirisi (port/altin/akis_*.json yalnız metin kapsamını kanıtlar).
+[[sapma]]
+alan = "akis_dusunme"
+neden = "Claude thinking/thinking_delta blokları ve Gemini thought parçaları ile metindeki <think> etiketleri reasoning_content'e çevrilmez; Kervan istekte düşünme açmaz, gelen düşünme olayları atlanır."
+omniroute_kaynak_satiri = "open-sse/translator/response/claude-to-openai.ts:147"
+onaylayan = "onay bekliyor"
+
+[[sapma]]
+alan = "akis_arac_cagrisi"
+neden = "Akışta tool_use / functionCall parçaları tool_calls'a çevrilmez; araç tanımları istek tarafında açık hatayla reddedildiğinden (FR-5.3) yukarı akış araç çağrısı üretmez."
+omniroute_kaynak_satiri = "open-sse/translator/response/gemini-to-openai.ts:260"
+onaylayan = "onay bekliyor"
+
+[[sapma]]
+alan = "akis_onbellek_kullanimi"
+neden = "Claude cache_read/cache_creation token'ları prompt_tokens'a eklenmez ve prompt_tokens_details üretilmez; usage yalnız input/output token'larından hesaplanır."
+omniroute_kaynak_satiri = "open-sse/translator/response/claude-to-openai.ts:238"
+onaylayan = "onay bekliyor"

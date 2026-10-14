@@ -1,0 +1,84 @@
+{
+  "faz": "P3",
+  "kip": "faz",
+  "baslangic": "2026-10-14T06:47:32.837Z",
+  "kapilar": [
+    {
+      "ad": "makine-sakin",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-14T06:47:32.838Z",
+      "log": "port\\kayit\\P3\\makine-sakin.log"
+    },
+    {
+      "ad": "kabul-haritasi",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-14T06:48:32.970Z",
+      "log": "port\\kayit\\P3\\kabul-haritasi.log"
+    },
+    {
+      "ad": "ulasilabilirlik",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-14T06:56:29.475Z",
+      "log": "port\\kayit\\P3\\ulasilabilirlik.log"
+    },
+    {
+      "ad": "sabit-yanit",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-14T06:56:30.433Z",
+      "log": "port\\kayit\\P3\\sabit-yanit.log"
+    },
+    {
+      "ad": "uc-kaydi",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-14T06:56:30.541Z",
+      "log": "port\\kayit\\P3\\uc-kaydi.log"
+    },
+    {
+      "ad": "muhur-kontrol",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-14T06:56:35.357Z",
+      "log": "port\\kayit\\P3\\muhur-kontrol.log"
+    },
+    {
+      "ad": "kulliyat-tara",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-14T06:56:50.820Z",
+      "log": "port\\kayit\\P3\\kulliyat-tara.log"
+    },
+    {
+      "ad": "mutasyon-kontrol",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-14T06:56:58.182Z",
+      "log": "port\\kayit\\P3\\mutasyon-kontrol.log"
+    },
+    {
+      "ad": "durum-kontrol",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-14T06:58:49.319Z",
+      "log": "port\\kayit\\P3\\durum-kontrol.log"
+    },
+    {
+      "ad": "defter-kontrol",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-14T06:58:49.766Z",
+      "log": "port\\kayit\\P3\\defter-kontrol.log"
+    },
+    {
+      "ad": "rapor-kontrol",
+      "cikis": 0,
+      "hukum": "yesil",
+      "baslangic": "2026-10-14T06:59:26.166Z",
+      "log": "port\\kayit\\P3\\rapor-kontrol.log"
+    }
+  ]
+}

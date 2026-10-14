@@ -3,8 +3,9 @@ import { ulasilabilirlikDenetle } from "./ulasilabilirlik.ts";
 import { sabitYanitlariTara, dosyayiTara } from "./sabit-yanit.ts";
 import { ucKaydiniDenetle, kayitliRotalariBul } from "./uc-kaydi.ts";
 import { muhurDenetle, dosyaSha256 } from "./muhur-kontrol.ts";
-import { raporuDenetle } from "./rapor-kontrol.ts";
+import { raporuDenetle, EK_D_MADDELERI } from "./rapor-kontrol.ts";
 import fs from "fs";
+import os from "os";
 import path from "path";
 
 describe("p2::kapilar", () => {
@@ -55,7 +56,7 @@ describe("p2::kapilar", () => {
   // P2-A3: Uç kaydı
   it("p2::a3_uc_kaydi_eksik_rota_ve_test_hatalarinda_kirmizidir", () => {
     // 1. Mevcut port/uclar.toml geçerli olmalı
-    const onbellekliTestler = new Set(["server::tests::tohum_gecmisi_ve_asil_soruyu_tasir"]);
+    const onbellekliTestler = new Set(["server::tests::tohum_gecmisi_ve_asil_soruyu_tasir", "p5_e2e_nonce_testi", "p5_models_testi"]);
     const gecerliSonuc = ucKaydiniDenetle(process.cwd(), undefined, onbellekliTestler);
     expect(gecerliSonuc.gecerli).toBe(true);
 
@@ -89,42 +90,49 @@ describe("p2::kapilar", () => {
 
   // P2-A4: Mühür kontrolü
   it("p2::a4_muhur_kontrol_degisiklikte_kirmizi_temizde_yesildir", () => {
-    // 1. P2 fazında henüz mühür yokken geçerli
-    const p2Sonuc = muhurDenetle("P2");
-    expect(p2Sonuc.uygun).toBe(true);
+    // muhurDenetle(kok) kök dizini alır: mühürsüz (boş) kök fail-closed kırmızıdır, git geçmişi
+    // olmayan geçici kök de yeşil olamaz. Tam yeşil yolu (imzalı etiket) araclar/kapilar/c1-muhur.test.ts'te.
+    const kok = fs.mkdtempSync(path.join(os.tmpdir(), "kervan_a4_"));
+    try {
+      const bos = muhurDenetle(kok);
+      expect(bos.uygun).toBe(false);
+      expect(bos.hatalar.some((h) => h.includes("mühürsüz depo"))).toBe(true);
 
-    // 2. Sahte mühür dosyasıyla değiştirilmiş dosya testi -> kırmızı olmalı
+      // Mühür dosyası var ama dosya listesi boş / onaysız -> kırmızı, nedenleri yazılı
+      fs.mkdirSync(path.join(kok, "port"), { recursive: true });
+      fs.writeFileSync(path.join(kok, "port", "muhur.toml"), "onay_bekliyor = true\n", "utf-8");
+      const onaysiz = muhurDenetle(kok);
+      expect(onaysiz.uygun).toBe(false);
+      expect(onaysiz.hatalar.some((h) => h.includes("onayı bekliyor"))).toBe(true);
+    } finally {
+      fs.rmSync(kok, { recursive: true, force: true });
+    }
+
+    // Bu deponun gerçek mührü: özet işlevi dosya bozulunca değişir (mühür ihlalinin dayanağı).
     const tempDosya = "temp_muhurlu_dosya.txt";
     fs.writeFileSync(tempDosya, "orijinal icerik", "utf-8");
-    const sahteSha = dosyaSha256(tempDosya);
-
-    const tempMuhur = "temp_muhur.toml";
-    fs.writeFileSync(tempMuhur, `
-      [[dosya]]
-      yol = "${tempDosya}"
-      sha256 = "${sahteSha}"
-    `, "utf-8");
-
-    // Dosyayı boz
+    const once = dosyaSha256(tempDosya);
     fs.writeFileSync(tempDosya, "bozulmus icerik", "utf-8");
-    const bozukSonuc = muhurDenetle("P4", tempMuhur);
-    expect(bozukSonuc.uygun).toBe(false);
-    expect(bozukSonuc.hatalar.some((h) => h.includes("MÜHÜR İHLALİ"))).toBe(true);
-
-    // 3. Dosyayı eski haline getir -> yeşil olmalı
+    expect(dosyaSha256(tempDosya)).not.toBe(once);
     fs.writeFileSync(tempDosya, "orijinal icerik", "utf-8");
-    const temizSonuc = muhurDenetle("P4", tempMuhur);
-    expect(temizSonuc.uygun).toBe(true);
-
+    expect(dosyaSha256(tempDosya)).toBe(once);
     fs.unlinkSync(tempDosya);
-    fs.unlinkSync(tempMuhur);
   }, 30000);
 
   // P2-A5: Rapor kontrolü
   it("p2::a5_rapor_kontrol_bagisiz_veya_eksik_maddede_kirmizi_tam_raporda_yesildir", () => {
-    // 1. port/kayit/P1/RAPOR.md tamdır -> yeşil olmalı
-    const p1Sonuc = raporuDenetle("port/kayit/P1/RAPOR.md");
-    expect(p1Sonuc.uygun).toBe(true);
+    // 1. Altı maddesi gerçek dosya:satır kanıtlı, bağsız iddiasız rapor -> yeşil olmalı
+    // (tarihsel port/kayit/P1/RAPOR.md C1 öncesi yazıldı; güncel kurala örnek olarak kullanılmaz)
+    const iyiRapor = "temp_iyi_rapor.md";
+    fs.writeFileSync(
+      iyiRapor,
+      "# Rapor\n## Ek D Sahte-Kapı\n" + EK_D_MADDELERI.map((m) => `- ${m}: baktım: araclar/kapilar/rapor-kontrol.ts:1`).join("\n") + "\n",
+      "utf-8"
+    );
+    const iyiSonuc = raporuDenetle(iyiRapor);
+    fs.unlinkSync(iyiRapor);
+    expect(iyiSonuc.hatalar).toEqual([]);
+    expect(iyiSonuc.uygun).toBe(true);
 
     // 2. Eksik Ek D maddeli sahte rapor -> kırmızı olmalı
     const sahteRapor = "temp_sahte_rapor.md";

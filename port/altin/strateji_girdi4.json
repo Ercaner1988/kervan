@@ -1,0 +1,495 @@
+{
+  "kaynak_sha": "dbe703a",
+  "kaynak_yollar": [
+    "open-sse/services/combo/applyStrategyOrdering.ts",
+    "open-sse/services/combo/targetSorters.ts",
+    "open-sse/services/combo/rrState.ts",
+    "open-sse/services/combo/roundRobinCombo.ts",
+    "src/shared/utils/shuffleDeck.ts",
+    "src/shared/constants/routingStrategies.ts",
+    "src/lib/combos/steps.ts",
+    "open-sse/services/comboMetrics.ts",
+    "src/lib/db/settings/pricing.ts"
+  ],
+  "uretici_ozeti": "sha256:a670f8cb0ec008dab0bc9d7fec826bc1119292237282c7fba1482c0b370302ec",
+  "girdi_id": "strateji_girdi4",
+  "hedefler": [
+    {
+      "model_str": "kvk/model.1",
+      "provider": "kvk",
+      "execution_key": "kvk/model.1#k1",
+      "connection_id": "k1",
+      "weight": 150
+    },
+    {
+      "model_str": "kvl/model-2",
+      "provider": "kvl",
+      "execution_key": "ortak",
+      "connection_id": "l1",
+      "weight": -200
+    },
+    {
+      "model_str": "kvm/model-3",
+      "provider": "kvm",
+      "execution_key": "ortak",
+      "connection_id": "m1",
+      "weight": 20
+    },
+    {
+      "model_str": "kvn/model-4",
+      "provider": "kvn",
+      "execution_key": "kvn/model-4",
+      "connection_id": null,
+      "weight": 20
+    }
+  ],
+  "durum": {
+    "fiyat": {
+      "kvk/Model-1": 2,
+      "kvn/model-4": 1,
+      "kvl/model-2": 3
+    },
+    "baglam": {},
+    "kayitlar": [
+      {
+        "model_str": "kvk/model.1",
+        "execution_key": "kvk/model.1#k1",
+        "basarili": true,
+        "gecikme_ms": 10
+      },
+      {
+        "model_str": "kvn/model-4",
+        "execution_key": "",
+        "basarili": true,
+        "gecikme_ms": 10
+      },
+      {
+        "model_str": "kvn/model-4",
+        "execution_key": "",
+        "basarili": true,
+        "gecikme_ms": 10
+      },
+      {
+        "model_str": "kvn/model-4",
+        "execution_key": "",
+        "basarili": true,
+        "gecikme_ms": 10
+      },
+      {
+        "model_str": "",
+        "execution_key": "kvk/model.1#k1",
+        "basarili": true,
+        "gecikme_ms": 10
+      },
+      {
+        "model_str": "",
+        "execution_key": "kvk/model.1#k1",
+        "basarili": true,
+        "gecikme_ms": 10
+      },
+      {
+        "model_str": "",
+        "execution_key": "kvk/model.1#k1",
+        "basarili": true,
+        "gecikme_ms": 10
+      },
+      {
+        "model_str": "",
+        "execution_key": "kvk/model.1#k1",
+        "basarili": true,
+        "gecikme_ms": 10
+      }
+    ],
+    "lkgp": null
+  },
+  "rastgele_48": [
+    131416818749634,
+    45125818216126,
+    56274810184088,
+    18169074245236,
+    235917308143304,
+    170772741909096,
+    185413357306022,
+    9818297461506,
+    119095035474507,
+    104321278627785,
+    178331934511164,
+    11517892129890,
+    94623149338340,
+    22195417442087,
+    138376990532700,
+    229475856598494,
+    56836428711396,
+    203976313221109,
+    96024873791357,
+    262113066532529,
+    267426711864858,
+    107594472250751,
+    93935511069306,
+    217520384304079,
+    231948670713616,
+    229915309977857,
+    45854995651036,
+    133557275389105,
+    30004373352639,
+    165493744319129,
+    95424620242071,
+    126693068130501,
+    103792494630806,
+    235270797496559,
+    193427767956870,
+    66609696290372,
+    238724054007578,
+    11563056737512,
+    162272426081835,
+    212187819134596,
+    215158141885266,
+    229356891815602,
+    189292872818401,
+    133776829361762,
+    19367077130706,
+    245145076225217,
+    238146682833699,
+    172627232759657,
+    159645737785486,
+    60375323930579,
+    165536947324219,
+    93591770761229,
+    13698715022440,
+    256259317138366,
+    35916679794969,
+    115904390696011,
+    256913712872757,
+    245183976964856,
+    193829464124188,
+    19838739901542,
+    10030733751975,
+    187446244816915,
+    118013916150557,
+    192350585698041,
+    180477801568099,
+    165426475855988,
+    54915703268184,
+    64803305711424,
+    237715681552151,
+    106975543090410,
+    66723898628428,
+    268137951006325,
+    137429319065189,
+    200285988764700,
+    234090598322142,
+    275491987824231,
+    221758847237044,
+    260701790428642,
+    32263974481319,
+    132348348469207,
+    105243418755579,
+    80973078909235,
+    277366102618248,
+    150849715912188,
+    63901827430018,
+    81435026960200,
+    264116989902015,
+    191205844400688,
+    111724981374012,
+    134437151620171,
+    160654932210895,
+    4179499867705,
+    170875098788097,
+    229127148771082,
+    274675564413484,
+    50943879537120
+  ],
+  "takma_adlar": {
+    "usage": "least-used",
+    "context": "context-optimized",
+    "weekly-reset": "reset-window",
+    "reset-window-order": "reset-window",
+    "  Priority ": "priority",
+    "ROUND-ROBIN": "round-robin",
+    "roundrobin": "priority",
+    "quota-share": "quota-share",
+    "bilinmeyen": "priority",
+    "": "priority",
+    "fusion": "fusion",
+    "least-used": "least-used",
+    "LKGP": "lkgp",
+    "round-robin": "priority",
+    "﻿random": "random",
+    " p2c　": "p2c"
+  },
+  "tuketim": {
+    "priority": 0,
+    "fill-first": 0,
+    "context-relay": 0,
+    "p2c": 16,
+    "random": 9,
+    "least-used": 0,
+    "cost-optimized": 0,
+    "lkgp": 0,
+    "context-optimized": 0,
+    "strict-random": 24,
+    "weighted": 8,
+    "round-robin": 0
+  },
+  "sonuclar": {
+    "priority": [
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ]
+    ],
+    "fill-first": [
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ]
+    ],
+    "context-relay": [
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ]
+    ],
+    "p2c": [
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ],
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ],
+      [
+        "kvn/model-4@kvn/model-4",
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3"
+      ],
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ],
+      [
+        "ortak@kvl/model-2",
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ],
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ],
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ],
+      [
+        "kvn/model-4@kvn/model-4",
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3"
+      ]
+    ],
+    "random": [
+      [
+        "kvn/model-4@kvn/model-4",
+        "ortak@kvm/model-3",
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2"
+      ],
+      [
+        "kvn/model-4@kvn/model-4",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvk/model.1#k1@kvk/model.1"
+      ],
+      [
+        "ortak@kvl/model-2",
+        "kvn/model-4@kvn/model-4",
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvm/model-3"
+      ]
+    ],
+    "least-used": [
+      [
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvk/model.1#k1@kvk/model.1",
+        "kvn/model-4@kvn/model-4"
+      ]
+    ],
+    "cost-optimized": [
+      [
+        "kvn/model-4@kvn/model-4",
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3"
+      ]
+    ],
+    "lkgp": [
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ]
+    ],
+    "context-optimized": [
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ]
+    ],
+    "strict-random": [
+      [
+        "kvn/model-4@kvn/model-4",
+        "ortak@kvm/model-3",
+        "ortak@kvl/model-2",
+        "kvk/model.1#k1@kvk/model.1"
+      ],
+      [
+        "ortak@kvl/model-2",
+        "kvk/model.1#k1@kvk/model.1",
+        "kvn/model-4@kvn/model-4"
+      ],
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "kvn/model-4@kvn/model-4",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3"
+      ],
+      [
+        "ortak@kvl/model-2",
+        "kvn/model-4@kvn/model-4",
+        "kvk/model.1#k1@kvk/model.1"
+      ],
+      [
+        "kvn/model-4@kvn/model-4",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvk/model.1#k1@kvk/model.1"
+      ],
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvm/model-3",
+        "ortak@kvl/model-2",
+        "kvn/model-4@kvn/model-4"
+      ],
+      [
+        "ortak@kvl/model-2",
+        "kvk/model.1#k1@kvk/model.1",
+        "kvn/model-4@kvn/model-4"
+      ],
+      [
+        "ortak@kvl/model-2",
+        "kvn/model-4@kvn/model-4",
+        "kvk/model.1#k1@kvk/model.1"
+      ],
+      [
+        "ortak@kvl/model-2",
+        "kvk/model.1#k1@kvk/model.1",
+        "kvn/model-4@kvn/model-4"
+      ]
+    ],
+    "weighted": [
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4",
+        "ortak@kvl/model-2"
+      ],
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4",
+        "ortak@kvl/model-2"
+      ],
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4",
+        "ortak@kvl/model-2"
+      ],
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4",
+        "ortak@kvl/model-2"
+      ],
+      [
+        "ortak@kvl/model-2",
+        "kvk/model.1#k1@kvk/model.1",
+        "kvn/model-4@kvn/model-4"
+      ],
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4",
+        "ortak@kvl/model-2"
+      ],
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4",
+        "ortak@kvl/model-2"
+      ],
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4",
+        "ortak@kvl/model-2"
+      ]
+    ],
+    "round-robin": [
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ],
+      [
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4",
+        "kvk/model.1#k1@kvk/model.1"
+      ],
+      [
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4",
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2"
+      ],
+      [
+        "kvn/model-4@kvn/model-4",
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3"
+      ],
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ]
+    ]
+  }
+}

@@ -10,10 +10,11 @@
     },
     {
       "id": "P8-A2",
-      "metin": "Claude ve Gemini akış SSE çevirisi OpenAI chunk biçimine dönüştürülür ve parite korunur",
+      "metin": "Claude ve Gemini akış SSE çevirisi OpenAI chunk biçimine dönüştürülür ve gerçek OmniRoute akış altınlarıyla (port/altin/akis_*.json) olay olay alan eşitliği korunur",
       "kanit": [
         "test_p8_claude_sse_cevirisi",
-        "test_p8_gemini_sse_cevirisi"
+        "test_p8_gemini_sse_cevirisi",
+        "p8_akis_altin_parite_testi"
       ]
     },
     {

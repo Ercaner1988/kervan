@@ -19,68 +19,82 @@ testDosyasi = "crates/sunucu/tests/p5_e2e_test.rs"
 yol = "/health"
 yontem = "GET"
 durum = "kapsam-disi"
+gerekce = "Canlılık yoklaması: sabit \"ok\" döner, iş mantığı ve yukarı akış yok"
 
 [[uc]]
 yol = "/telemetri"
 yontem = "GET"
 durum = "kapsam-disi"
+gerekce = "Kervan'ın kendi sayaç/telemetri dökümü; OmniRoute'ta karşılığı yok, parite ölçülemez"
 
 [[uc]]
 yol = "/bakiye"
 yontem = "GET"
 durum = "kapsam-disi"
+gerekce = "Kervan'a özgü bakiye/hediye token takibi (zcode tarzı); OmniRoute'ta karşılığı yok"
 
 [[uc]]
 yol = "/bakiye/hediye"
 yontem = "POST"
 durum = "kapsam-disi"
+gerekce = "Kervan'a özgü bakiye/hediye token takibi (zcode tarzı); OmniRoute'ta karşılığı yok"
 
 [[uc]]
 yol = "/ws/eklenti"
 yontem = "GET"
 durum = "kapsam-disi"
+gerekce = "Tarayıcı eklentisi WebSocket köprüsü (WebDriver'sız); OmniRoute'ta karşılığı yok"
 
 [[uc]]
 yol = "/eklenti/sekmeler"
 yontem = "GET"
 durum = "kapsam-disi"
+gerekce = "Eklentiye bağlı sekmelerin listesi; OmniRoute'ta karşılığı yok"
 
 [[uc]]
 yol = "/accounts"
 yontem = "GET"
 durum = "kapsam-disi"
+gerekce = "Kervan'a özgü tarayıcı havuzu ucu; OmniRoute'ta karşılığı yok, parite ölçülemez (hesap durumu, insan kapısında bekleyenler)"
 
 [[uc]]
 yol = "/accounts/{i}/devam"
 yontem = "POST"
 durum = "kapsam-disi"
+gerekce = "Kervan'a özgü tarayıcı havuzu ucu; OmniRoute'ta karşılığı yok, parite ölçülemez (insan kapısı çözülünce hesabı geri alır)"
 
 [[uc]]
 yol = "/accounts/{i}/goster"
 yontem = "POST"
 durum = "kapsam-disi"
+gerekce = "Kervan'a özgü tarayıcı havuzu ucu; OmniRoute'ta karşılığı yok, parite ölçülemez (gizli tarayıcı penceresini öne getirir)"
 
 [[uc]]
 yol = "/accounts/{i}/gizle"
 yontem = "POST"
 durum = "kapsam-disi"
+gerekce = "Kervan'a özgü tarayıcı havuzu ucu; OmniRoute'ta karşılığı yok, parite ölçülemez (pencereyi gizler ve insanın elinden bırakır)"
 
 [[uc]]
 yol = "/kimlikler"
 yontem = "GET"
 durum = "kapsam-disi"
+gerekce = "Kervan'a özgü tarayıcı havuzu ucu; OmniRoute'ta karşılığı yok, parite ölçülemez (profil bazlı kimlik listesi)"
 
 [[uc]]
 yol = "/kimlikler/{k}/goster"
 yontem = "POST"
 durum = "kapsam-disi"
+gerekce = "Kervan'a özgü tarayıcı havuzu ucu; OmniRoute'ta karşılığı yok, parite ölçülemez (profil adıyla pencereyi öne getirir)"
 
 [[uc]]
 yol = "/kimlikler/{k}/gizle"
 yontem = "POST"
 durum = "kapsam-disi"
+gerekce = "Kervan'a özgü tarayıcı havuzu ucu; OmniRoute'ta karşılığı yok, parite ölçülemez (profil adıyla pencereyi gizler)"
 
 [[uc]]
 yol = "/kota"
 yontem = "GET"
 durum = "kapsam-disi"
+gerekce = "Kervan'ın kota öğrenicisinin gözlemi (gerçek kullanım, çıkarılan limit); OmniRoute'ta karşılığı yok"

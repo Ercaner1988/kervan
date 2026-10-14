@@ -20,12 +20,65 @@ fn alici_ayrildiysa_birak<E>(sonuc: Result<(), E>) {
     let _ = sonuc;
 }
 
+/// FR-5.3 / FR-6.4: Claude ve Gemini hedefte çevirinin taşımadığı alanlar (araç tanımı, araç
+/// mesajı, çok parçalı içerik) anahtar, dayanıklılık izni ve ağdan ÖNCE açık hatayla reddedilir:
+/// istemci hatası yarı-açık deneme yuvası tüketmez, eksik anahtar hatasının arkasına saklanmaz.
+pub(crate) fn on_denetim(hedef: &Hedef, govde: &Value) -> Result<(), YukariHatasi> {
+    if hedef.bicim == "openai" {
+        return Ok(());
+    }
+    if let Some(tools) = govde.get("tools").and_then(|t| t.as_array())
+        && !tools.is_empty()
+    {
+        return Err(YukariHatasi::Desteklenmiyor("tools".to_string()));
+    }
+    // Ayrıştırılamayan gövde burada geçer; çeviri adımı JsonHatasi verir.
+    if let Ok(mut istek) = serde_json::from_value::<kervan_ceviri::OpenAiIstek>(govde.clone()) {
+        istek.tools = None; // yukarıda ayrıca denetlendi
+        istek
+            .desteklenmeyeni_denetle()
+            .map_err(YukariHatasi::from)?;
+    }
+    Ok(())
+}
+
+fn simdi_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as u64)
+}
+
+/// Çevrilmiş parçaları istemciye SSE satırı olarak yollar; alıcı ayrıldıysa false.
+fn parcalari_gonder(
+    tx: &mpsc::Sender<Result<String, YukariHatasi>>,
+    parcalar: Vec<kervan_ceviri::OpenAiParca>,
+) -> bool {
+    parcalar.iter().all(|p| match serde_json::to_string(p) {
+        Ok(json) => tx.blocking_send(Ok(format!("data: {json}\n\n"))).is_ok(),
+        Err(_) => true,
+    })
+}
+
+/// İzin alınmış akış denemesi. İşçi hangi yoldan biterse bitsin (erken dönüş, istemci
+/// ayrılması) düşerken yarı-açık deneme yuvasını bırakır. Koşulsuz güvenli: deneme_birak
+/// yalnız devre hâlâ yarı-açıksa etki eder; başarı ya da hata kaydı devreyi zaten kapatır/açar.
+struct DenemeYuvasi(Arc<Mutex<kervan_direnc::DirencYoneticisi>>, String);
+
+impl Drop for DenemeYuvasi {
+    fn drop(&mut self) {
+        self.0.blocking_lock().notr_kaydet(&self.1);
+    }
+}
+
 pub async fn gonder_akis(
     yukari: &Yukari,
     hedef: &Hedef,
     istemci_govdesi: &Value,
     istenen_model: Option<&str>,
 ) -> Result<mpsc::Receiver<Result<String, YukariHatasi>>, YukariHatasi> {
+    // 0. Desteklenmeyen alanlar anahtar, izin ve ağdan önce
+    on_denetim(hedef, istemci_govdesi)?;
+
     // 1. Anahtar kontrolü
     let anahtar = std::env::var(&hedef.anahtar_env)
         .map_err(|_| YukariHatasi::AnahtarYok(hedef.anahtar_env.clone()))?;
@@ -56,14 +109,6 @@ pub async fn gonder_akis(
                 kervan_direnc::DirencHatasi::IslemHatasi(m) => Err(YukariHatasi::AgHatasi(m)),
             };
         }
-    }
-
-    // 3. FR-6.4: Claude veya Gemini hedeflerde stream=true iken tools varsa açık hata ver
-    if hedef.bicim != "openai"
-        && let Some(tools) = istemci_govdesi.get("tools").and_then(|t| t.as_array())
-        && !tools.is_empty()
-    {
-        return Err(YukariHatasi::Desteklenmiyor("tools".to_string()));
     }
 
     let yukari_model = istenen_model.unwrap_or(&hedef.model).to_string();
@@ -135,6 +180,7 @@ fn akis_openai(
     init_tx: oneshot::Sender<Result<(), YukariHatasi>>,
     direnc: Arc<Mutex<kervan_direnc::DirencYoneticisi>>,
 ) {
+    let _deneme = DenemeYuvasi(direnc.clone(), hedef.ad.clone());
     let mut yukari_govde = istemci_govdesi.clone();
     if let Some(obj) = yukari_govde.as_object_mut() {
         obj.insert("model".to_string(), Value::String(yukari_model));
@@ -220,6 +266,8 @@ fn akis_openai(
                 }
             }
             Err(e) => {
+                // Akış ortası okuma hatası ağ hatasıdır: kesiciyi besler.
+                direnc.blocking_lock().hata_kaydet(&hedef.ad, None, None);
                 alici_ayrildiysa_birak(tx.blocking_send(Err(YukariHatasi::AgHatasi(
                     temizle_hata(&e.to_string(), &anahtar),
                 ))));
@@ -248,6 +296,7 @@ fn akis_claude(
     init_tx: oneshot::Sender<Result<(), YukariHatasi>>,
     direnc: Arc<Mutex<kervan_direnc::DirencYoneticisi>>,
 ) {
+    let _deneme = DenemeYuvasi(direnc.clone(), hedef.ad.clone());
     let openai_istek: kervan_ceviri::OpenAiIstek = match serde_json::from_value(istemci_govdesi) {
         Ok(i) => i,
         Err(e) => {
@@ -260,9 +309,7 @@ fn akis_claude(
         match kervan_ceviri::openai_den_claude_istegi(&openai_istek, &yukari_model) {
             Ok(c) => c,
             Err(e) => {
-                alici_ayrildiysa_birak(
-                    init_tx.send(Err(YukariHatasi::Desteklenmiyor(e.to_string()))),
-                );
+                alici_ayrildiysa_birak(init_tx.send(Err(YukariHatasi::from(e))));
                 return;
             }
         };
@@ -328,11 +375,7 @@ fn akis_claude(
     }
 
     let reader = BufReader::new(response.into_body().into_reader());
-    let simdi = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    let istek_id = format!("chatcmpl-claude-{}", simdi);
+    let mut cevirici = kervan_ceviri::ClaudeAkisCevirici::default();
 
     for line_res in reader.lines() {
         match line_res {
@@ -347,16 +390,20 @@ fn akis_claude(
                         break;
                     }
                     if let Ok(olay) = serde_json::from_str::<kervan_ceviri::ClaudeOlay>(json_str) {
+                        if let kervan_ceviri::ClaudeOlay::Hata { error } = &olay {
+                            // Yukarı akış akışı hatayla kesti: istemciye hata, [DONE] yok,
+                            // başarı değil; kesiciyi besler (aşırı yük vb. sunucu tarafı).
+                            direnc.blocking_lock().hata_kaydet(&hedef.ad, None, None);
+                            alici_ayrildiysa_birak(tx.blocking_send(Err(YukariHatasi::AgHatasi(
+                                format!(
+                                    "Claude akış hatası: {}",
+                                    temizle_hata(&error.to_string(), &anahtar)
+                                ),
+                            ))));
+                            return;
+                        }
                         let bitti = matches!(olay, kervan_ceviri::ClaudeOlay::MesajBitti);
-                        if let Ok(Some(parca)) = kervan_ceviri::claude_dan_openai_parcasi(
-                            &olay,
-                            &istek_id,
-                            &yukari_model,
-                        ) && let Ok(parca_json) = serde_json::to_string(&parca)
-                            && tx
-                                .blocking_send(Ok(format!("data: {}\n\n", parca_json)))
-                                .is_err()
-                        {
+                        if !parcalari_gonder(&tx, cevirici.cevir(&olay, simdi_ms() / 1000)) {
                             return;
                         }
                         if bitti {
@@ -366,6 +413,8 @@ fn akis_claude(
                 }
             }
             Err(e) => {
+                // Akış ortası okuma hatası ağ hatasıdır: kesiciyi besler.
+                direnc.blocking_lock().hata_kaydet(&hedef.ad, None, None);
                 alici_ayrildiysa_birak(tx.blocking_send(Err(YukariHatasi::AgHatasi(
                     temizle_hata(&e.to_string(), &anahtar),
                 ))));
@@ -392,6 +441,7 @@ fn akis_gemini(
     init_tx: oneshot::Sender<Result<(), YukariHatasi>>,
     direnc: Arc<Mutex<kervan_direnc::DirencYoneticisi>>,
 ) {
+    let _deneme = DenemeYuvasi(direnc.clone(), hedef.ad.clone());
     let openai_istek: kervan_ceviri::OpenAiIstek = match serde_json::from_value(istemci_govdesi) {
         Ok(i) => i,
         Err(e) => {
@@ -403,7 +453,7 @@ fn akis_gemini(
     let gemini_istek = match kervan_ceviri::openai_den_gemini_istegi(&openai_istek, &yukari_model) {
         Ok(g) => g,
         Err(e) => {
-            alici_ayrildiysa_birak(init_tx.send(Err(YukariHatasi::Desteklenmiyor(e.to_string()))));
+            alici_ayrildiysa_birak(init_tx.send(Err(YukariHatasi::from(e))));
             return;
         }
     };
@@ -471,11 +521,7 @@ fn akis_gemini(
     }
 
     let reader = BufReader::new(response.into_body().into_reader());
-    let simdi = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    let istek_id = format!("chatcmpl-gemini-{}", simdi);
+    let mut cevirici = kervan_ceviri::GeminiAkisCevirici::default();
 
     for line_res in reader.lines() {
         match line_res {
@@ -490,21 +536,15 @@ fn akis_gemini(
                         break;
                     }
                     if let Ok(yanit) = serde_json::from_str::<kervan_ceviri::GeminiYanit>(json_str)
-                        && let Ok(Some(parca)) = kervan_ceviri::gemini_den_openai_parcasi(
-                            &yanit,
-                            &istek_id,
-                            &yukari_model,
-                        )
-                        && let Ok(parca_json) = serde_json::to_string(&parca)
-                        && tx
-                            .blocking_send(Ok(format!("data: {}\n\n", parca_json)))
-                            .is_err()
+                        && !parcalari_gonder(&tx, cevirici.cevir(&yanit, simdi_ms()))
                     {
                         return;
                     }
                 }
             }
             Err(e) => {
+                // Akış ortası okuma hatası ağ hatasıdır: kesiciyi besler.
+                direnc.blocking_lock().hata_kaydet(&hedef.ad, None, None);
                 alici_ayrildiysa_birak(tx.blocking_send(Err(YukariHatasi::AgHatasi(
                     temizle_hata(&e.to_string(), &anahtar),
                 ))));

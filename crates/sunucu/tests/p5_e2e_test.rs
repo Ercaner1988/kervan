@@ -206,31 +206,35 @@ async fn p5_e2e_nonce_testi() {
 // FR-4.6 Model Listesi Testi
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn p5_models_testi() {
-    let mut rest_hedefleri = std::collections::HashMap::new();
-    rest_hedefleri.insert(
-        "mock1".into(),
-        kervan_yukari::Hedef {
-            ad: "mock1".into(),
-            bicim: "openai".into(),
-            taban_url: "http://127.0.0.1:80".into(),
-            anahtar_env: "ENV1".into(),
-            model: "model-1".into(),
-            yol: None,
-            zaman_asimi: Duration::from_secs(5),
-        },
-    );
-    rest_hedefleri.insert(
-        "mock2".into(),
-        kervan_yukari::Hedef {
-            ad: "mock2".into(),
-            bicim: "openai".into(),
-            taban_url: "http://127.0.0.1:80".into(),
-            anahtar_env: "ENV2".into(),
-            model: "model-2".into(),
-            yol: None,
-            zaman_asimi: Duration::from_secs(5),
-        },
-    );
+    // Sağlayıcı adı her koşuda rastgele (nonce): sabit liste dönen bir uç bu testi geçemez.
+    let nonce_ad = format!("mock-{}", rand::random::<u64>());
+    // Nonce'lu ad sunucu durumuna (rest_hedefleri → AppState → serve) akar.
+    let rest_hedefleri = std::collections::HashMap::from([
+        (
+            nonce_ad.clone(),
+            kervan_yukari::Hedef {
+                ad: nonce_ad.clone(),
+                bicim: "openai".into(),
+                taban_url: "http://127.0.0.1:80".into(),
+                anahtar_env: "ENV1".into(),
+                model: "model-1".into(),
+                yol: None,
+                zaman_asimi: Duration::from_secs(5),
+            },
+        ),
+        (
+            "mock2".to_string(),
+            kervan_yukari::Hedef {
+                ad: "mock2".into(),
+                bicim: "openai".into(),
+                taban_url: "http://127.0.0.1:80".into(),
+                anahtar_env: "ENV2".into(),
+                model: "model-2".into(),
+                yol: None,
+                zaman_asimi: Duration::from_secs(5),
+            },
+        ),
+    ]);
 
     let temp_dir =
         std::env::temp_dir().join(format!("kervan_models_test_{}", rand::random::<u64>()));
@@ -303,9 +307,10 @@ async fn p5_models_testi() {
     let model_idler: Vec<&str> = data.iter().filter_map(|m| m["id"].as_str()).collect();
 
     // 1. Gerçek REST sağlayıcıları kervan/<ad> olarak listelenir
+    let nonce_model = format!("kervan/{}", nonce_ad);
     assert!(
-        model_idler.contains(&"kervan/mock1"),
-        "kervan/mock1 listede olmalı"
+        model_idler.contains(&nonce_model.as_str()),
+        "{nonce_model} listede olmalı: {model_idler:?}"
     );
     assert!(
         model_idler.contains(&"kervan/mock2"),

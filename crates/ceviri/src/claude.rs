@@ -15,21 +15,7 @@ pub fn openai_den_claude_istegi(
     hedef_model: &str,
 ) -> Result<ClaudeIstek, CeviriHatasi> {
     // 1. Desteklenmeyen alan denetimleri (FR-5.3)
-    if let Some(ref tools) = istek.tools
-        && !tools.is_empty()
-    {
-        return Err(CeviriHatasi::Desteklenmiyor("tools".to_string()));
-    }
-
-    for m in &istek.messages {
-        if let Some(ref c) = m.content
-            && !c.is_string()
-        {
-            return Err(CeviriHatasi::Desteklenmiyor(
-                "çok parçalı içerik".to_string(),
-            ));
-        }
-    }
+    istek.desteklenmeyeni_denetle()?;
 
     let mut sistem_bloklari = Vec::new();
     let mut claude_mesajlar = Vec::new();
@@ -145,70 +131,4 @@ pub fn claude_dan_openai_yaniti(
         choices: vec![secenek],
         usage: kullanim,
     })
-}
-
-/// Anthropic SSE olayını OpenAI Chat Completion Chunk biçimine dönüştürür.
-pub fn claude_dan_openai_parcasi(
-    olay: &ClaudeOlay,
-    istek_id: &str,
-    model: &str,
-) -> Result<Option<OpenAiParca>, CeviriHatasi> {
-    let simdi = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(d) => d.as_secs(),
-        Err(_) => 0,
-    };
-
-    match olay {
-        ClaudeOlay::MesajBasladi { .. } => Ok(Some(OpenAiParca {
-            id: istek_id.to_string(),
-            object: "chat.completion.chunk".to_string(),
-            created: simdi,
-            model: model.to_string(),
-            choices: vec![OpenAiParcaSecenek {
-                index: 0,
-                delta: OpenAiDelta {
-                    role: Some("assistant".to_string()),
-                    content: None,
-                },
-                finish_reason: None,
-            }],
-        })),
-        ClaudeOlay::IcerikDeltasi { delta } => match delta {
-            ClaudeDeltaIcerik::Metin { text } => Ok(Some(OpenAiParca {
-                id: istek_id.to_string(),
-                object: "chat.completion.chunk".to_string(),
-                created: simdi,
-                model: model.to_string(),
-                choices: vec![OpenAiParcaSecenek {
-                    index: 0,
-                    delta: OpenAiDelta {
-                        role: None,
-                        content: Some(text.clone()),
-                    },
-                    finish_reason: None,
-                }],
-            })),
-            ClaudeDeltaIcerik::Diger => Ok(None),
-        },
-        ClaudeOlay::MesajDeltasi { delta, .. } => {
-            let finish = delta.stop_reason.as_deref().map(|r| match r {
-                "end_turn" => "stop".to_string(),
-                "max_tokens" => "length".to_string(),
-                other => other.to_string(),
-            });
-            Ok(Some(OpenAiParca {
-                id: istek_id.to_string(),
-                object: "chat.completion.chunk".to_string(),
-                created: simdi,
-                model: model.to_string(),
-                choices: vec![OpenAiParcaSecenek {
-                    index: 0,
-                    delta: OpenAiDelta::default(),
-                    finish_reason: finish,
-                }],
-            }))
-        }
-        ClaudeOlay::MesajBitti => Ok(None),
-        ClaudeOlay::Diger => Ok(None),
-    }
 }

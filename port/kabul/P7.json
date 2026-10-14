@@ -8,7 +8,10 @@
         "test_p7_ardisik_5xx_kesiciyi_acar",
         "test_p7_429_retry_after_ve_soguma",
         "p7_ardisik_5xx_kesici_503_ve_sayac_sabit",
-        "p7_429_retry_after_ve_soguma_kervan"
+        "p7_429_retry_after_ve_soguma_kervan",
+        "test_p7_yari_acik_4xx_sonrasi_kilitlenmez",
+        "test_p7_yari_acik_akista_istemci_ayrilinca_kilitlenmez",
+        "test_p7_claude_akis_hata_olayi_yutulmaz"
       ]
     },
     {
@@ -16,7 +19,8 @@
       "metin": "yankılanan test anahtarı istemci yanıtında, stdout/stderr'de ve günlüklerde yoktur",
       "kanit": [
         "test_p7_hata_temizligi_ve_anahtar_sizdirmazligi",
-        "p7_hata_temizligi_ve_anahtar_sizdirmazligi"
+        "p7_hata_temizligi_ve_anahtar_sizdirmazligi",
+        "anahtar_hicbir_cikti_ya_da_dosyaya_sizmaz"
       ]
     }
   ]

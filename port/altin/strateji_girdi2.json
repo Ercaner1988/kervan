@@ -1,158 +1,564 @@
 {
   "kaynak_sha": "dbe703a",
-  "kaynak_yol": "open-sse/services/combo/applyStrategyOrdering.ts",
-  "uretici_ozeti": "sha256:7be7201a4114de065b4bb683a45e2043404618f87722f8cab6eb9582b28ddbcd",
+  "kaynak_yollar": [
+    "open-sse/services/combo/applyStrategyOrdering.ts",
+    "open-sse/services/combo/targetSorters.ts",
+    "open-sse/services/combo/rrState.ts",
+    "open-sse/services/combo/roundRobinCombo.ts",
+    "src/shared/utils/shuffleDeck.ts",
+    "src/shared/constants/routingStrategies.ts",
+    "src/lib/combos/steps.ts",
+    "open-sse/services/comboMetrics.ts",
+    "src/lib/db/settings/pricing.ts"
+  ],
+  "uretici_ozeti": "sha256:a670f8cb0ec008dab0bc9d7fec826bc1119292237282c7fba1482c0b370302ec",
   "girdi_id": "strateji_girdi2",
-  "tohum": 42,
-  "adaylar": [
+  "hedefler": [
     {
-      "ad": "deepseek/deepseek-chat",
-      "execution_key": "deepseek:v3:accA",
-      "connection_id": "accA",
-      "weight": 15,
-      "cost": 0.2,
-      "context_size": 64000,
-      "latency_ms": 300,
-      "error_count": 2,
-      "request_count": 30,
-      "free_quota": 20000,
-      "reset_seconds": 120,
-      "warm_cache": false
+      "model_str": "kvd/model-ortak",
+      "provider": "kvd",
+      "execution_key": "kvd/model-ortak#d1",
+      "connection_id": "d1",
+      "weight": 10
     },
     {
-      "ad": "qwen/qwen-2.5-max",
-      "execution_key": "qwen:max:accB",
-      "connection_id": "accB",
-      "weight": 30,
-      "cost": 1.5,
-      "context_size": 32000,
-      "latency_ms": 120,
-      "error_count": 0,
-      "request_count": 20,
-      "free_quota": 80000,
-      "reset_seconds": 7200,
-      "warm_cache": true
+      "model_str": "kve/model-fiyatsiz",
+      "provider": "kve",
+      "execution_key": "kve/model-fiyatsiz#e1",
+      "connection_id": "e1",
+      "weight": 10
     },
     {
-      "ad": "mistral/mistral-large",
-      "execution_key": "mistral:large:accC",
+      "model_str": "kvd/model-ortak",
+      "provider": "kvd",
+      "execution_key": "kvd/model-ortak#d2",
+      "connection_id": "d2",
+      "weight": 30
+    },
+    {
+      "model_str": "kvf/model-esit",
+      "provider": "kvf",
+      "execution_key": "kvf/model-esit",
       "connection_id": null,
-      "weight": 5,
-      "cost": 2,
-      "context_size": 128000,
-      "latency_ms": 180,
-      "error_count": 0,
-      "request_count": 5,
-      "free_quota": 10000,
-      "reset_seconds": 1800,
-      "warm_cache": false
+      "weight": 0
+    },
+    {
+      "model_str": "kvg/model-ucuz",
+      "provider": "kvg",
+      "execution_key": "kvg/model-ucuz#g1",
+      "connection_id": "g1",
+      "weight": 30
     }
   ],
+  "durum": {
+    "fiyat": {
+      "kvd/model-ortak": 1,
+      "kvf/model-esit": 1,
+      "kvg/model-ucuz": 0.25
+    },
+    "baglam": {
+      "kvd/model-ortak": 64000,
+      "kvf/model-esit": 64000,
+      "kvg/model-ucuz": 32000
+    },
+    "kayitlar": [
+      {
+        "model_str": "kvd/model-ortak",
+        "execution_key": "kvd/model-ortak#d2",
+        "basarili": true,
+        "gecikme_ms": 300
+      },
+      {
+        "model_str": "kvd/model-ortak",
+        "execution_key": "kvd/model-ortak#d2",
+        "basarili": true,
+        "gecikme_ms": 300
+      },
+      {
+        "model_str": "kvf/model-esit",
+        "execution_key": "kvf/model-esit",
+        "basarili": false,
+        "gecikme_ms": 50
+      },
+      {
+        "model_str": "kvf/model-esit",
+        "execution_key": "kvf/model-esit",
+        "basarili": false,
+        "gecikme_ms": 50
+      },
+      {
+        "model_str": "kvg/model-ucuz",
+        "execution_key": "kvg/model-ucuz#g1",
+        "basarili": true,
+        "gecikme_ms": 100
+      },
+      {
+        "model_str": "kvg/model-ucuz",
+        "execution_key": "kvg/model-ucuz#g1",
+        "basarili": false,
+        "gecikme_ms": 900
+      }
+    ],
+    "lkgp": {
+      "provider": "kvd",
+      "connection_id": "d2"
+    }
+  },
+  "rastgele_48": [
+    145883536729765,
+    58800516579031,
+    194105729235030,
+    127734539830511,
+    194781438378260,
+    13653732489441,
+    143129207312292,
+    160167897207240,
+    280345708662016,
+    13422473892094,
+    59013362009142,
+    232255461143570,
+    89998802587830,
+    229417149511881,
+    28627239064114,
+    211927452469156,
+    1744689789989,
+    69281213846490,
+    50288987316797,
+    232753753535809,
+    189945250080678,
+    162839978017494,
+    79044002192515,
+    99432345959457,
+    214149599568042,
+    256151715819593,
+    254614388809699,
+    102499247550458,
+    211278363027082,
+    218327330813192,
+    129022940243065,
+    160270061988197,
+    108262697159887,
+    44146803126844,
+    115490642920281,
+    271622497306283,
+    15984121673346,
+    243208685031304,
+    54365826226952,
+    109293477942625,
+    245002183836304,
+    236024777026785,
+    149371425181687,
+    119482724237522,
+    252423620934934,
+    234118082817105,
+    195915388575038,
+    231279746182915,
+    255650404289965,
+    137547642447017,
+    202220773999012,
+    259067008787296,
+    142490864481453,
+    187832661869930,
+    54729292015533,
+    141326241180468,
+    101043795478026,
+    236290746709559,
+    102614009958855,
+    87985825477988,
+    176454193387296,
+    26781920519556,
+    82989263175865,
+    201841686361766,
+    11913777606156,
+    13094408788012,
+    110770684549014,
+    174798962325021,
+    81716516779495,
+    234917758694875,
+    254979676334335,
+    134588522338578,
+    97911863240310,
+    262745978191261,
+    241605519291396,
+    183364589287709,
+    269227039427273,
+    147084714104587,
+    201121962846161,
+    13046614942769,
+    14373302201725,
+    198268449556577,
+    238609348632896,
+    260239163848196,
+    109263473838247,
+    55464790785452,
+    266178749828682,
+    156063058644815,
+    67695483786125,
+    182533821924584,
+    84046094105885,
+    196571962010955,
+    94005892741131,
+    237591101909705,
+    195815859244857,
+    219459268757005
+  ],
+  "takma_adlar": {
+    "usage": "least-used",
+    "context": "context-optimized",
+    "weekly-reset": "reset-window",
+    "reset-window-order": "reset-window",
+    "  Priority ": "priority",
+    "ROUND-ROBIN": "round-robin",
+    "roundrobin": "priority",
+    "quota-share": "quota-share",
+    "bilinmeyen": "priority",
+    "": "priority",
+    "fusion": "fusion",
+    "least-used": "least-used",
+    "LKGP": "lkgp",
+    "round-robin": "priority",
+    "﻿random": "random",
+    " p2c　": "p2c"
+  },
+  "tuketim": {
+    "priority": 0,
+    "fill-first": 0,
+    "context-relay": 0,
+    "p2c": 16,
+    "random": 12,
+    "least-used": 0,
+    "cost-optimized": 0,
+    "lkgp": 0,
+    "context-optimized": 0,
+    "strict-random": 46,
+    "weighted": 8,
+    "round-robin": 0
+  },
   "sonuclar": {
     "priority": [
-      "deepseek/deepseek-chat",
-      "qwen/qwen-2.5-max",
-      "mistral/mistral-large"
-    ],
-    "weighted": [
-      "qwen/qwen-2.5-max",
-      "deepseek/deepseek-chat",
-      "mistral/mistral-large"
-    ],
-    "round-robin": [
-      "deepseek/deepseek-chat",
-      "qwen/qwen-2.5-max",
-      "mistral/mistral-large"
-    ],
-    "context-relay": [
-      "mistral/mistral-large",
-      "deepseek/deepseek-chat",
-      "qwen/qwen-2.5-max"
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ]
     ],
     "fill-first": [
-      "deepseek/deepseek-chat",
-      "qwen/qwen-2.5-max",
-      "mistral/mistral-large"
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ]
+    ],
+    "context-relay": [
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ]
     ],
     "p2c": [
-      "mistral/mistral-large",
-      "deepseek/deepseek-chat",
-      "qwen/qwen-2.5-max"
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ],
+      [
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ],
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ],
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ],
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ],
+      [
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ]
     ],
     "random": [
-      "qwen/qwen-2.5-max",
-      "deepseek/deepseek-chat",
-      "mistral/mistral-large"
+      [
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvd/model-ortak#d2@kvd/model-ortak"
+      ],
+      [
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ]
     ],
     "least-used": [
-      "mistral/mistral-large",
-      "qwen/qwen-2.5-max",
-      "deepseek/deepseek-chat"
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ]
     ],
     "cost-optimized": [
-      "deepseek/deepseek-chat",
-      "qwen/qwen-2.5-max",
-      "mistral/mistral-large"
-    ],
-    "reset-aware": [
-      "deepseek/deepseek-chat",
-      "qwen/qwen-2.5-max",
-      "mistral/mistral-large"
-    ],
-    "reset-window": [
-      "deepseek/deepseek-chat",
-      "mistral/mistral-large",
-      "qwen/qwen-2.5-max"
-    ],
-    "headroom": [
-      "qwen/qwen-2.5-max",
-      "deepseek/deepseek-chat",
-      "mistral/mistral-large"
-    ],
-    "quota-weighted": [
-      "qwen/qwen-2.5-max",
-      "deepseek/deepseek-chat",
-      "mistral/mistral-large"
-    ],
-    "strict-random": [
-      "qwen/qwen-2.5-max",
-      "deepseek/deepseek-chat",
-      "mistral/mistral-large"
-    ],
-    "auto": [
-      "qwen/qwen-2.5-max",
-      "mistral/mistral-large",
-      "deepseek/deepseek-chat"
+      [
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz"
+      ]
     ],
     "lkgp": [
-      "deepseek/deepseek-chat",
-      "qwen/qwen-2.5-max",
-      "mistral/mistral-large"
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ]
     ],
     "context-optimized": [
-      "mistral/mistral-large",
-      "deepseek/deepseek-chat",
-      "qwen/qwen-2.5-max"
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz"
+      ]
     ],
-    "cache-optimized": [
-      "qwen/qwen-2.5-max",
-      "deepseek/deepseek-chat",
-      "mistral/mistral-large"
+    "strict-random": [
+      [
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvf/model-esit@kvf/model-esit",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d2@kvd/model-ortak"
+      ],
+      [
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak"
+      ],
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ],
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak"
+      ],
+      [
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz"
+      ],
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ],
+      [
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ],
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz"
+      ],
+      [
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvd/model-ortak#d2@kvd/model-ortak"
+      ]
     ],
-    "fusion": [
-      "deepseek/deepseek-chat",
-      "mistral/mistral-large",
-      "qwen/qwen-2.5-max"
+    "weighted": [
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit"
+      ]
     ],
-    "pipeline": [
-      "qwen/qwen-2.5-max",
-      "deepseek/deepseek-chat",
-      "mistral/mistral-large"
-    ],
-    "quota-share": [
-      "qwen/qwen-2.5-max",
-      "deepseek/deepseek-chat",
-      "mistral/mistral-large"
+    "round-robin": [
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ],
+      [
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak"
+      ],
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz"
+      ],
+      [
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak"
+      ],
+      [
+        "kvg/model-ucuz#g1@kvg/model-ucuz",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit"
+      ],
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ]
     ]
   }
 }

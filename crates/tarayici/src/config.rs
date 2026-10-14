@@ -193,6 +193,28 @@ impl Config {
         for (ad, r) in &self.rest {
             r.dogrula(ad)?;
         }
+        // `kervan/<ad>` önce REST'te aranır: aynı adlı [rest.X], X tarayıcı sağlayıcısını
+        // sessizce gölgelerdi. Çakışma açık hatadır.
+        let tarayici: std::collections::BTreeSet<&str> = self
+            .accounts
+            .iter()
+            .flat_map(|a| a.provider.iter().chain(&a.providers))
+            .chain(self.providers.keys())
+            .map(String::as_str)
+            .collect();
+        let mut cakisan: Vec<&str> = self
+            .rest
+            .keys()
+            .map(String::as_str)
+            .filter(|ad| tarayici.contains(ad))
+            .collect();
+        cakisan.sort_unstable();
+        if !cakisan.is_empty() {
+            anyhow::bail!(
+                "[rest.*] adları tarayıcı sağlayıcılarıyla çakışıyor: {} (kervan/<ad> REST'e giderdi)",
+                cakisan.join(", ")
+            );
+        }
         Ok(())
     }
 
@@ -282,5 +304,22 @@ mod tests {
         "#;
         let c: Config = toml::from_str(t).unwrap();
         assert!(c.dogrula().is_err());
+    }
+
+    #[test]
+    fn rest_adi_tarayici_saglayicisini_golgeleyemez() {
+        let t = r#"
+            [[accounts]]
+            name = "a"
+            providers = ["gemini"]
+            [rest.gemini]
+            bicim = "gemini"
+            taban_url = "https://generativelanguage.googleapis.com"
+            anahtar_env = "GEMINI_API_KEY"
+            model = "gemini-2.5-flash"
+        "#;
+        let c: Config = toml::from_str(t).unwrap();
+        let hata = c.dogrula().unwrap_err().to_string();
+        assert!(hata.contains("çakışıyor: gemini"), "{hata}");
     }
 }

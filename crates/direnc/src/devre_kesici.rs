@@ -137,6 +137,14 @@ impl DevreKesici {
         self.yari_acik_deneme_sayisi = 0;
     }
 
+    /// Yarı-açık deneme kesiciyi besleyen bir sonuç (başarı ya da 5xx/ağ hatası) vermeden
+    /// bittiyse (4xx, 429, istemci/JSON hatası) yuvayı bırakır; yoksa devre kalıcı kilitlenir.
+    pub fn deneme_birak(&mut self) {
+        if self.durum == Durum::YariAcik && self.yari_acik_deneme_sayisi > 0 {
+            self.yari_acik_deneme_sayisi -= 1;
+        }
+    }
+
     /// Başarısız bir çağrı sonrası hata sayacını artırır ve gerekiyorsa devreyi açar.
     pub fn hata_kaydet(&mut self) {
         self.hata_kaydet_zamaniyla(Instant::now());

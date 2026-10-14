@@ -1,0 +1,17 @@
+# Kervan CI: kapı (kapi.toml [temel] ek_cargo) ile aynı üç komut. Platform Windows: proje ve altın testleri
+# Windows'ta ölçüldü (turso derlemesi rc.exe ister). Bu dosya kit tarafından da okunur (kapi `.github/workflows/ci.yml`).
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  kapi:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - run: cargo test --workspace --all-features

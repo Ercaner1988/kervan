@@ -322,3 +322,248 @@ async fn test_p7_hata_temizligi_ve_anahtar_sizdirmazligi() {
         other => panic!("401 HttpHatasi bekleniyordu, dönen: {:?}", other),
     }
 }
+
+/// temizle_hata 500 baytta keser; kesim çok baytlı bir harfin ortasına düşerse panik olmamalı.
+#[test]
+fn temizle_hata_cok_baytli_sinirda_paniklemez() {
+    // "a" + 300 × "ş" (2 bayt): 500. bayt bir "ş"nin ortasına düşer.
+    let govde = format!("a{}", "ş".repeat(300));
+    let temiz = kervan_yukari::temizle_hata(&govde, "");
+    assert!(temiz.ends_with("..."));
+    assert!(
+        temiz.len() <= 503,
+        "kısaltma 500 baytı aştı: {}",
+        temiz.len()
+    );
+    assert!(temiz.starts_with("aş"));
+}
+
+/// Yarı-açık deneme kesiciyi beslemeyen bir sonuçla (401) bitince yuva bırakılmalı:
+/// açık → (soğuma) yarı-açık → 401 (akışlı) → sonraki istek yine yukarı akışa ulaşır.
+/// Eski kodda yuva kalıcı dolu kalıyordu: her istek DevreAcik dönüyordu.
+#[tokio::test]
+async fn test_p7_yari_acik_4xx_sonrasi_kilitlenmez() {
+    let (url_500, _) =
+        baslat_sahte_sunucu_sayacli(500, "Internal Server Error", "{}".to_string(), vec![]);
+    let (url_401, sayac_401) = baslat_sahte_sunucu_sayacli(
+        401,
+        "Unauthorized",
+        r#"{"error":"yetkisiz"}"#.to_string(),
+        vec![],
+    );
+
+    let test_saati = Arc::new(TestSaati::yeni(Instant::now()));
+    let direnc = DirencYoneticisi::yeni(
+        test_saati.clone(),
+        Some(DevreKesiciYapilandirma {
+            hata_esigi: 3,
+            bozulma_esigi: 2,
+            soguma_suresi: Duration::from_secs(30),
+            yari_acik_izin: 1,
+        }),
+    );
+    let yukari = Yukari::yeni_direncli(direnc);
+    let env_key = "TEST_P7_YARI_ACIK_KEY";
+    unsafe { std::env::set_var(env_key, "sk-test-yari-acik-123") };
+
+    // Aynı ad = aynı kesici; yalnız yukarı akış adresi değişir.
+    let hedef = |taban_url: String| Hedef {
+        ad: "test-yari-acik".to_string(),
+        bicim: "openai".to_string(),
+        taban_url,
+        anahtar_env: env_key.to_string(),
+        model: "gpt-4o-mini".to_string(),
+        yol: Some("/v1/chat/completions".to_string()),
+        zaman_asimi: Duration::from_secs(5),
+    };
+    let govde = json!({"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "test"}]});
+
+    for _ in 0..3 {
+        let _ = yukari.gonder(&hedef(url_500.clone()), &govde, None).await;
+    }
+    assert!(matches!(
+        yukari.gonder(&hedef(url_401.clone()), &govde, None).await,
+        Err(YukariHatasi::DevreAcik { .. })
+    ));
+    assert_eq!(
+        sayac_401.load(Ordering::SeqCst),
+        0,
+        "açık devre yukarı akışa gitmemeli"
+    );
+
+    test_saati.ilerlet(Duration::from_secs(31));
+
+    // Yarı-açık deneme (akışlı yol) 401 alır: kesici beslenmez, yuva bırakılmalı.
+    let akis = yukari
+        .gonder_akis(&hedef(url_401.clone()), &govde, None)
+        .await;
+    assert!(
+        matches!(akis, Err(YukariHatasi::HttpHatasi(401, _, _))),
+        "{akis:?}"
+    );
+    assert_eq!(sayac_401.load(Ordering::SeqCst), 1);
+
+    // Sonraki istek kilitlenmeden yukarı akışa ulaşmalı (akışsız yol, yine 401).
+    let ikinci = yukari.gonder(&hedef(url_401.clone()), &govde, None).await;
+    assert!(
+        matches!(ikinci, Err(YukariHatasi::HttpHatasi(401, _, _))),
+        "{ikinci:?}"
+    );
+    assert_eq!(
+        sayac_401.load(Ordering::SeqCst),
+        2,
+        "yarı-açık yuva akışlı 401'den sonra serbest kalmalı"
+    );
+
+    // Akışsız yolun 401'i de yuvayı bırakmalı: üçüncü istek de yukarı akışa ulaşır.
+    let ucuncu = yukari.gonder(&hedef(url_401.clone()), &govde, None).await;
+    assert!(
+        matches!(ucuncu, Err(YukariHatasi::HttpHatasi(401, _, _))),
+        "{ucuncu:?}"
+    );
+    assert_eq!(
+        sayac_401.load(Ordering::SeqCst),
+        3,
+        "yarı-açık yuva akışsız 401'den sonra serbest kalmalı"
+    );
+}
+
+/// Yarı-açık akış denemesinde istemci ayrılırsa (alıcı düşer) işçi başarı/hata kaydetmeden
+/// döner; DenemeYuvasi yuvayı yine bırakmalı. 100 satır > kanal kapasitesi (32): işçi
+/// gönderimde bekler, alıcı düşünce gönderim hata verir (yarış yok).
+#[tokio::test]
+async fn test_p7_yari_acik_akista_istemci_ayrilinca_kilitlenmez() {
+    let (url_500, _) =
+        baslat_sahte_sunucu_sayacli(500, "Internal Server Error", "{}".to_string(), vec![]);
+    let akis_govdesi: String = (0..100)
+        .map(|i| format!("data: {{\"i\":{i}}}\n\n"))
+        .collect();
+    let (url_akis, sayac_akis) = baslat_sahte_sunucu_sayacli(200, "OK", akis_govdesi, vec![]);
+
+    let test_saati = Arc::new(TestSaati::yeni(Instant::now()));
+    let direnc = DirencYoneticisi::yeni(
+        test_saati.clone(),
+        Some(DevreKesiciYapilandirma {
+            hata_esigi: 3,
+            bozulma_esigi: 2,
+            soguma_suresi: Duration::from_secs(30),
+            yari_acik_izin: 1,
+        }),
+    );
+    let yukari = Yukari::yeni_direncli(direnc);
+    let env_key = "TEST_P7_YARI_ACIK_AYRILMA_KEY";
+    unsafe { std::env::set_var(env_key, "sk-test-ayrilma-123") };
+    let hedef = |taban_url: String| Hedef {
+        ad: "test-yari-acik-ayrilma".to_string(),
+        bicim: "openai".to_string(),
+        taban_url,
+        anahtar_env: env_key.to_string(),
+        model: "gpt-4o-mini".to_string(),
+        yol: Some("/v1/chat/completions".to_string()),
+        zaman_asimi: Duration::from_secs(5),
+    };
+    let govde = json!({"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "test"}]});
+
+    for _ in 0..3 {
+        let _ = yukari.gonder(&hedef(url_500.clone()), &govde, None).await;
+    }
+    test_saati.ilerlet(Duration::from_secs(31));
+
+    let alici = yukari
+        .gonder_akis(&hedef(url_akis.clone()), &govde, None)
+        .await
+        .expect("akış başlamalı");
+    drop(alici); // istemci ayrıldı
+    // İşçi gönderim hatasını görüp düşene kadar kısa bekleme (yuva o anda bırakılır).
+    let mut ikinci = None;
+    for _ in 0..50 {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        match yukari
+            .gonder_akis(&hedef(url_akis.clone()), &govde, None)
+            .await
+        {
+            Err(YukariHatasi::DevreAcik { .. }) => continue,
+            r => {
+                ikinci = Some(r.is_ok());
+                break;
+            }
+        }
+    }
+    assert_eq!(
+        ikinci,
+        Some(true),
+        "istemci ayrıldıktan sonra yarı-açık yuva serbest kalmalı"
+    );
+    assert_eq!(sayac_akis.load(Ordering::SeqCst), 2);
+}
+
+/// Claude akışı ortada `error` olayıyla kesilirse: istemci hata alır, `[DONE]` gelmez,
+/// istek başarı sayılmaz ve kesici beslenir (eşik 1: sonraki istek DevreAcik).
+#[tokio::test]
+async fn test_p7_claude_akis_hata_olayi_yutulmaz() {
+    let sse = [
+        r#"{"type":"message_start","message":{"id":"m1","type":"message","role":"assistant","content":[],"model":"c"}}"#,
+        r#"{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"yarım"}}"#,
+        r#"{"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}"#,
+    ]
+    .iter()
+    .map(|d| format!("data: {d}\n\n"))
+    .collect::<String>();
+    let (url, _) = baslat_sahte_sunucu_sayacli(200, "OK", sse, vec![]);
+
+    let direnc = DirencYoneticisi::yeni(
+        Arc::new(TestSaati::yeni(Instant::now())),
+        Some(DevreKesiciYapilandirma {
+            hata_esigi: 1,
+            bozulma_esigi: 1,
+            soguma_suresi: Duration::from_secs(30),
+            yari_acik_izin: 1,
+        }),
+    );
+    let yukari = Yukari::yeni_direncli(direnc);
+    let env_key = "TEST_P7_CLAUDE_HATA_OLAYI_KEY";
+    unsafe { std::env::set_var(env_key, "sk-ant-hata-olayi") };
+    let hedef = Hedef {
+        ad: "test-claude-hata-olayi".to_string(),
+        bicim: "claude".to_string(),
+        taban_url: url,
+        anahtar_env: env_key.to_string(),
+        model: "claude-3-7-sonnet".to_string(),
+        yol: Some("/v1/messages".to_string()),
+        zaman_asimi: Duration::from_secs(5),
+    };
+    let govde =
+        json!({"model": "c", "messages": [{"role": "user", "content": "selam"}], "stream": true});
+
+    let mut alici = yukari
+        .gonder_akis(&hedef, &govde, None)
+        .await
+        .expect("akış başlamalı");
+    let mut parcalar = Vec::new();
+    while let Some(p) = alici.recv().await {
+        parcalar.push(p);
+    }
+    assert!(
+        parcalar
+            .iter()
+            .any(|p| matches!(p, Ok(s) if s.contains("yarım"))),
+        "{parcalar:?}"
+    );
+    assert!(
+        matches!(parcalar.last(), Some(Err(YukariHatasi::AgHatasi(m))) if m.contains("overloaded_error")),
+        "son öğe hata olmalı: {parcalar:?}"
+    );
+    assert!(
+        !parcalar
+            .iter()
+            .any(|p| matches!(p, Ok(s) if s.contains("[DONE]"))),
+        "[DONE] gelmemeli"
+    );
+    assert!(
+        matches!(
+            yukari.gonder_akis(&hedef, &govde, None).await,
+            Err(YukariHatasi::DevreAcik { .. })
+        ),
+        "hata olayı kesiciyi beslemeli"
+    );
+}

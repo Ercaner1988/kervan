@@ -78,7 +78,12 @@ async fn p4_a2_openai_bicimli_gecis_kayipsiz_ve_derin_esit() {
                 }
             }
         ],
-        "stream": true // İstemci stream istese bile yukari akışta false olmalı
+        "stream": true, // İstemci stream istese bile yukari akışta false olmalı
+        // Kervan'ın tanımadığı alanlar da kayıpsız geçmeli
+        "tool_choice": "auto",
+        "stop": ["\n\n"],
+        "user": "kullanici-42",
+        "response_format": {"type": "json_object"}
     });
 
     let (tx, rx) = tokio::sync::oneshot::channel::<Value>();
@@ -189,11 +194,12 @@ async fn p4_a2_openai_bicimli_gecis_kayipsiz_ve_derin_esit() {
     // 2. stream=false zorlanmış olmalı
     assert_eq!(alinan_govde["stream"], false);
 
-    // 3. 'messages', 'temperature', 'max_tokens', 'tools' DERİN EŞİT olmalıdır
-    assert_eq!(alinan_govde["messages"], istemci_govdesi["messages"]);
-    assert_eq!(alinan_govde["temperature"], istemci_govdesi["temperature"]);
-    assert_eq!(alinan_govde["max_tokens"], istemci_govdesi["max_tokens"]);
-    assert_eq!(alinan_govde["tools"], istemci_govdesi["tools"]);
+    // 3. FR-4.2: model ve (akışsız yolun zorunlu sapması) stream dışında gövde TAM eşit:
+    //    hiçbir alan düşmez, eklenmez, değişmez.
+    let mut beklenen = istemci_govdesi.clone();
+    beklenen["model"] = json!("ozel-model");
+    beklenen["stream"] = json!(false);
+    assert_eq!(alinan_govde, beklenen);
 
     unsafe {
         std::env::remove_var(env_adi);

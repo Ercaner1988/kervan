@@ -90,6 +90,17 @@ Defined: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, `d
 
 #### Provider Status
 
+<!-- DURUM:BASLA -->
+> Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
+
+- Faz: P3 (2026-10-14T06:59:26.257Z)
+- Tüm kapılar yeşil mi: evet (11/11)
+- Fazlar: yok
+- Defter: planlandi 5, dogrulandi 1; route_ts 730
+<!-- DURUM:BITIS -->
+
+##### Provider notes (hand-written; not verified by a gate)
+
 | Provider | Status |
 |---|---|
 | `gemini` | ✅ In pool — multiple accounts, ~11s |

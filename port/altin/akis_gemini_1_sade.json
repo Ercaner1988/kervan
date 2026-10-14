@@ -1,0 +1,119 @@
+{
+  "kaynak_sha": "dbe703a",
+  "kaynak_yollar": [
+    "open-sse/translator/index.ts",
+    "open-sse/translator/response/claude-to-openai.ts",
+    "open-sse/translator/response/gemini-to-openai.ts",
+    "open-sse/utils/finishReason.ts"
+  ],
+  "uretici_ozeti": "sha256:b79fc199aebad784bae95b6852b2393dc5398131af1930dfc108cf14dce1273e",
+  "girdi_id": "akis_gemini_1_sade",
+  "bicim": "gemini",
+  "sabit_saat_ms": 1700000000000,
+  "olaylar": [
+    {
+      "candidates": [
+        {
+          "content": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Merhaba"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "content": {
+            "role": "model",
+            "parts": [
+              {
+                "text": " dünya"
+              }
+            ]
+          },
+          "finishReason": "STOP"
+        }
+      ],
+      "usageMetadata": {
+        "promptTokenCount": 5,
+        "candidatesTokenCount": 3,
+        "totalTokenCount": 8
+      }
+    }
+  ],
+  "parcalar": [
+    [
+      {
+        "id": "chatcmpl-msg_1700000000000",
+        "object": "chat.completion.chunk",
+        "created": 1700000000,
+        "model": "gemini",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "role": "assistant"
+            },
+            "finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-msg_1700000000000",
+        "object": "chat.completion.chunk",
+        "created": 1700000000,
+        "model": "gemini",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "Merhaba"
+            },
+            "finish_reason": null
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "id": "chatcmpl-msg_1700000000000",
+        "object": "chat.completion.chunk",
+        "created": 1700000000,
+        "model": "gemini",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " dünya"
+            },
+            "finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-msg_1700000000000",
+        "object": "chat.completion.chunk",
+        "created": 1700000000,
+        "model": "gemini",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {},
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 5,
+          "completion_tokens": 3,
+          "total_tokens": 8
+        }
+      }
+    ]
+  ],
+  "bosaltma": []
+}

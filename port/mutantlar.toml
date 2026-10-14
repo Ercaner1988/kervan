@@ -56,3 +56,43 @@ dosya = "crates/ceviri/src/gemini.rs"
 bul = "let max_output_tokens = istek.max_tokens.unwrap_or(65536);"
 yerine = "let max_output_tokens = istek.max_tokens.unwrap_or(99999);"
 oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-ceviri', '--test', 'p6_parite_test'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]
+
+[[mutant]]
+ad = "strateji-fiyatsiz-modeli-ucuz-say"
+dosya = "crates/havuz/src/router.rs"
+bul = ".unwrap_or(f64::INFINITY)"
+yerine = ".unwrap_or(0.0)"
+oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-havuz', '--test', 'p9_strateji_test', '--', 'test_fr72_altin_parite_girdi1_ve_girdi2'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]
+
+[[mutant]]
+ad = "tohum-istemi-govdesini-bosalt"
+dosya = "crates/sunucu/src/server.rs"
+bul = "pub fn tohum_istemi(msgs: &[Message], azami: usize) -> String {"
+yerine = "pub fn tohum_istemi(msgs: &[Message], azami: usize) -> String { if azami > 0 || !msgs.is_empty() { return String::new(); }"
+oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-sunucu', '--lib', '--', 'server::tests::tohum_gecmisi_ve_asil_soruyu_tasir'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]
+
+[[mutant]]
+ad = "rest-kancasini-chatten-kaldir"
+dosya = "crates/sunucu/src/server.rs"
+bul = "    if let Some((hedef, alt_model)) = st.rest_hedefi_coz(model_adi) {"
+yerine = "    if let Some((hedef, alt_model)) = None::<(kervan_yukari::Hedef, Option<String>)> {"
+oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-sunucu', '--test', 'p5_e2e_test', '--', 'p5_e2e_nonce_testi'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\"", "bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-sunucu', '--test', 'p8_sse_ve_tool_test', '--', 'test_p8_gercek_sse_zamanlama_ve_parca_sirasi'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]
+
+# Emekli kayıtları: liste yalnız-ekleme; bozuk mutant silinmez. Kapı her koşuda emekli mutantın
+# GERÇEKTEN derlenmediğini ve yerine geçenin öldürüldüğünü doğrular.
+[[emekli]]
+ad = "tohum-istemi-bos-dondur"
+neden = "Parametreyi _msgs diye yeniden adlandırıyor ama gövde msgs kullanıyor: derlenmiyor, hiçbir testi ölçemez."
+yerine_gecen = "tohum-istemi-govdesini-bosalt"
+
+[[emekli]]
+ad = "rest-kancasini-kaldir"
+neden = "Parametreyi _model_adi diye yeniden adlandırıyor ama gövde model_adi kullanıyor: derlenmiyor. Ayrıca chat kancasını değil çözücüyü hedefliyordu (denetim bulgusu)."
+yerine_gecen = "rest-kancasini-chatten-kaldir"
+
+[[mutant]]
+ad = "claude-akis-uzunluk-nedenini-boz"
+dosya = "crates/ceviri/src/akis.rs"
+bul = "\"max_tokens\" => \"length\","
+yerine = "\"max_tokens\" => \"stop\","
+oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-ceviri', '--test', 'p8_akis_altin_test'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]

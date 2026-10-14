@@ -1,4 +1,4 @@
-//! OpenAI uyumlu ag gecidi ucu.
+﻿//! OpenAI uyumlu ag gecidi ucu.
 //!
 //! DURUM GERILIMI (bilinen sinirlama, sessizce gecistirilmiyor):
 //! OpenAI `/v1/chat/completions` DURUMSUZ — istemci her istekte tum konusma gecmisini
@@ -369,7 +369,7 @@ pub struct ChatRequest {
     #[serde(default)]
     pub model: String,
     pub messages: Vec<Message>,
-    /// Hermes ve cogu ajan istemcisi VARSAYILAN OLARAK akis ister. Bunu desteklemeyen
+    /// Çoğu ajan istemcisi VARSAYILAN OLARAK akis ister. Bunu desteklemeyen
     /// bir uc, istemci tarafinda "empty stream" olarak gorunur ve sessizce yedege duser.
     #[serde(default)]
     pub stream: bool,
@@ -1020,7 +1020,7 @@ fn sse_yanit(metin: &str, cagrilar: &[serde_json::Value], neden: &str, model: &s
 ///
 /// Iki bilinen sinir: (a) ayni cumleyle baslayan iki ayri konusma ayni ize duser —
 /// sonucu yalniz ayni hesaba yonlenmeleridir, yanlis yanit degil; (b) istemci gecmisi
-/// yeniden yazarsa (Hermes'te compaction) iz degisir ve konusma baska hesaba tasinabilir.
+/// yeniden yazarsa (oturum özetlemede / compaction) iz degisir ve konusma baska hesaba tasinabilir.
 pub fn konusma_izi(msgs: &[Message]) -> Option<u64> {
     use std::hash::{Hash, Hasher};
     let ilk = msgs.iter().find(|m| m.role == "user")?;

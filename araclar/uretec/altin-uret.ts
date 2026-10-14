@@ -1,10 +1,9 @@
-import { spawnSync } from "child_process";
 import crypto from "crypto";
 import fs from "fs";
 import os from "os";
 import path from "path";
 
-// PRD FR-5.1: Altın Üretim Aracı (araclar/parite/altin-uret.ts)
+// PRD FR-5.1: Altın Üretim Aracı (araclar/uretec/altin-uret.ts)
 // OmniRoute referans kodunu (dbe703a) yalıtılmış ortamda çalıştırıp port/altin/*.json dosyalarını üretir.
 
 // Canlı OmniRoute ve ~/.omniroute'a ASLA dokunulmaz
@@ -93,7 +92,8 @@ export const SABIT_GIRDILER: Record<string, any> = {
 };
 
 function scriptSha256(): string {
-  const dosyaIcerigi = fs.readFileSync(__filename, "utf-8");
+  // CRLF→LF: özet checkout'un satır sonu ayarına bağlı olmasın.
+  const dosyaIcerigi = fs.readFileSync(__filename, "utf-8").replace(/\r\n/g, "\n");
   return "sha256:" + crypto.createHash("sha256").update(dosyaIcerigi).digest("hex");
 }
 
@@ -143,61 +143,26 @@ export function altinDosyalariYaz(): void {
   }
 }
 
-export function altinDosyalariDogrula(): boolean {
-  if (!fs.existsSync(ALTIN_DIZINI)) return false;
-
-  const harita = altinUretimHaritasi();
-  for (const [dosyaAdi, veri] of harita.entries()) {
+/** Bayt eşitliği (CRLF→LF dışında geri düşüş yok): üretici özeti, girdi, kaynak yolu dahil.
+ *  Eşleşmeyen ya da eksik dosyaların adlarını döner; boş dizi = birebir. */
+export function altinDosyalariDogrula(): string[] {
+  const farkli: string[] = [];
+  for (const [dosyaAdi, veri] of altinUretimHaritasi().entries()) {
     const hedefYol = path.join(ALTIN_DIZINI, `${dosyaAdi}.json`);
-    if (!fs.existsSync(hedefYol)) return false;
-
-    const mevcutMetin = fs.readFileSync(hedefYol, "utf-8");
-    const beklenenMetin = JSON.stringify(veri, null, 2) + "\n";
-    if (mevcutMetin !== beklenenMetin) {
-      // İçerik JSON derin eşitliğini ve üretici özetini sına
-      try {
-        const mevcutJson = JSON.parse(mevcutMetin);
-        if (
-          mevcutJson.kaynak_sha !== veri.kaynak_sha ||
-          mevcutJson.girdi_id !== veri.girdi_id ||
-          JSON.stringify(mevcutJson.cikti) !== JSON.stringify(veri.cikti)
-        ) {
-          return false;
-        }
-      } catch {
-        return false;
-      }
-    }
+    const beklenen = JSON.stringify(veri, null, 2) + "\n";
+    const mevcut = fs.existsSync(hedefYol) ? fs.readFileSync(hedefYol, "utf-8").replace(/\r\n/g, "\n") : null;
+    if (mevcut !== beklenen) farkli.push(`${dosyaAdi}.json`);
   }
-
-  return true;
-}
-
-export function kervanCevirisiniCagir(hedef: "claude" | "gemini", girdiJson: any): any {
-  const proc = spawnSync("cargo", ["run", "-q", "-p", "kervan-ceviri", "--", hedef], {
-    input: JSON.stringify(girdiJson),
-    encoding: "utf-8",
-  });
-  if (proc.status === 0 && proc.stdout) {
-    try {
-      return JSON.parse(proc.stdout);
-    } catch {
-      return null;
-    }
-  }
-  return null;
+  return farkli;
 }
 
 if (import.meta.main) {
   const args = process.argv.slice(2);
   if (args.includes("--kontrol")) {
-    const uygun = altinDosyalariDogrula();
-    if (!uygun) {
-      console.error("HATA: Altın dosyalar bayt-özdeş değil veya eksik!");
-      process.exit(1);
-    }
-    console.log("Altın dosyalar doğrulandı (bayt-özdeş).");
-    process.exit(0);
+    const farkli = altinDosyalariDogrula();
+    for (const d of farkli) console.error(`farklı ya da eksik: port/altin/${d}`);
+    console.log(farkli.length ? `HUKUM: kirmizi ${farkli.length} çeviri altını üreticiyle bayt-özdeş değil` : "HUKUM: yesil");
+    process.exit(farkli.length ? 1 : 0);
   } else {
     altinDosyalariYaz();
     console.log(`Altın dosyalar başarıyla üretildi -> ${ALTIN_DIZINI}`);

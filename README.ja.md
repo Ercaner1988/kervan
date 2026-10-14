@@ -90,6 +90,17 @@ curl http://127.0.0.1:20129/v1/chat/completions \
 
 #### プロバイダーの状態
 
+<!-- DURUM:BASLA -->
+> Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
+
+- Faz: P3 (2026-10-14T06:59:26.257Z)
+- Tüm kapılar yeşil mi: evet (11/11)
+- Fazlar: yok
+- Defter: planlandi 5, dogrulandi 1; route_ts 730
+<!-- DURUM:BITIS -->
+
+##### プロバイダーのメモ (手書き。ゲートは検証しません)
+
 | プロバイダー | 状態 |
 |---|---|
 | `gemini` | ✅ プール内 — 複数アカウント、~11秒 |

@@ -90,6 +90,17 @@ Tanımlı: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, 
 
 #### Sağlayıcı Durumu
 
+<!-- DURUM:BASLA -->
+> Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
+
+- Faz: P3 (2026-10-14T06:59:26.257Z)
+- Tüm kapılar yeşil mi: evet (11/11)
+- Fazlar: yok
+- Defter: planlandi 5, dogrulandi 1; route_ts 730
+<!-- DURUM:BITIS -->
+
+##### Sağlayıcı notları (elle yazılmış; kapı doğrulamaz)
+
 | Sağlayıcı | Durum |
 |---|---|
 | `gemini` | ✅ Havuzda — çok hesap, ~11 sn |

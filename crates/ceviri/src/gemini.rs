@@ -16,21 +16,7 @@ pub fn openai_den_gemini_istegi(
     hedef_model: &str,
 ) -> Result<GeminiIstek, CeviriHatasi> {
     // 1. Desteklenmeyen alan denetimleri (FR-5.3)
-    if let Some(ref tools) = istek.tools
-        && !tools.is_empty()
-    {
-        return Err(CeviriHatasi::Desteklenmiyor("tools".to_string()));
-    }
-
-    for m in &istek.messages {
-        if let Some(ref c) = m.content
-            && !c.is_string()
-        {
-            return Err(CeviriHatasi::Desteklenmiyor(
-                "çok parçalı içerik".to_string(),
-            ));
-        }
-    }
+    istek.desteklenmeyeni_denetle()?;
 
     let mut sistem_parcalari = Vec::new();
     let mut ham_icerikler: Vec<GeminiIcerik> = Vec::new();
@@ -174,55 +160,4 @@ pub fn gemini_den_openai_yaniti(
         choices: vec![secenek],
         usage: kullanim,
     })
-}
-
-/// Google Gemini akış parçasını OpenAI Chat Completion Chunk biçimine dönüştürür.
-pub fn gemini_den_openai_parcasi(
-    yanit: &GeminiYanit,
-    istek_id: &str,
-    model: &str,
-) -> Result<Option<OpenAiParca>, CeviriHatasi> {
-    let simdi = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(d) => d.as_secs(),
-        Err(_) => 0,
-    };
-
-    let mut metin = String::new();
-    let mut finish_reason = None;
-
-    if let Some(ref adaylar) = yanit.candidates
-        && let Some(ilk_aday) = adaylar.first()
-    {
-        if let Some(ref icerik) = ilk_aday.content {
-            for parca in &icerik.parts {
-                metin.push_str(&parca.text);
-            }
-        }
-        if let Some(ref sebep) = ilk_aday.finish_reason {
-            finish_reason = Some(match sebep.as_str() {
-                "STOP" => "stop".to_string(),
-                "MAX_TOKENS" => "length".to_string(),
-                other => other.to_ascii_lowercase(),
-            });
-        }
-    }
-
-    if metin.is_empty() && finish_reason.is_none() {
-        return Ok(None);
-    }
-
-    Ok(Some(OpenAiParca {
-        id: istek_id.to_string(),
-        object: "chat.completion.chunk".to_string(),
-        created: simdi,
-        model: model.to_string(),
-        choices: vec![OpenAiParcaSecenek {
-            index: 0,
-            delta: OpenAiDelta {
-                role: None,
-                content: if metin.is_empty() { None } else { Some(metin) },
-            },
-            finish_reason,
-        }],
-    }))
 }
