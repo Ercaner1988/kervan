@@ -1,12 +1,20 @@
 //! `kervan.toml` — hesap listesi ve hiz butcesi.
 //!
-//! Dosya yoksa tek hesapli makul bir varsayilanla calisir; bu sayede ilk kullanimda
-//! yapilandirma yazmak gerekmez.
+//! Yol aranir (bkz. [`adaylar`]): `KERVAN_CONFIG` verilmisse yalniz orasi; yoksa
+//! calisma dizini, ikilinin yani, sonra kurulum klasoru. Hicbiri yoksa tek hesapli
+//! makul bir varsayilanla calisir — bu sayede ilk kullanimda yapilandirma yazmak
+//! gerekmez — ama hangi yerlere bakildigini YUKSEK SESLE soyler. Eskiden sessizce
+//! varsayilana dusuyordu; tasinmis bir kurulumda (ya da cwd degisince) hesap havuzu
+//! gorunmez olurdu ve bunu soyleyen kimse yoktu.
 
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
+
+/// Kurulum klasoru (`tazele.cmd` hedefi), `USERPROFILE`'a gore; `kervan.toml`
+/// altinda. el-Fihrist `konum.rs` ile ayni desen: sabit yol, sessiz cwd tahmini yok.
+const KURULUM: &str = r"Desktop\mcp-tools\kervan";
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -176,6 +184,23 @@ impl Default for Pacing {
 impl Config {
     pub fn load(yol: &Path) -> Result<Self> {
         if !yol.exists() {
+            // `KERVAN_CONFIG` acikca verilmisse tahmin yurutme: ya odur ya hata.
+            if std::env::var_os("KERVAN_CONFIG").is_some() {
+                anyhow::bail!("KERVAN_CONFIG bir dosyayi gostermiyor: {}", yol.display());
+            }
+            // Sessiz varsayilan, tasinmis bir kurulumda hesap havuzunu gorunmez
+            // yapardi. Bakilan yerleri soyle, sonra yine de varsayilanla basla.
+            eprintln!(
+                "kervan: uyari: kervan.toml bulunamadi; yerlesik varsayilan \
+                 (tek hesap: {}) kullanilacak.\nBakilan yerler:\n  {}\n\
+                 KERVAN_CONFIG ile acikca gosterebilirsin.",
+                Self::varsayilan().accounts[0].name,
+                adaylar()
+                    .iter()
+                    .map(|p| p.display().to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n  ")
+            );
             return Ok(Self::varsayilan());
         }
         let metin = std::fs::read_to_string(yol)
@@ -212,10 +237,36 @@ impl Config {
     }
 }
 
+/// `kervan.toml` icin bakilacak yerler, sirayla. `KERVAN_CONFIG` verilmisse yalniz
+/// o doner (acik tercih, arama yok) — boylece yanlis bir yol sessizce yok sayilmaz.
+pub fn adaylar() -> Vec<PathBuf> {
+    if let Some(v) = std::env::var_os("KERVAN_CONFIG") {
+        return vec![PathBuf::from(v)];
+    }
+    let mut a = vec![PathBuf::from("kervan.toml")];
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            a.push(dir.join("kervan.toml"));
+        }
+    }
+    if let Some(home) = std::env::var_os("USERPROFILE") {
+        a.push(PathBuf::from(home).join(KURULUM).join("kervan.toml"));
+    }
+    a
+}
+
+/// Adaylar icinde ilk var olani; hicbiri yoksa ilk adayi doner ki cagiran
+/// "bulunamadi" diyebilsin.
+fn ilk_var_olan(adaylar: &[PathBuf]) -> PathBuf {
+    adaylar
+        .iter()
+        .find(|p| p.is_file())
+        .cloned()
+        .unwrap_or_else(|| adaylar[0].clone())
+}
+
 pub fn varsayilan_yol() -> PathBuf {
-    std::env::var_os("KERVAN_CONFIG")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("kervan.toml"))
+    ilk_var_olan(&adaylar())
 }
 
 #[cfg(test)]
@@ -282,5 +333,21 @@ mod tests {
         "#;
         let c: Config = toml::from_str(t).unwrap();
         assert!(c.dogrula().is_err());
+    }
+
+    /// Tasinmis kurulumun cekirdegi: adaylar icinde VAR OLAN secilir; hicbiri
+    /// yoksa ilk aday doner ki cagiran "bulunamadi" diyebilsin. Eskiden cwd'deki
+    /// `kervan.toml` tek aday sayilir, yoksa sessizce varsayilana dusulurdu.
+    #[test]
+    fn ilk_var_olan_mevcut_adayi_secer_yoksa_ilkini_dondurur() {
+        let dizin = std::env::temp_dir().join(format!("kervan-cfg-{}", std::process::id()));
+        std::fs::create_dir_all(&dizin).unwrap();
+        let yok1 = dizin.join("yok-1.toml");
+        let var = dizin.join("var.toml");
+        let yok2 = dizin.join("yok-2.toml");
+        std::fs::write(&var, "[[accounts]]\nname = \"x\"\n").unwrap();
+        assert_eq!(ilk_var_olan(&[yok1.clone(), var.clone(), yok2.clone()]), var);
+        assert_eq!(ilk_var_olan(&[yok1.clone(), yok2]), yok1);
+        let _ = std::fs::remove_dir_all(&dizin);
     }
 }

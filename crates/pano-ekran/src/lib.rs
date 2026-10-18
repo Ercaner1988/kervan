@@ -2,6 +2,7 @@
 //! Kervan sade pano 5 ekran modülleri ve egui çizim işlevleri.
 //! Standart: KERVAN-PANO-ANTIGRAVITY-ISTEMI.md & KERVAN-ARAYUZ-ISTEMI.md
 
+pub mod bicim;
 pub mod ekran1_oturum;
 pub mod ekran2_rota;
 pub mod ekran3_izleme;
@@ -127,20 +128,24 @@ pub fn render_ust_serit(
 }
 
 pub fn render_sol_nav(ui: &mut Ui, durum: &mut PanoEkraniDurumu) {
-    ui.vertical_centered(|ui| {
-        ui.set_width(64.0);
+    ui.vertical(|ui| {
+        ui.add_space(4.0);
 
         let sekmeler = [
-            (PanoSekmesi::Oturumlar, "Oturum"),
-            (PanoSekmesi::Rota, "Rota"),
-            (PanoSekmesi::Izleme, "İzleme"),
-            (PanoSekmesi::Baglam, "Bağlam"),
-            (PanoSekmesi::Ayarlar, "Ayar"),
+            (PanoSekmesi::Oturumlar, "🔑 Oturum"),
+            (PanoSekmesi::Rota, "🧭 Rota"),
+            (PanoSekmesi::Izleme, "📊 İzleme"),
+            (PanoSekmesi::Baglam, "🧠 Bağlam"),
+            (PanoSekmesi::Ayarlar, "⚙ Ayar"),
         ];
 
+        let genislik = ui.available_width();
         for (sekme, etiket) in sekmeler {
             let secili = durum.aktif_sekme == sekme;
-            let btn = ui.selectable_label(secili, etiket);
+            let btn = ui.add_sized(
+                [genislik, 32.0],
+                egui::Button::new(RichText::new(etiket).strong().size(12.5)).selected(secili),
+            );
             if btn.clicked() {
                 durum.aktif_sekme = sekme;
             }
