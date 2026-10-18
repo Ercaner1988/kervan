@@ -1,0 +1,59 @@
+# crates/tani/tani-kurallari.toml
+# Kervan tanı sınıflandırma kural tablosu
+# Standart: KERVAN-TANI-ISTEMI.md §6
+
+[[kural]]
+sinif = "cloudflare"
+url_desenleri = ["challenge", "cloudflare"]
+dom_desenleri = ["just a moment...", "checking your browser", "cf-turnstile", "cf-challenge"]
+ocr_desenleri = ["just a moment", "checking your browser"]
+eylem = "pencereyi_goster"
+oneri_metni = "[Pencereyi göster] — Cloudflare sınamasını insan çözer"
+
+[[kural]]
+sinif = "dogrulama_duvari"
+url_desenleri = ["captcha", "challenge", "verify"]
+dom_desenleri = ["hcaptcha", "g-recaptcha", "arkose", "geetest", "doğrulama"]
+ocr_desenleri = ["robot olmadığınızı doğrulayın", "verify you are human", "captcha"]
+eylem = "pencereyi_goster"
+oneri_metni = "[Pencereyi göster] — Doğrulama duvarı/Captcha insan kapısına bırakılır"
+
+[[kural]]
+sinif = "oturum_dustu"
+url_desenleri = ["accounts.google.com", "login", "signin", "auth"]
+dom_desenleri = ["sign in", "giriş yap", "oturum aç", "log in to continue"]
+ocr_desenleri = ["sign in with", "oturum açın", "giriş yapın"]
+eylem = "giris"
+oneri_metni = "[Giriş] — Enter'sız kendiliğinden oturum akışını başlat"
+
+[[kural]]
+sinif = "kota"
+url_desenleri = []
+dom_desenleri = ["rate limit", "usage limit", "quota exceeded", "you've reached the limit", "try again in", "saatlik sınır"]
+ocr_desenleri = ["rate limit", "usage limit reached", "try again after", "kullanım sınırına ulaşıldı"]
+eylem = "kota_bekle"
+oneri_metni = "Öğrenilmiş kota penceresi süresince beklemeye al"
+
+[[kural]]
+sinif = "ag_hatasi"
+url_desenleri = ["about:neterror", "chrome-error://"]
+dom_desenleri = ["server not found", "connection refused", "dns_probe_finished", "ağ bağlantısı hatası"]
+ocr_desenleri = ["bağlantı kurulamadı", "server not found", "unable to connect"]
+eylem = "elle_bak"
+oneri_metni = "Ağ ve vekil sunucu ayarlarını denetle"
+
+[[kural]]
+sinif = "secici_kirildi"
+url_desenleri = []
+dom_desenleri = ["prompt_input: 0 eşleşme", "secici_bulunamadi"]
+ocr_desenleri = []
+eylem = "secici_oner"
+oneri_metni = "Sayfadaki textarea/contenteditable öğelerini kervan.toml için öner"
+
+[[kural]]
+sinif = "yuklenmedi"
+url_desenleri = ["about:blank"]
+dom_desenleri = ["<html></html>", "empty_dom", "<body></body>"]
+ocr_desenleri = []
+eylem = "elle_bak"
+oneri_metni = "Sayfa yüklenemedi ya da beyaz ekranda kaldı"
