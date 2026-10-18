@@ -1,6 +1,6 @@
 @echo off
 title Kervan Sade Pano
-cd /d "c:\Users\buzbe\Desktop\Github\kervan-pano"
+cd /d "c:\Users\buzbe\Desktop\Github\kervan"
 echo ========================================================
 echo   Kervan Sade Pano - Windows Dogrudan GUI Baslatici
 echo ========================================================

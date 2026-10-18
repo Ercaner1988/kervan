@@ -1,6 +1,6 @@
 # Kervan GUI Başlatıcı (Windows)
-$exePath = "C:\Users\buzbe\Desktop\Github\kervan-pano\target\debug\kervan.exe"
-$workingDir = "C:\Users\buzbe\Desktop\Github\kervan-pano"
+$exePath = "C:\Users\buzbe\Desktop\Github\kervan\target\debug\kervan.exe"
+$workingDir = "C:\Users\buzbe\Desktop\Github\kervan"
 
 # Varsa eski süreci sonlandır
 Get-Process -Name kervan -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
