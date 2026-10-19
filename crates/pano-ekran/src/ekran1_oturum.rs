@@ -66,8 +66,8 @@ pub fn render(
                                     egui::Layout::right_to_left(egui::Align::Center),
                                     |ui| {
                                         // TODO(pano): hesap açma ve yenileme henüz bağlanmadı.
-                                        let _ = ui.small_button("👁 Aç");
-                                        let _ = ui.small_button("↻ Yenile");
+                                        let _yanit = ui.small_button("👁 Aç");
+                                        let _yanit2 = ui.small_button("↻ Yenile");
                                     },
                                 );
                             });

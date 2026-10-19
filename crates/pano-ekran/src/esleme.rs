@@ -56,9 +56,9 @@ impl EslemeTablosu {
         toml::from_str(metin)
     }
 
-    pub fn varsayilan() -> Self {
+    pub fn varsayilan() -> Result<Self, toml::de::Error> {
         const METIN: &str = include_str!("../esleme.toml");
-        Self::toml_metninden(METIN).expect("esleme.toml geçerli toml olmalı")
+        Self::toml_metninden(METIN)
     }
 
     /// Belirli bir ekrana ait bölümleri döndürür.
@@ -68,15 +68,12 @@ impl EslemeTablosu {
 }
 
 /// `omniroute-bolumleri.txt` dosyasındaki bölüm adlarını sıralı liste olarak döndürür.
-pub fn beklenen_bolumler_listesi() -> (String, Vec<String>) {
+pub fn beklenen_bolumler_listesi() -> Option<(String, Vec<String>)> {
     const ICERIK: &str = include_str!("../omniroute-bolumleri.txt");
     let mut satirlar = ICERIK.lines().map(|s| s.trim()).filter(|s| !s.is_empty());
-    let sha = satirlar
-        .next()
-        .expect("İlk satır kaynak SHA olmalıdır")
-        .to_string();
+    let sha = satirlar.next()?.to_string();
     let bolumler: Vec<String> = satirlar.map(|s| s.to_string()).collect();
-    (sha, bolumler)
+    Some((sha, bolumler))
 }
 
 #[cfg(test)]
@@ -88,7 +85,8 @@ mod tests {
 
     #[test]
     fn test_esleme_tam_ve_birebir() {
-        let (sha, beklenenler) = beklenen_bolumler_listesi();
+        let (sha, beklenenler) =
+            beklenen_bolumler_listesi().expect("omniroute listesi boş olmamalı");
         assert_eq!(
             sha, "dbe703a0000b303cd7b1cf5879cb8740e5bfce71",
             "Kaynak SHA dbe703a olmalıdır"
@@ -99,7 +97,7 @@ mod tests {
             "OmniRoute anlık görüntüsünde tam 57 pano bölümü olmalı"
         );
 
-        let tablo = EslemeTablosu::varsayilan();
+        let tablo = EslemeTablosu::varsayilan().expect("gömülü eşleme geçerli toml olmalı");
         assert_eq!(
             tablo.bolum.len(),
             57,
@@ -131,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_d_satirlari_ve_kaynak_dagilimi() {
-        let tablo = EslemeTablosu::varsayilan();
+        let tablo = EslemeTablosu::varsayilan().expect("gömülü eşleme geçerli toml olmalı");
         let mut v_sayisi = 0;
         let mut d_sayisi = 0;
         let mut k_sayisi = 0;
@@ -180,7 +178,8 @@ mod tests {
         }
         bulunan_dizinler.sort();
 
-        let (_sha, beklenenler) = beklenen_bolumler_listesi();
+        let (_sha, beklenenler) =
+            beklenen_bolumler_listesi().expect("omniroute listesi boş olmamalı");
         assert_eq!(
             bulunan_dizinler, beklenenler,
             "omniroute-bolumleri.txt dosyasındaki liste gerçek anlık görüntü ile bayt bayt özdeş olmalıdır"

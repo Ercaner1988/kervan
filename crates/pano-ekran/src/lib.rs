@@ -125,9 +125,9 @@ pub fn render_ust_serit(
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             // TODO(pano): ayarlar ve tanı alma henüz bağlanmadı.
-            let _ = ui.button("⚙");
+            let _yanit = ui.button("⚙");
             kilim_tema::tema_secici(ui, tema_tercihi);
-            let _ = ui.button("🔍 Tanı al");
+            let _yanit2 = ui.button("🔍 Tanı al");
         });
     });
 }

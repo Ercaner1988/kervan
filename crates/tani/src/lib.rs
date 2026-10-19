@@ -113,9 +113,9 @@ impl TaniKurallari {
         toml::from_str(metin)
     }
 
-    pub fn varsayilan() -> Self {
+    pub fn varsayilan() -> Result<Self, toml::de::Error> {
         const METIN: &str = include_str!("../tani-kurallari.toml");
-        Self::toml_metninden(METIN).expect("tani-kurallari.toml geçerli toml olmalı")
+        Self::toml_metninden(METIN)
     }
 }
 
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_sekiz_ornek_siniflandirma() {
-        let kurallar = TaniKurallari::varsayilan();
+        let kurallar = TaniKurallari::varsayilan().expect("gömülü tanı kuralları geçerli olmalı");
 
         // 1. Cloudflare sınaması
         let (s, g, _, _) = siniflandir(
@@ -296,7 +296,7 @@ mod tests {
 
     #[test]
     fn test_ocr_katmani_devreye_girer() {
-        let kurallar = TaniKurallari::varsayilan();
+        let kurallar = TaniKurallari::varsayilan().expect("gömülü tanı kuralları geçerli olmalı");
         // DOM'da hiçbir şey yok ama OCR görseldeki metni yakaladı
         let (s, g, _, _) = siniflandir(
             "<div>Canvas veya resim</div>",
