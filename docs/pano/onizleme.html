@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kervan Sade Pano — 5 Ekran Etkileşimli Taslak</title>
+  <style>
+    :root {
+      --zem: #F4ECDB;
+      --yuzey: #FCF8EF;
+      --cizgi: #D8CBB2;
+      --cizgi-koyu: #B9A88C;
+      --murekkep: #3A2D21;
+      --soluk: #7A6A55;
+      --cini: #16537E;
+      --mercan: #C04F42;
+      --hardal: #D9A441;
+      --yesil: #2E7D4F;
+      --vurgu: #16537E;
+      --kart-bg: #FFFFFF;
+      --rozet-d: #8A4B38;
+    }
+
+    body.koyu {
+      --zem: #241F19;
+      --yuzey: #2E2820;
+      --cizgi: #4A4034;
+      --cizgi-koyu: #6E604C;
+      --murekkep: #E8DFD0;
+      --soluk: #9E8F7A;
+      --cini: #4A88B4;
+      --mercan: #E06A5D;
+      --hardal: #E5B654;
+      --yesil: #48A26B;
+      --vurgu: #4A88B4;
+      --kart-bg: #27221B;
+      --rozet-d: #C06040;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--zem);
+      color: var(--murekkep);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .kontrol-bar {
+      width: 1280px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .kontrol-sol h1 { font-size: 18px; font-weight: 700; color: var(--cini); }
+    .kontrol-sol p { font-size: 12px; color: var(--soluk); }
+
+    .buton-grup { display: flex; gap: 8px; }
+    .btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--cizgi);
+      background: var(--yuzey);
+      color: var(--murekkep);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .btn:hover { border-color: var(--cini); }
+    .btn.aktif { background: var(--cini); color: #FCF8EF; border-color: var(--cini); }
+
+    /* PANO ÇERÇEVESİ (1280 x 800) */
+    .pano-pencere {
+      width: 1280px;
+      height: 800px;
+      border: 1px solid var(--cizgi-koyu);
+      border-radius: 8px;
+      background: var(--zem);
+      display: flex;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* SOL GEZİNTİ ŞERİDİ */
+    .sol-nav {
+      width: 72px;
+      background: var(--yuzey);
+      border-right: 1px solid var(--cizgi);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 0;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .logo-kutu {
+      width: 44px;
+      height: 44px;
+      background: var(--cini);
+      color: #FCF8EF;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+    .nav-btn {
+      width: 56px;
+      height: 52px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--soluk);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 10px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .nav-btn:hover { background: var(--zem); color: var(--murekkep); }
+    .nav-btn.aktif {
+      background: var(--zem);
+      border-color: var(--cini);
+      color: var(--cini);
+    }
+    .nav-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; }
+
+    /* SAĞ ALAN */
+    .ana-govde {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    /* ÜST ŞERİT */
+    .ust-serit {
+      height: 48px;
+      background: var(--yuzey);
+      border-bottom: 1px solid var(--cizgi);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+    }
+    .ust-sol { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+    .ust-sol .marka { font-weight: 800; font-size: 15px; color: var(--murekkep); }
+    .ust-sol .adres { color: var(--soluk); font-family: monospace; font-size: 12px; }
+    .durum-noktasi {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--yesil);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .durum-noktasi::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--yesil);
+    }
+    .ust-sag { display: flex; align-items: center; gap: 10px; }
+    .acilir-menu {
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--cizgi);
+      background: var(--zem);
+      color: var(--murekkep);
+      font-size: 12px;
+    }
+
+    /* EKRAN İÇERİKLERİ */
+    .ekran-alani {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: none;
+    }
+    .ekran-alani.aktif { display: flex; gap: 16px; }
+
+    /* ALT ŞERİT (CANLI AKIŞ) */
+    .alt-serit {
+      height: 72px;
+      background: var(--yuzey);
+      border-top: 1px solid var(--cizgi);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+      flex-shrink: 0;
+      font-size: 12px;
+    }
+    .alt-baslik { font-weight: 700; color: var(--murekkep); white-space: nowrap; }
+    .akis-kapsayici { display: flex; gap: 8px; overflow-x: hidden; flex: 1; }
+    .akis-karti {
+      padding: 4px 10px;
+      background: var(--zem);
+      border: 1px solid var(--cizgi);
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* KART VE PANELLER */
+    .panel {
+      background: var(--yuzey);
+      border: 1px solid var(--cizgi);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .panel-baslik {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--murekkep);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--cizgi);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .rozet {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .rozet.hazir { background: #E1EEDD; color: var(--yesil); }
+    .rozet.kota { background: #FDF3DD; color: var(--hardal); }
+    .rozet.giris { background: #EAEAEA; color: var(--soluk); }
+    .rozet.insan { background: #FCECEB; color: var(--mercan); }
+    .rozet.dalga { background: #F4E2DE; color: var(--rozet-d); border: 1px dashed var(--rozet-d); }
+
+    /* EKRAN 1 ÖZEL DÜZEN */
+    .ekran1-sol { flex: 0 0 460px; display: flex; flex-direction: column; gap: 8px; }
+    .ekran1-sag { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+    .hesap-karti {
+      background: var(--kart-bg);
+      border: 1px solid var(--cizgi);
+      border-radius: 6px;
+      padding: 10px 14px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.15s;
+    }
+    .hesap-karti:hover { border-color: var(--cini); }
+    .hesap-karti.secili {
+      border: 2px solid var(--cini);
+      background: var(--zem);
+    }
+    .hesap-ad { font-weight: 700; font-size: 13px; }
+    .hesap-alt { font-size: 11px; color: var(--soluk); }
+
+    /* DİĞER EKRANLAR GENEL KART IZGARASI */
+    .izgara-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; }
+    .izgara-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; width: 100%; }
+  </style>
+</head>
+<body>
+
+  <div class="kontrol-bar">
+    <div class="kontrol-sol">
+      <h1>Kervan Sade Pano (OmniRoute 122 Sayfasının 5 Ekranda Sadeleştirilmiş Mimarisi)</h1>
+      <p>PRD: KERVAN-PANO-ANTIGRAVITY-ISTEMI.md &amp; KERVAN-ARAYUZ-ISTEMI.md — kilim-tema ile tasarlandı</p>
+    </div>
+    <div class="buton-grup">
+      <button class="btn" id="temaToggle" onclick="temaDegistir()">◐ Koyu Temaya Geç</button>
+      <a href="ekran1_acik.svg" target="_blank" class="btn">SVG Açık İndir</a>
+      <a href="ekran1_koyu.svg" target="_blank" class="btn">SVG Koyu İndir</a>
+    </div>
+  </div>
+
+  <div class="pano-pencere">
+    <!-- SOL MENÜ -->
+    <nav class="sol-nav">
+      <div class="logo-kutu">K</div>
+      <button class="nav-btn aktif" onclick="ekranGoster(1, this)">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Oturum
+      </button>
+      <button class="nav-btn" onclick="ekranGoster(2, this)">
+        <svg viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+        Rota
+      </button>
+      <button class="nav-btn" onclick="ekranGoster(3, this)">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        İzleme
+      </button>
+      <button class="nav-btn" onclick="ekranGoster(4, this)">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Bağlam
+      </button>
+      <button class="nav-btn" onclick="ekranGoster(5, this)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Ayar
+      </button>
+    </nav>
+
+    <!-- SAĞ GÖVDE -->
+    <main class="ana-govde">
+      <!-- ÜST ŞERİT -->
+      <header class="ust-serit">
+        <div class="ust-sol">
+          <span class="marka">Kervan</span>
+          <span class="adres">127.0.0.1:20129</span>
+          <span class="durum-noktasi">açık</span>
+        </div>
+        <div class="ust-sag">
+          <span style="font-size:12px; color:var(--soluk);">strateji:</span>
+          <select class="acilir-menu">
+            <option>least-used (varsayılan)</option>
+            <option>round-robin</option>
+            <option>random</option>
+            <option>strict-random</option>
+            <option>cost-optimized</option>
+            <option>latency-optimized</option>
+            <option>reset-aware</option>
+          </select>
+          <button class="btn" style="background:var(--cini); color:#FCF8EF; border:none;">🔍 Tanı al</button>
+          <button class="btn" onclick="temaDegistir()">◐ Tema</button>
+          <button class="btn">⚙</button>
+        </div>
+      </header>
+
+      <!-- ============================================== -->
+      <!-- EKRAN 1: OTURUMLAR VE SAĞLAYICILAR            -->
+      <!-- ============================================== -->
+      <section class="ekran-alani aktif" id="ekran1">
+        <div class="ekran1-sol">
+          <div class="panel" style="flex:1;">
+            <div class="panel-baslik">
+              <span>Hesaplar &amp; Oturumlar (4)</span>
+              <button class="btn" style="background:var(--yesil); color:#fff; border:none;">+ Hesap Ekle</button>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div class="hesap-karti secili">
+                <div>
+                  <div class="hesap-ad"><span style="color:var(--yesil);">●</span> ercan-gemini-ana</div>
+                  <div class="hesap-alt">gemini · kimi (Zen Profili: profil-1)</div>
+                </div>
+                <div><span class="rozet hazir">Hazır</span></div>
+              </div>
+
+              <div class="hesap-karti">
+                <div>
+                  <div class="hesap-ad"><span style="color:var(--hardal);">◐</span> copilot-yedek</div>
+                  <div class="hesap-alt">copilot (Zen Profili: profil-2)</div>
+                </div>
+                <div><span class="rozet kota">kota: 41 dk ⏳</span></div>
+              </div>
+
+              <div class="hesap-karti">
+                <div>
+                  <div class="hesap-ad"><span style="color:var(--soluk);">○</span> perplexity-arastirma</div>
+                  <div class="hesap-alt">perplexity (oturum yenileme gerekli)</div>
+                </div>
+                <div><button class="btn" style="padding:2px 8px; font-size:10px;">[Giriş]</button></div>
+              </div>
+
+              <div class="hesap-karti">
+                <div>
+                  <div class="hesap-ad"><span style="color:var(--mercan);">⚠</span> claude-sonnet-hesabi</div>
+                  <div class="hesap-alt">claude (doğrulama duvarı algılandı)</div>
+                </div>
+                <div><span class="rozet insan">[Pencereyi Göster]</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ekran1-sag">
+          <div class="panel">
+            <div class="panel-baslik">
+              <span>Ayrıntı: ercan-gemini-ana</span>
+              <span style="font-size:12px; color:var(--soluk);">Tavan: 30 istek/saat (Pacing.hourly_cap)</span>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+              <div style="background:var(--zem); padding:10px; border-radius:6px; font-size:12px;">
+                <div style="color:var(--soluk);">Kota Penceresi:</div>
+                <div style="font-weight:700; color:var(--cini);">4 saat (kota::Defter kayıtlı)</div>
+              </div>
+              <div style="background:var(--zem); padding:10px; border-radius:6px; font-size:12px;">
+                <div style="color:var(--soluk);">Bağlı Eklenti:</div>
+                <div style="font-weight:700; color:var(--yesil);">2 Sekme Açık (Gemini + Kimi)</div>
+              </div>
+            </div>
+
+            <!-- TANI KARTI (KERVAN-TANI-ISTEMI FR-8) -->
+            <div style="border:1px solid var(--cini); border-radius:6px; padding:12px; background:var(--kart-bg); margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <span style="font-weight:700; color:var(--cini); font-size:12px;">📋 Son Tanı Kartı (TaniKarti)</span>
+                <span class="rozet hazir">oturum_hazir</span>
+              </div>
+              <p style="font-size:11px; color:var(--soluk); margin-bottom:4px;">• DOM: <code>div[contenteditable=true]</code> bulundu (1 eşleşme)</p>
+              <p style="font-size:11px; color:var(--soluk); margin-bottom:4px;">• URL: <code>https://gemini.google.com/app</code></p>
+              <div style="display:flex; gap:8px; margin-top:8px;">
+                <button class="btn" style="padding:4px 8px; font-size:11px; background:var(--cini); color:#fff;">Pencereyi Göster</button>
+                <button class="btn" style="padding:4px 8px; font-size:11px;">Yeniden Tanı Al</button>
+              </div>
+            </div>
+
+            <!-- YETENEK KARTI -->
+            <div style="border:1px solid var(--cizgi); border-radius:6px; padding:12px; background:var(--kart-bg);">
+              <div style="font-weight:700; font-size:12px; margin-bottom:6px;">⚡ Sağlayıcı Yetenekleri (YetenekKarti)</div>
+              <div style="font-size:11px; display:flex; flex-direction:column; gap:4px;">
+                <div><b style="color:var(--yesil);">✓</b> Model Seçici: <code>button[aria-label*=model]</code> (2.5 Pro, Flash, Thinking)</div>
+                <div><b style="color:var(--yesil);">✓</b> Dosya Yükleme: <code>input[type=file]</code> (Belge, Görsel, Video)</div>
+                <div><b style="color:var(--yesil);">✓</b> Görsel Üretimi: Imagen 3 entegre</div>
+                <div><b style="color:var(--mercan);">✗</b> Derin Araştırma: Desteklenmiyor</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- EKRAN 2: YÖNLENDİRME (ROUTING)                -->
+      <!-- ============================================== -->
+      <section class="ekran-alani" id="ekran2">
+        <div class="izgara-2">
+          <div class="panel">
+            <div class="panel-baslik">
+              <span>Strateji &amp; Yönlendirme (21 Strateji)</span>
+              <span class="rozet hazir">V: kervan-havuz</span>
+            </div>
+            <p style="font-size:12px; margin-bottom:8px; color:var(--soluk);">OmniRoute ROUTING_STRATEGY_VALUES ile küme eşittir (20 kamu + 1 dahili quota-share):</p>
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+              <span class="rozet hazir">least-used (aktif)</span>
+              <span class="rozet giris">round-robin</span>
+              <span class="rozet giris">random</span>
+              <span class="rozet giris">strict-random</span>
+              <span class="rozet giris">cost-optimized</span>
+              <span class="rozet giris">latency-optimized</span>
+              <span class="rozet giris">reset-aware</span>
+              <span class="rozet giris">reset-window</span>
+              <span class="rozet giris">warm-cache</span>
+              <span class="rozet giris">error-rate</span>
+            </div>
+            <div style="margin-top:16px;">
+              <span class="rozet dalga">Kombinasyon Zinciri &amp; Auto-Combo: Kervan'da henüz yok — DALGA-2</span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-baslik">
+              <span>Dayanıklılık (kervan-direnc)</span>
+              <span class="rozet hazir">V: direnc</span>
+            </div>
+            <div style="font-size:12px; display:flex; flex-direction:column; gap:8px;">
+              <div>Devre Kesici Durumu: <span class="rozet hazir">KAPALI (Sağlıklı)</span></div>
+              <div>429 Soğuma Takibi: <span style="color:var(--yesil); font-weight:700;">0 aktif soğuma</span></div>
+              <div>Hata Arındırma: <span style="color:var(--soluk);">API anahtarı ve cookie sızıntı kalkanı devrede</span></div>
+            </div>
+            <div style="margin-top:16px;">
+              <span class="rozet dalga">Kaos Testi &amp; Hata Enjeksiyonu: Kervan'da henüz yok — DALGA-2</span>
+            </div>
+          </div>
+
+          <div class="panel" style="grid-column: span 2;">
+            <div class="panel-baslik">
+              <span>Çevirici &amp; Hızlı Deneme (/v1/chat/completions Playground)</span>
+              <span class="rozet hazir">V: sunucu</span>
+            </div>
+            <div style="display:flex; gap:12px;">
+              <input type="text" placeholder="İstem metnini girin..." style="flex:1; padding:8px; border:1px solid var(--cizgi); border-radius:6px; background:var(--zem); color:var(--murekkep);">
+              <button class="btn" style="background:var(--cini); color:#fff;">Gönder &amp; Test Et</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- EKRAN 3: İZLEME (MONITORING)                  -->
+      <!-- ============================================== -->
+      <section class="ekran-alani" id="ekran3">
+        <div class="izgara-3">
+          <div class="panel">
+            <div class="panel-baslik"><span>Toplam İstek</span></div>
+            <div style="font-size:28px; font-weight:800; color:var(--cini);">1,482</div>
+            <div style="font-size:11px; color:var(--soluk);">Son 24 saat</div>
+          </div>
+          <div class="panel">
+            <div class="panel-baslik"><span>Başarı Oranı</span></div>
+            <div style="font-size:28px; font-weight:800; color:var(--yesil);">%99.4</div>
+            <div style="font-size:11px; color:var(--soluk);">9 hata (429 kota)</div>
+          </div>
+          <div class="panel">
+            <div class="panel-baslik"><span>Ortalama Gecikme</span></div>
+            <div style="font-size:28px; font-weight:800; color:var(--hardal);">1.12 sn</div>
+            <div style="font-size:11px; color:var(--soluk);">p95: 2.45 sn</div>
+          </div>
+
+          <div class="panel" style="grid-column: span 3;">
+            <div class="panel-baslik">
+              <span>Maliyet, Token Tüketimi ve Radar Grafikleri</span>
+              <span class="rozet dalga">Kervan'da henüz yok — DALGA-2 / DALGA-3</span>
+            </div>
+            <div style="padding:40px; text-align:center; color:var(--soluk); background:var(--zem); border-radius:6px; font-size:13px;">
+              📊 Kalıcı SQLite/Turso kullanım veri tabanı DALGA-2'de bağlandığında geçmiş kullanım grafikleri burada görüntülenecektir.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- EKRAN 4: BAĞLAM VE ARAÇLAR                    -->
+      <!-- ============================================== -->
+      <section class="ekran-alani" id="ekran4">
+        <div class="izgara-2">
+          <div class="panel">
+            <div class="panel-baslik">
+              <span>Tarayıcı Eklentisi Sekmeleri</span>
+              <span class="rozet hazir">V: /eklenti/sekmeler</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
+              <div style="padding:8px; background:var(--zem); border-radius:4px; display:flex; justify-content:space-between;">
+                <span>Sekme #1: Gemini 2.5 Pro Web</span>
+                <span style="color:var(--yesil); font-weight:700;">Aktif (Ping: 12ms)</span>
+              </div>
+              <div style="padding:8px; background:var(--zem); border-radius:4px; display:flex; justify-content:space-between;">
+                <span>Sekme #2: Kimi K1.5 Chat</span>
+                <span style="color:var(--yesil); font-weight:700;">Aktif (Ping: 18ms)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-baslik">
+              <span>Bağlam Sıkıştırma (Caveman, LLMLingua)</span>
+              <span class="rozet dalga">Kervan'da henüz yok — DALGA-4</span>
+            </div>
+            <p style="font-size:12px; color:var(--soluk);">OmniRoute context compression modülleri DALGA-4 kapsamında aktarılacaktır.</p>
+          </div>
+
+          <div class="panel" style="grid-column: span 2;">
+            <div class="panel-baslik">
+              <span>MCP &amp; Ajan Becerileri</span>
+              <span class="rozet dalga">Kervan'da henüz yok — DALGA-4</span>
+            </div>
+            <p style="font-size:12px; color:var(--soluk);">Yerel araç entegrasyonları ve harici yetenek kayıtları bu ekranda yönetilecektir.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- EKRAN 5: AYARLAR                              -->
+      <!-- ============================================== -->
+      <section class="ekran-alani" id="ekran5">
+        <div class="izgara-2">
+          <div class="panel">
+            <div class="panel-baslik">
+              <span>Görünüm &amp; Tema (kilim-tema)</span>
+              <span class="rozet hazir">V: kilim-tema</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
+              <div>Palet: <b>Kilim Geleneksel</b></div>
+              <div>Varyant: <b>Cam Göbeği - Altın (Firuze)</b></div>
+              <div style="display:flex; gap:8px; margin-top:8px;">
+                <button class="btn aktif">Açık Kâğıt</button>
+                <button class="btn" onclick="temaDegistir()">Koyu Kök Boya</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-baslik">
+              <span>REST Sağlayıcı Anahtarları ([rest.*])</span>
+              <span class="rozet hazir">V: /kimlikler</span>
+            </div>
+            <div style="font-size:12px; display:flex; flex-direction:column; gap:6px;">
+              <div><code>OPENAI_API_KEY</code>: <span class="rozet hazir">Ortam Değişkeninde Tanımlı</span></div>
+              <div><code>CLAUDE_API_KEY</code>: <span class="rozet giris">Tanımlı Değil</span></div>
+              <p style="font-size:11px; color:var(--mercan); margin-top:6px;">🔒 Güvenlik: Anahtar değerleri ekranda veya loglarda asla görüntülenmez.</p>
+            </div>
+          </div>
+
+          <div class="panel" style="grid-column: span 2;">
+            <div class="panel-baslik">
+              <span>Sistem &amp; Çalışma Zamanı</span>
+              <span class="rozet hazir">V: /health</span>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; font-size:12px;">
+              <div>Sürüm: <b>kervan v0.1.0</b></div>
+              <div>Render Arka Ucu: <b>wgpu (Vulkan öncelikli)</b></div>
+              <div>Çalışma Süresi: <b>14 saat 32 dakika</b></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ALT ŞERİT: CANLI AKIŞ -->
+      <footer class="alt-serit">
+        <span class="alt-baslik">Canlı İstek Akışı:</span>
+        <div class="akis-kapsayici">
+          <div class="akis-karti"><span style="color:var(--yesil);">●</span> gemini-2.5-pro · ercan-gemini-ana · 1420ms · 200 OK</div>
+          <div class="akis-karti"><span style="color:var(--yesil);">●</span> kimi-k1.5 · ercan-gemini-ana · 980ms · 200 OK</div>
+          <div class="akis-karti"><span style="color:var(--hardal);">◐</span> copilot-pro · copilot-yedek · 429 Kota Sınırı</div>
+          <div class="akis-karti"><span style="color:var(--yesil);">●</span> gemini-2.0-flash · 340ms · 200 OK</div>
+        </div>
+        <span style="font-size:11px; color:var(--soluk); white-space:nowrap;">Boşta CPU: %0.0</span>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    function temaDegistir() {
+      document.body.classList.toggle('koyu');
+      const koyuMu = document.body.classList.contains('koyu');
+      document.getElementById('temaToggle').innerText = koyuMu ? "◐ Açık Temaya Geç" : "◐ Koyu Temaya Geç";
+    }
+
+    function ekranGoster(ekranNo, btn) {
+      document.querySelectorAll('.ekran-alani').forEach(el => el.classList.remove('aktif'));
+      document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('aktif'));
+      document.getElementById('ekran' + ekranNo).classList.add('aktif');
+      btn.classList.add('aktif');
+    }
+  </script>
+</body>
+</html>

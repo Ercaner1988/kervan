@@ -8,6 +8,10 @@ description = "Kervan masaüstü arayüzü (egui)"
 [dependencies]
 kervan-sunucu = { path = "../sunucu" }
 kervan-akis-gui = { path = "../akis-gui" }
+kervan-pano-veri = { path = "../pano-veri" }
+kervan-pano-ekran = { path = "../pano-ekran" }
+kervan-tani = { path = "../tani" }
+kilim-tema.workspace = true
 tokio.workspace = true
 log.workspace = true
 eframe.workspace = true

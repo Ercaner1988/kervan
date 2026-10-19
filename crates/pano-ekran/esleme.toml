@@ -1,0 +1,408 @@
+# crates/pano-ekran/esleme.toml
+# OmniRoute anlık görüntüsündeki 57 pano bölümünün Kervan sade panosuna eşleme tablosu
+# Standart: KERVAN-PANO-ANTIGRAVITY-ISTEMI.md §6
+# Kaynak Değerleri:
+#   "V"  = Bugün Kervan'da gerçek kaynağı var, veri gösterilir.
+#   "D2" = DALGA-2 ile kalıcı veri katmanı bağlandığında gelecek.
+#   "D3" = DALGA-3 ile pano grafik katmanı bağlandığında gelecek.
+#   "D4" = DALGA-4 ile gelişmiş ajan/sağlayıcı eklentileriyle gelecek.
+#   "K"  = Kapsam dışı (Kervan'da anlamı yok).
+
+[[bolum]]
+ad = "a2a"
+ekran = 2
+karsilik = "A2A protokol ve ajan geçidi"
+kaynak = "D4"
+aciklama = "A2A protokolü ve ajanlar arası iletişim DALGA-4'te"
+
+[[bolum]]
+ad = "acp-agents"
+ekran = 2
+karsilik = "ACP ajan orkestrasyonu"
+kaynak = "D4"
+aciklama = "Harici ajan entegrasyonları DALGA-4'te"
+
+[[bolum]]
+ad = "activity"
+ekran = 3
+karsilik = "Canlı istek akışı ve hareket günlüğü"
+kaynak = "V"
+aciklama = "Canlı istek akışı /telemetri üzerinden okunur"
+
+[[bolum]]
+ad = "agent-skills"
+ekran = 4
+karsilik = "Ajan becerileri ve yetenek havuzu"
+kaynak = "D4"
+aciklama = "Beceri deposu DALGA-4'te"
+
+[[bolum]]
+ad = "analytics"
+ekran = 3
+karsilik = "Analitik ve kullanım grafikleri"
+kaynak = "D3"
+aciklama = "Pano grafik katmanı DALGA-3'te"
+
+[[bolum]]
+ad = "api-endpoints"
+ekran = 2
+karsilik = "API uç listesi ve rotalar"
+kaynak = "V"
+aciklama = "Kayıtlı uçlar port/uclar.toml ve router üzerinden sunulur"
+
+[[bolum]]
+ad = "api-manager"
+ekran = 5
+karsilik = "API anahtarları ve izin yöneticisi"
+kaynak = "D4"
+aciklama = "Kullanıcı bazlı API belirteç yönetimi DALGA-4'te"
+
+[[bolum]]
+ad = "audit"
+ekran = 3
+karsilik = "Denetim günlükleri"
+kaynak = "D2"
+aciklama = "Kalıcı denetim kayıtları DALGA-2 SQLite tablosunda"
+
+[[bolum]]
+ad = "auto-combo"
+ekran = 2
+karsilik = "Otomatik model kombinasyonları"
+kaynak = "D2"
+aciklama = "Kombo kalıcılığı ve otomatik optimizasyon DALGA-2'de"
+
+[[bolum]]
+ad = "batch"
+ekran = 4
+karsilik = "Toplu istek işleme"
+kaynak = "D4"
+aciklama = "Toplu iş kuyrukları DALGA-4'te"
+
+[[bolum]]
+ad = "cache"
+ekran = 4
+karsilik = "Önbellek durumu ve yönetimi"
+kaynak = "D2"
+aciklama = "Kalıcı önbellek görünümü DALGA-2'de"
+
+[[bolum]]
+ad = "changelog"
+ekran = 5
+karsilik = "Sürüm değişiklik günlüğü"
+kaynak = "D4"
+aciklama = "Sürüm geçmişi DALGA-4'te"
+
+[[bolum]]
+ad = "chaos"
+ekran = 2
+karsilik = "Kaos testi ve hata enjeksiyonu"
+kaynak = "D2"
+aciklama = "Dayanıklılık stres testleri DALGA-2'de"
+
+[[bolum]]
+ad = "cli-agents"
+ekran = 4
+karsilik = "CLI ajanları"
+kaynak = "D4"
+aciklama = "Komut satırı ajan arayüzleri DALGA-4'te"
+
+[[bolum]]
+ad = "cli-code"
+ekran = 4
+karsilik = "CLI kod yürütme araçları"
+kaynak = "D4"
+aciklama = "Kod araçları DALGA-4'te"
+
+[[bolum]]
+ad = "cloud-agents"
+ekran = 2
+karsilik = "Bulut ajan yönlendirmesi"
+kaynak = "D4"
+aciklama = "Bulut ajanları DALGA-4'te"
+
+[[bolum]]
+ad = "combos"
+ekran = 2
+karsilik = "Model komboları ve yedek zincirleri"
+kaynak = "D2"
+aciklama = "Kombinasyon zinciri ve yapılandırma kalıcılığı DALGA-2'de"
+
+[[bolum]]
+ad = "compression"
+ekran = 4
+karsilik = "Bağlam sıkıştırma (compression)"
+kaynak = "D4"
+aciklama = "Metin/token sıkıştırma modülleri DALGA-4'te"
+
+[[bolum]]
+ad = "conductor"
+ekran = 2
+karsilik = "Orkestratör (conductor)"
+kaynak = "D4"
+aciklama = "İleri seviye model orkestrasyonu DALGA-4'te"
+
+[[bolum]]
+ad = "context"
+ekran = 4
+karsilik = "Bağlam kipleri (Caveman, LLMLingua vb.)"
+kaynak = "D4"
+aciklama = "Bağlam sıkıştırma motoru DALGA-4'te"
+
+[[bolum]]
+ad = "conversations"
+ekran = 4
+karsilik = "Sohbet geçmişi ve oturum belleği"
+kaynak = "D2"
+aciklama = "Kalıcı konuşma geçmişi DALGA-2 veritabanında"
+
+[[bolum]]
+ad = "costs"
+ekran = 3
+karsilik = "Maliyet analitiği"
+kaynak = "D2"
+aciklama = "Maliyet ve bakiye tablosu DALGA-2'de"
+
+[[bolum]]
+ad = "discovery"
+ekran = 1
+karsilik = "Model ve sağlayıcı keşfi"
+kaynak = "D4"
+aciklama = "Sağlayıcı keşif motoru DALGA-4'te"
+
+[[bolum]]
+ad = "endpoint"
+ekran = 2
+karsilik = "Uç noktaları ve durumları"
+kaynak = "V"
+aciklama = "HTTP uçları Kervan router üzerinde açıktır"
+
+[[bolum]]
+ad = "free-provider-rankings"
+ekran = 1
+karsilik = "Ücretsiz sağlayıcı sıralamaları"
+kaynak = "D4"
+aciklama = "Sağlayıcı sıralama metrikleri DALGA-4'te"
+
+[[bolum]]
+ad = "free-tiers"
+ekran = 1
+karsilik = "Serbest katman kotaları"
+kaynak = "D4"
+aciklama = "Ücretsiz kota sınırları DALGA-4'te"
+
+[[bolum]]
+ad = "gamification"
+ekran = 3
+karsilik = "Oyunlaştırma ve rozetler"
+kaynak = "K"
+aciklama = "Kapsam dışı: Kervan profesyonel ağ geçidi mimarisinde oyunlaştırma yer almaz"
+
+[[bolum]]
+ad = "health"
+ekran = 1
+karsilik = "Sağlık ve canlılık durumu"
+kaynak = "V"
+aciklama = "/health ucu üzerinden sunulur"
+
+[[bolum]]
+ad = "leaderboard"
+ekran = 3
+karsilik = "Liderlik tablosu"
+kaynak = "K"
+aciklama = "Kapsam dışı: Kervan tekil kullanıcı/ajansal ağ geçidi mimarisinde genel liderlik tablosu yer almaz"
+
+[[bolum]]
+ad = "limits"
+ekran = 1
+karsilik = "Saatlik istek tavanı ve sınırlar"
+kaynak = "V"
+aciklama = "Pacing.hourly_cap yapılandırmasından okunur"
+
+[[bolum]]
+ad = "log-export"
+ekran = 3
+karsilik = "Günlük dışa aktarma"
+kaynak = "D2"
+aciklama = "Kalıcı günlüklerin dışa aktarımı DALGA-2'de"
+
+[[bolum]]
+ad = "logs"
+ekran = 3
+karsilik = "Son hatalar ve sistem günlükleri"
+kaynak = "D2"
+aciklama = "Canlı hatalar ekranda V, kalıcı log arşivi DALGA-2'de"
+
+[[bolum]]
+ad = "mcp"
+ekran = 4
+karsilik = "MCP sunucu ve istemci entegrasyonu"
+kaynak = "D4"
+aciklama = "Kervan yerel MCP modülü mevcuttur; UI araç yönetimi DALGA-4'te"
+
+[[bolum]]
+ad = "media-providers"
+ekran = 1
+karsilik = "Görsel ve video medya sağlayıcıları"
+kaynak = "D4"
+aciklama = "Çoklu ortam sağlayıcı kataloğu DALGA-4'te"
+
+[[bolum]]
+ad = "memory"
+ekran = 4
+karsilik = "Kalıcı bellek ve vektör deposu"
+kaynak = "D2"
+aciklama = "Vektör/bellek katmanı DALGA-2'de"
+
+[[bolum]]
+ad = "models"
+ekran = 2
+karsilik = "Aktif model kataloğu"
+kaynak = "V"
+aciklama = "/v1/models ucu üzerinden listelenir"
+
+[[bolum]]
+ad = "omni-skills"
+ekran = 4
+karsilik = "Omni beceri kütüphanesi"
+kaynak = "D4"
+aciklama = "Genişletilmiş beceriler DALGA-4'te"
+
+[[bolum]]
+ad = "onboarding"
+ekran = 1
+karsilik = "[+ Hesap Ekle] Enter'sız giriş akışı"
+kaynak = "V"
+aciklama = "Hesap ekleme ve profil kilit yoklaması ARAYUZ §6 ile sunulur"
+
+[[bolum]]
+ad = "orchestration"
+ekran = 2
+karsilik = "İstek orkestrasyonu"
+kaynak = "D4"
+aciklama = "Çoklu model orkestrasyonu DALGA-4'te"
+
+[[bolum]]
+ad = "playground"
+ekran = 2
+karsilik = "Oyun alanı (Playground)"
+kaynak = "V"
+aciklama = "/v1/chat/completions üzerinden tekil istem deneme kutusu"
+
+[[bolum]]
+ad = "plugins"
+ekran = 4
+karsilik = "Eklentiler ve araç listesi"
+kaynak = "D4"
+aciklama = "Eklenti yönetim arayüzü DALGA-4'te"
+
+[[bolum]]
+ad = "profile"
+ekran = 5
+karsilik = "Kullanıcı profili"
+kaynak = "D4"
+aciklama = "Profil ayarları DALGA-4'te"
+
+[[bolum]]
+ad = "provider-stats"
+ekran = 1
+karsilik = "Sağlayıcı istatistikleri ve durum noktası"
+kaynak = "V"
+aciklama = "Oturum havuzu yuvalarından okunur"
+
+[[bolum]]
+ad = "providers"
+ekran = 1
+karsilik = "Yapılandırılmış hesap ve oturum listesi"
+kaynak = "V"
+aciklama = "/accounts ve kervan.toml üzerinden listelenir"
+
+[[bolum]]
+ad = "quota"
+ekran = 1
+karsilik = "Kota takibi ve bekleme süresi"
+kaynak = "V"
+aciklama = "/kota ve kota::Defter üzerinden okunur"
+
+[[bolum]]
+ad = "radar"
+ekran = 3
+karsilik = "Radar sağlayıcı hız grafiği"
+kaynak = "D3"
+aciklama = "Pano görsel radar grafikleri DALGA-3'te"
+
+[[bolum]]
+ad = "relay"
+ekran = 2
+karsilik = "Aktarıcı (relay) köprüsü"
+kaynak = "D4"
+aciklama = "Ağ aktarıcı modülleri DALGA-4'te"
+
+[[bolum]]
+ad = "resilience"
+ekran = 2
+karsilik = "Dayanıklılık ve devre kesici"
+kaynak = "V"
+aciklama = "kervan-direnc modülünden okunur"
+
+[[bolum]]
+ad = "runtime"
+ekran = 5
+karsilik = "Çalışma zamanı ve wgpu arka uç bilgisi"
+kaynak = "V"
+aciklama = "Uygulama çalışma bilgileri ve wgpu Vulkan/DX12 seçimi"
+
+[[bolum]]
+ad = "search-tools"
+ekran = 4
+karsilik = "Arama araçları entegrasyonu"
+kaynak = "D4"
+aciklama = "Web arama araçları DALGA-4'te"
+
+[[bolum]]
+ad = "settings"
+ekran = 5
+karsilik = "Görünüm, tema ve genel ayarlar"
+kaynak = "V"
+aciklama = "kilim-tema TemaTercihi ve kervan.toml ayarları"
+
+[[bolum]]
+ad = "system"
+ekran = 5
+karsilik = "Sistem bilgileri ve kaynak kullanımı"
+kaynak = "V"
+aciklama = "/health ucu ve işletim sistemi kaynakları"
+
+[[bolum]]
+ad = "tokens"
+ekran = 3
+karsilik = "Token tüketim sayaçları"
+kaynak = "D3"
+aciklama = "Token analiz grafikleri DALGA-3'te"
+
+[[bolum]]
+ad = "tools"
+ekran = 4
+karsilik = "Araçlar ve fonksiyon çağrıları"
+kaynak = "D4"
+aciklama = "Araç tanımları DALGA-4'te"
+
+[[bolum]]
+ad = "translator"
+ekran = 2
+karsilik = "Protokol çevirici (OpenAI <-> Claude/Gemini)"
+kaynak = "V"
+aciklama = "kervan-ceviri sandığı üzerinden çalışır"
+
+[[bolum]]
+ad = "usage"
+ekran = 3
+karsilik = "Kullanım telemetrisi"
+kaynak = "V"
+aciklama = "/telemetri ucu üzerinden okunur"
+
+[[bolum]]
+ad = "webhooks"
+ekran = 5
+karsilik = "Web kancaları (Webhooks)"
+kaynak = "D4"
+aciklama = "Web kancası bildirimleri DALGA-4'te"
