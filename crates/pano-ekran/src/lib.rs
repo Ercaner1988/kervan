@@ -124,9 +124,10 @@ pub fn render_ust_serit(
         ui.label(RichText::new(&ozet.aktif_strateji).strong().size(11.0));
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.button("⚙").clicked() {}
+            // TODO(pano): ayarlar ve tanı alma henüz bağlanmadı.
+            let _ = ui.button("⚙");
             kilim_tema::tema_secici(ui, tema_tercihi);
-            if ui.button("🔍 Tanı al").clicked() {}
+            let _ = ui.button("🔍 Tanı al");
         });
     });
 }

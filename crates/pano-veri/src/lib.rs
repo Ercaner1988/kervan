@@ -117,11 +117,12 @@ pub fn sir_temizle(ham_metin: &str) -> String {
 
     // Cookie desenleri
     let mut start = 0;
-    while let Some(rel_idx) = sonuc[start..].to_lowercase().find("cookie:") {
+    // Başlık adı ASCII; ASCII küçültme bayt uzunluğunu korur, dizinler kaymaz.
+    while let Some(rel_idx) = sonuc[start..].to_ascii_lowercase().find("cookie:") {
         let idx = start + rel_idx;
         let bas = idx + 7;
         let son = sonuc[bas..]
-            .find(|c: char| c == '\n' || c == '\r' || c == '"')
+            .find(['\n', '\r', '"'])
             .map(|i| bas + i)
             .unwrap_or(sonuc.len());
         sonuc.replace_range(bas..son, " [COOKIE_TEMIZLENDI]");

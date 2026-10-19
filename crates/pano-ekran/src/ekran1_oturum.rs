@@ -65,8 +65,9 @@ pub fn render(
                                 ui.with_layout(
                                     egui::Layout::right_to_left(egui::Align::Center),
                                     |ui| {
-                                        if ui.small_button("👁 Aç").clicked() {}
-                                        if ui.small_button("↻ Yenile").clicked() {}
+                                        // TODO(pano): hesap açma ve yenileme henüz bağlanmadı.
+                                        let _ = ui.small_button("👁 Aç");
+                                        let _ = ui.small_button("↻ Yenile");
                                     },
                                 );
                             });
