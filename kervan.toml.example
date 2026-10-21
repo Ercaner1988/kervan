@@ -13,6 +13,26 @@ min_delay_ms = 3000   # aynı hesaba ardışık iki istek arası en az süre
 jitter_ms = 2000      # üzerine 0-2 sn rastgele sapma (sabit aralık en belirgin bot izidir)
 hourly_cap = 30       # hesap başına saatlik tavan; 0 = sınırsız (önerilmez)
 
+# Sağlayıcı seçim stratejisi: 'auto' modeli istendiğinde adaylar (eklenti
+# sekmeleri + havuz hesapları + [rest.*] hedefleri) arasından hangi sırayla
+# seçilir. Çalışma anında değiştirme: POST /yonlendirme {"strateji":"round-robin"}
+#
+# DİKKAT — 20 ad kabul edilir; üretimde sırayı fiilen değiştiren yalnız 7:
+#   weighted, round-robin, p2c, random, strict-random, least-used, lkgp.
+# Sırayı değiştirmeyen 13 ad iki gruptur:
+#   - henüz taşınmadı (açılışta uyarı basılır): reset-aware, reset-window,
+#     headroom, quota-weighted, auto, cache-optimized, fusion, pipeline
+#   - uyarısız ama etkisiz: cost-optimized, context-optimized (fiyat/bağlam
+#     tablosu üretimde boş); priority, fill-first, context-relay (çekirdek
+#     sırayı dokunmaz; üretimde aday listesi zaten alfabetik gelir)
+#
+# `quota-share` dahili stratejidir; yapılandırmadan ve POST /yonlendirme'den
+# reddedilir.
+[yonlendirme]
+strateji = "lkgp"     # lkgp: son başarılı sağlayıcıya yapış (devre kesiciyle birlikte)
+yedek_deneme = true   # başarısız adaydan sonra sıradakine geç
+azami_deneme = 3      # tek istekte en fazla kaç aday denenecek
+
 # --- örnek hesaplar ---
 #
 # Yeni sağlayıcı bağlamak: görünür kipte aç, sekmede giriş yap, kapat.
@@ -44,3 +64,24 @@ providers = ["copilot"]
 [kota]
 isaretler = ["reached your limit", "sınırına ulaştınız"]
 bilinmeyen_pencere_dk = 60
+
+# --- doğrudan REST sağlayıcıları ---
+#
+# Tarayıcı sekmesi yerine kendi API'sine giden sağlayıcı. `auto` adaylarına
+# katılır; `kervan/<ad>` açık adıyla da çağrılabilir. Anahtar dosyada DEĞİL,
+# adı verilen ortam değişkeninde durur.
+#
+# Ad kuralları:
+#   - `auto` rezervedir, [rest.auto] açılışta hata verir.
+#   - Hesap/`providers` adıyla çakışan [rest.X] hata verir (tarayıcı hesabını
+#     sessizce gölgelemesin).
+#   - Eklentinin sabit adları (gemini, deepseek, chatgpt, …) yazılırsa açılışta
+#     `uyari:` basılır; bilinçli tercih olabilir ama sessiz kalmaz.
+#
+# [rest.deepseek]
+# bicim = "openai"                     # openai | claude | gemini
+# taban_url = "https://api.deepseek.com"
+# anahtar_env = "DEEPSEEK_API_KEY"
+# model = "deepseek-chat"
+# yol = "/v1/chat/completions"         # isteğe bağlı; biçime göre varsayılan var
+

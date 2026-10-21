@@ -14,8 +14,9 @@ Web üzerinden yapay zekâ kullanımını istediğiniz arayüzlere yönlendirmey
 
 | Gereksinim | Sürüm / Not |
 |---|---|
-| Rust | 1.70+ (derleme için) |
-| Firefox | Zen veya standart Firefox (geckodriver ile) |
+| Rust | 1.88+ — `edition = "2024"` ve let-chains kullanılıyor; daha eski araç zincirleri derleyemez |
+| Firefox | Zen veya standart Firefox |
+| geckodriver | Sunucu açılışta arar: `KERVAN_GECKODRIVER` ortam değişkeni ya da `%LOCALAPPDATA%\kervan\bin\geckodriver.exe` (eklenti köprüsünü tek başına kullananlar dâhil) |
 | İşletim sistemi | Windows, Linux, macOS |
 
 ## 🛠 İşlev ve Özellikler
@@ -56,7 +57,7 @@ cp kervan.toml.example kervan.toml
 ### Kullanım
 
 ```bash
-./target/release/kervan
+./target/release/kervan --serve
 ```
 
 Sunucu `127.0.0.1:20129` üzerinde çalışır. OpenAI uyumlu uç:
@@ -66,6 +67,84 @@ curl http://127.0.0.1:20129/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model": "gemini", "messages": [{"role": "user", "content": "Merhaba"}]}'
 ```
+
+Çalıştırma kipleri:
+
+| Kip | Ne yapar |
+|---|---|
+| `--serve` | Sunucuyu başlatır (uç + eklenti köprüsü). `--port <n>` ile port değişir. |
+| `--giris <hesap>` | Hesabın tarayıcı penceresini açar; bir kez elle giriş yapılır. |
+| `--tara` | Tanımlı hesapların oturum durumunu yeniden tarar. |
+| (bayraksız) | Tek oturum kipi: profili açar ve Enter bekler — sunucu başlatmaz. |
+
+Hesap tanımları ve tüm alanlar için `kervan.toml.example`.
+
+### Eklenti köprüsü (WebSocket)
+
+Tarayıcı eklentisi `eklenti/` altındadır ve Kervan'a WebDriver olmadan bağlanır:
+`ws://127.0.0.1:20129/ws/eklenti` (sunucu açılışı yine de makinede geckodriver
+arar — bkz. Gereksinimler). Eklenti her sekmenin oturumunu `provider:profile`
+anahtarıyla bildirir; profil = Firefox'un `cookieStoreId`'si, yoksa `varsayilan`.
+
+**İlk kurulum (bir kez):**
+
+1. Firefox → `about:debugging#/runtime/this-firefox` → **Geçici Eklenti Yükle…**
+   → `kervan/eklenti/manifest.json` seç.
+2. Kervan `--serve` ile açık olmalı; sunucu kapalıyken eklenti 3 saniyede bir
+   yeniden bağlanmayı dener.
+3. Sağlayıcı sayfasını (örn. `gemini.google.com`) aç ve giriş yap — sekme
+   köprüye otomatik kaydolur.
+
+Geçici yükleme tarayıcı kapanınca düşer; kalıcı kullanım için imzalı bir XPI
+paketi gerekir (Firefox ESR tercih ediliyorsa `xpinstall.signatures.required`
+ayarıyla). Yeniden yükleme sonrası eski kayıtlar düşer, yeni bağlantı kendini
+yeniden kaydeder.
+
+**Çok hesap:** İkinci hesap, sağlayıcıyı **ikinci bir Firefox container'ında**
+açmaktır (Multi-Account Containers eklentisi). Aynı container'daki ikinci sekme
+ayrı hesap **değildir** — son açılan öncekinin kaydının yerine geçer; ayrı
+hesap için ayrı `cookieStoreId` gerekir. Seçim hesap düzeyinde en-az-kullanılan
+ilkesiyle yapılır.
+
+Köprü artık kimlik ister:
+
+- `Host` yalnız `127.0.0.1`, `localhost` ya da `[::1]` olabilir (DNS rebinding'e karşı).
+- `Origin` yoksa (yerel istemci) ya da uzantı şemasıysa (`chrome-extension://`,
+  `moz-extension://`) kabul edilir; `http(s)://` sayfalar reddedilir.
+- Paylaşılan token zorunludur. Kervan açılışta yolunu basar:
+  `%LOCALAPPDATA%\kervan\eklenti.token` (Linux/macOS'ta
+  `~/.local/state/kervan/eklenti.token`; `HOME` da yoksa çalışma dizinindeki
+  `kervan/eklenti.token`). Eklenti token'ı yalnız uzantı kaynaklı isteklere açık
+  olan `GET /eklenti/token` ucundan alır ve `storage.local`'da saklar — kullanıcı
+  için ek iş yok.
+
+Eski eklenti sürümü token göndermediği için bağlanamaz; `eklenti/` klasörünü
+yukarıdaki adımlarla yeniden yükleyin.
+
+### Doğrudan REST sağlayıcıları
+
+Tarayıcı sekmesi açmadan kendi API'sine gitmek isteyen sağlayıcı `[rest.<ad>]`
+ile tanımlanır (`bicim`: `openai`, `claude`, `gemini`). Anahtar ortam
+değişkeninden okunur; dosyaya yazılmaz ve `/v1/models` listesine `kervan/<ad>`
+olarak girer. Ayrıntı ve ad çakışma kuralları `kervan.toml.example` içinde.
+
+Bilinen sınırlama: istemci bağlantıyı kopardığında tarayıcı yolu üretimi
+durdurulur, ama gider durumdaki bir REST çağrısı iptal edilemez (bloklayan
+HTTP istemcisi); çağrı `zaman_asimi`'na kadar sürer ve sonucu çöpe gider.
+Kalıcı çözüm eşzamansız istemciye geçmektir; bilinçli olarak ertelendi.
+
+### Yönlendirme
+
+`model: "auto"` üç kaynağı yarıştırır: bağlı eklenti sekmeleri, tarayıcı havuzu
+ve `[rest.*]` hedefleri. Strateji `[yonlendirme]` ile seçilir, çalışma anında
+`GET`/`POST /yonlendirme` ile okunur ve değiştirilir. 20 ad kabul edilir;
+üretimde sırayı fiilen değiştiren yalnız 7'si (`weighted`, `round-robin`, `p2c`,
+`random`, `strict-random`, `least-used`, `lkgp`). Kalan 13'ü: 8'i henüz
+taşınmadı (açılışta uyarı), 5'i uyarısız ama etkisiz (`cost-optimized`,
+`context-optimized` — fiyat/bağlam tablosu boş; `priority`, `fill-first`,
+`context-relay` — çekirdek sırayı dokunmaz, adaylar zaten alfabetik gelir).
+Liste ve gerekçeler `kervan.toml.example`'da. Araç (`tools`) içeren isteklerde
+REST adayı varsa tarayıcı adayları elenir.
 
 ## 🗺 Durum ve Yol Haritası
 
@@ -79,10 +158,15 @@ curl http://127.0.0.1:20129/v1/chat/completions \
 
 | | |
 |---|---|
-| Tarayıcı | Firefox tabanlı (Zen ya da Firefox), geckodriver ile |
+| Tarayıcı | Firefox tabanlı (Zen ya da Firefox), geckodriver ile; ya da `eklenti/` WebSocket köprüsü |
 | Uç | `POST /v1/chat/completions`, `GET /v1/models`, `GET /health` |
-| Havuz | `GET /accounts`, `POST /accounts/{i}/devam` |
+| Havuz | `GET /accounts`, `POST /accounts/{i}/devam`, `POST /accounts/{i}/duraklat` |
+| Yönlendirme | `GET /yonlendirme`, `POST /yonlendirme` |
+| Eklenti | `GET /ws/eklenti` (token + Origin), `GET /eklenti/token`, `GET /eklenti/sekmeler` |
 | Bağlanma | yalnız `127.0.0.1` |
+
+Tam uç kayıt defteri: `port/uclar.toml` (`/telemetri`, `/bakiye`, `/kimlikler`,
+`/kota` ve hesap görünürlük uçları dâhil).
 
 ### Sağlayıcılar
 

@@ -14,8 +14,9 @@ A gateway infrastructure that routes AI usage from web interfaces to your prefer
 
 | Requirement | Version / Note |
 |---|---|
-| Rust | 1.70+ (for building) |
-| Firefox | Zen or standard Firefox (with geckodriver) |
+| Rust | 1.88+ — the workspace uses `edition = "2024"` and let-chains; older toolchains cannot build it |
+| Firefox | Zen or standard Firefox |
+| geckodriver | Looked up at server start: `KERVAN_GECKODRIVER` or `%LOCALAPPDATA%\kervan\bin\geckodriver.exe` (including extension-bridge-only setups) |
 | OS | Windows, Linux, macOS |
 
 ## 🛠 Features & Functionality
@@ -56,7 +57,7 @@ cp kervan.toml.example kervan.toml
 ### Usage
 
 ```bash
-./target/release/kervan
+./target/release/kervan --serve
 ```
 
 Server runs on `127.0.0.1:20129`. OpenAI-compatible endpoint:
@@ -66,6 +67,85 @@ curl http://127.0.0.1:20129/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model": "gemini", "messages": [{"role": "user", "content": "Hello"}]}'
 ```
+
+Run modes:
+
+| Mode | What it does |
+|---|---|
+| `--serve` | Starts the server (endpoint + extension bridge). `--port <n>` changes the port. |
+| `--giris <account>` | Opens the account's browser window for a one-time manual login. |
+| `--tara` | Re-scans the session state of the defined accounts. |
+| (no flag) | Single-session mode: opens the profile and waits for Enter — does not start the server. |
+
+Account definitions and every field: `kervan.toml.example`.
+
+### Extension bridge (WebSocket)
+
+The browser extension lives under `eklenti/` and connects to Kervan without
+WebDriver: `ws://127.0.0.1:20129/ws/eklenti` (the server still looks for
+geckodriver at startup — see Prerequisites). The extension registers each tab's
+session under a `provider:profile` key; the profile is Firefox's
+`cookieStoreId`, or `varsayilan` if absent.
+
+**First-time install (once):**
+
+1. Firefox → `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on…**
+   → pick `kervan/eklenti/manifest.json`.
+2. Kervan must be running with `--serve`; while the server is down the extension
+   retries every 3 seconds.
+3. Open a provider page (e.g. `gemini.google.com`) and sign in — the tab
+   registers with the bridge automatically.
+
+Temporary loading is dropped when the browser closes; persistent use requires a
+signed XPI package (with `xpinstall.signatures.required` for Firefox ESR).
+After a reload, old registrations drop and the new connection re-registers.
+
+**Multiple accounts:** a second account means opening the provider in a
+**second Firefox container** (Multi-Account Containers extension). A second tab
+in the same container is **not** a separate account — the most recent one
+replaces the previous registration; a distinct `cookieStoreId` is required.
+Selection is least-used at the account level.
+
+The bridge now requires identity:
+
+- `Host` may only be `127.0.0.1`, `localhost` or `[::1]` (against DNS rebinding).
+- `Origin` is accepted when absent (local client) or when it is an extension
+  scheme (`chrome-extension://`, `moz-extension://`); `http(s)://` pages are rejected.
+- A shared token is mandatory. Kervan prints its path at startup:
+  `%LOCALAPPDATA%\kervan\eklenti.token` (on Linux/macOS
+  `~/.local/state/kervan/eklenti.token`; if `HOME` is also absent, `kervan/eklenti.token`
+  in the working directory). The extension fetches the token from
+  `GET /eklenti/token`, which only answers extension origins, and caches it in
+  `storage.local` — no user action needed.
+
+An older extension build cannot connect (it sends no token); reload `eklenti/`
+following the steps above.
+
+### Direct REST providers
+
+A provider that should hit its own API without a browser tab is defined with
+`[rest.<ad>]` (`bicim`: `openai`, `claude`, `gemini`). The key is read from an
+environment variable; it is never written to the file, and the target appears in
+`/v1/models` as `kervan/<ad>`. Details and name-collision rules are in
+`kervan.toml.example`.
+
+Known limitation: when the client disconnects, the browser path stops producing,
+but an in-flight REST call cannot be cancelled (blocking HTTP client); it runs
+until `zaman_asimi` and its result is discarded. The permanent fix is an async
+client; deliberately deferred.
+
+### Routing
+
+`model: "auto"` races three sources: connected extension tabs, the browser pool
+and `[rest.*]` targets. The strategy is selected via `[yonlendirme]`, read and
+changed at runtime with `GET`/`POST /yonlendirme`. 20 names are accepted; only 7
+actually reorder in production (`weighted`, `round-robin`, `p2c`, `random`,
+`strict-random`, `least-used`, `lkgp`). Of the other 13: 8 are not yet ported
+(warning at startup), 5 are silent no-ops (`cost-optimized`,
+`context-optimized` — price/context tables are empty; `priority`, `fill-first`,
+`context-relay` — the core does not touch order, candidates already arrive
+alphabetically). List and rationale: `kervan.toml.example`. For requests that
+carry `tools`, browser candidates are dropped whenever a REST candidate exists.
 
 ## 🗺 Status & Roadmap
 
@@ -79,10 +159,15 @@ curl http://127.0.0.1:20129/v1/chat/completions \
 
 | | |
 |---|---|
-| Browser | Firefox-based (Zen or Firefox), via geckodriver |
+| Browser | Firefox-based (Zen or Firefox), via geckodriver; or the `eklenti/` WebSocket bridge |
 | Endpoint | `POST /v1/chat/completions`, `GET /v1/models`, `GET /health` |
-| Pool | `GET /accounts`, `POST /accounts/{i}/devam` |
+| Pool | `GET /accounts`, `POST /accounts/{i}/devam`, `POST /accounts/{i}/duraklat` |
+| Routing | `GET /yonlendirme`, `POST /yonlendirme` |
+| Extension | `GET /ws/eklenti` (token + Origin), `GET /eklenti/token`, `GET /eklenti/sekmeler` |
 | Binding | localhost only (`127.0.0.1`) |
+
+Full endpoint registry: `port/uclar.toml` (including `/telemetri`, `/bakiye`,
+`/kimlikler`, `/kota` and account-visibility endpoints).
 
 ### Providers
 

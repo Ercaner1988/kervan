@@ -1,10 +1,12 @@
 @echo off
-title Kervan Sade Pano
-cd /d "c:\Users\buzbe\Desktop\Github\kervan"
+title Kervan Ag Gecidi (arayuzsuz)
+cd /d "%~dp0"
 echo ========================================================
-echo   Kervan Sade Pano - Windows Dogrudan GUI Baslatici
+echo   Kervan - Arayuzsuz Sunucu (arayuz icin: OpenChamber)
 echo ========================================================
-".\target\debug\kervan.exe" --serve --gui
+set "KERVAN_EXE=%~dp0target\release\kervan.exe"
+if not exist "%KERVAN_EXE%" set "KERVAN_EXE=%~dp0target\debug\kervan.exe"
+"%KERVAN_EXE%" --serve
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo Hata ile kapandi! Kod: %ERRORLEVEL%
