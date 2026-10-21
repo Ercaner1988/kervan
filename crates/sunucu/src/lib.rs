@@ -9,5 +9,7 @@ pub use kervan_mcp::compressor;
 pub use kervan_saglayici::{kota, saglayicilar};
 pub use kervan_tarayici::{browser, config};
 
-pub mod eklenti;
+pub use kervan_eklenti::eklenti;
+mod eklenti_uc;
+mod rest;
 pub mod server;

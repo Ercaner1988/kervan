@@ -1,4 +1,4 @@
-use serde_json::{Value, json};
+﻿use serde_json::{Value, json};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
@@ -140,6 +140,8 @@ async fn p5_e2e_nonce_testi() {
         sayaclar: Default::default(),
         rest_hedefleri,
         yukari: kervan_yukari::Yukari::new(),
+        yedek_deneme: true,
+        azami_deneme: 3,
     });
 
     // 3. Gerçek server::router'ı axum::serve ile aç
@@ -273,6 +275,8 @@ async fn p5_models_testi() {
         sayaclar: Default::default(),
         rest_hedefleri,
         yukari: kervan_yukari::Yukari::new(),
+        yedek_deneme: true,
+        azami_deneme: 3,
     });
 
     let server_listener = TcpListener::bind("127.0.0.1:0").await.unwrap();

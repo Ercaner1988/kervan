@@ -1,0 +1,15 @@
+[package]
+name = "kervan-eklenti"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Kervan tarayıcı eklentisi köprüsü: protokol, hesap hub'ı ve paylaşılan token"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+rand.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

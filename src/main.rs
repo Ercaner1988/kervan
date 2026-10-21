@@ -138,6 +138,35 @@ async fn main() -> Result<()> {
             );
         }
 
+        // Akıllı yönlendirici stratejisi: bilinmeyen ad açılışta reddedilir.
+        // `normallestir` sessizce priority'ye düşürür; açılışta sessizlik istenmez.
+        let strateji =
+            kervan::router::RoutingStrategy::from_str_canonical(&cfg.yonlendirme.strateji)
+                .with_context(|| {
+                    format!(
+                        "[yonlendirme] strateji='{}' bilinmiyor. Kullanilabilir: {}",
+                        cfg.yonlendirme.strateji,
+                        kervan::router::RoutingStrategy::KAMUYA_ACIK.join(", ")
+                    )
+                })?;
+        if strateji.is_internal() {
+            anyhow::bail!(
+                "[yonlendirme] strateji='{}' dahili bir stratejidir; kullanıcıya açık değil",
+                strateji.as_str()
+            );
+        }
+        if !strateji.desteklenir() {
+            eprintln!(
+                "akilli-rota   : uyari: '{}' stratejisi henuz tasinmadi; siralama priority gibi davranir",
+                strateji.as_str()
+            );
+        }
+        println!("akilli-rota   : strateji = [{}]", strateji.as_str());
+        println!(
+            "eklenti token: {}",
+            kervan::eklenti::token_dosyasi().display()
+        );
+
         let state = Arc::new(server::AppState {
             pool: havuz,
             defter,
@@ -145,12 +174,14 @@ async fn main() -> Result<()> {
             saglayicilar: defter_saglayici,
             varsayilan_saglayici: varsayilan,
             timeout: YANIT_ZAMAN_ASIMI,
-            eklenti_hub: kervan::eklenti::EklentiHub::new(),
+            eklenti_hub: kervan::eklenti::EklentiHub::kalici(),
             compressor: kervan::compressor::Compressor::new(),
-            router: kervan::router::SmartRouter::new(kervan::router::RoutingStrategy::Lkgp),
+            router: kervan::router::SmartRouter::new(strateji),
             sayaclar: Default::default(),
             rest_hedefleri,
             yukari: kervan_yukari::Yukari::new(),
+            yedek_deneme: cfg.yonlendirme.yedek_deneme,
+            azami_deneme: cfg.yonlendirme.azami_deneme,
         });
 
         // Bosta tarayici supurucusu. Havuzun buyuyebilmesini saglayan sey bu:
@@ -177,7 +208,11 @@ async fn main() -> Result<()> {
             {
                 let s = state.clone();
                 tokio::spawn(async move {
-                    let _ = server::serve(s, port).await;
+                    // Sessiz yutma yok: port doluysa GUI açılır ama ağ geçidi ölür;
+                    // hata en azından günlüğe düşmeli.
+                    if let Err(e) = server::serve(s, port).await {
+                        eprintln!("sunucu hatasi: {e:#}");
+                    }
                 });
                 return match kervan::gui::KervanApp::baslat(state) {
                     Ok(()) => Ok(()),

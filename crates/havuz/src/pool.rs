@@ -176,6 +176,10 @@ const PIN_MAX_BEKLEME: Duration = Duration::from_secs(60);
 /// asilirsa tablo bosaltilir — sureklilik kaybi olur, veri kaybi olmaz.
 const SABIT_TAVANI: usize = 10_000;
 
+/// Sağlayıcı kapısında en fazla bu kadar beklenir. Sınırsız bekleme, kilitli
+/// bir kapı yüzünden isteğin sonsuza kadar asılı kalmasına yol açıyordu.
+const KAPI_BEKLEME: Duration = Duration::from_secs(180);
+
 /// Sabitlenmis hesap icin uc olasilik.
 enum Sabit {
     Kullan,
@@ -454,6 +458,23 @@ impl Pool {
         self.sabitler.lock().await.len()
     }
 
+    /// Sağlayıcı kapısından yer alır. Bekleme sınırsız değil: kilitli bir kapı
+    /// yüzünden istek sonsuza kadar asılı kalmasın.
+    async fn kapi_izin(&self, saglayici: &str) -> Result<tokio::sync::OwnedSemaphorePermit> {
+        let kapi =
+            self.kapilar.get(saglayici).cloned().with_context(|| {
+                format!("'{saglayici}' icin kapi yok — havuz kurulumunda atlanmis")
+            })?;
+        match tokio::time::timeout(KAPI_BEKLEME, kapi.acquire_owned()).await {
+            Ok(Ok(izin)) => Ok(izin),
+            Ok(Err(_)) => bail!("'{saglayici}' saglayici kapisi kapandi"),
+            Err(_) => bail!(
+                "'{saglayici}' saglayici kapisi {} sn icinde bosalmadi",
+                KAPI_BEKLEME.as_secs()
+            ),
+        }
+    }
+
     /// Kullanilabilir hesaplardan **en az kullanilani** sec, oturumunu (gerekirse acarak)
     /// kilitle ve hiz gecikmesini uygula.
     ///
@@ -483,17 +504,10 @@ impl Pool {
             bail!("'{saglayici}' saglayicisi icin tanimli hesap yok (kervan.toml)");
         }
 
-        // Saglayici kapisi. Hesap SECILMEDEN once alinir: amac "ayni hesaba iki
-        // istek" degil, "ayni SITEYE ayni anda birden fazla oturum" olmasin.
-        // Bekleme hesap secimini de kapsiyor, cunku hizli ard arda acilan taze
-        // oturumlarin kendisi risk uretiyor.
-        let kapi =
-            self.kapilar.get(saglayici).cloned().with_context(|| {
-                format!("'{saglayici}' icin kapi yok — havuz kurulumunda atlanmis")
-            })?;
-        // Option: dongu icinde tasinabilmesi icin. Yalnizca basarida `take` edilir.
-        let mut izin = Some(kapi.acquire_owned().await.expect("kapi kapatilmiyor"));
-
+        // Sağlayıcı kapısı yalnız bir hesap SEÇİLDİKTEN sonra alınır. Kapıyı
+        // bekleme uykusu boyunca tutmak, tek slotlu bir sağlayıcıda bütün
+        // trafiği kilitliyordu (S2): sırada bekleyen istek, uyuyan isteğin
+        // bırakmasını bekliyordu.
         loop {
             let simdi = Instant::now();
 
@@ -505,27 +519,30 @@ impl Pool {
                 let karar =
                     sabit_karari(&mut *self.slots[i].state.lock().await, simdi, &self.pacing);
                 match karar {
-                    Sabit::Kullan => match self.kilitle(i, oturum).await {
-                        Ok((guard, yeni_dizi)) => {
-                            return Ok(Lease {
-                                index: i,
-                                name: self.slots[i].hesap_adi.clone(),
-                                provider: self.slots[i].provider.clone(),
-                                yeni_dizi,
-                                _kapi: izin.take().expect("izin bir kez kullanilir"),
-                                guard,
-                            });
+                    Sabit::Kullan => {
+                        let izin = self.kapi_izin(saglayici).await?;
+                        match self.kilitle(i, oturum).await {
+                            Ok((guard, yeni_dizi)) => {
+                                return Ok(Lease {
+                                    index: i,
+                                    name: self.slots[i].hesap_adi.clone(),
+                                    provider: self.slots[i].provider.clone(),
+                                    yeni_dizi,
+                                    _kapi: izin,
+                                    guard,
+                                });
+                            }
+                            Err(e) => {
+                                let mesaj = format!("{e:#}");
+                                eprintln!(
+                                    "[{}] sabit hesap acilamadi: {mesaj}",
+                                    self.slots[i].hesap_adi
+                                );
+                                self.basarisiz(i, &mesaj).await;
+                                continue;
+                            }
                         }
-                        Err(e) => {
-                            let mesaj = format!("{e:#}");
-                            eprintln!(
-                                "[{}] sabit hesap acilamadi: {mesaj}",
-                                self.slots[i].hesap_adi
-                            );
-                            self.basarisiz(i, &mesaj).await;
-                            continue;
-                        }
-                    },
+                    }
                     Sabit::Bekle(sure) => {
                         tokio::time::sleep(sure + Duration::from_millis(50)).await;
                         continue;
@@ -561,6 +578,7 @@ impl Pool {
             }
 
             if let Some((i, _)) = aday {
+                let izin = self.kapi_izin(saglayici).await?;
                 match self.kilitle(i, oturum).await {
                     Ok((guard, yeni_dizi)) => {
                         if let Some(anahtar) = oturum {
@@ -571,7 +589,7 @@ impl Pool {
                             name: self.slots[i].hesap_adi.clone(),
                             provider: self.slots[i].provider.clone(),
                             yeni_dizi,
-                            _kapi: izin.take().expect("izin bir kez kullanilir"),
+                            _kapi: izin,
                             guard,
                         });
                     }
@@ -776,6 +794,14 @@ impl Pool {
         st.paused_reason = None;
         st.consecutive_errors = 0;
         st.not_before = None;
+    }
+
+    /// Kullanici istegiyle hesabi duraklat. `devam_ettir` ile geri alinir.
+    /// Otomatik duraklatmayla ayni alani kullanir; boylece secim mantigi tek
+    /// yerde kalir ve arayuz ayri bir "elle duraklatildi" bayragi tasimaz.
+    pub async fn duraklat(&self, i: usize, neden: &str) {
+        let mut st = self.slots[i].state.lock().await;
+        st.paused_reason = Some(neden.chars().take(200).collect());
     }
 }
 
@@ -987,6 +1013,28 @@ mod tests {
         e.insert("gemini".to_string(), 0);
         let p = havuz_n(pacing(0), 2, &e);
         assert!(p.kapilar["gemini"].available_permits() >= 1);
+    }
+
+    /// Panelin "Duraklat" dugmesi otomatik duraklatmayla AYNI alani kullanir:
+    /// hesap secimden duser, `/devam` geri acar. Iki yol ayrisirsa panel
+    /// duraklatmis gorunurken istekler akmaya devam eder.
+    #[tokio::test]
+    async fn elle_duraklat_secimi_kapatir_ve_devam_acar() {
+        let p = havuz(pacing(0));
+        assert!(p.slots[0].state.lock().await.paused_reason.is_none());
+
+        p.duraklat(0, "elle duraklatildi").await;
+        {
+            let mut st = p.slots[0].state.lock().await;
+            assert_eq!(st.paused_reason.as_deref(), Some("elle duraklatildi"));
+            assert!(
+                st.hazir_zamani(Instant::now(), &p.pacing).is_none(),
+                "duraklatilan hesap secime girmemeli"
+            );
+        }
+
+        p.devam_ettir(0).await;
+        assert!(p.slots[0].state.lock().await.paused_reason.is_none());
     }
 
     /// Havuz, Cloudflare arkasindaki saglayicilari "kapanmaz" diye tanimali.

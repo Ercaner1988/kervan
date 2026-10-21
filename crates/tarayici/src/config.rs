@@ -1,4 +1,4 @@
-//! `kervan.toml` — hesap listesi ve hiz butcesi.
+﻿//! `kervan.toml` — hesap listesi ve hiz butcesi.
 //!
 //! Yol aranir (bkz. [`adaylar`]): `KERVAN_CONFIG` verilmisse yalniz orasi; yoksa
 //! calisma dizini, ikilinin yani, sonra kurulum klasoru. Hicbiri yoksa tek hesapli
@@ -17,6 +17,7 @@ use serde::Deserialize;
 const KURULUM: &str = r"Desktop\mcp-tools\kervan";
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     /// Bir tarayici kac dakika bosta kalinca kapatilir. 0 = hic kapatma.
     ///
@@ -38,10 +39,55 @@ pub struct Config {
     /// REST yukarı akış sağlayıcıları ([rest.<ad>]).
     #[serde(default)]
     pub rest: std::collections::HashMap<String, RestAyar>,
+    /// Sağlayıcı seçim stratejisi ([yonlendirme]).
+    #[serde(default)]
+    pub yonlendirme: Yonlendirme,
+}
+
+/// Sağlayıcı seçim stratejisi ([yonlendirme]).
+///
+/// Ad doğrulaması burada YAPILMAZ: geçerli adların tek kaynağı
+/// `kervan_havuz::router::RoutingStrategy`'dir ve bu crate ona bağımlı değil.
+/// Bilinmeyen ad sunucu açılışında yüksek sesle reddedilir (main.rs).
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Yonlendirme {
+    /// `lkgp` (varsayılan), `round-robin`, `least-used`, `p2c`, `priority`, …
+    #[serde(default = "varsayilan_strateji")]
+    pub strateji: String,
+    /// Aynı istek başarısız olursa sıradaki adaya geçilsin mi?
+    #[serde(default = "varsayilan_yedek")]
+    pub yedek_deneme: bool,
+    /// Tek istekte denenecek azami aday sayısı (yedek_deneme açıkken).
+    #[serde(default = "varsayilan_azami_deneme")]
+    pub azami_deneme: u32,
+}
+
+fn varsayilan_strateji() -> String {
+    "lkgp".into()
+}
+
+fn varsayilan_yedek() -> bool {
+    true
+}
+
+fn varsayilan_azami_deneme() -> u32 {
+    3
+}
+
+impl Default for Yonlendirme {
+    fn default() -> Self {
+        Self {
+            strateji: varsayilan_strateji(),
+            yedek_deneme: varsayilan_yedek(),
+            azami_deneme: varsayilan_azami_deneme(),
+        }
+    }
 }
 
 /// REST yukarı akış sağlayıcı yapılandırması ([rest.<ad>]).
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct RestAyar {
     pub bicim: String,
     pub taban_url: String,
@@ -53,19 +99,40 @@ pub struct RestAyar {
 
 impl RestAyar {
     pub fn dogrula(&self, ad: &str) -> Result<()> {
-        match self.bicim.as_str() {
-            "openai" | "claude" | "gemini" => Ok(()),
+        match self.bicim.trim() {
+            "openai" | "claude" | "gemini" => {}
             diger => anyhow::bail!(
                 "Geçersiz REST sağlayıcı biçimi: '{}' ([rest.{}])",
                 diger,
                 ad
             ),
         }
+        let url = self.taban_url.trim();
+        if url.is_empty() || !(url.starts_with("http://") || url.starts_with("https://")) {
+            anyhow::bail!(
+                "[rest.{}] taban_url boş ya da http(s):// ile başlamıyor: '{}'",
+                ad,
+                self.taban_url
+            );
+        }
+        if self.model.trim().is_empty() {
+            anyhow::bail!("[rest.{}] model boş olamaz", ad);
+        }
+        let env = self.anahtar_env.trim();
+        if env.is_empty() || !env.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+            anyhow::bail!(
+                "[rest.{}] anahtar_env geçerli bir ortam değişkeni adı değil: '{}'",
+                ad,
+                self.anahtar_env
+            );
+        }
+        Ok(())
     }
 }
 
 /// Yerlesik saglayici tanimini kismen ezer; verilmeyen alan varsayilanda kalir.
 #[derive(Debug, Deserialize, Clone, Default)]
+#[serde(deny_unknown_fields)]
 pub struct SaglayiciAyar {
     pub url: Option<String>,
     pub giris_kalibi: Option<String>,
@@ -87,6 +154,7 @@ pub struct SaglayiciAyar {
 
 /// Kota ogrenicinin ayarlari.
 #[derive(Debug, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct Kota {
     /// Saglayicinin limit mesajinda gecen ifadeler. Varsayilanlar makul TAHMIN;
     /// gercek metni gorunce buraya eklenir — kod degistirmeden, yeniden derlemeden.
@@ -125,6 +193,7 @@ impl Default for Kota {
 /// Perplexity'ye "Continue with Google" ile sifresiz girildi), o yuzden hesap basina
 /// ayri profil degil, KIMLIK basina tek profil tutuluyor.
 #[derive(Debug, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct Account {
     /// Profil dizini adi. Ayni ad = ayni oturum.
     pub name: String,
@@ -160,6 +229,7 @@ fn varsayilan_bosta_dakika() -> u64 {
 /// Bot tespitini yenmek DEGIL, gercekten normal bir kullanici gibi davranmak:
 /// yuku azaltir, hesabi yasatir.
 #[derive(Debug, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct Pacing {
     /// Ayni hesaba ardisik iki istek arasindaki en az sure.
     pub min_delay_ms: u64,
@@ -215,24 +285,58 @@ impl Config {
     }
 
     pub fn dogrula(&self) -> Result<()> {
+        if self.yonlendirme.azami_deneme == 0 {
+            anyhow::bail!("[yonlendirme] azami_deneme 0 olamaz");
+        }
         for (ad, r) in &self.rest {
             r.dogrula(ad)?;
         }
         // `kervan/<ad>` önce REST'te aranır: aynı adlı [rest.X], X tarayıcı sağlayıcısını
         // sessizce gölgelerdi. Çakışma açık hatadır.
-        let tarayici: std::collections::BTreeSet<&str> = self
+        //
+        // Küme `saglayicilar()` üzerinden kurulur: `provider`/`providers` alanı boş
+        // bırakılan hesabın varsayılanı da (`gemini`) gölgelemeye karşı korunmalı.
+        let tarayici: std::collections::BTreeSet<String> = self
             .accounts
             .iter()
-            .flat_map(|a| a.provider.iter().chain(&a.providers))
-            .chain(self.providers.keys())
-            .map(String::as_str)
+            .flat_map(|a| a.saglayicilar())
+            .chain(self.providers.keys().cloned())
             .collect();
+        // "auto" rezervedir: `[rest.auto]` yazılırsa `model:"auto"` REST'e gider ve
+        // akıllı yönlendirme tamamen kapanırdı. Bu sessiz bir davranış değişikliği
+        // olduğu için açılışta hata sayılır.
+        if self.rest.contains_key("auto") {
+            anyhow::bail!(
+                "[rest.auto] kullanılamaz: 'auto' akıllı yönlendirmeye ayrılmış bir addır"
+            );
+        }
+        // Eklentinin sabit adları (eklenti/background.js SAĞLAYICILAR) `[rest.X]`
+        // yazılınca gölgelenir. Bu bilinçli bir tercih olabilir (tarayıcı yerine
+        // doğrudan API), ama sessiz kalmamalı.
+        const EKLENTI_ADLARI: [&str; 9] = [
+            "qwen",
+            "kimi",
+            "gemini",
+            "deepseek",
+            "chatgpt",
+            "copilot",
+            "z.ai",
+            "perplexity",
+            "mistral",
+        ];
         let mut cakisan: Vec<&str> = self
             .rest
             .keys()
             .map(String::as_str)
-            .filter(|ad| tarayici.contains(ad))
+            .filter(|ad| tarayici.contains(*ad))
             .collect();
+        for ad in self.rest.keys() {
+            if EKLENTI_ADLARI.contains(&ad.as_str()) && !tarayici.contains(ad) {
+                eprintln!(
+                    "uyari: [rest.{ad}] eklentinin '{ad}' sekmesini golgeler; istekler REST'e gider"
+                );
+            }
+        }
         cakisan.sort_unstable();
         if !cakisan.is_empty() {
             anyhow::bail!(
@@ -255,6 +359,7 @@ impl Config {
             kota: Kota::default(),
             providers: Default::default(),
             rest: Default::default(),
+            yonlendirme: Yonlendirme::default(),
         }
     }
 }
@@ -266,10 +371,10 @@ pub fn adaylar() -> Vec<PathBuf> {
         return vec![PathBuf::from(v)];
     }
     let mut a = vec![PathBuf::from("kervan.toml")];
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            a.push(dir.join("kervan.toml"));
-        }
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(dir) = exe.parent()
+    {
+        a.push(dir.join("kervan.toml"));
     }
     if let Some(home) = std::env::var_os("USERPROFILE") {
         a.push(PathBuf::from(home).join(KURULUM).join("kervan.toml"));
@@ -344,6 +449,42 @@ mod tests {
         assert!(c.dogrula().is_ok());
     }
 
+    /// [yonlendirme] yoksa varsayılan lkgp + yedek deneme açık gelmeli.
+    #[test]
+    fn yonlendirme_varsayilani_lkgp() {
+        let c: Config = toml::from_str("[[accounts]]\nname = \"a\"\n").unwrap();
+        assert_eq!(c.yonlendirme.strateji, "lkgp");
+        assert!(c.yonlendirme.yedek_deneme);
+        assert_eq!(c.yonlendirme.azami_deneme, 3);
+    }
+
+    #[test]
+    fn yonlendirme_okunur() {
+        let t = r#"
+            [yonlendirme]
+            strateji = "round-robin"
+            yedek_deneme = false
+            azami_deneme = 5
+        "#;
+        let c: Config = toml::from_str(t).unwrap();
+        assert_eq!(c.yonlendirme.strateji, "round-robin");
+        assert!(!c.yonlendirme.yedek_deneme);
+        assert_eq!(c.yonlendirme.azami_deneme, 5);
+        assert!(c.dogrula().is_ok());
+    }
+
+    /// azami_deneme = 0 "hiç aday denenmez" demek; sessizce kabul edilemez.
+    #[test]
+    fn yonlendirme_azami_deneme_sifir_reddedilir() {
+        let t = r#"
+            [yonlendirme]
+            azami_deneme = 0
+        "#;
+        let c: Config = toml::from_str(t).unwrap();
+        let hata = c.dogrula().unwrap_err().to_string();
+        assert!(hata.contains("azami_deneme"), "{hata}");
+    }
+
     #[test]
     fn gecersiz_rest_bicimi_hata_verir() {
         let t = r#"
@@ -374,6 +515,75 @@ mod tests {
         assert!(hata.contains("çakışıyor: gemini"), "{hata}");
     }
 
+    /// `provider`/`providers` yazılmamış hesap `gemini`ye düşer; `[rest.gemini]`
+    /// bu varsayılanı da gölgeleyemez (çakışma kümesi `saglayicilar()`den kurulur).
+    #[test]
+    fn rest_adi_varsayilan_hesabi_da_golgeleyemez() {
+        let t = r#"
+            [[accounts]]
+            name = "a"
+            [rest.gemini]
+            bicim = "gemini"
+            taban_url = "https://generativelanguage.googleapis.com"
+            anahtar_env = "GEMINI_API_KEY"
+            model = "gemini-2.5-flash"
+        "#;
+        let c: Config = toml::from_str(t).unwrap();
+        let hata = c.dogrula().unwrap_err().to_string();
+        assert!(hata.contains("çakışıyor: gemini"), "{hata}");
+    }
+
+    #[test]
+    fn rest_auto_rezerve_reddedilir() {
+        let t = r#"
+            [rest.auto]
+            bicim = "openai"
+            taban_url = "https://api.example.com"
+            anahtar_env = "API_KEY"
+            model = "m"
+        "#;
+        let c: Config = toml::from_str(t).unwrap();
+        let hata = c.dogrula().unwrap_err().to_string();
+        assert!(hata.contains("[rest.auto]"), "{hata}");
+    }
+
+    /// Bilinmeyen alan sessizce yutulmamalı: `[yonlendırme]` (Türkçe ı) yazım
+    /// hatası fark edilmeden varsayılana düşerdi.
+    #[test]
+    fn bilinmeyen_alan_reddedilir() {
+        let t = "[yonlendırme]\nstrateji = \"round-robin\"\n";
+        assert!(toml::from_str::<Config>(t).is_err());
+        let t2 = "[[accounts]]\nname = \"a\"\neszamanli = 2\n";
+        assert!(toml::from_str::<Config>(t2).is_err());
+    }
+
+    #[test]
+    fn rest_eksik_ya_da_gecersiz_alanlar_reddedilir() {
+        let vakalar = [
+            (
+                "[rest.x]\nbicim=\"openai\"\ntaban_url=\"\"\nanahtar_env=\"K\"\nmodel=\"m\"\n",
+                "taban_url",
+            ),
+            (
+                "[rest.x]\nbicim=\"openai\"\ntaban_url=\"api.example.com\"\nanahtar_env=\"K\"\nmodel=\"m\"\n",
+                "taban_url",
+            ),
+            (
+                "[rest.x]\nbicim=\"openai\"\ntaban_url=\"https://a\"\nanahtar_env=\"\"\nmodel=\"m\"\n",
+                "anahtar_env",
+            ),
+            (
+                "[rest.x]\nbicim=\"openai\"\ntaban_url=\"https://a\"\nanahtar_env=\"K\"\nmodel=\"  \"\n",
+                "model",
+            ),
+        ];
+        for (metin, beklenen) in vakalar {
+            let c: Config = toml::from_str(metin).unwrap();
+            let hata = c.dogrula().unwrap_err().to_string();
+            assert!(hata.contains(beklenen), "{beklenen} icin: {hata}");
+        }
+    }
+
     /// Tasinmis kurulumun cekirdegi: adaylar icinde VAR OLAN secilir; hicbiri
     /// yoksa ilk aday doner ki cagiran "bulunamadi" diyebilsin. Eskiden cwd'deki
     /// `kervan.toml` tek aday sayilir, yoksa sessizce varsayilana dusulurdu.
@@ -385,7 +595,10 @@ mod tests {
         let var = dizin.join("var.toml");
         let yok2 = dizin.join("yok-2.toml");
         std::fs::write(&var, "[[accounts]]\nname = \"x\"\n").unwrap();
-        assert_eq!(ilk_var_olan(&[yok1.clone(), var.clone(), yok2.clone()]), var);
+        assert_eq!(
+            ilk_var_olan(&[yok1.clone(), var.clone(), yok2.clone()]),
+            var
+        );
         assert_eq!(ilk_var_olan(&[yok1.clone(), yok2]), yok1);
         let _ = std::fs::remove_dir_all(&dizin);
     }

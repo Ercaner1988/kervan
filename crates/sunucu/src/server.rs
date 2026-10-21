@@ -1,4 +1,4 @@
-﻿//! OpenAI uyumlu ag gecidi ucu.
+//! OpenAI uyumlu ag gecidi ucu.
 //!
 //! DURUM GERILIMI (bilinen sinirlama, sessizce gecistirilmiyor):
 //! OpenAI `/v1/chat/completions` DURUMSUZ — istemci her istekte tum konusma gecmisini
@@ -19,14 +19,15 @@ use crate::browser::ask;
 use crate::kota::{self, Defter, Sonuc};
 use crate::pool::Pool;
 use anyhow::Result;
-use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
+
+use crate::eklenti_uc::{eklenti_sekmeler, jeton, on_denetim, ws_eklenti_handler};
+use crate::rest::rest_denemesi;
 
 pub struct AppState {
     pub pool: Pool,
@@ -42,6 +43,10 @@ pub struct AppState {
     pub sayaclar: Sayaclar,
     pub rest_hedefleri: std::collections::HashMap<String, kervan_yukari::Hedef>,
     pub yukari: kervan_yukari::Yukari,
+    /// 'auto' isteği seçilen adayda başarısız olursa sıradaki aday denenir mi?
+    pub yedek_deneme: bool,
+    /// Tek istekte denenecek azami aday sayısı (yedek_deneme açıkken).
+    pub azami_deneme: u32,
 }
 
 impl AppState {
@@ -83,6 +88,9 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/bakiye/hediye", post(bakiye_hediye_handler))
         // Eklenti WebSocket köprüsü — WebDriver olmadan doğrudan tarayıcı ile konuşur.
         .route("/ws/eklenti", get(ws_eklenti_handler))
+        // Token dağıtımı: yalnız uzantı kaynaklı isteklere açılır.
+        // Biçim sabit: uc-kaydi tarayıcısı çok satırlı .route çağrısını çözemez.
+        .route("/eklenti/token", get(jeton).options(on_denetim))
         .route("/eklenti/sekmeler", get(eklenti_sekmeler))
         // Hesap durumu — TUI gelene kadarki gorunurluk penceresi. Insan kapisinda
         // bekleyen hesap buradan gorulur.
@@ -90,6 +98,9 @@ pub fn router(state: Arc<AppState>) -> Router {
         // Insan kapisi cozuldukten sonra hesabi geri al. Bu uc olmadan duraklatilan
         // hesap surec omru boyunca olu kalirdi.
         .route("/accounts/{i}/devam", post(devam))
+        // Elle duraklat: panelin "Duraklat" dugmesi. Otomatik duraklatmayla
+        // ayni `paused_reason` alanini kullanir; `/devam` geri acar.
+        .route("/accounts/{i}/duraklat", post(duraklat))
         // Gizli duran tarayiciyi ONE GETIR: model/dusunme duzeyi secmek, bir istemi
         // durdurup duzeltmek ya da dogrulama cozmek icin. Gizli kip headless DEGIL,
         // kucultulmus gercek pencere — headless olsaydi bu uc imkansiz olurdu.
@@ -105,66 +116,9 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/kimlikler/{k}/gizle", post(kimlik_gizle))
         // Kota ogrenicinin gordugu: gercek kullanim ve gozlemden cikan limit.
         .route("/kota", get(kota_ozeti))
+        // Akıllı yönlendirici: GET durum ve adayları, POST stratejiyi değiştirir.
+        .route("/yonlendirme", get(yonlendirme_durum).post(yonlendirme_sec))
         .with_state(state)
-}
-
-async fn ws_eklenti_handler(
-    ws: WebSocketUpgrade,
-    State(st): State<Arc<AppState>>,
-) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_eklenti_socket(socket, st.eklenti_hub.clone()))
-}
-
-async fn handle_eklenti_socket(socket: WebSocket, hub: crate::eklenti::EklentiHub) {
-    let (mut ws_tx, mut ws_rx) = socket.split();
-    let (tx_giden, mut rx_giden) =
-        tokio::sync::mpsc::unbounded_channel::<crate::eklenti::GidenMesaj>();
-
-    let mut provider_kayitli: Option<String> = None;
-
-    // Kervan'dan gelen komutları eklenti WebSocket'ine basan arka plan görevi
-    let giden_gorev = tokio::spawn(async move {
-        while let Some(msg) = rx_giden.recv().await {
-            if let Ok(json) = serde_json::to_string(&msg)
-                && ws_tx.send(WsMessage::Text(json.into())).await.is_err()
-            {
-                break;
-            }
-        }
-    });
-
-    // Eklentiden gelen mesajları okuyan döngü
-    while let Some(Ok(msg)) = ws_rx.next().await {
-        if let WsMessage::Text(text) = msg
-            && let Ok(gelen) = serde_json::from_str::<crate::eklenti::GelenMesaj>(&text)
-        {
-            if let crate::eklenti::GelenMesaj::Kayit {
-                ref provider,
-                ref profile,
-                ..
-            } = gelen
-            {
-                let prof = profile.clone().unwrap_or_else(|| "varsayilan".into());
-                provider_kayitli = Some(provider.clone());
-                hub.sekme_kaydet(provider.clone(), prof, tx_giden.clone())
-                    .await;
-            }
-            hub.mesaji_isle(gelen).await;
-        }
-    }
-
-    if let Some(p) = provider_kayitli {
-        hub.sekme_ayril(&p).await;
-    }
-    giden_gorev.abort();
-}
-
-async fn eklenti_sekmeler(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    let sekmeler = st.eklenti_hub.bagli_sekmeler().await;
-    Json(serde_json::json!({
-        "bagli_sekmeler": sekmeler,
-        "sayi": sekmeler.len(),
-    }))
 }
 
 async fn telemetri_handler(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
@@ -178,6 +132,80 @@ async fn telemetri_handler(State(st): State<Arc<AppState>>) -> Json<serde_json::
         "bagli_web_sekmeleri": bagli,
         "durum": "saglikli",
     }))
+}
+
+/// 'auto' isteklerinin yarıştığı aday listesi: eklenti sekmeleri + havuz
+/// hesapları + REST hedefleri. Aynı birleştirme `chat` içinde de yapılır;
+/// burada yalnız görünürlük için döndürülür.
+async fn yonlendirme_adaylari(st: &Arc<AppState>) -> Vec<String> {
+    let mut adaylar = st.eklenti_hub.bagli_sekmeler().await;
+    for slot in &st.pool.slots {
+        if !adaylar.contains(&slot.provider.ad) {
+            adaylar.push(slot.provider.ad.clone());
+        }
+    }
+    for rest_ad in st.rest_hedefleri.keys() {
+        if !adaylar.contains(rest_ad) {
+            adaylar.push(rest_ad.clone());
+        }
+    }
+    adaylar.sort();
+    adaylar
+}
+
+async fn yonlendirme_durum(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let strat = *st.router.strategy.read().await;
+    let adaylar = yonlendirme_adaylari(&st).await;
+    Json(serde_json::json!({
+        "strateji": strat.as_str(),
+        "desteklenir": strat.desteklenir(),
+        "adaylar": adaylar,
+        "kullanilabilir": crate::router::RoutingStrategy::KAMUYA_ACIK,
+    }))
+}
+
+#[derive(Deserialize)]
+struct YonlendirmeSec {
+    strateji: String,
+}
+
+/// Stratejiyi çalışma anında değiştirir. Yalnız tam kanonik ad kabul edilir:
+/// `normallestir` bilinmeyen adı sessizce priority'ye düşürür, bir kontrol
+/// ucunda sessiz düşüş istenmez.
+async fn yonlendirme_sec(
+    State(st): State<Arc<AppState>>,
+    Json(req): Json<YonlendirmeSec>,
+) -> Response {
+    match crate::router::RoutingStrategy::from_str_canonical(&req.strateji) {
+        Some(s) if s.is_internal() => hata(
+            StatusCode::BAD_REQUEST,
+            &format!(
+                "'{}' dahili bir stratejidir; kullanıcıya açık değil",
+                s.as_str()
+            ),
+        ),
+        Some(s) => {
+            *st.router.strategy.write().await = s;
+            println!(
+                "akilli-rota   : strateji çalışma anında değiştirildi -> [{}]",
+                s.as_str()
+            );
+            Json(serde_json::json!({
+                "ok": true,
+                "strateji": s.as_str(),
+                "desteklenir": s.desteklenir(),
+            }))
+            .into_response()
+        }
+        None => hata(
+            StatusCode::BAD_REQUEST,
+            &format!(
+                "'{}' bilinmeyen strateji. Kullanilabilir: {}",
+                req.strateji,
+                crate::router::RoutingStrategy::KAMUYA_ACIK.join(", ")
+            ),
+        ),
+    }
 }
 
 #[derive(Deserialize)]
@@ -258,6 +286,17 @@ async fn devam(State(st): State<Arc<AppState>>, Path(i): Path<usize>) -> Respons
         return hata(StatusCode::NOT_FOUND, &format!("{i} numarali hesap yok"));
     }
     st.pool.devam_ettir(i).await;
+    Json(serde_json::json!({ "ok": true, "name": st.pool.slots[i].hesap_adi })).into_response()
+}
+
+/// Panelin "Duraklat" dugmesi. Neden metni sabittir: kullanici kaynakli
+/// oldugu `/accounts` ciktisinda gorunur, boylece otomatik duraklatmadan
+/// ayirt edilebilir.
+async fn duraklat(State(st): State<Arc<AppState>>, Path(i): Path<usize>) -> Response {
+    if i >= st.pool.slots.len() {
+        return hata(StatusCode::NOT_FOUND, &format!("{i} numarali hesap yok"));
+    }
+    st.pool.duraklat(i, "elle duraklatildi").await;
     Json(serde_json::json!({ "ok": true, "name": st.pool.slots[i].hesap_adi })).into_response()
 }
 
@@ -483,77 +522,32 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
 
     // 1. REST yukarı akış kancası: model [rest.*] yapılandırmasına çözülürse yukari'ya devret
     if let Some((hedef, alt_model)) = st.rest_hedefi_coz(model_adi) {
-        if req.stream {
-            match st
-                .yukari
-                .gonder_akis(&hedef, &raw_val, alt_model.as_deref())
-                .await
-            {
-                Ok(mut rx) => {
-                    let stream = futures_util::stream::poll_fn(move |cx| {
-                        rx.poll_recv(cx).map(|opt| {
-                            opt.map(|res| {
-                                res.map(axum::body::Bytes::from)
-                                    .map_err(|e| std::io::Error::other(e.to_string()))
-                            })
-                        })
-                    });
-                    let body = axum::body::Body::from_stream(stream);
-                    let mut resp = Response::new(body);
-                    *resp.status_mut() = StatusCode::OK;
-                    resp.headers_mut().insert(
-                        axum::http::header::CONTENT_TYPE,
-                        axum::http::HeaderValue::from_static("text/event-stream"),
-                    );
-                    resp.headers_mut().insert(
-                        axum::http::header::CACHE_CONTROL,
-                        axum::http::HeaderValue::from_static("no-cache"),
-                    );
-                    resp.headers_mut().insert(
-                        axum::http::header::CONNECTION,
-                        axum::http::HeaderValue::from_static("keep-alive"),
-                    );
-                    return resp;
-                }
-                Err(e) => return yukari_hatasini_don(e),
-            }
-        } else {
-            match st
-                .yukari
-                .gonder(&hedef, &raw_val, alt_model.as_deref())
-                .await
-            {
-                Ok(yanit) => return (StatusCode::OK, Json(yanit)).into_response(),
-                Err(e) => return yukari_hatasini_don(e),
-            }
-        }
+        return match rest_denemesi(&st, &hedef, &raw_val, alt_model.as_deref(), req.stream).await {
+            Ok(yanit) => yanit,
+            Err((yanit, _)) => yanit,
+        };
     }
 
     let Some(istem) = son_kullanici_mesaji(&req.messages) else {
         return hata(StatusCode::BAD_REQUEST, "messages icinde user rolu yok");
     };
 
-    // Model kimliginden saglayiciyi sec. 'auto' verilirse SmartRouter en uygununu belirler.
-    let saglayici = if model_adi.is_empty() || model_adi == "auto" {
-        let mut adaylar = st.eklenti_hub.bagli_sekmeler().await;
+    let otomatik = model_adi.is_empty() || model_adi == "auto";
+
+    // Model kimliginden saglayiciyi sec. 'auto' verilirse SmartRouter adayları sıralar.
+    let (adaylar, yedeklenebilir) = if otomatik {
+        // 'auto' adayları ÜÇ kaynaktan gelir: bağlı eklenti sekmeleri, havuz
+        // hesapları ve REST hedefleri. Böylece yerel (anahtarlı) ve web
+        // (oturumlu) sağlayıcılar tek yönlendirme kararında yarışır.
+        let adaylar = yonlendirme_adaylari(&st).await;
         if adaylar.is_empty() {
-            // Havuzdaki benzersiz saglayicilari aday olarak ekle
-            for slot in &st.pool.slots {
-                if !adaylar.contains(&slot.provider.ad) {
-                    adaylar.push(slot.provider.ad.clone());
-                }
-            }
-        }
-        if let Some(secilen) = st.router.select_provider(&adaylar).await {
-            println!(
-                "akilli-rota   : 'auto' isteği için en uygun sağlayıcı seçildi -> [{secilen}]"
-            );
-            secilen
+            (vec![st.varsayilan_saglayici.clone()], false)
         } else {
-            st.varsayilan_saglayici.clone()
+            let sirali = st.router.aday_sirasi(&adaylar).await;
+            (sirali, true)
         }
     } else {
-        match crate::saglayicilar::model_saglayicisi(model_adi, &st.saglayicilar) {
+        let saglayici = match crate::saglayicilar::model_saglayicisi(model_adi, &st.saglayicilar) {
             Some(s) => s,
             None => {
                 let sade = model_adi.strip_prefix("kervan/").unwrap_or(model_adi);
@@ -584,7 +578,8 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
                     );
                 }
             }
-        }
+        };
+        (vec![saglayici], false)
     };
 
     // TOKEN SIKIŞTIRMA (RTK + Caveman): Gelen istemi göndermeden önce gereksiz boşluk ve kalıplardan arındır
@@ -602,64 +597,162 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
     let yonerge = arac_yonergesi(&req.tools);
     gonderilecek_istem.push_str(&yonerge);
 
-    // EKLENTİ KONTROLÜ: Eğer ilgili sağlayıcı için eklenti sekmesi bağlıysa,
-    // WebDriver havuzuna hiç bulaşmadan doğrudan eklenti üzerinden sorulur!
-    if st.eklenti_hub.sekme_var_mi(&saglayici).await {
-        println!(
-            "[{}] istek Kervan Eklentisi uzerinden iletiliyor ({} karakter)",
-            saglayici,
-            gonderilecek_istem.len()
-        );
-        let t = std::time::Instant::now();
-        let sonuc = match st
-            .eklenti_hub
-            .sor(&saglayici, &gonderilecek_istem, st.timeout)
-            .await
-        {
-            Err(e) => match e.downcast::<crate::eklenti::YarimYanit>() {
-                Ok(crate::eklenti::YarimYanit(yarim)) => kurtar(&st, &saglayici, yarim).await,
-                Err(e) => Err(e),
-            },
-            tamam => tamam,
+    // Araç isteğinde gerçek işlev çağrısını yalnız REST hedefleri yapabilir;
+    // tarayıcı yolu araçları yönergeyle taklit eder. REST adayı varsa diğerleri
+    // elenir. Yoksa istek tamamen düşmesin diye tarayıcı yoluyla denenir ve bu
+    // açıkça uyarılır.
+    let mut adaylar = adaylar;
+    if otomatik && !req.tools.is_empty() {
+        if adaylar.iter().any(|ad| st.rest_hedefleri.contains_key(ad)) {
+            adaylar.retain(|ad| st.rest_hedefleri.contains_key(ad));
+        } else {
+            println!(
+                "akilli-rota   : uyari: araç isteği var ama REST adayı yok; tarayıcı yolu yalnız yönergeyle denenecek"
+            );
+        }
+    }
+
+    // Yedek deneme: yalnız 'auto' isteğinde ve akış/yanıt başlamadan önceki
+    // hatada sıradaki adaya geçilir. `azami_deneme` kaç aday deneneceğini sınırlar.
+    let azami = if yedeklenebilir && st.yedek_deneme {
+        st.azami_deneme.max(1) as usize
+    } else {
+        1
+    };
+
+    let mut son_hata: Option<Response> = None;
+    for ad in adaylar.iter().take(azami) {
+        if otomatik {
+            println!("akilli-rota   : 'auto' adayı deneniyor -> [{ad}]");
+        }
+
+        let sonuc = if let Some(hedef) = st.rest_hedefleri.get(ad).cloned() {
+            rest_denemesi(&st, &hedef, &raw_val, None, req.stream).await
+        } else if st.eklenti_hub.sekme_var_mi(ad).await {
+            eklenti_denemesi(&st, ad, &gonderilecek_istem, &req).await
+        } else {
+            havuz_denemesi(&st, ad, &req, &istem, &yonerge, &gonderilecek_istem).await
         };
+
         match sonuc {
-            Ok(yanit) => {
-                let latency = t.elapsed().as_millis() as u64;
-                st.router.record_success(&saglayici, latency).await;
-                println!(
-                    "[{}] eklenti yaniti alindi ({:.1} sn)",
-                    saglayici,
-                    t.elapsed().as_secs_f32()
-                );
-                return yanit_olustur(&st, &req, yanit, model_kimligi(&saglayici));
-            }
-            Err(e) => {
-                st.router.record_failure(&saglayici).await;
-                println!("[{}] eklenti hatasi: {e:#}", saglayici);
-                return hata(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    &format!("Eklenti hatası: {e:#}"),
-                );
+            Ok(yanit) => return yanit,
+            Err((yanit, yeniden)) => {
+                son_hata = Some(yanit);
+                if !yeniden {
+                    break;
+                }
             }
         }
     }
 
+    son_hata.unwrap_or_else(|| {
+        hata(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "kullanilabilir saglayici bulunamadi",
+        )
+    })
+}
+
+/// Eklenti sekmesi üzerinden tek deneme. Yanıt kotaysa bu model yanıtı değildir:
+/// 429 döner, sağlayıcı sağlıksız işaretlenir ve yedek deneme sıradaki adaya geçer.
+#[allow(
+    clippy::result_large_err,
+    reason = "hata yaniti istemciye aynen doner; Boxing cagri yerlerini karmasiklastirirdi"
+)]
+async fn eklenti_denemesi(
+    st: &Arc<AppState>,
+    saglayici: &str,
+    gonderilecek_istem: &str,
+    req: &ChatRequest,
+) -> Result<Response, (Response, bool)> {
+    println!(
+        "[{}] istek Kervan Eklentisi uzerinden iletiliyor ({} karakter)",
+        saglayici,
+        gonderilecek_istem.len()
+    );
+    let t = std::time::Instant::now();
+    let sonuc = match st
+        .eklenti_hub
+        .sor(saglayici, gonderilecek_istem, st.timeout)
+        .await
+    {
+        Err(e) => match e.downcast::<crate::eklenti::YarimYanit>() {
+            Ok(crate::eklenti::YarimYanit(yarim)) => kurtar(st, saglayici, yarim).await,
+            Err(e) => Err(e),
+        },
+        tamam => tamam,
+    };
+    match sonuc {
+        Ok(yanit) => {
+            if kota::kota_sinyali(&yanit, &st.kota_ayar.isaretler) {
+                st.router.record_failure(saglayici).await;
+                println!("[{}] eklenti KOTA bildirdi", saglayici);
+                return Err((
+                    hata(
+                        StatusCode::TOO_MANY_REQUESTS,
+                        "saglayici kotasini bildirdi (eklenti)",
+                    ),
+                    true,
+                ));
+            }
+            let latency = t.elapsed().as_millis() as u64;
+            st.router.record_success(saglayici, latency).await;
+            println!(
+                "[{}] eklenti yaniti alindi ({:.1} sn)",
+                saglayici,
+                t.elapsed().as_secs_f32()
+            );
+            Ok(yanit_olustur(st, req, yanit, model_kimligi(saglayici)))
+        }
+        Err(e) => {
+            st.router.record_failure(saglayici).await;
+            println!("[{}] eklenti hatasi: {e:#}", saglayici);
+            Err((
+                hata(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &format!("Eklenti hatası: {e:#}"),
+                ),
+                true,
+            ))
+        }
+    }
+}
+
+/// WebDriver havuzundan tek deneme. Hesap kiralanamazsa ya da model yanıtı
+/// gelmezse hata yedeklenebilir sayılır (akış henüz başlamadı).
+#[allow(
+    clippy::result_large_err,
+    reason = "hata yaniti istemciye aynen doner; Boxing cagri yerlerini karmasiklastirirdi"
+)]
+async fn havuz_denemesi(
+    st: &Arc<AppState>,
+    saglayici: &str,
+    req: &ChatRequest,
+    istem: &str,
+    yonerge: &str,
+    gonderilecek_istem: &str,
+) -> Result<Response, (Response, bool)> {
     // Havuzdan hesap kirala: konusma kendi hesabina sabitlenir, hiz butcesi burada
     // uygulanir, gerekirse beklenir.
     let mut lease = match st
         .pool
-        .acquire_for(konusma_izi(&req.messages), &saglayici)
+        .acquire_for(konusma_izi(&req.messages), saglayici)
         .await
     {
         Ok(l) => l,
-        Err(e) => return hata(StatusCode::SERVICE_UNAVAILABLE, &format!("{e:#}")),
+        Err(e) => {
+            return Err((
+                hata(StatusCode::SERVICE_UNAVAILABLE, &format!("{e:#}")),
+                true,
+            ));
+        }
     };
     // Dizi bossa gecmisi TOHUMLA. Devam eden dizide tohumlamak gecmisi ikinci kez
     // yazmak olurdu; bos dizide tohumlamamak ise modele gecmissiz cevap verdirir.
     let gonderilecek = if lease.yeni_dizi {
-        tohum_istemi(&req.messages, TOHUM_AZAMI) + &yonerge
+        tohum_istemi(&req.messages, TOHUM_AZAMI) + yonerge
     } else {
-        gonderilecek_istem
+        gonderilecek_istem.to_string()
     };
     println!(
         "[{}/{}] istek ({} karakter{})",
@@ -746,16 +839,16 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
     }
 
     let model_adi = if req.model.is_empty() {
-        model_kimligi(&saglayici)
+        model_kimligi(saglayici)
     } else {
         req.model.clone()
     };
 
     match sonuc {
-        Ok(metin) => yanit_olustur(&st, &req, metin, model_adi),
+        Ok(metin) => Ok(yanit_olustur(st, req, metin, model_adi)),
         // Ham neden zinciri ({e:#}) istemciye gider. Hatayi maskelemek, OmniRoute'un
         // gemini-web'de yaptigi ve teshisi imkansizlastiran seydi.
-        Err(e) => hata(StatusCode::BAD_GATEWAY, &format!("{e:#}")),
+        Err(e) => Err((hata(StatusCode::BAD_GATEWAY, &format!("{e:#}")), true)),
     }
 }
 
@@ -887,80 +980,12 @@ fn kirp(m: &str) -> String {
     m.chars().take(200).collect()
 }
 
-fn hata(kod: StatusCode, mesaj: &str) -> Response {
+pub(crate) fn hata(kod: StatusCode, mesaj: &str) -> Response {
     (
         kod,
         Json(serde_json::json!({ "error": { "message": mesaj } })),
     )
         .into_response()
-}
-
-fn yukari_hatasini_don(err: kervan_yukari::YukariHatasi) -> Response {
-    match err {
-        kervan_yukari::YukariHatasi::AnahtarYok(env_ad) => hata(
-            StatusCode::SERVICE_UNAVAILABLE,
-            &format!(
-                "Sağlayıcı API anahtarı bulunamadı: Ortam değişkeni '{}' tanımlı değil",
-                env_ad
-            ),
-        ),
-        kervan_yukari::YukariHatasi::Desteklenmiyor(alan) => hata(
-            StatusCode::NOT_IMPLEMENTED,
-            &format!("desteklenmiyor: {}", alan),
-        ),
-        kervan_yukari::YukariHatasi::DevreAcik { ad, kalan_sure_ms } => hata(
-            StatusCode::SERVICE_UNAVAILABLE,
-            &format!(
-                "Devre kesici açık: {} ({}ms sonra tekrar denenecek)",
-                ad, kalan_sure_ms
-            ),
-        ),
-        kervan_yukari::YukariHatasi::Sogumada {
-            ad,
-            retry_after_saniye,
-        } => {
-            let mut resp = hata(
-                StatusCode::TOO_MANY_REQUESTS,
-                &format!(
-                    "Sağlayıcı soğumada: {} (Retry-After: {}s)",
-                    ad, retry_after_saniye
-                ),
-            );
-            if let Ok(val) = axum::http::HeaderValue::from_str(&retry_after_saniye.to_string()) {
-                resp.headers_mut()
-                    .insert(axum::http::header::RETRY_AFTER, val);
-            }
-            resp
-        }
-        kervan_yukari::YukariHatasi::HttpHatasi(429, govde, retry_after) => {
-            let mut resp = hata(
-                StatusCode::TOO_MANY_REQUESTS,
-                &format!("Yukarı akış 429 hatası: {}", govde),
-            );
-            if let Some(sn) = retry_after
-                && let Ok(val) = axum::http::HeaderValue::from_str(&sn.to_string())
-            {
-                resp.headers_mut()
-                    .insert(axum::http::header::RETRY_AFTER, val);
-            }
-            resp
-        }
-        kervan_yukari::YukariHatasi::HttpHatasi(durum, govde, _) => {
-            let status = StatusCode::from_u16(durum).unwrap_or(StatusCode::BAD_GATEWAY);
-            hata(
-                status,
-                &format!("Yukarı akış HTTP hatası ({}): {}", durum, govde),
-            )
-        }
-        kervan_yukari::YukariHatasi::AgHatasi(m) => hata(
-            StatusCode::BAD_GATEWAY,
-            &format!("Yukarı akış ağ bağlantı hatası: {}", m),
-        ),
-        kervan_yukari::YukariHatasi::JsonHatasi(m) => hata(
-            StatusCode::BAD_GATEWAY,
-            &format!("Yukarı akış JSON hatası: {}", m),
-        ),
-    }
 }
 
 /// OpenAI uyumlu SSE akisi.
@@ -1363,6 +1388,8 @@ mod tests {
             sayaclar: Default::default(),
             rest_hedefleri,
             yukari: kervan_yukari::Yukari::new(),
+            yedek_deneme: true,
+            azami_deneme: 3,
         });
 
         // 1. REST model çözümlenir

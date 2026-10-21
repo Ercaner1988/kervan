@@ -2294,6 +2294,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "kervan-eklenti"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "rand 0.10.2",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "kervan-gui"
 version = "0.1.0"
 dependencies = [
@@ -2379,6 +2390,7 @@ dependencies = [
  "futures-util",
  "kervan-akis",
  "kervan-direnc",
+ "kervan-eklenti",
  "kervan-havuz",
  "kervan-mcp",
  "kervan-saglayici",

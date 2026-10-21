@@ -277,7 +277,14 @@ fn akis_openai(
     }
 
     if !gonderildi_done {
-        alici_ayrildiysa_birak(tx.blocking_send(Ok("data: [DONE]\n\n".to_string())));
+        // Uzak uç [DONE] göndermeden kapandı: bu tam yanıt değil, yarıda kesilmiş
+        // akıştır. Sentetik [DONE] üretip başarı yazmak, cümlenin ortasında kesilen
+        // metni istemciye tam yanıt diye sunardı.
+        direnc.blocking_lock().hata_kaydet(&hedef.ad, None, None);
+        alici_ayrildiysa_birak(tx.blocking_send(Err(YukariHatasi::AgHatasi(
+            "akış [DONE] olmadan bitti".to_string(),
+        ))));
+        return;
     }
     direnc.blocking_lock().basari_kaydet(&hedef.ad);
 }
@@ -376,6 +383,9 @@ fn akis_claude(
 
     let reader = BufReader::new(response.into_body().into_reader());
     let mut cevirici = kervan_ceviri::ClaudeAkisCevirici::default();
+    // Terminal olay (message_stop) ya da açık [DONE] görülmeden akış biterse
+    // yanıt yarıdadır; başarı yazılmaz.
+    let mut son_goruldu = false;
 
     for line_res in reader.lines() {
         match line_res {
@@ -387,6 +397,7 @@ fn akis_claude(
                 if let Some(json_str) = trimmed.strip_prefix("data:") {
                     let json_str = json_str.trim();
                     if json_str == "[DONE]" {
+                        son_goruldu = true;
                         break;
                     }
                     if let Ok(olay) = serde_json::from_str::<kervan_ceviri::ClaudeOlay>(json_str) {
@@ -407,6 +418,7 @@ fn akis_claude(
                             return;
                         }
                         if bitti {
+                            son_goruldu = true;
                             break;
                         }
                     }
@@ -423,6 +435,13 @@ fn akis_claude(
         }
     }
 
+    if !son_goruldu {
+        direnc.blocking_lock().hata_kaydet(&hedef.ad, None, None);
+        alici_ayrildiysa_birak(tx.blocking_send(Err(YukariHatasi::AgHatasi(
+            "Claude akışı terminal olay olmadan bitti".to_string(),
+        ))));
+        return;
+    }
     alici_ayrildiysa_birak(tx.blocking_send(Ok("data: [DONE]\n\n".to_string())));
     direnc.blocking_lock().basari_kaydet(&hedef.ad);
 }
@@ -522,6 +541,8 @@ fn akis_gemini(
 
     let reader = BufReader::new(response.into_body().into_reader());
     let mut cevirici = kervan_ceviri::GeminiAkisCevirici::default();
+    // finishReason ya da açık [DONE] görülmeden akış biterse yanıt yarıdadır.
+    let mut son_goruldu = false;
 
     for line_res in reader.lines() {
         match line_res {
@@ -533,12 +554,21 @@ fn akis_gemini(
                 if let Some(json_str) = trimmed.strip_prefix("data:") {
                     let json_str = json_str.trim();
                     if json_str == "[DONE]" {
+                        son_goruldu = true;
                         break;
                     }
                     if let Ok(yanit) = serde_json::from_str::<kervan_ceviri::GeminiYanit>(json_str)
-                        && !parcalari_gonder(&tx, cevirici.cevir(&yanit, simdi_ms()))
                     {
-                        return;
+                        if yanit
+                            .candidates
+                            .as_ref()
+                            .is_some_and(|c| c.iter().any(|a| a.finish_reason.is_some()))
+                        {
+                            son_goruldu = true;
+                        }
+                        if !parcalari_gonder(&tx, cevirici.cevir(&yanit, simdi_ms())) {
+                            return;
+                        }
                     }
                 }
             }
@@ -553,6 +583,13 @@ fn akis_gemini(
         }
     }
 
+    if !son_goruldu {
+        direnc.blocking_lock().hata_kaydet(&hedef.ad, None, None);
+        alici_ayrildiysa_birak(tx.blocking_send(Err(YukariHatasi::AgHatasi(
+            "Gemini akışı finishReason olmadan bitti".to_string(),
+        ))));
+        return;
+    }
     alici_ayrildiysa_birak(tx.blocking_send(Ok("data: [DONE]\n\n".to_string())));
     direnc.blocking_lock().basari_kaydet(&hedef.ad);
 }

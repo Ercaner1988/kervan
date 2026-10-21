@@ -113,6 +113,11 @@ impl TaniKurallari {
         toml::from_str(metin)
     }
 
+    /// Kurallar derlemeye gömülür; bozuksa yapı hatasıdır, kullanıcı girdisi değil.
+    #[allow(
+        clippy::expect_used,
+        reason = "gömülü toml derleme zamanı değişmezidir"
+    )]
     pub fn varsayilan() -> Self {
         const METIN: &str = include_str!("../tani-kurallari.toml");
         Self::toml_metninden(METIN).expect("tani-kurallari.toml geçerli toml olmalı")

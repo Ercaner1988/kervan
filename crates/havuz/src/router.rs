@@ -471,13 +471,16 @@ impl SmartRouter {
         true
     }
 
-    /// Adaylar arasından stratejinin (OmniRoute çekirdeği, `RoutingStrategy::sirala`) ilk hedefini seçer.
-    /// Aday = sağlayıcı adı. Üretimde fiyat ve bağlam tablosu YOK (OmniRoute'ta varsayılan,
-    /// LiteLLM ve models.dev katmanları var): cost-optimized ve context-optimized burada sırayı
-    /// değiştirmez. Strateji sunucuda şimdilik sabit lkgp kurulur; seçme yolu henüz yok.
-    pub async fn select_provider(&self, candidates: &[String]) -> Option<String> {
+    /// Adayları stratejiye göre SIRALAR (tüm liste). `select_provider` bunun ilk
+    /// elemanıdır; yedek deneme (failover) sıradaki adayları buradan alır.
+    ///
+    /// Aday = sağlayıcı adı. Üretimde fiyat ve bağlam tablosu YOK (OmniRoute'ta
+    /// varsayılan, LiteLLM ve models.dev katmanları var): cost-optimized ve
+    /// context-optimized burada sırayı değiştirmez. Strateji `kervan.toml`
+    /// `[yonlendirme]` bölümünden kurulur ve `/yonlendirme` ile değiştirilebilir.
+    pub async fn aday_sirasi(&self, candidates: &[String]) -> Vec<String> {
         if candidates.is_empty() {
-            return None;
+            return Vec::new();
         }
 
         // Sadece devre kesicisi açık olmayan (sağlıklı) adayları filtrele
@@ -519,7 +522,13 @@ impl SmartRouter {
         if strat == RoutingStrategy::RoundRobin {
             durum.rr_sayac += 1;
         }
-        sirali.into_iter().next().map(|h| h.execution_key)
+        sirali.into_iter().map(|h| h.execution_key).collect()
+    }
+
+    /// Adaylar arasından stratejinin (OmniRoute çekirdeği, `RoutingStrategy::sirala`)
+    /// ilk hedefini seçer.
+    pub async fn select_provider(&self, candidates: &[String]) -> Option<String> {
+        self.aday_sirasi(candidates).await.into_iter().next()
     }
 
     /// Bir istek başarıyla sonuçlandığında çağrılır.
