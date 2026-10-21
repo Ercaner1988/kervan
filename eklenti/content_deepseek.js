@@ -1,4 +1,4 @@
-// Kervan WebExtension — DeepSeek Content Script
+﻿// Kervan WebExtension — DeepSeek Content Script
 const api = typeof browser !== "undefined" ? browser : chrome;
 
 console.log("[Kervan DeepSeek] Content script yüklendi:", window.location.href);
@@ -52,6 +52,11 @@ async function deepseekSoruSor(id, istem) {
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
     const bitisKontrol = setInterval(() => {
+      if (window.kervanDurdurulduMu && window.kervanDurdurulduMu(id)) {
+        clearInterval(bitisKontrol);
+        observer.disconnect();
+        return;
+      }
       hareketsizSayac++;
       const durdurBtn = document.querySelector("[class*='stop'], button[aria-label*='Stop']");
       if ((!durdurBtn && sonMetin.length > 0 && hareketsizSayac >= 2) || (hareketsizSayac >= 6 && sonMetin.length > 0)) {

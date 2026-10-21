@@ -34,6 +34,18 @@ window.kervanGuvenlikKontrolu = function (provider) {
   return false;
 };
 
+// Durdurma kaydı: Kervan `durdur` gönderdiğinde ilgili isteğin üretimi
+// durdurulur. Her sağlayıcı betiği kendi bitiş denetiminde bu kümeye bakar.
+window.kervanDurdurulanlar = window.kervanDurdurulanlar || new Set();
+window.kervanDurdurulduMu = function (id) {
+  return window.kervanDurdurulanlar.has(id);
+};
+(typeof browser !== "undefined" ? browser : chrome).runtime.onMessage.addListener((message) => {
+  if (message.type === "KERVAN_STOP" && message.id) {
+    window.kervanDurdurulanlar.add(message.id);
+  }
+});
+
 // Belirli bir seçiciyi sayfada görünene kadar bekler
 window.kervanOgeBekle = function (secici, zamanAsimiMs = 15000) {
   return new Promise((resolve, reject) => {

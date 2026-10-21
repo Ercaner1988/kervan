@@ -1,4 +1,4 @@
-// Kervan WebExtension — Gemini Content Script (Metin, Resim ve Video Destekli)
+﻿// Kervan WebExtension — Gemini Content Script (Metin, Resim ve Video Destekli)
 const api = typeof browser !== "undefined" ? browser : chrome;
 
 console.log("[Kervan Gemini] Content script yüklendi:", window.location.href);
@@ -195,6 +195,11 @@ async function geminiSoruSor(id, istem, dosyalar = []) {
 
     // Üretim bitiş kontrolü
     const bitisKontrol = setInterval(() => {
+      if (window.kervanDurdurulduMu && window.kervanDurdurulduMu(id)) {
+        clearInterval(bitisKontrol);
+        observer.disconnect();
+        return;
+      }
       hareketsizSayac++;
 
       // Görsel veya video üretimi devam ederken ilerleme çubuğu varsa bitirme

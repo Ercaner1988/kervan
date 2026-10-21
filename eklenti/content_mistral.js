@@ -1,4 +1,4 @@
-// Kervan WebExtension — Mistral (Le Chat) Content Script
+﻿// Kervan WebExtension — Mistral (Le Chat) Content Script
 const api = typeof browser !== "undefined" ? browser : chrome;
 
 console.log("[Kervan Mistral] Content script yüklendi:", window.location.href);
@@ -103,6 +103,11 @@ async function mistralSoruSor(id, istem, dosyalar = []) {
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
     const bitisKontrol = setInterval(() => {
+      if (window.kervanDurdurulduMu && window.kervanDurdurulduMu(id)) {
+        clearInterval(bitisKontrol);
+        observer.disconnect();
+        return;
+      }
       hareketsizSayac++;
       const durdurBtn = document.querySelector("button[aria-label*='Stop'], [class*='stop']");
       if ((!durdurBtn && sonMetin.length > 0 && hareketsizSayac >= 2) || (hareketsizSayac >= 6 && sonMetin.length > 0)) {

@@ -1,4 +1,4 @@
-// Kervan WebExtension — Kimi Content Script
+﻿// Kervan WebExtension — Kimi Content Script
 const api = typeof browser !== "undefined" ? browser : chrome;
 
 console.log("[Kervan Kimi] Content script yüklendi:", window.location.href);
@@ -94,6 +94,11 @@ async function kimiSoruSor(id, istem) {
 
     // Üretim bitiş kontrolü
     const bitisKontrol = setInterval(() => {
+      if (window.kervanDurdurulduMu && window.kervanDurdurulduMu(id)) {
+        clearInterval(bitisKontrol);
+        observer.disconnect();
+        return;
+      }
       hareketsizSayac++;
 
       // Kimi'deki durdur/stop butonu var mı

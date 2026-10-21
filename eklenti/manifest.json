@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Kervan AI Köprüsü",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Kervan yerel ağ geçidi için bot-tespiti içermeyen doğrudan WebExtension köprüsü",
   "browser_specific_settings": {
     "gecko": {
@@ -17,6 +17,8 @@
     "tabs"
   ],
   "host_permissions": [
+    "http://127.0.0.1:20129/*",
+    "http://localhost:20129/*",
     "*://chat.qwenlm.ai/*",
     "*://*.qwen.ai/*",
     "*://*.kimi.ai/*",

@@ -1,4 +1,4 @@
-// Kervan WebExtension — Qwen Content Script
+﻿// Kervan WebExtension — Qwen Content Script
 const api = typeof browser !== "undefined" ? browser : chrome;
 
 console.log("[Kervan Qwen] Content script yüklendi:", window.location.href);
@@ -87,6 +87,11 @@ async function qwenSoruSor(id, istem) {
 
     // Üretimin bitişini denetleyen sayaç
     const bitisKontrol = setInterval(() => {
+      if (window.kervanDurdurulduMu && window.kervanDurdurulduMu(id)) {
+        clearInterval(bitisKontrol);
+        observer.disconnect();
+        return;
+      }
       hareketsizSayac++;
 
       // Stop/Durdur butonu kaybolduysa ve metin varsa veya 4 saniyedir yeni token gelmediyse
