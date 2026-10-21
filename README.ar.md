@@ -113,7 +113,7 @@ curl http://127.0.0.1:20129/v1/chat/completions \
   `%LOCALAPPDATA%\kervan\eklenti.token` (في Linux/macOS
   `~/.local/state/kervan/eklenti.token`؛ وإن غاب `HOME` أيضاً،
   `kervan/eklenti.token` في دليل العمل). تجلب الإضافة الرمز من
-  `GET /eklenti/token`، وهو متاح لطلبات الإضافات فقط، وتخزّنه في
+  `GET /eklenti/token`، وهو مخصص لطلبات الإضافات فقط، وتخزّنه في
   `storage.local` — بلا أي عمل من المستخدم.
 
 إصدار الإضافة القديم لا يستطيع الاتصال (لا يرسل رمزاً)؛ أعد تحميل `eklenti/`
@@ -168,8 +168,8 @@ curl http://127.0.0.1:20129/v1/chat/completions \
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P3 (2026-10-14T06:59:26.257Z)
-- Tüm kapılar yeşil mi: evet (11/11)
+- Faz: P3 (2026-10-21T09:49:12.637Z)
+- Tüm kapılar yeşil mi: hayır (6/11)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
 <!-- DURUM:BITIS -->

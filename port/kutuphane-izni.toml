@@ -8,3 +8,15 @@ gerekce = "Kök Cargo.toml [features] gui = [\"dep:kervan-gui\"]; `cargo build -
 [[izin]]
 crate = "kervan-akis-gui"
 gerekce = "kervan-gui'nin normal bağımlılığı (crates/gui/Cargo.toml); gui özelliğiyle kervan ikilisine girer."
+
+[[izin]]
+crate = "kervan-pano-veri"
+gerekce = "kervan-gui'nin normal bağımlılığı (crates/gui/Cargo.toml); gui özelliğiyle kervan ikilisine girer (pano veri katmanı)."
+
+[[izin]]
+crate = "kervan-pano-ekran"
+gerekce = "kervan-gui'nin normal bağımlılığı (crates/gui/Cargo.toml); gui özelliğiyle kervan ikilisine girer (pano ekranları)."
+
+[[izin]]
+crate = "kervan-tani"
+gerekce = "kervan-pano-ekran'ın normal bağımlılığı (crates/pano-ekran/Cargo.toml); gui özelliğiyle kervan ikilisine girer (tanı kartları)."
