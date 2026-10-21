@@ -1,0 +1,26 @@
+{
+  "name": "kervan-openchamber-eklentisi",
+  "version": "0.1.0",
+  "description": "Kervan yerel ağ geçidi için OpenChamber kontrol paneli",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "openchamber": {
+    "apiVersion": 1,
+    "contributes": {
+      "panel": {
+        "id": "kervan",
+        "name": "Kervan",
+        "icon": "icon.svg",
+        "entry": "panel/index.html"
+      },
+      "service": {
+        "entry": "service/main.js",
+        "runtime": "host",
+        "permissions": {
+          "exec": ["kervan", "kervan.exe"]
+        }
+      }
+    }
+  }
+}

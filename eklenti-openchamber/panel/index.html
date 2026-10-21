@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kervan</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --k-bg: var(--background, #111);
+        --k-fg: var(--foreground, #eee);
+        --k-muted: var(--muted-foreground, #999);
+        --k-card: color-mix(in srgb, var(--foreground, #eee) 5%, transparent);
+        --k-card-2: color-mix(in srgb, var(--foreground, #eee) 8%, transparent);
+        --k-border: var(--border, rgba(128, 128, 128, 0.3));
+        --k-primary: var(--primary, #6ea8fe);
+        --k-danger: var(--destructive, #e5484d);
+        --k-ok: var(--success, #30a46c);
+        --k-warn: var(--warning, #f5a524);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 14px;
+        background: var(--k-bg);
+        color: var(--k-fg);
+        font: 13px/1.45 var(--font-sans, system-ui, sans-serif);
+      }
+      h2 { font-size: 13px; margin: 18px 0 8px; color: var(--k-muted); font-weight: 600; letter-spacing: 0.02em; }
+      .ust { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+      .ust h1 { font-size: 16px; margin: 0 auto 0 0; font-weight: 650; }
+      .nokta { width: 8px; height: 8px; border-radius: 50%; background: var(--k-muted); flex: none; }
+      .nokta.acik { background: var(--k-ok); }
+      .nokta.kapali { background: var(--k-danger); }
+      .kutu { background: var(--k-card); border-radius: var(--radius, 8px); padding: 12px; }
+      .kutu + .kutu { margin-top: 8px; }
+      .satir { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--k-border); flex-wrap: wrap; }
+      .satir:first-child { border-top: 0; padding-top: 0; }
+      .satir:last-child { padding-bottom: 0; }
+      .satir .ad { font-weight: 600; }
+      .satir .alt { color: var(--k-muted); font-size: 12px; }
+      .satir .sag { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+      button, select {
+        font: inherit;
+        color: var(--k-fg);
+        background: var(--k-card-2);
+        border: 1px solid var(--k-border);
+        border-radius: 6px;
+        padding: 5px 10px;
+        cursor: pointer;
+      }
+      button:hover:not(:disabled) { border-color: var(--k-primary); }
+      button:disabled { opacity: 0.55; cursor: default; }
+      button.birincil { background: var(--k-primary); color: var(--primary-foreground, #000); border-color: transparent; font-weight: 600; }
+      button.tehlike { color: var(--k-danger); }
+      .rozet { font-size: 11px; padding: 2px 7px; border-radius: 999px; background: var(--k-card-2); color: var(--k-muted); }
+      .rozet.duraklatildi { color: var(--k-warn); }
+      .rozet.acik { color: var(--k-ok); }
+      .hata { color: var(--k-danger); }
+      .uyari { color: var(--k-warn); }
+      .bos { color: var(--k-muted); padding: 6px 0; }
+      .izgara { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+      .olcu { background: var(--k-card); border-radius: var(--radius, 8px); padding: 10px; }
+      .olcu b { display: block; font-size: 18px; }
+      .olcu span { color: var(--k-muted); font-size: 11px; }
+      details { margin-top: 4px; }
+      summary { color: var(--k-muted); cursor: pointer; font-size: 12px; }
+      pre { white-space: pre-wrap; word-break: break-word; font-size: 11px; margin: 6px 0 0; color: var(--k-muted); }
+      .gizli { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <div class="ust">
+      <span id="nokta" class="nokta"></span>
+      <h1>Kervan</h1>
+      <span id="durumYazi" class="alt">bağlanıyor…</span>
+      <button id="yenile" title="Şimdi yenile">Yenile</button>
+      <button id="baslat" class="birincil gizli">Başlat</button>
+    </div>
+
+    <div id="hataKutusu" class="kutu hata gizli"></div>
+
+    <div id="icerik" class="gizli">
+      <div class="izgara" id="olcumler"></div>
+
+      <h2>Yönlendirme stratejisi</h2>
+      <div class="kutu">
+        <div class="satir">
+          <select id="strateji" aria-label="Yönlendirme stratejisi"></select>
+          <button id="uygula">Uygula</button>
+          <span id="stratejiNot" class="alt"></span>
+        </div>
+      </div>
+
+      <h2>Havuz hesapları</h2>
+      <div class="kutu" id="hesaplar"></div>
+
+      <h2>Web sekmeleri</h2>
+      <div class="kutu" id="webHesaplar"></div>
+
+      <h2>Kota</h2>
+      <div class="kutu" id="kota"></div>
+    </div>
+
+    <script src="main.js"></script>
+  </body>
+</html>
