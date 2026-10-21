@@ -1,4 +1,4 @@
-//! # bicim
+﻿//! # bicim
 //! Kervan - Kilim Tema Görünüm Sınıfları ve Stil İzolasyonu
 //!
 //! Kural: Kilim-tema yalnızca görsel sınıfları (renk, doku, kenarlık ve dolgu) belirler;
@@ -14,7 +14,7 @@
 
 use eframe::egui::{Color32, CornerRadius, Frame, Margin, Stroke, Ui};
 use kervan_pano_veri::HesapDurumu;
-use kilim_tema::{acik, koyu, Kilim};
+use kilim_tema::{Kilim, acik, koyu};
 
 /// Etkin egui bağlamından Kilim paletini türetir
 pub fn palet(ui: &Ui) -> Kilim {
@@ -26,13 +26,13 @@ pub fn palet(ui: &Ui) -> Kilim {
 }
 
 /// 1. Zemin / Parşömen Sınıfı:
-/// Panel veya pencerelerin ana zemin dolgusu
+///    Panel veya pencerelerin ana zemin dolgusu
 pub fn parsemen_zemini(ui: &Ui) -> Color32 {
     palet(ui).zem
 }
 
 /// 2. Gölgeli Hane Sınıfı (İç Çerçeve):
-/// Kartlar, listeler, tanı kutuları için hafif gölgeli/kenarlıklı yüzey çerçevesi
+///    Kartlar, listeler, tanı kutuları için hafif gölgeli/kenarlıklı yüzey çerçevesi
 pub fn golgeli_hane(ui: &Ui) -> Frame {
     let p = palet(ui);
     Frame::group(ui.style())
@@ -43,7 +43,7 @@ pub fn golgeli_hane(ui: &Ui) -> Frame {
 }
 
 /// 3. Vurgulu Hane Sınıfı:
-/// Seçili hesap veya aktif rota kartı için vurgu çerçevesi
+///    Seçili hesap veya aktif rota kartı için vurgu çerçevesi
 pub fn vurgulu_hane(ui: &Ui, vurgu_rengi: Color32) -> Frame {
     let p = palet(ui);
     Frame::group(ui.style())
@@ -54,7 +54,7 @@ pub fn vurgulu_hane(ui: &Ui, vurgu_rengi: Color32) -> Frame {
 }
 
 /// 4. Durum Rozeti & Anlam Renkleri (Semantik Renk Sınıfı):
-/// Kilim paletinden hesap durumu rengini döner
+///    Kilim paletinden hesap durumu rengini döner
 pub fn hesap_durum_rengi(durum: &HesapDurumu, ui: &Ui) -> Color32 {
     let p = palet(ui);
     match durum {

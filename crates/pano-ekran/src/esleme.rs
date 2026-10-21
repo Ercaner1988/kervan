@@ -56,6 +56,11 @@ impl EslemeTablosu {
         toml::from_str(metin)
     }
 
+    /// esleme.toml derlemeye gömülür; bozuksa bu bir yapı hatasıdır, kullanıcı girdisi değil.
+    #[allow(
+        clippy::expect_used,
+        reason = "gömülü toml derleme zamanı değişmezidir"
+    )]
     pub fn varsayilan() -> Self {
         const METIN: &str = include_str!("../esleme.toml");
         Self::toml_metninden(METIN).expect("esleme.toml geçerli toml olmalı")
@@ -68,6 +73,10 @@ impl EslemeTablosu {
 }
 
 /// `omniroute-bolumleri.txt` dosyasındaki bölüm adlarını sıralı liste olarak döndürür.
+#[allow(
+    clippy::expect_used,
+    reason = "gömülü başlık dosyası derleme zamanı değişmezidir"
+)]
 pub fn beklenen_bolumler_listesi() -> (String, Vec<String>) {
     const ICERIK: &str = include_str!("../omniroute-bolumleri.txt");
     let mut satirlar = ICERIK.lines().map(|s| s.trim()).filter(|s| !s.is_empty());
@@ -146,8 +155,14 @@ mod tests {
 
         assert_eq!(v_sayisi + d_sayisi + k_sayisi, 57);
         assert!(v_sayisi >= 15, "En az 15 V (canlı) satırı olmalı");
-        assert!(d_sayisi >= 30, "Gelecek dalgalar için en az 30 D satırı olmalı");
-        assert_eq!(k_sayisi, 2, "Gamification ve leaderboard kapsam dışıdır (K=2)");
+        assert!(
+            d_sayisi >= 30,
+            "Gelecek dalgalar için en az 30 D satırı olmalı"
+        );
+        assert_eq!(
+            k_sayisi, 2,
+            "Gamification ve leaderboard kapsam dışıdır (K=2)"
+        );
     }
 
     #[test]
@@ -160,7 +175,9 @@ mod tests {
         } else if ref_yol_ust.exists() {
             ref_yol_ust
         } else {
-            panic!("ref/omniroute-dbe703a dizini bulunamadı! Fail-closed kuralı gereği test düşer.");
+            panic!(
+                "ref/omniroute-dbe703a dizini bulunamadı! Fail-closed kuralı gereği test düşer."
+            );
         };
 
         let mut bulunan_dizinler = Vec::new();

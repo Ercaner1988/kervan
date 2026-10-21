@@ -1,4 +1,4 @@
-//! # kervan-pano-ekran
+﻿//! # kervan-pano-ekran
 //! Kervan sade pano 5 ekran modülleri ve egui çizim işlevleri.
 //! Standart: KERVAN-PANO-ANTIGRAVITY-ISTEMI.md & KERVAN-ARAYUZ-ISTEMI.md
 
@@ -113,16 +113,21 @@ pub fn render_ust_serit(
         } else {
             Color32::from_rgb(192, 79, 66)
         };
-        ui.label(RichText::new("● açık").color(durum_rengi).strong().size(12.0));
+        ui.label(
+            RichText::new("● açık")
+                .color(durum_rengi)
+                .strong()
+                .size(12.0),
+        );
 
         ui.add_space(12.0);
         ui.label(RichText::new("strateji:").size(11.0).color(Color32::GRAY));
         ui.label(RichText::new(&ozet.aktif_strateji).strong().size(11.0));
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.button("⚙").clicked() {}
+            let _ = ui.button("⚙").clicked();
             kilim_tema::tema_secici(ui, tema_tercihi);
-            if ui.button("🔍 Tanı al").clicked() {}
+            let _ = ui.button("🔍 Tanı al").clicked();
         });
     });
 }
@@ -158,7 +163,11 @@ pub fn render_alt_serit(ui: &mut Ui, ozet: &Ozet) {
     ui.horizontal(|ui| {
         ui.label(RichText::new("Canlı Akış:").strong().size(11.0));
         if ozet.canli_akis.is_empty() {
-            ui.label(RichText::new("Henüz istek yok").size(11.0).color(Color32::GRAY));
+            ui.label(
+                RichText::new("Henüz istek yok")
+                    .size(11.0)
+                    .color(Color32::GRAY),
+            );
         } else {
             for req in &ozet.canli_akis {
                 let renk = if req.basarili {
@@ -175,7 +184,11 @@ pub fn render_alt_serit(ui: &mut Ui, ozet: &Ozet) {
         }
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.label(RichText::new("Boşta CPU: %0.0").size(11.0).color(Color32::GRAY));
+            ui.label(
+                RichText::new("Boşta CPU: %0.0")
+                    .size(11.0)
+                    .color(Color32::GRAY),
+            );
         });
     });
 }

@@ -1,4 +1,4 @@
-//! # ekran1_oturum
+﻿//! # ekran1_oturum
 //! Ekran 1: Oturumlar ve Sağlayıcılar
 //! Standart: KERVAN-ARAYUZ-ISTEMI.md & KERVAN-PANO-ANTIGRAVITY-ISTEMI.md
 //!
@@ -145,8 +145,8 @@ fn render_hesap_listesi(ui: &mut Ui, ozet: &Ozet, secili_hesap_indeks: &mut usiz
                             ui.with_layout(
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| {
-                                    if ui.small_button("👁 Aç").clicked() {}
-                                    if ui.small_button("↻ Yenile").clicked() {}
+                                    let _ = ui.small_button("👁 Aç").clicked();
+                                    let _ = ui.small_button("↻ Yenile").clicked();
                                 },
                             );
                         });

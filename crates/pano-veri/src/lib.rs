@@ -117,11 +117,14 @@ pub fn sir_temizle(ham_metin: &str) -> String {
 
     // Cookie desenleri
     let mut start = 0;
-    while let Some(rel_idx) = sonuc[start..].to_lowercase().find("cookie:") {
+    // ASCII arama: `to_lowercase` Türkçe 'İ' gibi harflerde bayt uzunluğunu
+    // değiştirdiğinden dönen ofset asıl dizgeye uymaz ve maskeleme kayar
+    // (sır sızabilir). `to_ascii_lowercase` yalnız A-Z'yi çevirir, ofset korunur.
+    while let Some(rel_idx) = sonuc[start..].to_ascii_lowercase().find("cookie:") {
         let idx = start + rel_idx;
         let bas = idx + 7;
         let son = sonuc[bas..]
-            .find(|c: char| c == '\n' || c == '\r' || c == '"')
+            .find(|c: char| ['\n', '\r', '"'].contains(&c))
             .map(|i| bas + i)
             .unwrap_or(sonuc.len());
         sonuc.replace_range(bas..son, " [COOKIE_TEMIZLENDI]");
@@ -236,7 +239,10 @@ impl PanoOkuyucu {
                     aktif: true,
                 },
             ],
-            kimlikler: vec!["OPENAI_API_KEY".to_string(), "ANTHROPIC_API_KEY".to_string()],
+            kimlikler: vec![
+                "OPENAI_API_KEY".to_string(),
+                "ANTHROPIC_API_KEY".to_string(),
+            ],
             saglik: SaglikOzeti::default(),
         });
 
@@ -248,19 +254,13 @@ impl PanoOkuyucu {
 
     /// Çizim iş parçacığının çağırdığı beklemesiz (lock-free / hızlı klon) özet okuyucu.
     pub fn guncel_ozet(&self) -> Arc<Ozet> {
-        let kilit = self
-            .ozet_deposusu
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let kilit = self.ozet_deposusu.lock().unwrap_or_else(|e| e.into_inner());
         Arc::clone(&kilit)
     }
 
     /// Yeni bir özet yayımlar.
     pub fn ozet_guncelle(&self, yeni_ozet: Ozet) {
-        let mut kilit = self
-            .ozet_deposusu
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let mut kilit = self.ozet_deposusu.lock().unwrap_or_else(|e| e.into_inner());
         *kilit = Arc::new(yeni_ozet);
     }
 }
@@ -288,6 +288,22 @@ mod tests {
         assert!(!temiz.contains("1234567890abcdef"));
         assert!(!temiz.contains("xyz123"));
         assert!(temiz.contains("[SIR_TEMIZLENDI]"));
+        assert!(temiz.contains("[COOKIE_TEMIZLENDI]"));
+    }
+
+    #[test]
+    fn test_sir_temizligi_turkce_harf_ofseti_kaydirmaz() {
+        // 'İ' küçük harfe çevrilince iki kod noktasına ayrılır; dil-hassas
+        // arama bayt ofsetini kaydırıp Cookie değerini maskelemeden bırakıyordu.
+        // Her 'İ' küçük harfte bir bayt büyür; ofset sağa kayar ve değerin
+        // başı maskesiz kalır (sır sızar).
+        let kirli = format!("{} Cookie: GİZLİ_DEĞER; devam", "İ".repeat(3));
+        let temiz = sir_temizle(&kirli);
+        assert!(
+            temiz.ends_with("Cookie: [COOKIE_TEMIZLENDI]"),
+            "Cookie değeri eksiksiz maskelenmeliydi: {temiz}"
+        );
+        assert!(!temiz.contains("GİZLİ"), "sır sızdı: {temiz}");
         assert!(temiz.contains("[COOKIE_TEMIZLENDI]"));
     }
 

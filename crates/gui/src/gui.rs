@@ -142,8 +142,8 @@ impl KervanApp {
         // 3. Pencere ve grafik seçenekleri: Vulkan öncelikli (yoksa DX12 yedekli)
         let mut wgpu_options = eframe::egui_wgpu::WgpuConfiguration::default();
         if let eframe::egui_wgpu::WgpuSetup::CreateNew(ref mut setup) = wgpu_options.wgpu_setup {
-            setup.instance_descriptor.backends = eframe::egui_wgpu::wgpu::Backends::VULKAN
-                | eframe::egui_wgpu::wgpu::Backends::DX12;
+            setup.instance_descriptor.backends =
+                eframe::egui_wgpu::wgpu::Backends::VULKAN | eframe::egui_wgpu::wgpu::Backends::DX12;
         }
 
         let options = eframe::NativeOptions {
@@ -165,7 +165,9 @@ impl KervanApp {
             ..Default::default()
         };
 
-        log_yaz("Pencere seçenekleri: renderer=Wgpu (Vulkan öncelikli, DX12 yedekli), vsync=true, centered=true, visible=true, transparent=false");
+        log_yaz(
+            "Pencere seçenekleri: renderer=Wgpu (Vulkan öncelikli, DX12 yedekli), vsync=true, centered=true, visible=true, transparent=false",
+        );
 
         eframe::run_native(
             "kervan_gui",
@@ -189,8 +191,11 @@ impl KervanApp {
 impl eframe::App for KervanApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.kare_sayisi += 1;
-        if self.kare_sayisi <= 5 || self.kare_sayisi % 100 == 0 {
-            log_yaz(&format!("KervanApp::ui çağrıldı, kare={}", self.kare_sayisi));
+        if self.kare_sayisi <= 5 || self.kare_sayisi.is_multiple_of(100) {
+            log_yaz(&format!(
+                "KervanApp::ui çağrıldı, kare={}",
+                self.kare_sayisi
+            ));
         }
         let ozet = self.okuyucu.guncel_ozet();
 
@@ -228,7 +233,8 @@ impl eframe::App for KervanApp {
         });
 
         // Windows DWM / egui olay döngüsünü canlı tutmak için hafif arka plan yenilemesi (500 ms)
-        ui.ctx().request_repaint_after(std::time::Duration::from_millis(500));
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_millis(500));
     }
 }
 
@@ -239,15 +245,27 @@ mod tests {
         const GUI_KODU: &str = include_str!("gui.rs");
         // Test fonksiyonu öncesindeki üretim kodunu ayıkla
         let uretim_kodu = GUI_KODU.split("#[cfg(test)]").next().unwrap_or(GUI_KODU);
-        
+
         let bonus_sayisi = format!("3.{}.000", "000");
         let hediye_miktari = format!("3000{}", "000");
         let hatali_baslik = format!("— Antigravity {} Denetim Masası", "Gateway");
         let sabit_giris = format!("Günlük Giriş {}: Aktif", "Durumu");
 
-        assert!(!uretim_kodu.contains(&bonus_sayisi), "Bonus literali bulunmamalı");
-        assert!(!uretim_kodu.contains(&hediye_miktari), "Hediye miktarı bulunmamalı");
-        assert!(!uretim_kodu.contains(&hatali_baslik), "Eski hatalı başlık bulunmamalı");
-        assert!(!uretim_kodu.contains(&sabit_giris), "Sabit giriş durumu bulunmamalı");
+        assert!(
+            !uretim_kodu.contains(&bonus_sayisi),
+            "Bonus literali bulunmamalı"
+        );
+        assert!(
+            !uretim_kodu.contains(&hediye_miktari),
+            "Hediye miktarı bulunmamalı"
+        );
+        assert!(
+            !uretim_kodu.contains(&hatali_baslik),
+            "Eski hatalı başlık bulunmamalı"
+        );
+        assert!(
+            !uretim_kodu.contains(&sabit_giris),
+            "Sabit giriş durumu bulunmamalı"
+        );
     }
 }
