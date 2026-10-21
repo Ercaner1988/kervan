@@ -23,7 +23,9 @@ surum_izi = "uygulanir"
 belge_dogrulugu = "uygulanir"
 
 [temel]
-# kervan'ın CI iş akışı yok (yalnız CodSpeed): temel denetimler buradan.
+# CI (ci.yml) [temel]'deki üç komutu koşar: fmt --check, clippy -D warnings, test.
+# kapi'nin boyut ölçümleri ve port kapıları CI DIŞINDADIR: pre-push kancası
+# (.githooks/pre-push) kapi'yi koşar; port kapıları elle koşulur.
 ek_cargo = [
   ["fmt", "--all", "--", "--check"],
   ["clippy", "--workspace", "--all-targets", "--all-features", "--", "-D", "warnings"],

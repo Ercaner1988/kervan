@@ -52,6 +52,18 @@ durum = "kapsam-disi"
 gerekce = "Eklentiye bağlı sekmelerin listesi; OmniRoute'ta karşılığı yok"
 
 [[uc]]
+yol = "/eklenti/token"
+yontem = "GET"
+durum = "kapsam-disi"
+gerekce = "Eklenti kimlik köprüsü: yalnız uzantı Origin'ine paylaşılan token dağıtır; OmniRoute'ta karşılığı yok (davranış crates/sunucu/tests/p10_eklenti_kimlik_test.rs'te ölçülür)"
+
+[[uc]]
+yol = "/eklenti/token"
+yontem = "OPTIONS"
+durum = "kapsam-disi"
+gerekce = "Tarayıcı özel-ağ (private-network) CORS ön denetimi; OmniRoute'ta karşılığı yok"
+
+[[uc]]
 yol = "/accounts"
 yontem = "GET"
 durum = "kapsam-disi"
@@ -62,6 +74,12 @@ yol = "/accounts/{i}/devam"
 yontem = "POST"
 durum = "kapsam-disi"
 gerekce = "Kervan'a özgü tarayıcı havuzu ucu; OmniRoute'ta karşılığı yok, parite ölçülemez (insan kapısı çözülünce hesabı geri alır)"
+
+[[uc]]
+yol = "/accounts/{i}/duraklat"
+yontem = "POST"
+durum = "kapsam-disi"
+gerekce = "Kervan'a özgü tarayıcı havuzu ucu; OmniRoute'ta karşılığı yok, parite ölçülemez (elle duraklatma; pool.rs birim testiyle)"
 
 [[uc]]
 yol = "/accounts/{i}/goster"
@@ -98,3 +116,15 @@ yol = "/kota"
 yontem = "GET"
 durum = "kapsam-disi"
 gerekce = "Kervan'ın kota öğrenicisinin gözlemi (gerçek kullanım, çıkarılan limit); OmniRoute'ta karşılığı yok"
+
+[[uc]]
+yol = "/yonlendirme"
+yontem = "GET"
+durum = "kapsam-disi"
+gerekce = "Akıllı yönlendirici durum ve aday dökümü; OmniRoute'ta karşılığı yok (p9_auto_rest_test.rs'te ölçülür)"
+
+[[uc]]
+yol = "/yonlendirme"
+yontem = "POST"
+durum = "kapsam-disi"
+gerekce = "Çalışma anı strateji değişimi; OmniRoute'ta karşılığı yok (geçersiz ad reddi p9_auto_rest_test.rs'te ölçülür)"
