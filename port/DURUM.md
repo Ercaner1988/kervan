@@ -1,13 +1,13 @@
-<!-- URETILMIS_DURUM_HASH: 295fbd5441eee05e97fd9027df4d8d13fac9afb68978302505c36ade4f9c7275 -->
+<!-- URETILMIS_DURUM_HASH: 1df41c1eb006ee43103590a228ec0ff35676fd44be468af2ef3381017daf4ae0 -->
 # DURUM.md — Kervan Aktarım Durum Defteri (ÜRETİLMİŞTİR)
 
 > ⚠️ BU DOSYA araclar/kapilar/durum-uret.ts ÇIKTISIDIR. ELLE DÜZENLEMEYİNİZ.
 > durum-kontrol bu dosyayı port/durum.json'dan yeniden üretip bayt bayt karşılaştırır.
 
 - **Mevcut Faz:** P3
-- **Üretim Zamanı (durum.json):** 2026-10-14T06:59:26.257Z
+- **Üretim Zamanı (durum.json):** 2026-10-21T09:49:12.637Z
 - **Üretici Özeti:** sha256:a9b4a56d5170899a65c47db3b903d5561728b859572da9ad9ffc547b6f9f0612
-- **Tüm Kapılar Yeşil mi:** ✅ EVET
+- **Tüm Kapılar Yeşil mi:** ❌ HAYIR
 
 ---
 
@@ -15,17 +15,17 @@
 
 | Kapı Adı | Çıkış Kodu | Süre (ms) | Log Dosyası |
 |---|:---:|:---:|---|
-| makine-sakin | ✅ 0 | 60131 | port\kayit\P3\makine-sakin.log |
-| kabul-haritasi | ✅ 0 | 476504 | port\kayit\P3\kabul-haritasi.log |
-| ulasilabilirlik | ✅ 0 | 957 | port\kayit\P3\ulasilabilirlik.log |
-| sabit-yanit | ✅ 0 | 107 | port\kayit\P3\sabit-yanit.log |
-| uc-kaydi | ✅ 0 | 4815 | port\kayit\P3\uc-kaydi.log |
-| muhur-kontrol | ✅ 0 | 15462 | port\kayit\P3\muhur-kontrol.log |
-| kulliyat-tara | ✅ 0 | 7361 | port\kayit\P3\kulliyat-tara.log |
-| mutasyon-kontrol | ✅ 0 | 111135 | port\kayit\P3\mutasyon-kontrol.log |
-| durum-kontrol | ✅ 0 | 446 | port\kayit\P3\durum-kontrol.log |
-| defter-kontrol | ✅ 0 | 36399 | port\kayit\P3\defter-kontrol.log |
-| rapor-kontrol | ✅ 0 | 89 | port\kayit\P3\rapor-kontrol.log |
+| makine-sakin | ✅ 0 | 60188 | port\kayit\P3\makine-sakin.log |
+| kabul-haritasi | ❌ 1 | 580483 | port\kayit\P3\kabul-haritasi.log |
+| ulasilabilirlik | ❌ 1 | 1030 | port\kayit\P3\ulasilabilirlik.log |
+| sabit-yanit | ✅ 0 | 119 | port\kayit\P3\sabit-yanit.log |
+| uc-kaydi | ✅ 0 | 5321 | port\kayit\P3\uc-kaydi.log |
+| muhur-kontrol | ❌ 1 | 16936 | port\kayit\P3\muhur-kontrol.log |
+| kulliyat-tara | ✅ 0 | 8870 | port\kayit\P3\kulliyat-tara.log |
+| mutasyon-kontrol | ✅ 0 | 103020 | port\kayit\P3\mutasyon-kontrol.log |
+| durum-kontrol | ❌ 1 | 459 | port\kayit\P3\durum-kontrol.log |
+| defter-kontrol | ✅ 0 | 27396 | port\kayit\P3\defter-kontrol.log |
+| rapor-kontrol | ❌ 1 | 160 | port\kayit\P3\rapor-kontrol.log |
 
 ## 2. Fazlar
 
@@ -96,6 +96,18 @@ durum = "kapsam-disi"
 gerekce = "Eklentiye bağlı sekmelerin listesi; OmniRoute'ta karşılığı yok"
 
 [[uc]]
+yol = "/eklenti/token"
+yontem = "GET"
+durum = "kapsam-disi"
+gerekce = "Eklenti kimlik köprüsü: yalnız uzantı Origin'ine paylaşılan token dağıtır; OmniRoute'ta karşılığı yok (davranış crates/sunucu/tests/p10_eklenti_kimlik_test.rs'te ölçülür)"
+
+[[uc]]
+yol = "/eklenti/token"
+yontem = "OPTIONS"
+durum = "kapsam-disi"
+gerekce = "Tarayıcı özel-ağ (private-network) CORS ön denetimi; OmniRoute'ta karşılığı yok"
+
+[[uc]]
 yol = "/accounts"
 yontem = "GET"
 durum = "kapsam-disi"
@@ -106,6 +118,12 @@ yol = "/accounts/{i}/devam"
 yontem = "POST"
 durum = "kapsam-disi"
 gerekce = "Kervan'a özgü tarayıcı havuzu ucu; OmniRoute'ta karşılığı yok, parite ölçülemez (insan kapısı çözülünce hesabı geri alır)"
+
+[[uc]]
+yol = "/accounts/{i}/duraklat"
+yontem = "POST"
+durum = "kapsam-disi"
+gerekce = "Kervan'a özgü tarayıcı havuzu ucu; OmniRoute'ta karşılığı yok, parite ölçülemez (elle duraklatma; pool.rs birim testiyle)"
 
 [[uc]]
 yol = "/accounts/{i}/goster"
@@ -142,4 +160,16 @@ yol = "/kota"
 yontem = "GET"
 durum = "kapsam-disi"
 gerekce = "Kervan'ın kota öğrenicisinin gözlemi (gerçek kullanım, çıkarılan limit); OmniRoute'ta karşılığı yok"
+
+[[uc]]
+yol = "/yonlendirme"
+yontem = "GET"
+durum = "kapsam-disi"
+gerekce = "Akıllı yönlendirici durum ve aday dökümü; OmniRoute'ta karşılığı yok (p9_auto_rest_test.rs'te ölçülür)"
+
+[[uc]]
+yol = "/yonlendirme"
+yontem = "POST"
+durum = "kapsam-disi"
+gerekce = "Çalışma anı strateji değişimi; OmniRoute'ta karşılığı yok (geçersiz ad reddi p9_auto_rest_test.rs'te ölçülür)"
 ```
