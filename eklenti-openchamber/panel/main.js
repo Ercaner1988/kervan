@@ -44,13 +44,13 @@
   };
   window.addEventListener("message", hostMesaji);
 
-  const gonder = (tip, payload) =>
+  const gonder = (tip, payload, zamanAsimi = ISTEK_ZAMANI_MS) =>
     new Promise((coz, reddet) => {
       const id = `kervan-${Date.now()}-${++sayac}`;
       const zaman = setTimeout(() => {
         bekleyen.delete(id);
         reddet(new Error("OpenChamber yanıt vermedi (zaman aşımı)."));
-      }, ISTEK_ZAMANI_MS);
+      }, zamanAsimi);
       bekleyen.set(id, { coz, reddet, zaman });
       window.parent.postMessage({ channel: KANAL, v: SURUM, type: tip, id, payload }, "*");
     });
@@ -59,10 +59,10 @@
    * Yerel servise istek. Yanıt `{status, body}`; body JSON metni.
    * HTTP hatası da Error'a çevrilir ki panel tek yerde yakalayabilsin.
    */
-  const servis = async (method, path, body) => {
+  const servis = async (method, path, body, zamanAsimi) => {
     const istek = { method, path };
     if (body !== undefined) istek.body = JSON.stringify(body);
-    const sonuc = await gonder("service-request", istek);
+    const sonuc = await gonder("service-request", istek, zamanAsimi);
     let veri = null;
     if (typeof sonuc.body === "string" && sonuc.body.trim()) {
       try {
@@ -212,6 +212,32 @@
     });
   };
 
+  const hesapNotu = (metin, sinif = "alt") => {
+    const not = $("#hesapNot");
+    not.textContent = metin;
+    not.className = sinif;
+  };
+
+  /**
+   * Sağlayıcı seçicisini tanımlı defterden doldurur. Liste değişmediyse
+   * dokunmaz: 5 sn'lik tazeleme kullanıcının seçimini sıfırlamamalı.
+   */
+  const cizHesapEkle = (durum) => {
+    const secim = $("#hesapSaglayici");
+    const tanimli = Array.isArray(durum.saglayicilar) ? durum.saglayicilar : [];
+    const mevcut = [...secim.options].map((o) => o.value);
+    if (mevcut.join("|") === tanimli.join("|")) return;
+    secim.textContent = "";
+    for (const ad of tanimli) {
+      const secenek = eleman("option", null, ad);
+      secenek.value = ad;
+      secim.append(secenek);
+    }
+    if (tanimli.length === 0) {
+      hesapNotu("Tanımlı sağlayıcı yok; kervan.toml → [providers] gerekli.", "uyari");
+    }
+  };
+
   const cizWebHesaplar = (durum) => {
     const kap = $("#webHesaplar");
     kap.textContent = "";
@@ -279,6 +305,7 @@
     cizOlcumler(durum);
     cizStrateji(durum);
     cizHesaplar(durum);
+    cizHesapEkle(durum);
     cizWebHesaplar(durum);
     cizKota(durum);
   };
@@ -315,9 +342,43 @@
     }
   });
 
+  const hesapAc = () => calistir(async () => {
+    const saglayici = $("#hesapSaglayici").value;
+    const eposta = $("#hesapEposta").value.trim();
+    if (!saglayici) throw new Error("Önce sağlayıcı seçin.");
+    if (!eposta) throw new Error("E-posta girin.");
+    hesapNotu("Giriş penceresi açılıyor…");
+    const sonuc = await servis("POST", "/hesap/ac", { eposta, saglayici }, 60_000);
+    hesapNotu(sonuc?.mesaj ?? "Giriş penceresi açıldı.");
+  });
+
+  const hesapDogrula = () => calistir(async () => {
+    const saglayici = $("#hesapSaglayici").value;
+    const eposta = $("#hesapEposta").value.trim();
+    if (!saglayici) throw new Error("Önce sağlayıcı seçin.");
+    if (!eposta) throw new Error("E-posta girin.");
+    hesapNotu("Giriş ölçülüyor: tarayıcı açılıyor, sayfa bekleniyor…");
+    // geckodriver + tarayıcı + yerleşme: 35 sn'lik genel sınır yetmez.
+    const sonuc = await servis("POST", "/hesap/dogrula", { eposta, saglayici }, 150_000);
+    $("#hesapYenidenBaslat").classList.toggle("gizli", !sonuc?.yeniden_baslat);
+    hesapNotu(sonuc?.mesaj ?? "Giriş durumu okunamadı.", sonuc?.giris ? "alt" : "uyari");
+  });
+
+  const hesabiDevreyeAl = () => calistir(async () => {
+    hesapNotu("Kervan yeniden başlatılıyor…");
+    const sonuc = await servis("POST", "/yeniden-baslat", undefined, 90_000);
+    if (!sonuc?.ok) throw new Error(sonuc?.mesaj ?? "Kervan yeniden başlatılamadı.");
+    $("#hesapYenidenBaslat").classList.add("gizli");
+    hesapNotu("Kervan yeniden başladı; yeni hesap havuzda görünmeli.");
+    await yenile();
+  });
+
   $("#yenile").addEventListener("click", () => calistir(yenile));
   $("#baslat").addEventListener("click", basla);
   $("#uygula").addEventListener("click", uygula);
+  $("#hesapAc").addEventListener("click", hesapAc);
+  $("#hesapDogrula").addEventListener("click", hesapDogrula);
+  $("#hesapYenidenBaslat").addEventListener("click", hesabiDevreyeAl);
 
   // Host köprüsünü başlat: hello → host 'ready' ve ilk 'workspace' push'u yollar.
   window.parent.postMessage({ channel: KANAL, v: SURUM, type: "hello" }, "*");

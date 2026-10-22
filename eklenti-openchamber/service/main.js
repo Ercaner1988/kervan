@@ -83,6 +83,35 @@ const kervan = async (yol, { method = "GET", body } = {}) => {
   }
 };
 
+/**
+ * Uzun süren Kervan çağrıları için aynı yardımcı, geniş zaman aşımıyla.
+ *
+ * NEDEN AYRI: `/hesap/dogrula` geckodriver'ı ayağa kaldırır, tarayıcıyı açar
+ * ve sayfanın yerleşmesini bekler — 2,5 sn'lik genel sınır bunu keser ve panel
+ * "Kervan kapalı" sanır. Süre açıkça verilir ki hangi ucun ne kadar beklediği
+ * kodda görünsün.
+ */
+const kervanUzun = async (yol, { method = "POST", body, ms = 180_000 } = {}) => {
+  try {
+    const yanit = await fetch(`${KERVAN_URL}${yol}`, {
+      method,
+      headers: body === undefined ? {} : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(ms),
+    });
+    const metin = await yanit.text();
+    let veri = null;
+    try {
+      veri = metin ? JSON.parse(metin) : null;
+    } catch {
+      veri = metin;
+    }
+    return { durum: yanit.status, veri };
+  } catch {
+    return null;
+  }
+};
+
 const kervanAcikMi = async () => {
   try {
     const yanit = await fetch(`${KERVAN_URL}/health`, {
@@ -167,6 +196,36 @@ const baslat = async () => {
   };
 };
 
+/**
+ * Yapılandırma değiştikten sonra havuzu tazelemenin tek yolu yeniden başlatma:
+ * havuz açılışta kurulur ve çalışırken yuva eklemez. Kervan zarifçe kapanır
+ * (`/kapat`), port boşalınca aynı `baslat` yolu devreye girer.
+ */
+const yenidenBaslat = async () => {
+  if (!(await kervanAcikMi())) {
+    return { ...(await baslat()), zaten: undefined };
+  }
+  const kapatma = await kervanUzun("/kapat", { ms: 15_000 });
+  if (!kapatma) {
+    return { ok: false, mesaj: "Kervan'a kapanma isteği ulaşmadı." };
+  }
+  const bitis = Date.now() + 15_000;
+  while (Date.now() < bitis) {
+    await new Promise((r) => setTimeout(r, 300));
+    if (!(await kervanAcikMi())) break;
+  }
+  if (await kervanAcikMi()) {
+    // Sessizce "oldu" demek yerine açık hata: kilitli süreç elle kapatılmalı.
+    return {
+      ok: false,
+      mesaj:
+        "Kervan 15 sn içinde kapanmadı (açık istek ya da ikili kilidi olabilir). " +
+        "Kervan'ı elle kapatıp yeniden başlatın.",
+    };
+  }
+  return await baslat();
+};
+
 const durum = async () => {
   const acik = await kervanAcikMi();
   if (!acik) {
@@ -183,6 +242,8 @@ const durum = async () => {
   return {
     kervan: true,
     accounts: accounts?.veri ?? null,
+    // Panelin hesap ekleme secicisi icin tanimli saglayici adlari.
+    saglayicilar: accounts?.veri?.saglayicilar ?? null,
     yonlendirme: yonlendirme?.veri ?? null,
     eklenti: eklenti?.veri ?? null,
     telemetri: telemetri?.veri ?? null,
@@ -249,6 +310,38 @@ const sunucu = http.createServer(async (req, res) => {
       json(res, sonuc.durum, sonuc.veri);
     } catch (hata) {
       json(res, 400, { hata: hata.message });
+    }
+    return;
+  }
+
+  // Panelden hesap ekleme: otomasyonsuz giriş penceresi + giriş doğrulama.
+  // Domain mantığı Kervan'da; burada yalnız iki uç proxy'lenir.
+  if (
+    req.method === "POST" &&
+    (url.pathname === "/hesap/ac" || url.pathname === "/hesap/dogrula")
+  ) {
+    try {
+      const govde = await okuGovde(req);
+      // Doğrulama geckodriver'ı ayağa kaldırıp sayfa yerleşmesini bekler;
+      // 2,5 sn'lik genel zaman aşımı burada yetmez.
+      const sonuc = await kervanUzun(url.pathname, { method: "POST", body: govde });
+      if (!sonuc) {
+        json(res, 503, { hata: "Kervan kapalı." });
+        return;
+      }
+      json(res, sonuc.durum, sonuc.veri);
+    } catch (hata) {
+      json(res, 400, { hata: hata.message });
+    }
+    return;
+  }
+
+  // Yapılandırma değiştikten sonra havuzu tazeleme: kapat → yeniden başlat.
+  if (req.method === "POST" && url.pathname === "/yeniden-baslat") {
+    try {
+      json(res, 200, await yenidenBaslat());
+    } catch (hata) {
+      json(res, 500, { hata: hata.message });
     }
     return;
   }

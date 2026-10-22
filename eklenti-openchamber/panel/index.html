@@ -40,7 +40,7 @@
       .satir .ad { font-weight: 600; }
       .satir .alt { color: var(--k-muted); font-size: 12px; }
       .satir .sag { margin-left: auto; display: flex; gap: 6px; align-items: center; }
-      button, select {
+      button, select, input[type="email"] {
         font: inherit;
         color: var(--k-fg);
         background: var(--k-card-2);
@@ -49,6 +49,7 @@
         padding: 5px 10px;
         cursor: pointer;
       }
+      input[type="email"] { cursor: text; min-width: 15rem; }
       button:hover:not(:disabled) { border-color: var(--k-primary); }
       button:disabled { opacity: 0.55; cursor: default; }
       button.birincil { background: var(--k-primary); color: var(--primary-foreground, #000); border-color: transparent; font-weight: 600; }
@@ -94,6 +95,24 @@
 
       <h2>Havuz hesapları</h2>
       <div class="kutu" id="hesaplar"></div>
+
+      <h2>Hesap ekle</h2>
+      <div class="kutu">
+        <div class="satir">
+          <select id="hesapSaglayici" aria-label="Sağlayıcı"></select>
+          <input id="hesapEposta" type="email" placeholder="ad@alan" aria-label="E-posta" />
+          <button id="hesapAc" title="Otomasyon dışında gerçek bir tarayıcı penceresi açar">Giriş penceresini aç</button>
+          <button id="hesapDogrula" class="birincil" title="Girişin gerçekten tamamlandığını ölçer">Girişi doğrula</button>
+        </div>
+        <div class="satir">
+          <span id="hesapNot" class="alt">
+            Giriş gerçek tarayıcıda, senin elinle yapılır; şifre Kervan'a girmez.
+          </span>
+          <span class="sag">
+            <button id="hesapYenidenBaslat" class="gizli">Kervan'ı yeniden başlat</button>
+          </span>
+        </div>
+      </div>
 
       <h2>Web sekmeleri</h2>
       <div class="kutu" id="webHesaplar"></div>

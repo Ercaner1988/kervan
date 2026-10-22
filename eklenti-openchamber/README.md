@@ -23,7 +23,24 @@ tazeler.
 1. OpenChamber → Settings → Extensions → **Add path** ve bu klasörü seç:
    `...\kervan\eklenti-openchamber`
 2. Uzantıya **service** iznini ver (yerel Node shim'i çalıştırmak için).
-3. Yan panelde **Kervan** sekmesi görünür.
+3. Uygulamayı bir kez yeniden başlat (misafir listesi açılışta okunur).
+
+## Panel nerede açılır
+
+Manifest iki görünür yüzey bildirir; ikisi de aynı yerel servisi kullanır:
+
+| Katkı | Yüzey | Nereden açılır |
+|---|---|---|
+| `page` | Tam sayfa kontrol paneli (`panel/index.html`) | Oturum listesi başlığındaki **Uzantı sayfaları** (yapboz) menüsü → **Kervan** |
+| `statusSection` | Tek satırlık durum şeridi (`status/index.html`) | Sohbet → **Panel bölümleri** listesinde **Kervan** (Uzantı) |
+
+`panel` katkısı giriş HTML'ini ve ikonu tanımlar; `page` aynı dosyayı tam
+sayfa olarak yeniden kullanır.
+
+> `Panel bölümleri` listesi yalnız `statusSection` katkılarını gösterir; yalnız
+> `panel` katkısı olan bir uzantı orada görünmez (Resource Monitor'un
+> "Resources" satırı bu yüzden vardır). Uzantı sayfaları listesi ise `page`
+> katkısı ister; `page` yoksa yapboz düğmesi hiç çizilmez.
 
 Kurulum `~/.config/openchamber/extensions.json` içine `paths` + `sources:
 path` olarak yazılır; `capabilityGrants.kervan = ["service"]` ve eşleşen
@@ -63,8 +80,9 @@ Kervan adresi `KERVAN_URL` ile değiştirilebilir (varsayılan
 ## Panel köprüsü
 
 Sandbox iframe ES modülü yükleyemez. Bu yüzden panel, `@openchamber/sdk`
-protokolünün yalnız üç mesajını (`hello`, `ready`, `result`) kendi içinde
-konuşur: `{channel:"openchamber.sdk", v:1, type, id, payload}`. Yeni bir SDK
+protokolünün yalnız dört mesajını (`hello`, `ready`, `result`, `resize`)
+kendi içinde konuşur: `{channel:"openchamber.sdk", v:1, type, id, payload}`.
+`resize` `{height}` taşır; durum şeridi yüksekliğini böyle bildirir. Yeni bir SDK
 sürümü zarfı değiştirirse `panel/main.js` içindeki `KANAL`/`SURUM` ve
 `service-request` gövdesi güncellenmelidir.
 

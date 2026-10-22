@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kervan</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --k-fg: var(--foreground, #eee);
+        --k-muted: var(--muted-foreground, #999);
+        --k-card-2: color-mix(in srgb, var(--foreground, #eee) 8%, transparent);
+        --k-border: var(--border, rgba(128, 128, 128, 0.3));
+        --k-primary: var(--primary, #6ea8fe);
+        --k-danger: var(--destructive, #e5484d);
+        --k-ok: var(--success, #30a46c);
+        --k-warn: var(--warning, #f5a524);
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: transparent; }
+      body {
+        padding: 6px 2px;
+        color: var(--k-fg);
+        font: 12px/1.4 var(--font-sans, system-ui, sans-serif);
+      }
+      .satir { display: flex; align-items: center; gap: 8px; min-height: 22px; flex-wrap: wrap; }
+      .nokta { width: 8px; height: 8px; border-radius: 50%; background: var(--k-muted); flex: none; }
+      .nokta.acik { background: var(--k-ok); }
+      .nokta.kapali { background: var(--k-danger); }
+      .ad { font-weight: 600; }
+      .ozet { color: var(--k-muted); }
+      .sag { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+      button {
+        font: inherit;
+        color: var(--k-fg);
+        background: var(--k-card-2);
+        border: 1px solid var(--k-border);
+        border-radius: 6px;
+        padding: 2px 8px;
+        cursor: pointer;
+      }
+      button:hover:not(:disabled) { border-color: var(--k-primary); }
+      button:disabled { opacity: 0.55; cursor: default; }
+      .hata { color: var(--k-danger); width: 100%; }
+      .uyari { color: var(--k-warn); }
+      .gizli { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <div class="satir">
+      <span id="nokta" class="nokta" aria-hidden="true"></span>
+      <span class="ad">Kervan</span>
+      <span id="ozet" class="ozet">okunuyor…</span>
+      <span class="sag">
+        <button id="baslat" class="gizli" type="button">Başlat</button>
+      </span>
+    </div>
+    <div id="hata" class="hata gizli"></div>
+    <script src="main.js"></script>
+  </body>
+</html>
