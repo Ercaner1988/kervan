@@ -27,7 +27,12 @@ use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 
 use crate::eklenti_uc::{eklenti_sekmeler, jeton, on_denetim, ws_eklenti_handler};
+use crate::hesap::{HesapIste, hesap_hedefi};
 use crate::rest::rest_denemesi;
+
+// İstem kurulumu ayrı sandıkta (sandık sınırı): mesaj tipi ve tohum/iz kurucuları
+// burada yeniden dışa aktarılır, böylece `server::Message` yolu değişmez.
+pub use kervan_istem::{Message, TOHUM_AZAMI, konusma_izi, son_kullanici_mesaji, tohum_istemi};
 
 pub struct AppState {
     pub pool: Pool,
@@ -47,6 +52,24 @@ pub struct AppState {
     pub yedek_deneme: bool,
     /// Tek istekte denenecek azami aday sayısı (yedek_deneme açıkken).
     pub azami_deneme: u32,
+    /// Panelden hesap ekleme ve yeniden başlatma için gereken ortam.
+    pub panel: PanelOrtami,
+}
+
+/// Hesap ekleme akışının ihtiyaç duyduğu ortam bilgileri.
+///
+/// Havuz bunları kendi içinde tutuyor; panelden bir giriş penceresi açmak ve
+/// girişi doğrulamak için bir kez daha gerekiyor. `Default` bilinçli: testler
+/// ve yalnız sohbet yolunu kuran kurulumlar bu alanı doldurmak zorunda kalmasın.
+/// Boş ortamda uçlar 503 döner — sessizce yanlış tarayıcı açmak yok.
+#[derive(Clone, Default)]
+pub struct PanelOrtami {
+    pub profiles_root: std::path::PathBuf,
+    pub browser: Option<crate::browser::BrowserBinary>,
+    pub geckodriver: std::path::PathBuf,
+    pub config_yolu: std::path::PathBuf,
+    /// `/kapat` buraya haber verir; `serve` zarifçe kapanır.
+    pub kapatma: std::sync::Arc<tokio::sync::Notify>,
 }
 
 impl AppState {
@@ -118,6 +141,14 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/kota", get(kota_ozeti))
         // Akıllı yönlendirici: GET durum ve adayları, POST stratejiyi değiştirir.
         .route("/yonlendirme", get(yonlendirme_durum).post(yonlendirme_sec))
+        // Panelden hesap ekleme. Insan kapisinin arayuz tarafi: once otomasyonsuz
+        // bir pencere acilir (sifre Kervan'a girmez), giris bitince dogrulanir ve
+        // hesap yapilandirmaya yazilir. Yazma tek basina yetmez — havuz acilista
+        // kurulur, bu yuzden yeni hesap `/kapat` + yeniden baslatma ile yururluge girer.
+        .route("/hesap/ac", post(hesap_ac))
+        .route("/hesap/dogrula", post(hesap_dogrula))
+        // Kendini kapat: yapilandirma degistikten sonra havuzu tazelemenin yolu.
+        .route("/kapat", post(kapat))
         .with_state(state)
 }
 
@@ -275,9 +306,15 @@ async fn accounts(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
             "duraklatildi": s.paused_reason,
         }));
     }
+    // Panelin hesap ekleme secicisi tanimli saglayicilarin listesine ihtiyac
+    // duyar; havuzdan turetilemez cunku henuz hesabi olmayan saglayici da
+    // secilebilir olmali. Bu yuzden tanim defterinin adlari burada verilir.
+    let mut saglayicilar: Vec<&String> = st.saglayicilar.keys().collect();
+    saglayicilar.sort();
     Json(serde_json::json!({
         "accounts": liste,
         "sabit_oturumlar": st.pool.sabit_sayisi().await,
+        "saglayicilar": saglayicilar,
     }))
 }
 
@@ -418,22 +455,6 @@ pub struct ChatRequest {
     pub tools: Vec<serde_json::Value>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Default)]
-pub struct Message {
-    pub role: String,
-    /// Araç çağrısı taşıyan asistan mesajında OpenAI `null` gönderir.
-    #[serde(default, deserialize_with = "bos_olabilir")]
-    pub content: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-}
-
-fn bos_olabilir<'de, D: serde::Deserializer<'de>>(d: D) -> Result<String, D::Error> {
-    Ok(Option::<String>::deserialize(d)?.unwrap_or_default())
-}
-
 #[derive(Serialize)]
 struct ChatResponse {
     id: String,
@@ -493,17 +514,35 @@ async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
     }
     let mut adlar: Vec<String> = ad_seti.into_iter().collect();
     adlar.sort();
+
+    // Her saglayici icin: `kervan/<ad>` (site varsayilani) + OLCULMUS ve
+    // yapilandirilmis modeller (`kervan/<ad>/<kod>`). Listelenen her kimlik
+    // gercekten uygulanabilir olmali; uygulanamayan bir kimligi listelemek
+    // istemciye "secilir" izlenimi verirdi.
+    let mut veri: Vec<ModelInfo> = Vec::new();
+    for ad in adlar {
+        veri.push(ModelInfo {
+            id: model_kimligi(&ad),
+            object: "model",
+            created: simdi(),
+            owned_by: "kervan",
+        });
+        if let Some(s) = st.saglayicilar.get(&ad)
+            && let Some(menu) = &s.model
+        {
+            for m in &menu.modeller {
+                veri.push(ModelInfo {
+                    id: format!("{}/{}", model_kimligi(&ad), m.kod),
+                    object: "model",
+                    created: simdi(),
+                    owned_by: "kervan",
+                });
+            }
+        }
+    }
     Json(ModelList {
         object: "list",
-        data: adlar
-            .into_iter()
-            .map(|ad| ModelInfo {
-                id: model_kimligi(&ad),
-                object: "model",
-                created: simdi(),
-                owned_by: "kervan",
-            })
-            .collect(),
+        data: veri,
     })
 }
 
@@ -535,6 +574,8 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
     let otomatik = model_adi.is_empty() || model_adi == "auto";
 
     // Model kimliginden saglayiciyi sec. 'auto' verilirse SmartRouter adayları sıralar.
+    // Model KODU ayrica cozulur: `kervan/gemini/yuksek`. Bos ise site varsayilani.
+    let mut model_kodu: Option<String> = None;
     let (adaylar, yedeklenebilir) = if otomatik {
         // 'auto' adayları ÜÇ kaynaktan gelir: bağlı eklenti sekmeleri, havuz
         // hesapları ve REST hedefleri. Böylece yerel (anahtarlı) ve web
@@ -547,12 +588,12 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
             (sirali, true)
         }
     } else {
-        let saglayici = match crate::saglayicilar::model_saglayicisi(model_adi, &st.saglayicilar) {
-            Some(s) => s,
+        let (saglayici, kod) = match crate::saglayicilar::model_coz(model_adi, &st.saglayicilar) {
+            Some(v) => v,
             None => {
                 let sade = model_adi.strip_prefix("kervan/").unwrap_or(model_adi);
                 if st.eklenti_hub.sekme_var_mi(sade).await {
-                    sade.to_string()
+                    (sade.to_string(), None)
                 } else {
                     let mut mevcut: Vec<String> = st
                         .pool
@@ -579,6 +620,41 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
                 }
             }
         };
+        // Model kodu istendiyse UYGULANABILIR olmali. Uygulanamayan kodu kabul edip
+        // site varsayilaniyla cevap vermek sessiz yanlis model olurdu.
+        if let Some(k) = kod.as_deref() {
+            let menu = st
+                .saglayicilar
+                .get(&saglayici)
+                .and_then(|s| s.model.clone());
+            match menu {
+                None => {
+                    return hata(
+                        StatusCode::NOT_IMPLEMENTED,
+                        &format!(
+                            "'{saglayici}' icin model secimi tanimli degil: sitede olculmus bir \
+                             model menusu yok. Yalniz '{}' kullanilabilir.",
+                            model_kimligi(&saglayici)
+                        ),
+                    );
+                }
+                Some(m) if m.etiket(k).is_none() => {
+                    let kodlar: Vec<String> = m
+                        .modeller
+                        .iter()
+                        .map(|s| format!("{} => {}", s.kod, s.etiket))
+                        .collect();
+                    return hata(
+                        StatusCode::BAD_REQUEST,
+                        &format!(
+                            "'{saglayici}' icin tanimsiz model kodu '{k}'. Tanimli: {}",
+                            kodlar.join(", ")
+                        ),
+                    );
+                }
+                Some(_) => model_kodu = Some(k.to_string()),
+            }
+        }
         (vec![saglayici], false)
     };
 
@@ -629,9 +705,35 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
         let sonuc = if let Some(hedef) = st.rest_hedefleri.get(ad).cloned() {
             rest_denemesi(&st, &hedef, &raw_val, None, req.stream).await
         } else if st.eklenti_hub.sekme_var_mi(ad).await {
-            eklenti_denemesi(&st, ad, &gonderilecek_istem, &req).await
+            // Eklenti yolunda model secimi HENUZ uygulanmiyor (D1d). Sessizce
+            // sekmenin o anki modeliyle cevap vermek yanlis model olurdu.
+            if let Some(k) = model_kodu.as_deref() {
+                Err((
+                    hata(
+                        StatusCode::NOT_IMPLEMENTED,
+                        &format!(
+                            "'{ad}' eklenti sekmesi uzerinden calisiyor; model secimi ('{k}') bu \
+                             yolda henuz uygulanmiyor. Eklenti sekmesini kapatip havuz yolunu \
+                             kullan ya da model kodu olmadan '{}' iste.",
+                            model_kimligi(ad)
+                        ),
+                    ),
+                    false,
+                ))
+            } else {
+                eklenti_denemesi(&st, ad, &gonderilecek_istem, &req).await
+            }
         } else {
-            havuz_denemesi(&st, ad, &req, &istem, &yonerge, &gonderilecek_istem).await
+            havuz_denemesi(
+                &st,
+                ad,
+                &req,
+                &istem,
+                &yonerge,
+                &gonderilecek_istem,
+                model_kodu.as_deref(),
+            )
+            .await
         };
 
         match sonuc {
@@ -731,7 +833,32 @@ async fn havuz_denemesi(
     istem: &str,
     yonerge: &str,
     gonderilecek_istem: &str,
+    model_kodu: Option<&str>,
 ) -> Result<Response, (Response, bool)> {
+    // Model kodu cozulurken dogrulanmisti; burada yalniz eslestirme yapilir.
+    // Yine de savunma amacli: tanimsiz kod istek gonderilmeden acik hataya duser.
+    let model_istegi: Option<(crate::browser::ModelMenusu, String)> = match model_kodu {
+        None => None,
+        Some(kod) => {
+            let menu = st.saglayicilar.get(saglayici).and_then(|s| s.model.clone());
+            let etiket = menu
+                .as_ref()
+                .and_then(|m| m.etiket(kod))
+                .map(str::to_string);
+            match (menu, etiket) {
+                (Some(m), Some(e)) => Some((m, e)),
+                _ => {
+                    return Err((
+                        hata(
+                            StatusCode::BAD_REQUEST,
+                            &format!("'{saglayici}' icin tanimsiz model kodu '{kod}'"),
+                        ),
+                        false,
+                    ));
+                }
+            }
+        }
+    };
     // Havuzdan hesap kirala: konusma kendi hesabina sabitlenir, hiz butcesi burada
     // uygulanir, gerekirse beklenir.
     let mut lease = match st
@@ -767,7 +894,15 @@ async fn havuz_denemesi(
     );
     let secililer = lease.provider.selectors.clone();
     let t_wd = std::time::Instant::now();
-    let mut sonuc = ask(lease.client(), &secililer, &gonderilecek, st.timeout).await;
+    let model_cagrisi = model_istegi.as_ref().map(|(m, e)| (m, e.as_str()));
+    let mut sonuc = ask(
+        lease.client(),
+        &secililer,
+        &gonderilecek,
+        st.timeout,
+        model_cagrisi,
+    )
+    .await;
 
     // Saglayici "limite ulastin" dediyse bu bir YANIT DEGIL. Oldugu gibi dondurmek
     // istemciye modelin cevabi diye limit mesajini vermek olurdu; ustelik kota
@@ -1033,127 +1168,149 @@ fn sse_yanit(metin: &str, cagrilar: &[serde_json::Value], neden: &str, model: &s
         .into_response()
 }
 
-/// Konusmanin parmak izi: **ilk kullanici mesajinin** ozeti.
-///
-/// OpenAI API'sinde oturum kimligi yok, istemciden yeni bir alan istemeden konusmalari
-/// ayirt etmenin yolu icerikten tanimak. Ilk kullanici mesaji her turda gonderildigi
-/// icin konusma boyunca degismez; farkli konusmalar farkli iz verir.
-///
-/// Neden yalniz o mesaj, sistem istemi de degil: sistem istemine tarih/saat gibi her
-/// istekte degisen seyler girebiliyor. Onu ize katmak izi her turda degistirir, yani
-/// sabitlemeyi sessizce ise yaramaz hale getirirdi.
-///
-/// Iki bilinen sinir: (a) ayni cumleyle baslayan iki ayri konusma ayni ize duser —
-/// sonucu yalniz ayni hesaba yonlenmeleridir, yanlis yanit degil; (b) istemci gecmisi
-/// yeniden yazarsa (oturum özetlemede / compaction) iz degisir ve konusma baska hesaba tasinabilir.
-pub fn konusma_izi(msgs: &[Message]) -> Option<u64> {
-    use std::hash::{Hash, Hasher};
-    let ilk = msgs.iter().find(|m| m.role == "user")?;
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    ilk.content.hash(&mut h);
-    Some(h.finish())
-}
-
-/// Yalnizca son `user` mesaji — gerekcesi dosya basindaki durum gerilimi notunda.
-pub fn son_kullanici_mesaji(msgs: &[Message]) -> Option<String> {
-    // Araç turu: istemci çağrıları çalıştırıp sonuçlarını `tool` mesajı olarak geri
-    // yolladı. Modele giden, son kullanıcı sorusu değil bu sonuçlardır.
-    let sonuclar: Vec<_> = msgs.iter().rev().take_while(|m| m.role == "tool").collect();
-    if !sonuclar.is_empty() {
-        use kervan_akis::translator::{AracCagrisi, AracCagrisiAyiklayici as A};
-        let parcalar: Vec<String> = sonuclar
-            .iter()
-            .rev()
-            .map(|m| {
-                let ad = m.name.clone().unwrap_or_else(|| "arac".into());
-                let cagri = AracCagrisi::GenelFonksiyon {
-                    ad,
-                    parametreler_json: String::new(),
-                };
-                A::sistem_geri_bildirimi_uret(&cagri, &m.content)
-            })
-            .collect();
-        return Some(parcalar.join("\n\n"));
-    }
-    msgs.iter()
-        .rev()
-        .find(|m| m.role == "user")
-        .map(|m| m.content.clone())
-}
-
-/// Tohumlanmis gecmis kac karakteri asmasin.
-///
-/// Istem kutusuna sigmayan bir metin gonderilemez; ustelik uzun tohum her turda
-/// degil YALNIZCA dizi degistiginde gidiyor, yani bedeli seyrek.
-pub const TOHUM_AZAMI: usize = 24_000;
-
-/// Bos bir sohbet dizisine gonderilecek istem: gecmis + asil soru.
-///
-/// NEDEN: OpenAI API durumsuz, tarayici sohbeti durumlu. Normalde sureklilik
-/// tarayicinin kendi dizisinden gelir ve yalnizca son mesaji gondermek yeter.
-/// Ama dizi BOSSA — hesap degisti, kota bitti, tarayici bosta kapanip yeniden
-/// acildi — model onceki turlari hic gormemis olur ve gecmissiz cevaplar.
-///
-/// Ozet cikarmaya gerek yok: istemci gecmisin TAMAMINI zaten her istekte
-/// gonderiyor, biz atiyorduk. Elde olani kullanmak ek model cagrisindan,
-/// ek kotadan ve ozetleme kaybindan ucuz.
-///
-/// Sistem mesaji da giriyor: tarayici arayuzunde sistem istemi diye ayri bir yer
-/// yok, girmezse modelin yonergeleri kaybolur.
-pub fn tohum_istemi(msgs: &[Message], azami: usize) -> String {
-    let Some(son) = msgs.iter().rposition(|m| m.role == "user") else {
-        return String::new();
-    };
-    let asil = &msgs[son].content;
-
-    let etiket = |rol: &str| match rol {
-        "system" => "Yonerge",
-        "assistant" => "Sen",
-        _ => "Ben",
-    };
-
-    // Sondan basa topla: kirpmak gerekirse EN ESKI turlar dussun, yakin baglam kalsin.
-    let mut parcalar: Vec<String> = Vec::new();
-    let mut uzunluk = 0usize;
-    let mut atlanan = 0usize;
-    for m in msgs[..son].iter().rev() {
-        if m.content.trim().is_empty() {
-            continue;
-        }
-        let p = format!("{}: {}", etiket(&m.role), m.content.trim());
-        if uzunluk + p.chars().count() > azami {
-            atlanan += 1;
-            continue;
-        }
-        uzunluk += p.chars().count();
-        parcalar.push(p);
-    }
-    if parcalar.is_empty() {
-        return asil.clone();
-    }
-    parcalar.reverse();
-
-    let mut s = String::from(
-        "Bu konusma baska bir oturumdan devrediliyor; asagisi onceki turlar. \
-         Okuyup baglam olarak kullan, onlara ayrica cevap verme.\n\n--- onceki turlar ---\n",
-    );
-    // Sessiz kirpma yok: eksik varsa yazili olsun.
-    if atlanan > 0 {
-        s.push_str(&format!(
-            "(en eski {atlanan} mesaj uzunluk siniri nedeniyle atlandi)\n"
-        ));
-    }
-    s.push_str(&parcalar.join("\n\n"));
-    s.push_str("\n--- onceki turlar bitti ---\n\nSimdiki sorum:\n");
-    s.push_str(asil);
-    s
-}
-
 fn simdi() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0)
+}
+
+/// Otomasyon disinda bir giris penceresi acar ve hemen doner.
+///
+/// NEDEN AYRI UC: giris gercek bir insan tarafindan gercek bir tarayicida
+/// yapilmali (Google, WebDriver imzali tarayicida oturum acmayi engelliyor).
+/// Bu yuzden istek pencereyi acip doner; dogrulama ayri cagrilir.
+async fn hesap_ac(State(st): State<Arc<AppState>>, Json(iste): Json<HesapIste>) -> Response {
+    let (profil, saglayici) = match hesap_hedefi(&st, &iste) {
+        Ok(v) => v,
+        Err(yanit) => return yanit,
+    };
+    let url = saglayici.giris_url(iste.eposta.trim());
+    let root = st.panel.profiles_root.clone();
+    let Some(binary) = st.panel.browser.clone() else {
+        return hata(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "panel ortami yapilandirilmamis: tarayici ikilisi bilinmiyor",
+        );
+    };
+    let p = profil.clone();
+    let u = url.clone();
+    let sonuc = tokio::task::spawn_blocking(move || {
+        crate::browser::elle_giris(&root, &p, &binary, &u).map(|_| ())
+    })
+    .await;
+    match sonuc {
+        Ok(Ok(())) => Json(serde_json::json!({
+            "ok": true,
+            "profil": profil,
+            "url": url,
+            "mesaj": "Giris penceresi acildi. Girisi tamamlayip pencereyi KAPAT, sonra \"Girisi dogrula\"ya bas.",
+        }))
+        .into_response(),
+        Ok(Err(e)) => hata(
+            StatusCode::BAD_GATEWAY,
+            &format!("giris penceresi acilamadi: {e:#}"),
+        ),
+        Err(e) => hata(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            &format!("giris gorevi calistirilamadi: {e}"),
+        ),
+    }
+}
+
+/// Acilan profilde giris gercekten tamamlanmis mi? Tamamlandiysa hesabi
+/// yapilandirmaya yazar. Havuz acilista kuruldugu icin yanit `yeniden_baslat`
+/// isaretini de tasir — yalan soylemektense gerekli adimi acikca bildiririz.
+async fn hesap_dogrula(State(st): State<Arc<AppState>>, Json(iste): Json<HesapIste>) -> Response {
+    let (profil, saglayici) = match hesap_hedefi(&st, &iste) {
+        Ok(v) => v,
+        Err(yanit) => return yanit,
+    };
+    let Some(binary) = st.panel.browser.clone() else {
+        return hata(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "panel ortami yapilandirilmamis: tarayici ikilisi bilinmiyor",
+        );
+    };
+    let oturum = match crate::browser::Session::open(
+        &st.panel.profiles_root,
+        &profil,
+        &binary,
+        &st.panel.geckodriver,
+        true,
+    )
+    .await
+    {
+        Ok(o) => o,
+        Err(e) => return hata(StatusCode::BAD_GATEWAY, &format!("profil acilamadi: {e:#}")),
+    };
+    let durum = async {
+        oturum.goto(&saglayici.url).await?;
+        crate::browser::detect_login(&oturum.client, &saglayici.selectors).await
+    }
+    .await;
+    if let Err(h) = oturum.close().await {
+        eprintln!("uyari: giris oturumu kapatilamadi: {h:#}");
+    }
+
+    match durum {
+        Ok(crate::browser::LoginState::Ready) => {
+            match crate::kurulum::hesabi_yapilandirmaya_ekle(
+                &st.panel.config_yolu,
+                &saglayici.ad,
+                &profil,
+            ) {
+                Ok(true) => Json(serde_json::json!({
+                    "ok": true,
+                    "giris": true,
+                    "profil": profil,
+                    "eklendi": true,
+                    "yeniden_baslat": true,
+                    "mesaj": "Giris dogrulandi ve hesap kervan.toml'a eklendi. Havuz acilista kuruldugu icin Kervan yeniden baslatilmali.",
+                }))
+                .into_response(),
+                Ok(false) => Json(serde_json::json!({
+                    "ok": true,
+                    "giris": true,
+                    "profil": profil,
+                    "eklendi": false,
+                    "yeniden_baslat": false,
+                    "mesaj": "Giris dogrulandi; hesap zaten kervan.toml'da kayitli.",
+                }))
+                .into_response(),
+                Err(e) => hata(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &format!("hesap yapilandirmaya yazilamadi: {e:#}"),
+                ),
+            }
+        }
+        Ok(crate::browser::LoginState::NeedsLogin) => Json(serde_json::json!({
+            "ok": true,
+            "giris": false,
+            "profil": profil,
+            "mesaj": "Giris tamamlanmamis. Pencereyi acip girisi bitir, sonra tekrar dogrula.",
+        }))
+        .into_response(),
+        Ok(crate::browser::LoginState::Unknown) => Json(serde_json::json!({
+            "ok": true,
+            "giris": false,
+            "belirsiz": true,
+            "profil": profil,
+            "mesaj": "Ne istem kutusu ne giris baglantisi gorundu (dogrulama duvari ya da degisen arayuz olabilir). Pencereyi acip sayfayi kontrol et.",
+        }))
+        .into_response(),
+        Err(e) => hata(
+            StatusCode::BAD_GATEWAY,
+            &format!("giris durumu okunamadi: {e:#}"),
+        ),
+    }
+}
+
+/// Zarif kapanis. Yapilandirma degistiginde havuzu tazelemenin en kucuk yolu:
+/// Kervan kendi kendine kapanir, panel onu yeniden baslatir.
+async fn kapat(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    st.panel.kapatma.notify_waiters();
+    Json(serde_json::json!({ "ok": true, "mesaj": "Kervan kapaniyor." }))
 }
 
 pub async fn serve(state: Arc<AppState>, port: u16) -> Result<()> {
@@ -1162,13 +1319,31 @@ pub async fn serve(state: Arc<AppState>, port: u16) -> Result<()> {
     let adres = format!("127.0.0.1:{port}");
     let dinleyici = tokio::net::TcpListener::bind(&adres).await?;
     println!("Kervan dinlemede: http://{adres}/v1");
-    axum::serve(dinleyici, router(state)).await?;
+    let kapatma = state.panel.kapatma.clone();
+    axum::serve(dinleyici, router(state))
+        .with_graceful_shutdown(async move { kapatma.notified().await })
+        .await?;
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::hesap::eposta_gecerli_mi;
+
+    /// Yazim hatasi filtresi: '@' tek ve iki yaninda icerik olmali, alan adi
+    /// nokta tasimali. Gecerli bir eposta sessizce bos profil acmamali.
+    #[test]
+    fn eposta_filtresi_yazim_hatasini_yakalar() {
+        for iyi in ["a@b.co", "ercan.er@medeniyet.edu.tr", "x+y@z.io"] {
+            assert!(eposta_gecerli_mi(iyi), "{iyi} kabul edilmeliydi");
+        }
+        for kotu in [
+            "", "ercan", "@b.co", "ercan@", "ercan@b", "a b@c.co", "a@b.",
+        ] {
+            assert!(!eposta_gecerli_mi(kotu), "{kotu} reddedilmeliydi");
+        }
+    }
 
     fn m(role: &str, content: &str) -> Message {
         Message {
@@ -1390,6 +1565,7 @@ mod tests {
             yukari: kervan_yukari::Yukari::new(),
             yedek_deneme: true,
             azami_deneme: 3,
+            panel: Default::default(),
         });
 
         // 1. REST model çözümlenir

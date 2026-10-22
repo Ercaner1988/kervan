@@ -1,0 +1,11 @@
+[package]
+name = "kervan-istem"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Kervan istem kurulumu: OpenAI mesaj dizisinden tarayıcıya gidecek metin"
+
+[dependencies]
+kervan-akis = { path = "../akis" }
+serde.workspace = true
+serde_json.workspace = true

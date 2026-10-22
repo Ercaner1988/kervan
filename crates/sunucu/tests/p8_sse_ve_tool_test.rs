@@ -1,4 +1,4 @@
-﻿use serde_json::json;
+use serde_json::json;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
@@ -88,6 +88,7 @@ fn kur_test_state(
         yukari,
         yedek_deneme: true,
         azami_deneme: 3,
+        panel: Default::default(),
     })
 }
 

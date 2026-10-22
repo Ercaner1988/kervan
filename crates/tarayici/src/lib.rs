@@ -5,7 +5,7 @@
 //! modüllerin `crate::browser` gibi iç yolları bölmeden önceki gibi çalışır.
 
 pub mod browser;
-pub mod config;
+pub use kervan_config as config;
 pub mod kurulum;
 pub mod surec;
 pub mod tara;

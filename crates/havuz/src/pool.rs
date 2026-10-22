@@ -512,10 +512,24 @@ impl Pool {
             let simdi = Instant::now();
 
             // 1) Sabitlenmis hesap varsa onceligi onun — ama yalniz ayni saglayiciysa.
-            if let Some(anahtar) = oturum
-                && let Some(i) = self.sabitler.lock().await.get(&anahtar).copied()
-                && uygun.contains(&i)
-            {
+            //
+            // KILIT SIZINTISI DUZELTMESI (2026-10-21): eskiden bu kosul
+            // `if let Some(anahtar) = oturum && let Some(i) = self.sabitler.lock().await.get(..)`
+            // yaziliydi. `if let` kosulundaki gecici guard GOVDE boyunca yasiyor;
+            // yani global `sabitler` kilidi `kilitle(...)` (tarayici acilisi, dakikalar)
+            // boyunca ve hatta `Sabit::Birak` dalindaki `self.sabitler.lock().await.remove`
+            // sirasinda tutuluyordu. Ikincisi ayni gorevde ayni muteksi beklemek =
+            // KALICI KILITLENME. Olculdu: hesap duraklatilip baska hesap istendiginde
+            // istek 300 sn boyunca ne yanit ne hata uretti, ne de kayit dusuldu.
+            // Cozum: kilidi yalniz arama icin tut, sonucu kopyala, govdeye guardsiz gir.
+            let sabit_hedef = match oturum {
+                Some(anahtar) => {
+                    let hedef = self.sabitler.lock().await.get(&anahtar).copied();
+                    hedef.filter(|i| uygun.contains(i)).map(|i| (anahtar, i))
+                }
+                None => None,
+            };
+            if let Some((anahtar, i)) = sabit_hedef {
                 let karar =
                     sabit_karari(&mut *self.slots[i].state.lock().await, simdi, &self.pacing);
                 match karar {
@@ -1092,6 +1106,35 @@ mod tests {
             },
         );
         assert!(r.is_err());
+    }
+
+    /// SABIT KILIDI (2026-10-21 olcumu): konusma bir hesaba sabitlenmisken o hesap
+    /// duraklatilirsa `acquire_for` sabiti BIRAKIP yoluna devam etmeli. Eskiden
+    /// `if let` kosulundaki `sabitler` guard'i GOVDE boyunca yasiyordu; govdedeki
+    /// `self.sabitler.lock().await.remove(..)` ayni gorevde ayni muteksi bekliyor,
+    /// yani istek ne yanit ne hata uretmeden sonsuza kadar asili kaliyordu.
+    /// Canli olcum: 300 saniye sessizlik, kayit yok, `istek=0 hata=0`.
+    #[tokio::test]
+    async fn duraklatilan_sabit_hesap_kendini_kilitlemez() {
+        let p = havuz(Pacing {
+            min_delay_ms: 0,
+            jitter_ms: 0,
+            hourly_cap: 0,
+        });
+        p.duraklat(0, "elle duraklatildi").await;
+        p.sabitler.lock().await.insert(7, 0);
+
+        let sonuc = tokio::time::timeout(Duration::from_secs(2), p.acquire_for(Some(7), "gemini"))
+            .await
+            .expect("sabit birakma kendini kilitlememeli — istek asili kaldi");
+        assert!(
+            sonuc.is_err(),
+            "kullanilabilir hesap yokken acik hata donmeli, sessiz bekleme degil"
+        );
+        assert!(
+            !p.sabitler.lock().await.contains_key(&7),
+            "duraklatilan hesabin sabiti birakilmaliydi"
+        );
     }
 
     /// Supurucu MESGUL kimlige dokunmamali. `try_lock` yerine `lock` yazilsaydi bu

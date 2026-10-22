@@ -1,4 +1,4 @@
-﻿//! FR-4.4: akışsız Claude Messages ve Gemini generateContent yolu uçtan uca.
+//! FR-4.4: akışsız Claude Messages ve Gemini generateContent yolu uçtan uca.
 //! Sahte yukarı akış her koşuda rastgele bir nonce döner; istek yolu ve kimlik başlığı
 //! sahte sunucuda yakalanıp doğrulanır. İstemci yanıtı nonce'u taşımalı.
 
@@ -94,6 +94,7 @@ fn kur_test_state(
         yukari: kervan_yukari::Yukari::new(),
         yedek_deneme: true,
         azami_deneme: 3,
+        panel: Default::default(),
     })
 }
 

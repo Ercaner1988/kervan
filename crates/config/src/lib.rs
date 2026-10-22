@@ -1,4 +1,4 @@
-﻿//! `kervan.toml` — hesap listesi ve hiz butcesi.
+//! `kervan.toml` — hesap listesi ve hiz butcesi.
 //!
 //! Yol aranir (bkz. [`adaylar`]): `KERVAN_CONFIG` verilmisse yalniz orasi; yoksa
 //! calisma dizini, ikilinin yani, sonra kurulum klasoru. Hicbiri yoksa tek hesapli
@@ -36,15 +36,15 @@ pub struct Config {
     /// bu bolum degisir.
     #[serde(default)]
     pub providers: std::collections::HashMap<String, SaglayiciAyar>,
-    /// REST yukarı akış sağlayıcıları ([rest.<ad>]).
+    /// REST yukarı akış sağlayıcıları (`[rest.<ad>]`).
     #[serde(default)]
     pub rest: std::collections::HashMap<String, RestAyar>,
-    /// Sağlayıcı seçim stratejisi ([yonlendirme]).
+    /// Sağlayıcı seçim stratejisi (`[yonlendirme]`).
     #[serde(default)]
     pub yonlendirme: Yonlendirme,
 }
 
-/// Sağlayıcı seçim stratejisi ([yonlendirme]).
+/// Sağlayıcı seçim stratejisi (`[yonlendirme]`).
 ///
 /// Ad doğrulaması burada YAPILMAZ: geçerli adların tek kaynağı
 /// `kervan_havuz::router::RoutingStrategy`'dir ve bu crate ona bağımlı değil.
@@ -85,7 +85,7 @@ impl Default for Yonlendirme {
     }
 }
 
-/// REST yukarı akış sağlayıcı yapılandırması ([rest.<ad>]).
+/// REST yukarı akış sağlayıcı yapılandırması (`[rest.<ad>]`).
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct RestAyar {
@@ -139,6 +139,13 @@ pub struct SaglayiciAyar {
     pub prompt_input: Option<String>,
     pub login_hint: Option<String>,
     pub response: Option<String>,
+    /// Model menusunu acan dugme secicisi (olculur; tahmin edilmez).
+    pub model_dugmesi: Option<String>,
+    /// Menudeki oge secicisi.
+    pub model_oge: Option<String>,
+    /// Bu sitede GERCEKTEN secilebilen modeller. Bos/verilmezse site model
+    /// secimi sunmuyor sayilir ve model kimligi istemek acik hataya duser.
+    pub modeller: Option<Vec<ModelAyar>>,
     /// Bu saglayiciya ayni anda kac istek gidebilir. Verilmezse 1.
     ///
     /// Olculdu: ayni siteye ayni anda yedi profille gitmek Cloudflare'i interaktif
@@ -150,6 +157,18 @@ pub struct SaglayiciAyar {
     ///
     /// Tek etkisi: bu saglayicinin sekmesi acikken tarayici bosta kapatilmaz.
     pub cloudflare: Option<bool>,
+}
+
+/// `kervan.toml`da tanimli tek model secenegi.
+///
+/// `kod` istemciye gorunen model kimliginin son parcasidir
+/// (`kervan/gemini/yuksek`), `etiket` sitedeki gorunen metindir. Ayrilik sart:
+/// site metni Turkce ve degisken, kimlik ise sozlesme.
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ModelAyar {
+    pub kod: String,
+    pub etiket: String,
 }
 
 /// Kota ogrenicinin ayarlari.
@@ -344,6 +363,40 @@ impl Config {
                 cakisan.join(", ")
             );
         }
+        // Model menusu UCU BIRLIKTE anlamli: dugme + oge + modeller. Yarim tanim
+        // "model secimi var" sanilip sessizce varsayilan modelle cevap verilmesine
+        // yol acabilir; o yuzden yuklemede reddedilir.
+        for (ad, s) in &self.providers {
+            let parca = (
+                s.model_dugmesi.is_some(),
+                s.model_oge.is_some(),
+                s.modeller.as_ref().is_some_and(|m| !m.is_empty()),
+            );
+            match parca {
+                (false, false, false) => {}
+                (true, true, true) => {
+                    let modeller = s.modeller.as_deref().unwrap_or_default();
+                    let mut kodlar = std::collections::BTreeSet::new();
+                    for m in modeller {
+                        if m.kod.trim().is_empty() || m.etiket.trim().is_empty() {
+                            anyhow::bail!(
+                                "[providers.\"{ad}\"] modeller icinde kod ve etiket bos olamaz"
+                            );
+                        }
+                        if !kodlar.insert(m.kod.as_str()) {
+                            anyhow::bail!(
+                                "[providers.\"{ad}\"] model kodu tekrar ediyor: '{}'",
+                                m.kod
+                            );
+                        }
+                    }
+                }
+                _ => anyhow::bail!(
+                    "[providers.\"{ad}\"] model ayari eksik: model_dugmesi, model_oge ve \
+                     modeller UCU BIRLIKTE gerekli"
+                ),
+            }
+        }
         Ok(())
     }
 
@@ -399,6 +452,41 @@ pub fn varsayilan_yol() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Model menusu yarim tanimlanirsa yukleme reddedilmeli: "model secimi var"
+    /// sanilip varsayilan modelle cevap vermek en tehlikeli sessiz hatadir.
+    #[test]
+    fn eksik_model_ayari_reddedilir() {
+        let t = r#"
+            [[accounts]]
+            name = "a"
+            [providers."gemini"]
+            model_dugmesi = "button[aria-label*='Mod secici']"
+            modeller = [{ kod = "orta", etiket = "Orta" }]
+        "#;
+        let c: Config = toml::from_str(t).expect("toml okunmali");
+        let h = c.dogrula().unwrap_err().to_string();
+        assert!(h.contains("UCU BIRLIKTE"), "beklenen mesaj, gelen: {h}");
+    }
+
+    /// Ayni model kodu iki kez tanimlanirsa hangisinin uygulanacagi belirsizdir.
+    #[test]
+    fn tekrarlanan_model_kodu_reddedilir() {
+        let t = r#"
+            [[accounts]]
+            name = "a"
+            [providers."gemini"]
+            model_dugmesi = "b"
+            model_oge = "o"
+            modeller = [
+              { kod = "orta", etiket = "Orta" },
+              { kod = "orta", etiket = "Dengeli" },
+            ]
+        "#;
+        let c: Config = toml::from_str(t).expect("toml okunmali");
+        let h = c.dogrula().unwrap_err().to_string();
+        assert!(h.contains("tekrar ediyor"), "beklenen mesaj, gelen: {h}");
+    }
 
     #[test]
     fn hesaplar_ve_hiz_butcesi_okunur() {

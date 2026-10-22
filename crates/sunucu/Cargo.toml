@@ -14,6 +14,7 @@ kervan-akis = { path = "../akis" }
 kervan-yukari = { path = "../yukari" }
 kervan-direnc = { path = "../direnc" }
 kervan-eklenti = { path = "../eklenti" }
+kervan-istem = { path = "../istem" }
 tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -49,6 +49,7 @@ fn durum() -> Arc<AppState> {
         yukari: kervan_yukari::Yukari::new(),
         yedek_deneme: true,
         azami_deneme: 3,
+        panel: Default::default(),
     })
 }
 

@@ -2283,6 +2283,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "kervan-config"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "kervan-direnc"
 version = "0.1.0"
 dependencies = [
@@ -2332,6 +2341,15 @@ dependencies = [
  "serde_json",
  "tokio",
  "toml",
+]
+
+[[package]]
+name = "kervan-istem"
+version = "0.1.0"
+dependencies = [
+ "kervan-akis",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2392,6 +2410,7 @@ dependencies = [
  "kervan-direnc",
  "kervan-eklenti",
  "kervan-havuz",
+ "kervan-istem",
  "kervan-mcp",
  "kervan-saglayici",
  "kervan-tarayici",
@@ -2422,6 +2441,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "fantoccini",
+ "katla",
+ "kervan-config",
  "serde",
  "serde_json",
  "tokio",

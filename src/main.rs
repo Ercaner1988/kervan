@@ -113,9 +113,9 @@ async fn main() -> Result<()> {
             &defter_saglayici,
             &eszamanli,
             pool::Ortam {
-                profiles_root,
-                browser,
-                geckodriver,
+                profiles_root: profiles_root.clone(),
+                browser: browser.clone(),
+                geckodriver: geckodriver.clone(),
                 headless,
             },
         )?;
@@ -182,6 +182,13 @@ async fn main() -> Result<()> {
             yukari: kervan_yukari::Yukari::new(),
             yedek_deneme: cfg.yonlendirme.yedek_deneme,
             azami_deneme: cfg.yonlendirme.azami_deneme,
+            panel: server::PanelOrtami {
+                profiles_root,
+                browser: Some(browser),
+                geckodriver,
+                config_yolu: cfg_yolu,
+                kapatma: Default::default(),
+            },
         });
 
         // Bosta tarayici supurucusu. Havuzun buyuyebilmesini saglayan sey bu:
@@ -369,16 +376,44 @@ async fn main() -> Result<()> {
         ),
     }
 
+    // --model <kod>: secilecek model kodu (`kervan.toml` > [providers."x"] > modeller).
+    // --sor ile birlikte kullanilir; model secimi uretim yoluyla AYNI fonksiyondan gecer.
+    let model_etiketi = match args.iter().position(|a| a == "--model") {
+        Some(i) => {
+            let kod = args.get(i + 1).context("--model icin model kodu gerekli")?;
+            let menu = saglayici.model.as_ref().with_context(|| {
+                format!(
+                    "'{}' icin model secimi tanimli degil (kervan.toml > [providers.\"{}\"])",
+                    saglayici.ad, saglayici.ad
+                )
+            })?;
+            let etiket = menu.etiket(kod).with_context(|| {
+                format!(
+                    "tanimsiz model kodu '{kod}'. Tanimli: {}",
+                    menu.kodlar().join(", ")
+                )
+            })?;
+            println!("model        : {kod} => {etiket}");
+            Some(etiket.to_string())
+        }
+        None => None,
+    };
+
     // --sor "<istem>" verildiyse gercek bir tur at.
     if let Some(i) = args.iter().position(|a| a == "--sor") {
         let istem = args.get(i + 1).context("--sor icin istem metni gerekli")?;
         println!("\nistem        : {istem}");
         let t = std::time::Instant::now();
+        let model_cagrisi = match (&saglayici.model, &model_etiketi) {
+            (Some(m), Some(e)) => Some((m, e.as_str())),
+            _ => None,
+        };
         match browser::ask(
             &oturum.client,
             &saglayici.selectors,
             istem,
             YANIT_ZAMAN_ASIMI,
+            model_cagrisi,
         )
         .await
         {
@@ -413,6 +448,48 @@ async fn main() -> Result<()> {
         );
     }
 
+    // --tikla <css>: olcum icin bir ogeye tikla (model menusunu acmak gibi).
+    // --incele'den ONCE calisir; menu icerigi ancak tiklamadan sonra DOM'a girer.
+    if let Some(i) = args.iter().position(|a| a == "--tikla") {
+        let secici = args
+            .get(i + 1)
+            .context("--tikla icin bir CSS secici gerekli")?;
+        browser::tikla_ilk(&oturum.client, secici).await?;
+        println!("\ntiklandi     : {secici}");
+    }
+
+    // --tikla-metin "<css>::<metin>": menudeki metne gore ogeye tikla (olcum).
+    if let Some(i) = args.iter().position(|a| a == "--tikla-metin") {
+        let ham = args
+            .get(i + 1)
+            .context("--tikla-metin icin \"<css>::<metin>\" gerekli")?;
+        let (secici, metin) = ham
+            .split_once("::")
+            .context("--tikla-metin bicimi: \"<css>::<metin>\"")?;
+        browser::metinle_tikla(&oturum.client, secici, metin).await?;
+        println!("\ntiklandi     : {secici} -> {metin}");
+    }
+
+    // --metin <css>: ilk eslesen ogenin metni (secili modeli okumak icin).
+    if let Some(i) = args.iter().position(|a| a == "--metin") {
+        let secici = args.get(i + 1).context("--metin icin CSS secici gerekli")?;
+        println!(
+            "\nmetin        : {:?}",
+            browser::oge_metni(&oturum.client, secici).await?
+        );
+    }
+
+    // --js <dosya>: olcum icin sayfada JS calistir (durum okumak, menu acmak).
+    if let Some(i) = args.iter().position(|a| a == "--js") {
+        let yol = args.get(i + 1).context("--js icin JS dosyasi gerekli")?;
+        let kod =
+            std::fs::read_to_string(yol).with_context(|| format!("JS dosyasi okunamadi: {yol}"))?;
+        println!(
+            "\njs           : {}",
+            browser::js_calistir(&oturum.client, &kod).await?
+        );
+    }
+
     // --incele <css>: bir secicinin esledigi ogeleri tek tek dok.
     if let Some(i) = args.iter().position(|a| a == "--incele") {
         let secici = args
@@ -433,7 +510,18 @@ async fn main() -> Result<()> {
 
 /// Profiller depo disinda tutulur — icinde cerez ve oturum var, asla commit'lenmez.
 /// Deger alan bayraklar. Bunlardan sonraki arguman DEGERDIR, hesap adi degil.
-const DEGERLI_BAYRAKLAR: [&str; 5] = ["--saglayici", "--port", "--url", "--sor", "--incele"];
+const DEGERLI_BAYRAKLAR: [&str; 10] = [
+    "--saglayici",
+    "--port",
+    "--url",
+    "--sor",
+    "--incele",
+    "--tikla",
+    "--tikla-metin",
+    "--metin",
+    "--js",
+    "--model",
+];
 
 /// Ilk konumsal arguman = hesap adi.
 ///

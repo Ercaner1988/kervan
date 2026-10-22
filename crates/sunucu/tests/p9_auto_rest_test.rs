@@ -1,4 +1,4 @@
-﻿//! `auto` isteğinin REST adayına düşmesi ve `/yonlendirme` uçlarının
+//! `auto` isteğinin REST adayına düşmesi ve `/yonlendirme` uçlarının
 //! gerçek seçim listesini göstermesi. `p5_e2e` yalnız `kervan/<ad>` açık adını
 //! sınıyordu; burada akıllı yönlendirme yolu sınanır.
 
@@ -48,6 +48,7 @@ fn durum(rest_hedefleri: std::collections::HashMap<String, kervan_yukari::Hedef>
         yukari: kervan_yukari::Yukari::new(),
         yedek_deneme: true,
         azami_deneme: 3,
+        panel: Default::default(),
     })
 }
 

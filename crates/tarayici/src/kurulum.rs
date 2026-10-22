@@ -182,6 +182,33 @@ async fn girisli_mi(
     Ok(durum == LoginState::Ready)
 }
 
+/// Tek bir hesabi yapilandirmanin sonuna ekler.
+///
+/// Panelin "hesap ekle" akisi bunu kullanir: giris dogrulandiktan sonra satir
+/// yazilir. Zaten kayitli hesap icin `false` doner — ayni hesabi iki kez yazmak
+/// havuzda iki yuva acar ve kota muhasebesi ikiye bolunur.
+pub fn hesabi_yapilandirmaya_ekle(yol: &Path, saglayici: &str, profil: &str) -> Result<bool> {
+    let mevcut: Vec<String> = Config::load(yol)
+        .map(|c| c.accounts.into_iter().map(|a| a.name).collect())
+        .unwrap_or_default();
+    if mevcut.iter().any(|a| a == profil) {
+        return Ok(false);
+    }
+    // Profil adi epostadan turetilir ve tirnak/ters bolu icermez (`profil_adi`
+    // bunlari tireye cevirir), yani TOML temel dizesine dogrudan girebilir.
+    let metin = format!(
+        "\n# Kervan panel tarafindan eklendi\n\n[[accounts]]\nname = \"{profil}\"\nprovider = \"{saglayici}\"\n"
+    );
+    use std::io::Write;
+    let mut d = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(yol)
+        .with_context(|| format!("yapilandirma acilamadi: {}", yol.display()))?;
+    d.write_all(metin.as_bytes())?;
+    Ok(true)
+}
+
 /// Kurulan hesaplari `kervan.toml`'un SONUNA ekler.
 ///
 /// Dosya ayristirilip yeniden yazilmiyor: oyle yapmak kullanicinin yorumlarini ve
@@ -311,5 +338,29 @@ mod tests {
             profil_adi("ercan@gmail.com"),
             profil_adi("ercan@outlook.com")
         );
+    }
+
+    /// Panelden eklenen hesap yapilandirmaya yazilmali ve AYNI hesap ikinci kez
+    /// yazilmamali: iki satir havuzda iki yuva acar, kota muhasebesi ikiye bolunur.
+    #[test]
+    fn panel_hesabi_bir_kez_eklenir() {
+        let dir = std::env::temp_dir().join(format!("kervan-kurulum-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let yol = dir.join("kervan.toml");
+        std::fs::write(
+            &yol,
+            "[pacing]\nmin_delay_ms = 3000\njitter_ms = 2000\nhourly_cap = 30\n",
+        )
+        .unwrap();
+
+        assert!(hesabi_yapilandirmaya_ekle(&yol, "gemini", "a@b.co").unwrap());
+        assert!(!hesabi_yapilandirmaya_ekle(&yol, "gemini", "a@b.co").unwrap());
+
+        let metin = std::fs::read_to_string(&yol).unwrap();
+        assert_eq!(metin.matches("name = \"a@b.co\"").count(), 1, "{metin}");
+        let cfg = Config::load(&yol).unwrap();
+        let adlar: Vec<String> = cfg.accounts.into_iter().map(|a| a.name).collect();
+        assert_eq!(adlar, vec!["a@b.co".to_string()]);
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

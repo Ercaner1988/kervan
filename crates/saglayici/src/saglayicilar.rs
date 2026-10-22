@@ -1,4 +1,4 @@
-﻿//! Saglayici tanimlari ve kayit defteri.
+//! Saglayici tanimlari ve kayit defteri.
 //!
 //! SECICILER KODA GOMULU DEGIL: buradakiler yalnizca VARSAYILAN. Site arayuzu
 //! degistiginde ya da bir secici yanlis ciktiginda `kervan.toml` duzenlenir, yeniden
@@ -54,6 +54,9 @@ fn p(ad: &str, url: &str, giris: &str, istem: &str, giris_isareti: &str, yanit: 
             response: yanit.to_string(),
         },
         cloudflare: false,
+        // Model menusu YALNIZ kervan.toml'da olculmus secicilerle tanimlanir;
+        // yerlesik varsayilan olarak tahmin edilmez.
+        model: None,
     }
 }
 
@@ -253,10 +256,68 @@ pub fn kayit_defteri(ayarlar: &HashMap<String, SaglayiciAyar>) -> HashMap<String
             if let Some(v) = a.cloudflare {
                 sag.cloudflare = v;
             }
+            // Model menusu UCU BIRLIKTE anlamli: dugme + oge + modeller.
+            // Yarim tanim sessiz bir yanlis model riski tasidigi icin komple
+            // reddediliyor; eksik yapilandirma "model secimi yok" sayilir.
+            match (&a.model_dugmesi, &a.model_oge, &a.modeller) {
+                (Some(dugme), Some(oge), Some(modeller)) if !modeller.is_empty() => {
+                    sag.model = Some(crate::browser::ModelMenusu {
+                        dugme: dugme.clone(),
+                        oge: oge.clone(),
+                        modeller: modeller
+                            .iter()
+                            .map(|m| crate::browser::ModelSecenegi {
+                                kod: m.kod.clone(),
+                                etiket: m.etiket.clone(),
+                            })
+                            .collect(),
+                    });
+                }
+                (None, None, None) => {}
+                _ => {
+                    // Buraya dusmek `Config::dogrula` atlanmis demektir; sessiz
+                    // gecmek "model secimi var" yanilsamasi uretirdi.
+                    eprintln!(
+                        "uyari: [providers.\"{}\"] model ayari eksik; model secimi kapali sayildi",
+                        sag.ad
+                    );
+                }
+            }
         }
         d.insert(sag.ad.clone(), Arc::new(sag));
     }
     d
+}
+
+/// Model kimligini `(saglayici, model kodu)` ikilisine cozer.
+///
+/// Bicim: `kervan/<saglayici>` (model kodu yok = site varsayilani) ya da
+/// `kervan/<saglayici>/<kod>` (`kervan/gemini/yuksek`).
+///
+/// NEDEN AYRI FONKSIYON: eski kimlikler (`kervan/gemini-3.1-pro`) saglayiciyi
+/// ICERME ile buluyordu, yani model adi HIC okunmuyordu ve istek sessizce site
+/// varsayilaniyla gidiyordu. Artik kalan parca bir model kodu olarak ele alinir;
+/// tanimli degilse istek acik hataya duser.
+pub fn model_coz(
+    model: &str,
+    defter: &HashMap<String, Arc<Provider>>,
+) -> Option<(String, Option<String>)> {
+    let sag = model_saglayicisi(model, defter)?;
+    let govde = model.trim().strip_prefix("kervan/").unwrap_or(model.trim());
+    match govde.strip_prefix(sag.as_str()) {
+        Some(kalan) => {
+            let kod = kalan.trim_start_matches('/').trim();
+            if kod.is_empty() {
+                Some((sag, None))
+            } else {
+                Some((sag, Some(kod.to_string())))
+            }
+        }
+        // Saglayici adi kimligin icinde geciyor ama onek degil (eski bicim).
+        // Model kodu okunamadigi icin "varsayilan" demek yanlis olurdu; kalan
+        // metnin tamami kod sayilir ve tanimsizsa hata verir.
+        None => Some((sag, Some(govde.to_string()))),
+    }
 }
 
 pub fn bul(defter: &HashMap<String, Arc<Provider>>, ad: &str) -> Result<Arc<Provider>> {
@@ -293,6 +354,30 @@ mod tests {
 
     fn defter() -> HashMap<String, Arc<Provider>> {
         kayit_defteri(&HashMap::new())
+    }
+
+    /// Model kimligi iki parcaya ayrilmali: saglayici + (varsa) model kodu.
+    ///
+    /// Bozulursa iki sessiz hata birden olusur: model kodu okunmaz (istek site
+    /// varsayilaniyla gider) ya da saglayici adi kod sanilir (400).
+    #[test]
+    fn model_kimligi_saglayici_ve_koda_ayrilir() {
+        let d = defter();
+        assert_eq!(
+            model_coz("kervan/gemini", &d),
+            Some(("gemini".to_string(), None))
+        );
+        assert_eq!(
+            model_coz("kervan/gemini/yuksek", &d),
+            Some(("gemini".to_string(), Some("yuksek".to_string())))
+        );
+        // Eski (surum ekli) kimlik: kalan parca model kodu sayilir, sessizce
+        // varsayilana dusulmez.
+        assert_eq!(
+            model_coz("kervan/gemini-3.1-pro", &d),
+            Some(("gemini".to_string(), Some("-3.1-pro".to_string())))
+        );
+        assert_eq!(model_coz("bilinmeyen/model", &d), None);
     }
 
     /// Eski yapilandirmalardaki model kimligi calismaya devam etmeli; yeni

@@ -1,4 +1,4 @@
-﻿//! Hesap basina yalitilmis Firefox oturumu (WebDriver / geckodriver uzerinden).
+//! Hesap basina yalitilmis Firefox oturumu (WebDriver / geckodriver uzerinden).
 //!
 //! NEDEN FIREFOX: Ercan'in gunluk tarayicisi Zen (Firefox tabanli). Sistemi kendi
 //! ortamiyla tutarli tutmak istedi. Bedeli: CDP kullanilamiyor, geckodriver adli ayri
@@ -15,6 +15,17 @@ use std::process::{Child, Command, Stdio};
 
 use anyhow::{Context, Result, bail};
 use fantoccini::{Client, ClientBuilder, Locator};
+
+// Alt moduller: iskelet (bu dosya) + model menusu + olcum araclari. Ayri dosyalar
+// cunku bu dosya 1500 satir sinirinda ve iki is farkli sorumluluklar.
+mod model;
+mod olcum;
+
+#[cfg(test)]
+pub(crate) use model::metin_iceriyor_mu;
+pub(crate) use model::model_sec;
+pub use model::{ModelMenusu, ModelSecenegi, SecimSonucu};
+pub use olcum::{js_calistir, metinle_tikla, oge_dokumu, oge_metni, tikla_ilk};
 
 /// Gizli pencerenin konumu: gorunur masaustunun sagi/altinda kalan bos alan.
 /// WebDriver `set_window_rect` isaretsiz sayi aliyor, yani negatif koordinat yok;
@@ -84,7 +95,7 @@ impl Session {
         }
 
         let port = bos_port()?;
-        let driver = Command::new(geckodriver)
+        let mut driver = Command::new(geckodriver)
             .arg("--port")
             .arg(port.to_string())
             .stdout(Stdio::null())
@@ -102,11 +113,26 @@ impl Session {
         // pencereyi kucultup geri yukleyerek olur. Yan fayda: claude.ai headless'ta
         // bot duvarina carpiyordu ("Performing security verification"), gercek
         // pencerede o duvar cikmiyor.
-        let args = vec!["-profile".to_string(), profile_dir.display().to_string()];
+        let args = otomasyon_arglari(&profile_dir);
         let _ = headless;
         let caps = yetenekler(&browser.0, args);
 
-        let client = baglan(port, caps).await?;
+        // Baglanti kurulamazsa geckodriver sureci SIZMASIN. Eskiden `?` ile
+        // cikiliyordu ve surucu arkada kaliyordu (olculdu: 21:22'de baslamis iki
+        // oksuz geckodriver). Sizinti, sonraki denemelerde port/durum karisikligina
+        // yol aciyor.
+        let client = match baglan(port, caps).await {
+            Ok(c) => c,
+            Err(e) => {
+                if let Err(h) = driver.kill() {
+                    eprintln!("uyari: geckodriver kapatilamadi: {h}");
+                }
+                if let Err(h) = driver.wait() {
+                    eprintln!("uyari: geckodriver beklenemedi: {h}");
+                }
+                return Err(e);
+            }
+        };
         let s = Self {
             client,
             driver,
@@ -244,6 +270,35 @@ fn profil_kilitli(dir: &Path) -> bool {
     false
 }
 
+/// Otomasyon yolunun tarayici argumanlari.
+///
+/// `-no-remote` SART (elle_giris ile ayni gerekce): onsuz Zen zaten calisan ornege
+/// devredip acilir ve WebDriver'in bekledigi Marionette kapisi hic acilmaz — sonuc,
+/// `baglan` sonsuza kadar bekler. Olculdu 2026-10-21: havuz istegi 240 sn'yi asdi,
+/// ne hata ne kayit dusuldu.
+///
+/// NEDEN AYRI FONKSIYON: bu liste `Command`'a gomulu kaldigi surece sinanamiyordu,
+/// yani `-no-remote` bir kez daha sessizce dusse hata yine "asili kalma" olarak
+/// gorunurdu. Simdi ayni liste testte dogrudan okunuyor; iki baslatma yolu
+/// (`otomasyon_arglari` / `elle_giris_arglari`) ayrisirsa test kirmizi verir.
+pub fn otomasyon_arglari(profile_dir: &Path) -> Vec<String> {
+    vec![
+        "-no-remote".to_string(),
+        "-profile".to_string(),
+        profile_dir.display().to_string(),
+    ]
+}
+
+/// Elle giris yolunun argumanlari: ayni `-no-remote` + `-profile`, arti hedef adres.
+pub fn elle_giris_arglari(profile_dir: &Path, url: &str) -> Vec<String> {
+    vec![
+        "-no-remote".to_string(),
+        "-profile".to_string(),
+        profile_dir.display().to_string(),
+        url.to_string(),
+    ]
+}
+
 /// Hesabin profiliyle **otomasyon disinda**, sira bir tarayici penceresi acar.
 ///
 /// NEDEN GEREKLI: Google, WebDriver ile surulen tarayicida oturum acmayi engelliyor
@@ -282,10 +337,7 @@ pub fn elle_giris(
     profil_tohumla(&dir)?;
 
     Command::new(&browser.0)
-        .arg("-no-remote")
-        .arg("-profile")
-        .arg(&dir)
-        .arg(url)
+        .args(elle_giris_arglari(&dir, url))
         .spawn()
         .with_context(|| format!("tarayici baslatilamadi: {}", browser.0.display()))
 }
@@ -376,20 +428,38 @@ async fn baglan(
     // asimi var; olculdu 2026-08-18 — cevap vermeyen bir surucude tek istek
     // 92 saniye surdu. Sure tavani, deneme sayisindan bagimsiz olarak dogruyu
     // soyler ve hata mesajindaki sure gercekten dogru olur.
-    const SURUCU_BEKLEME: std::time::Duration = std::time::Duration::from_secs(15);
+    //
+    // 2026-10-21 DUZELTMESI: yes, `connect` TEK BASINA sinirsiz bekleyebiliyordu.
+    // Olculdu: havuz istegi 240 sn'yi asti, ne hata dondu ne kayit dusuldu; arkada
+    // oksuz geckodriver kaldi. Artik her deneme `timeout` ile sarili; toplam sure
+    // gercekten sinirli. Sure 15 sn'den 90 sn'ye cikti cunku soguk bir Zen acilisi
+    // Marionette kapisini 20-40 sn'de aciyor — 15 sn'lik tavan gercek acilislari da
+    // kesecekti. Ust sinir yine de kesin: 90 sn.
+    const SURUCU_BEKLEME: std::time::Duration = std::time::Duration::from_secs(90);
     let url = format!("http://127.0.0.1:{port}");
-    let mut son = None;
+    let mut son: Option<String> = None;
     let basladi = std::time::Instant::now();
     while basladi.elapsed() < SURUCU_BEKLEME {
-        match ClientBuilder::native()
-            .capabilities(caps.clone())
-            .connect(&url)
-            .await
-        {
-            Ok(c) => return Ok(c),
-            Err(e) => {
-                son = Some(e);
+        let kalan = SURUCU_BEKLEME.saturating_sub(basladi.elapsed());
+        let deneme = tokio::time::timeout(
+            kalan,
+            ClientBuilder::native()
+                .capabilities(caps.clone())
+                .connect(&url),
+        )
+        .await;
+        match deneme {
+            Ok(Ok(c)) => return Ok(c),
+            Ok(Err(e)) => {
+                son = Some(e.to_string());
                 tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+            }
+            Err(_) => {
+                son = Some(format!(
+                    "{} sn icinde oturum acilmadi (tarayici Marionette kapisini acmadi)",
+                    SURUCU_BEKLEME.as_secs()
+                ));
+                break;
             }
         }
     }
@@ -398,8 +468,7 @@ async fn baglan(
          ORTAMSALDIR, hesapla ilgisi yoktur: surucu ikilisi calisiyor mu, port kullanimda \
          mi, baska bir Kervan ornegi acik mi diye bak. Ayrinti: {}",
         SURUCU_BEKLEME.as_secs(),
-        son.map(|e| e.to_string())
-            .unwrap_or_else(|| "deneme yapilamadi".into())
+        son.unwrap_or_else(|| "deneme yapilamadi".into())
     )
 }
 
@@ -453,6 +522,9 @@ pub struct Provider {
     /// kapatilmaz. Cunku her yeniden acilis Cloudflare icin TAZE bir oturum, yani
     /// yeni bir risk degerlendirmesi; ac-kapa dongusu sinamayi davet ediyor.
     pub cloudflare: bool,
+    /// Model menusu: `kervan.toml`da OLCULMUS secicilerle tanimlanir.
+    /// `None` ise sitede model secimi yapilamiyor; model kimligi istemek acik hatadir.
+    pub model: Option<ModelMenusu>,
 }
 
 impl Provider {
@@ -547,7 +619,23 @@ pub async fn ask(
     sel: &Selectors,
     prompt: &str,
     zaman_asimi: std::time::Duration,
+    model: Option<(&ModelMenusu, &str)>,
 ) -> Result<String> {
+    // Model secimi ISTEM YAZILMADAN ONCE yapilir: sayfa model degistirirken istemi
+    // yutabiliyor (olculdu: gemini menusu acikken yazilan istem kutuya dusmedi).
+    // Secim uygulanamazsa `model_sec` gurultulu hata verir ve istek hic gitmez —
+    // sessizce varsayilan modelle cevap vermek yok.
+    if let Some((menu, etiket)) = model {
+        let sonuc = model_sec(
+            c,
+            menu,
+            etiket,
+            zaman_asimi.min(std::time::Duration::from_secs(60)),
+        )
+        .await?;
+        println!("model        : {etiket} ({sonuc:?})");
+    }
+
     // Once sayfanin yerlesmesini bekle. Beklemeden bakmak, sayfa henuz cizilmemisken
     // "secici kirilmis" diye sahte hata veriyordu (olculdu).
     let kutu = kutuyu_bekle(c, sel).await?;
@@ -1026,32 +1114,6 @@ pub async fn sayfada_eposta(c: &Client) -> Option<String> {
             }
         })
         .map(|s| s.to_ascii_lowercase())
-}
-
-/// Bir secicinin esledigi ogeleri TEK TEK doker: sinif, data-testid ve metin basi.
-///
-/// Sayim yetmedigi yerde gerekiyor. Ornegin bir "tur satiri" secicisi hem kullanici
-/// hem model turunu esliyorsa, sonuncusunu okumak istemi cevap sanmak demek olur —
-/// hangi ogenin kime ait oldugunu ancak boyle gorursun.
-pub async fn oge_dokumu(c: &Client, secici: &str) -> Result<String> {
-    let ogeler = c.find_all(Locator::Css(secici)).await.unwrap_or_default();
-    let mut s = format!("inceleme '{secici}': {} oge\n", ogeler.len());
-    for (i, e) in ogeler.iter().enumerate() {
-        let al = |v: Option<String>, n: usize| -> String {
-            v.unwrap_or_default().chars().take(n).collect()
-        };
-        let tid = al(e.attr("data-testid").await.ok().flatten(), 40);
-        let sinif = al(e.attr("class").await.ok().flatten(), 70);
-        // aria-label ve href, hesap kimligini tasiyan yerler: Google'in hesap
-        // dugmesi eposta adresini aria-label icinde veriyor.
-        let aria = al(e.attr("aria-label").await.ok().flatten(), 90);
-        let href = al(e.attr("href").await.ok().flatten(), 70);
-        let metin = al(Some(e.text().await.unwrap_or_default()), 60);
-        s.push_str(&format!(
-            "  [{i}] testid={tid:?} aria={aria:?}\n      href={href:?}\n      class={sinif:?}\n      text={metin:?}\n"
-        ));
-    }
-    Ok(s)
 }
 
 /// Canlilik sinamasi: her secicinin sayfada KAC oge esledigini ve sonuncusunun

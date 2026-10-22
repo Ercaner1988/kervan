@@ -1,5 +1,21 @@
 use super::*;
 
+/// Buyuk/kucuk harf ve bosluk farkini yutan icerme sinamasi.
+///
+/// Menudeki metin "3.1 PRO", " Yüksek ", "Gemini\nOtomatik" gibi gelebiliyor;
+/// ham `contains` bunlarin cogunu kacirir ve var olan secenek "menude yok"
+/// sayilirdi.
+#[test]
+fn model_metni_normalize_edilerek_karsilastirilir() {
+    assert!(metin_iceriyor_mu("3.1 PRO", "3.1 Pro"));
+    assert!(metin_iceriyor_mu("Gemini\nOtomatik", "otomatik"));
+    assert!(metin_iceriyor_mu("  Yüksek  ", "yüksek"));
+    assert!(!metin_iceriyor_mu("Düşük", "yüksek"));
+    // Ortak `katla` sandigi aksanlari da atar: "yuksek" = "Yüksek", "isik" = "IŞIK".
+    assert!(metin_iceriyor_mu("Yüksek", "yuksek"));
+    assert!(metin_iceriyor_mu("IŞIK", "isik"));
+}
+
 /// Profil dizini hesap adina gore ayrilmali — yalitimin tamami buna dayaniyor.
 /// Bozulursa hesaplar birbirinin cerezini gorur, ki OmniRoute'un paylasilan
 /// tarayici baglaminda yasadigi sorun tam olarak budur.
@@ -25,6 +41,7 @@ fn arti_isareti_kodlanir() {
         },
         giris_kalibi: "https://o/?Email={eposta}".into(),
         cloudflare: false,
+        model: None,
     };
     assert_eq!(
         p.giris_url("ad+etiket@gmail.com"),
@@ -191,6 +208,43 @@ fn kilit_dosya_varligina_degil_tutuluyor_olmasina_bakar() {
     );
 
     std::fs::remove_dir_all(&dir).ok();
+}
+
+/// `-no-remote` iki baslatma yolunda da bulunmali.
+///
+/// ASIL HATA (olculdu 2026-10-21): otomasyon yolunda bu bayrak yoktu; Zen zaten
+/// calisan ornege devrediyor, Marionette kapisi acilmiyor, `baglan` icindeki
+/// `connect` sinirsiz bekliyordu — havuz istegi 240 sn+ sessizce asili kaliyor,
+/// ne hata ne kayit dusuluyordu. Argumanlar `Command` cagrisina gomulu oldugu icin
+/// hicbir test bunu goremiyordu; bu test o boslugu kapatir.
+#[test]
+fn iki_yol_da_no_remote_ve_profil_tasir() {
+    let dir = Path::new("C:\\kervan\\profiles\\hesap-a");
+    let otomasyon = otomasyon_arglari(dir);
+    let elle = elle_giris_arglari(dir, "https://gemini.google.com/app");
+
+    for (ad, args) in [("otomasyon", &otomasyon), ("elle giris", &elle)] {
+        assert!(
+            args.iter().any(|a| a == "-no-remote"),
+            "{ad} yolunda -no-remote yok: Zen calisan ornege devreder ve Marionette acilmaz"
+        );
+        let i = args
+            .iter()
+            .position(|a| a == "-profile")
+            .unwrap_or_else(|| panic!("{ad} yolunda -profile yok"));
+        assert_eq!(
+            args.get(i + 1).map(String::as_str),
+            Some(dir.display().to_string().as_str()),
+            "{ad} yolunda profil dizini yanlis"
+        );
+    }
+
+    // Adres yalniz elle giris yolunda; otomasyon yoluna URL karismamali.
+    assert_eq!(
+        elle.last().map(String::as_str),
+        Some("https://gemini.google.com/app")
+    );
+    assert!(!otomasyon.iter().any(|a| a.starts_with("http")));
 }
 
 /// ASIL HATA BUYDU: ayarlar yalnizca WebDriver yolunda uygulaniyordu. Hesap

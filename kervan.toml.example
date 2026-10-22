@@ -85,3 +85,31 @@ bilinmeyen_pencere_dk = 60
 # model = "deepseek-chat"
 # yol = "/v1/chat/completions"         # isteğe bağlı; biçime göre varsayılan var
 
+# --- tarayıcı model menüsü ---
+#
+# Bir sağlayıcının arayüzünde GERÇEKTEN seçilebilen model varsa burada tanımlanır
+# ve `kervan/<sağlayıcı>/<kod>` adları `/v1/models` listesine girer.
+#
+# Kural: yalnız ÖLÇÜLMÜŞ menü yazılır. Elle yazılmış katalog ya da tahmin edilmiş
+# seçici kabul edilmez — yanlış seçici, "seçtim" sanıp varsayılan modelle cevap
+# vermek demek. Ölçüm: `kervan --tikla '<seçici>' --js '<betik>'` ile menü
+# düğmesi/öğeleri okunur, hangi öğenin tıklamayla gerçekten seçildiği görülür.
+#
+# ÜÇÜ BİRLİKTE zorunlu: model_dugmesi + model_oge + modeller. Yarım tanım
+# yüklemede reddedilir. Kod tanımsızsa istek 400, menü hiç tanımsızsa 501 döner;
+# ikisi de sessizce varsayılana düşmez.
+#
+# Ölçülmüş örnek (gemini, 2026-10-22, ücretsiz hesap): menüdeki "3.1 Pro" /
+# "4 Argon" öğeleri `data-mode-id="upsell_..."`, yani ücretli plan gerektiriyor ve
+# tıklanınca seçim uygulanmıyor. Seçilebilir eksen DÜŞÜNME DÜZEYİ olduğu için
+# kodlar düşünme düzeyleridir.
+#
+# [providers."gemini"]
+# model_dugmesi = "button[aria-label*='Mod seçici']"
+# model_oge = "[role=menuitem]"
+# modeller = [
+#   { kod = "dusuk", etiket = "Düşük" },
+#   { kod = "orta", etiket = "Orta" },
+#   { kod = "yuksek", etiket = "Yüksek" },
+# ]
+
