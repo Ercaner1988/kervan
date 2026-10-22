@@ -1,11 +1,11 @@
-<!-- URETILMIS_DURUM_HASH: a6b09b732295be3d1283819f4492bf1fe7821ec3ba4afc0e388f11e966b38929 -->
+<!-- URETILMIS_DURUM_HASH: 206884895462904609f5ee51d3456fec76a5c94b94c75f3c8656a784e5166559 -->
 # DURUM.md — Kervan Aktarım Durum Defteri (ÜRETİLMİŞTİR)
 
 > ⚠️ BU DOSYA araclar/kapilar/durum-uret.ts ÇIKTISIDIR. ELLE DÜZENLEMEYİNİZ.
 > durum-kontrol bu dosyayı port/durum.json'dan yeniden üretip bayt bayt karşılaştırır.
 
 - **Mevcut Faz:** P3
-- **Üretim Zamanı (durum.json):** 2026-10-21T10:08:04.363Z
+- **Üretim Zamanı (durum.json):** 2026-10-22T12:26:54.082Z
 - **Üretici Özeti:** sha256:a9b4a56d5170899a65c47db3b903d5561728b859572da9ad9ffc547b6f9f0612
 - **Tüm Kapılar Yeşil mi:** ❌ HAYIR
 
@@ -15,17 +15,17 @@
 
 | Kapı Adı | Çıkış Kodu | Süre (ms) | Log Dosyası |
 |---|:---:|:---:|---|
-| makine-sakin | ✅ 0 | 60137 | port\kayit\P3\makine-sakin.log |
-| kabul-haritasi | ✅ 0 | 407466 | port\kayit\P3\kabul-haritasi.log |
-| ulasilabilirlik | ✅ 0 | 2797 | port\kayit\P3\ulasilabilirlik.log |
-| sabit-yanit | ✅ 0 | 136 | port\kayit\P3\sabit-yanit.log |
-| uc-kaydi | ✅ 0 | 6398 | port\kayit\P3\uc-kaydi.log |
-| muhur-kontrol | ❌ 1 | 14470 | port\kayit\P3\muhur-kontrol.log |
-| kulliyat-tara | ✅ 0 | 8693 | port\kayit\P3\kulliyat-tara.log |
-| mutasyon-kontrol | ✅ 0 | 81972 | port\kayit\P3\mutasyon-kontrol.log |
-| durum-kontrol | ❌ 1 | 480 | port\kayit\P3\durum-kontrol.log |
-| defter-kontrol | ✅ 0 | 27579 | port\kayit\P3\defter-kontrol.log |
-| rapor-kontrol | ✅ 0 | 162 | port\kayit\P3\rapor-kontrol.log |
+| makine-sakin | ✅ 0 | 60327 | port\kayit\P3\makine-sakin.log |
+| kabul-haritasi | ✅ 0 | 595144 | port\kayit\P3\kabul-haritasi.log |
+| ulasilabilirlik | ✅ 0 | 1773 | port\kayit\P3\ulasilabilirlik.log |
+| sabit-yanit | ✅ 0 | 170 | port\kayit\P3\sabit-yanit.log |
+| uc-kaydi | ✅ 0 | 9821 | port\kayit\P3\uc-kaydi.log |
+| muhur-kontrol | ❌ 1 | 22110 | port\kayit\P3\muhur-kontrol.log |
+| kulliyat-tara | ✅ 0 | 15211 | port\kayit\P3\kulliyat-tara.log |
+| mutasyon-kontrol | ✅ 0 | 121406 | port\kayit\P3\mutasyon-kontrol.log |
+| durum-kontrol | ❌ 1 | 705 | port\kayit\P3\durum-kontrol.log |
+| defter-kontrol | ✅ 0 | 61571 | port\kayit\P3\defter-kontrol.log |
+| rapor-kontrol | ✅ 0 | 469 | port\kayit\P3\rapor-kontrol.log |
 
 ## 2. Fazlar
 
@@ -172,4 +172,22 @@ yol = "/yonlendirme"
 yontem = "POST"
 durum = "kapsam-disi"
 gerekce = "Çalışma anı strateji değişimi; OmniRoute'ta karşılığı yok (geçersiz ad reddi p9_auto_rest_test.rs'te ölçülür)"
+
+[[uc]]
+yol = "/hesap/ac"
+yontem = "POST"
+durum = "kapsam-disi"
+gerekce = "Panelden hesap ekleme: giriş GERÇEK insan tarafından otomasyonsuz tarayıcıda yapılır (Google, WebDriver imzalı oturum açmayı engelliyor); OmniRoute'ta karşılığı yok"
+
+[[uc]]
+yol = "/hesap/dogrula"
+yontem = "POST"
+durum = "kapsam-disi"
+gerekce = "Girişin gerçekten tamamlandığını detect_login ile ölçer ve hesabı kervan.toml'a bir kez yazar; OmniRoute'ta karşılığı yok"
+
+[[uc]]
+yol = "/kapat"
+yontem = "POST"
+durum = "kapsam-disi"
+gerekce = "Zarif kapanış: havuz açılışta kurulduğu için yapılandırma değişikliği ancak yeniden başlatmayla yürürlüğe girer; OmniRoute'ta karşılığı yok"
 ```

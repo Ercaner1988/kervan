@@ -3,7 +3,9 @@
 
 [[mutant]]
 ad = "tohum-istemi-bos-dondur"
-dosya = "crates/sunucu/src/server.rs"
+# Istem kurulumu 2026-10-22'de kendi sandigina tasindi (sandik siniri); mutant
+# ayni islevi yeni yolda hedefliyor, emeklilik gerekcesi degismedi.
+dosya = "crates/istem/src/lib.rs"
 bul = "pub fn tohum_istemi(msgs: &[Message], azami: usize) -> String {"
 yerine = "pub fn tohum_istemi(_msgs: &[Message], _azami: usize) -> String { return String::new();"
 oldurmesi_gereken_test = ["server::tests::tohum_gecmisi_ve_asil_soruyu_tasir"]
@@ -66,7 +68,7 @@ oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; c
 
 [[mutant]]
 ad = "tohum-istemi-govdesini-bosalt"
-dosya = "crates/sunucu/src/server.rs"
+dosya = "crates/istem/src/lib.rs"
 bul = "pub fn tohum_istemi(msgs: &[Message], azami: usize) -> String {"
 yerine = "pub fn tohum_istemi(msgs: &[Message], azami: usize) -> String { if azami > 0 || !msgs.is_empty() { return String::new(); }"
 oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-sunucu', '--lib', '--', 'server::tests::tohum_gecmisi_ve_asil_soruyu_tasir'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]

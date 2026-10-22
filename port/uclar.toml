@@ -128,3 +128,21 @@ yol = "/yonlendirme"
 yontem = "POST"
 durum = "kapsam-disi"
 gerekce = "Çalışma anı strateji değişimi; OmniRoute'ta karşılığı yok (geçersiz ad reddi p9_auto_rest_test.rs'te ölçülür)"
+
+[[uc]]
+yol = "/hesap/ac"
+yontem = "POST"
+durum = "kapsam-disi"
+gerekce = "Panelden hesap ekleme: giriş GERÇEK insan tarafından otomasyonsuz tarayıcıda yapılır (Google, WebDriver imzalı oturum açmayı engelliyor); OmniRoute'ta karşılığı yok"
+
+[[uc]]
+yol = "/hesap/dogrula"
+yontem = "POST"
+durum = "kapsam-disi"
+gerekce = "Girişin gerçekten tamamlandığını detect_login ile ölçer ve hesabı kervan.toml'a bir kez yazar; OmniRoute'ta karşılığı yok"
+
+[[uc]]
+yol = "/kapat"
+yontem = "POST"
+durum = "kapsam-disi"
+gerekce = "Zarif kapanış: havuz açılışta kurulduğu için yapılandırma değişikliği ancak yeniden başlatmayla yürürlüğe girer; OmniRoute'ta karşılığı yok"
