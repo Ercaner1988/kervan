@@ -507,6 +507,12 @@ pub struct Selectors {
     pub login_hint: String,
     /// Modelin yanit balonlari. Sonuncusu okunur.
     pub response: String,
+    /// Istemi gonderen dugme. `None` ise istem kutusuna ENTER basilir.
+    ///
+    /// AI Studio gibi ENTER'i satir atlama sayan siteler icin (olculdu
+    /// 2026-10-23): ENTER yolu sessizce ise yaramaz, 120 sn sonra
+    /// "yanit gelmedi" hatasi cikar. Verilirse dugme tiklanir.
+    pub gonder: Option<String>,
 }
 
 /// Bir web saglayicisi: adresi ve secicileri hep birlikte gezer, birlikte tasinirlar.
@@ -694,7 +700,13 @@ pub async fn ask(
         return Err(e).context("istem kutusuna tiklanamadi");
     }
     istemi_yaz(c, sel, &kutu, prompt).await?;
-    kutu.send_keys(ENTER).await.context("istem gonderilemedi")?;
+    match &sel.gonder {
+        // Dugmeyle gonderen siteler: ENTER burada satir atlar (AI Studio olcumu).
+        // Dugme pasifse birkac kez denenir; bulunamazsa ACIK hata — sessizce
+        // ENTER'a donmek "istem gonderildi" yanilsamasi uretirdi.
+        Some(secici) => gonder_dugmesine_bas(c, secici).await?,
+        None => kutu.send_keys(ENTER).await.context("istem gonderilemedi")?,
+    }
 
     const ARALIK: std::time::Duration = std::time::Duration::from_millis(500);
 
@@ -731,6 +743,38 @@ pub async fn ask(
         zaman_asimi.as_secs(),
         dedektor.yarim().len()
     )
+}
+
+/// Istemi gonderen dugmeye tiklar; dugme gec etkinlesirse kisa sure bekler.
+///
+/// NEDEN AYRI: bazi sitelerde ENTER gonderim degil SATIR ATLAMA'dir (AI Studio:
+/// `ms-run-button` icindeki dugme, Ctrl+Enter). ENTER yolunda istek hic gitmiyor
+/// ama bunu ancak 120 saniyelik zaman asimindan sonra "yanit gelmedi" diye
+/// ogreniyorduk. Dugme yoksa/pasifse ACIK hata verilir — sessiz ENTER yedegi
+/// "gonderildi" yanilsamasi uretirdi.
+async fn gonder_dugmesine_bas(c: &Client, secici: &str) -> Result<()> {
+    const BEKLEME: std::time::Duration = std::time::Duration::from_secs(10);
+    let basla = std::time::Instant::now();
+    loop {
+        match c.find(Locator::Css(secici)).await {
+            Ok(d) => match d.click().await {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    // Pasif dugme tiklamayi reddeder; istem yeni yazildigi icin
+                    // dugme bir-iki kare gec etkinlesebiliyor.
+                    if basla.elapsed() >= BEKLEME {
+                        return Err(e).context(format!("gonder dugmesine tiklanamadi: {secici}"));
+                    }
+                }
+            },
+            Err(e) => {
+                if basla.elapsed() >= BEKLEME {
+                    return Err(e).context(format!("gonder dugmesi bulunamadi: {secici}"));
+                }
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    }
 }
 
 /// Istemi yazar ve **yazildigini dogrular**.

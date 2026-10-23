@@ -177,8 +177,8 @@ Tanımlı: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, 
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P3 (2026-10-23T01:05:52.071Z)
-- Tüm kapılar yeşil mi: hayır (9/11)
+- Faz: P3 (2026-10-23T03:45:15.060Z)
+- Tüm kapılar yeşil mi: hayır (10/11)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
 <!-- DURUM:BITIS -->
@@ -200,7 +200,9 @@ Tanımlı: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, 
 ##### Model menüsü (yalnız ölçülmüş olanlar)
 
 `kervan/<sağlayıcı>/<kod>` adları buradan gelir. Ölçüm tarihi 2026-10-22/23, tek hesap
-(`emineyildizer92@gmail.com`). Seçim, hedef öğenin KENDİ işareti okunarak doğrulanır.
+(`emineyildizer92@gmail.com`). Seçim, hedef öğenin KENDİ işareti okunarak doğrulanır;
+kartlarında hiçbir işaret yayınlamayan siteler için açma düğmesinin metni ikinci
+tanık olarak kabul edilir (2026-10-23, AI Studio ölçümü).
 
 | Sağlayıcı | Kodlar | Seçim işareti |
 |---|---|---|
@@ -232,6 +234,20 @@ tanımlı değilse 501 döner — sessizce varsayılana düşmez):
   kodlanmadı. AI Studio (`aistudio.google.com`) aynı hesapla girişli ve orada
   görsel modelleri (Nano Banana) model listesinde görünüyor; ayrı sağlayıcı olarak
   ölçülmesi gerekiyor.
+- AI Studio sağlayıcısı **açılmadı** (2026-10-23 ölçümü, girişli profil): istem kutusu
+  (`textarea[aria-label='Enter a prompt']`), model listesi
+  (`button.content-button[id^='model-carousel-row-models/']`, kartlarda seçim işareti
+  yok) ve "Paid" rozetli
+  modellerin seçilip oyun alanında `empty-state--gated` duvarına düştüğü ölçüldü.
+  Ama `prompts/new_chat` iki farklı yerleşimle açılıyor (model kartlı sohbet /
+  "Explore Google models" galerisi) ve galeri yerleşiminde model düğmesi ile
+  `button.ctrl-enter-submit` **yok**; yerleşim bir kez galeriye dönünce kartlı
+  varyant geri gelmedi. Kararsız seçici üzerine sağlayıcı kurulmadı.
+
+İstem gönderme: varsayılan ENTER'dır. ENTER'i satır atlama sayan siteler için
+`kervan.toml`'da `gonder = "..."` verilir; o zaman düğme tıklanır, bulunamazsa istek
+**açık hatayla** düşer (sessizce ENTER'a dönülmez). Bugün yerleşik sağlayıcıların
+hiçbiri bu alanı kullanmıyor; düğme yolunun uçtan uca canlı doğrulaması yapılmadı.
 
 ##### Aç/kapa özellikleri (yalnız ölçülmüş olanlar)
 

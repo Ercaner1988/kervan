@@ -52,6 +52,9 @@ fn p(ad: &str, url: &str, giris: &str, istem: &str, giris_isareti: &str, yanit: 
             prompt_input: istem.to_string(),
             login_hint: giris_isareti.to_string(),
             response: yanit.to_string(),
+            // Varsayilan ENTER. Dugmeyle gonderen siteler (AI Studio) bunu
+            // kervan.toml'da `gonder = "..."` ile ezer.
+            gonder: None,
         },
         cloudflare: false,
         // Model menusu YALNIZ kervan.toml'da olculmus secicilerle tanimlanir;
@@ -88,6 +91,25 @@ pub fn varsayilanlar() -> Vec<Provider> {
             "a[href*='ServiceLogin']",
             "model-response, message-content",
         ),
+        // GOOGLE AI STUDIO — ACILMADI (olcum 2026-10-23, girisli profil
+        // ercan.er@ogr.iu.edu.tr). Saglayici olarak EKLENMEDI; nedeni asagida.
+        //
+        // OLCULENLER: istem kutusu `textarea[aria-label='Enter a prompt']`;
+        // gonderim ENTER DEGIL dugme (ENTER satir atliyor, 120 sn sonra "yanit
+        // gelmedi"); model listesi bir ara `button.model-selector-card` dugmesiyle
+        // acilan bir diyalogdu, ogeler `button.content-button[id^='model-carousel-
+        // row-models/']` (kimlik `models/<slug>`), kartlarda SECIM ISARETI YOK —
+        // secim yalnizca dugmenin metninde gorunuyor; "Paid" rozetli modeller
+        // secilebiliyor ama oyun alani `empty-state--gated` duvarina dusuyor.
+        //
+        // NEDEN ACILMADI: `prompts/new_chat` IKI FARKLI YERLESIMLE aciliyor —
+        // (a) model kartli sohbet gorunumu, (b) "Explore Google models" galerisi.
+        // Ayni profil, ayni adres; ikinci yerlesimde model dugmesi ve
+        // `button.ctrl-enter-submit` YOK (olculdu: kart dugmesi 0, ms-model-selector
+        // 0, dugme yolu "gonder dugmesi bulunamadi"). Yerlesim bir kez galeriye
+        // donunce kartli varyant geri gelmedi; yani seciciler KARARLI degil.
+        // Kararsiz secici uzerine saglayici kurmak "olculdu" demek olurdu.
+        // Tekrar denenirse once iki yerlesim arasindaki gecisi olcmek gerekir.
         // KISMEN OLCULDU (cikis yapilmis halde). `/new` cikisliyken `/logout`'a
         // dusuyordu, o yuzden taban adres kullaniliyor; girisliyken yeni sohbet
         // zaten aciliyor. Giris isareti ve yanit secicisi DOGRULANMADI — girisli
@@ -254,6 +276,9 @@ pub fn kayit_defteri(ayarlar: &HashMap<String, SaglayiciAyar>) -> HashMap<String
             }
             if let Some(v) = &a.response {
                 sag.selectors.response = v.clone();
+            }
+            if let Some(v) = &a.gonder {
+                sag.selectors.gonder = Some(v.clone());
             }
             if let Some(v) = a.cloudflare {
                 sag.cloudflare = v;
@@ -458,6 +483,30 @@ mod tests {
         assert_eq!(
             d["gemini"].selectors.response,
             "model-response, message-content"
+        );
+    }
+
+    /// `gonder` verilmezse gonderim ENTER ile yapilir (mevcut yedi saglayicinin
+    /// hepsi boyle calisiyor). Verilirse dugme yolu devreye girer; bugun yerlesik
+    /// hicbir saglayici bunu kullanmiyor, ama alan sessizce yutulmamali.
+    #[test]
+    fn gonder_dugmesi_yapilandirmadan_gelir() {
+        let mut a = HashMap::new();
+        a.insert(
+            "z.ai".to_string(),
+            SaglayiciAyar {
+                gonder: Some("button.ctrl-enter-submit".into()),
+                ..Default::default()
+            },
+        );
+        let d = kayit_defteri(&a);
+        assert_eq!(
+            d["z.ai"].selectors.gonder.as_deref(),
+            Some("button.ctrl-enter-submit")
+        );
+        assert!(
+            d["kimi"].selectors.gonder.is_none(),
+            "verilmeyen saglayicida dugme yolu ACILMAMALI"
         );
     }
 

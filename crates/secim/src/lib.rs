@@ -290,9 +290,21 @@ const OGE_LISTESI: &str = r#"
 const d = (s) => (s || '').replace(/[ \t\r]+/g, ' ').trim();
 const isaret = (e) => /(^|[\s-])(selected|checked|active|on)(\s|$)/.test(e.className || '') || ['data-selected','data-state','aria-checked','aria-selected','aria-pressed'].some((a) => ['true','checked'].includes(e.getAttribute(a)))
   || !!e.querySelector('[aria-label="Seçildi"],[aria-label="Selected"],[aria-checked="true"]');
+const ad = (e) => {
+  const l = d((e.querySelector('.label') || {}).innerText);
+  if (l) return l;
+  // IKON ATLAMA: AI Studio kartlari ikon adini ILK satira koyuyor ("spark",
+  // "audio_magic_eraser"), model adi ikinci satirda. Kopuk (detached) kopyada
+  // innerText satir sonlarini kaybettigi icin kopya YETMIYOR (olculdu: tum kart
+  // tek satira dondu) — bu yuzden canli ogenin satirlari okunur, ikon
+  // dugumlerinin metniyle BIREBIR eslesen satirlar atlanir.
+  const ikonlar = new Set([...e.querySelectorAll('mat-icon,svg,[class*="icon"],[class*="symbol"],[class*="ligature"]')]
+    .map((x) => d(x.innerText || x.textContent)).filter(Boolean));
+  const satirlar = (e.innerText || '').split('\n').map(d).filter(Boolean);
+  return satirlar.find((s) => !ikonlar.has(s)) || satirlar[0] || '';
+};
 return [...document.querySelectorAll(arguments[0])].map((e) => {
-  const ad = d((e.querySelector('.label') || {}).innerText) || (e.innerText || '').split('\n').map(d).filter(Boolean)[0] || '';
-  return { metin: ad, tam: d((e.innerText || e.textContent || '').replace(/\s+/g, ' ')), isaretli: isaret(e) };
+  return { metin: ad(e), tam: d((e.innerText || e.textContent || '').replace(/\s+/g, ' ')), isaretli: isaret(e) };
 });
 "#;
 
@@ -373,6 +385,14 @@ pub async fn model_sec(
     }
 
     // 0) Menu acik kalmis olabilir (onceki hata): kapat.
+    //    Once dugmenin CIZILMESINI bekle: `ask` bu asamada istem kutusunu henuz
+    //    beklememis oluyor (AI Studio'da dugme gec ciziliyor).
+    if !dugme_bekle(c, &menu.dugme, std::time::Duration::from_secs(15)).await {
+        bail!(
+            "model menusu dugmesi sayfada cizilmedi ('{}') — sayfa yuklenmedi ya da secici kirilmis",
+            menu.dugme
+        );
+    }
     if menu_acik_mi(c, &menu.oge).await? {
         dugmeye_bas(c, &menu.dugme).await?;
     }
@@ -429,9 +449,31 @@ pub async fn model_sec(
         .find(|o| o.isaretli)
         .map(|o| o.metin.clone())
         .unwrap_or_default();
-    let dogru = hedef_indeks(&sonra, etiket).is_some_and(|j| sonra[j].isaretli);
+    let hedef_isaretli = hedef_indeks(&sonra, etiket).is_some_and(|j| sonra[j].isaretli);
+    // IKINCI TANIK: dugmenin kendi metni. AI Studio'da (olculdu 2026-10-23) model
+    // kartlarinda HICBIR isaret yok — ne sinif ne aria; secili model yalnizca acma
+    // dugmesinin metninde gorunuyor ("Gemini 3.8 Flash"). Yalniz isarete bakmak bu
+    // sitede her secimi "uygulanmadi" diye dusururdu. Iki taniktan BIRI yeter:
+    // yanlis pozitif icin dugmenin zaten hedef adi gostermesi gerekir, o da zaten
+    // istenen durumdur.
+    let dugme_metni = if hedef_isaretli {
+        String::new()
+    } else {
+        dugme_metni(c, &menu.dugme).await
+    };
+    let dogru = hedef_isaretli || metin_iceriyor_mu(&dugme_metni, etiket);
     if menu_acik_mi(c, &menu.oge).await? {
         dugmeye_bas(c, &menu.dugme).await?;
+    }
+    // SON KAPATMA GARANTISI: bazi sitelerde (AI Studio) acma dugmesine tiklamak
+    // menuyu kapatmiyor ve acik kalan katman istem kutusunu kapatiyor. Istek
+    // gonderilmeden once menunun KAPALI oldugu dogrulanir.
+    if menu_acik_mi(c, &menu.oge).await? {
+        escape_bas(c).await?;
+        bekle(500).await;
+        if menu_acik_mi(c, &menu.oge).await? {
+            bail!("model menusu kapanmadi ('{}'); ESCAPE de yetmedi", menu.oge);
+        }
     }
     if dogru {
         Ok(SecimSonucu::Degisti)
@@ -614,6 +656,69 @@ async fn dugmeye_bas(c: &Client, dugme: &str) -> Result<()> {
     }
     tokio::time::sleep(std::time::Duration::from_millis(700)).await;
     Ok(())
+}
+
+/// Model menusunu acan dugme sayfada cizildi mi?
+async fn dugme_var_mi(c: &Client, dugme: &str) -> bool {
+    const VAR: &str = r#"
+return !!document.querySelector(arguments[0]);
+"#;
+    matches!(
+        c.execute(VAR, vec![serde_json::json!(dugme)]).await,
+        Ok(v) if v.as_bool() == Some(true)
+    )
+}
+
+/// Dugme cizilene kadar bekle.
+///
+/// NEDEN: `ask` model secimini istem kutusunu beklemeden ONCE yapiyor (site model
+/// degistirirken istemi yutabiliyor). AI Studio olcumunde (2026-10-23) sayfa ilk
+/// acildiginda dugme henuz DOM'da olmadigi icin "model dugmesi bulunamadi" hatasi
+/// cikiyordu; oysa birkac saniye sonra oradaydi. Beklemek, gercek arizayi
+/// (secici kirilmis) yavasliktan ayirir.
+async fn dugme_bekle(c: &Client, dugme: &str, zaman_asimi: std::time::Duration) -> bool {
+    let basla = std::time::Instant::now();
+    while basla.elapsed() < zaman_asimi {
+        if dugme_var_mi(c, dugme).await {
+            return true;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    }
+    false
+}
+
+/// Menuyu ESCAPE ile kapat (dugmeye tiklamak yetmediginde).
+///
+/// OLCULDU 2026-10-23 (AI Studio): model secildikten sonra dogrulama icin menu
+/// yeniden aciliyor; acma dugmesine tiklamak bu menuyu KAPATMIYOR. Menü acik
+/// kalinca `cdk-overlay-backdrop` istem kutusunu kapatiyor ve istek "isten
+/// kutusunun ustunu bir katman kapatiyor" hatasina dusuyordu. ESCAPE'i body'ye
+/// gonderiyoruz: metin alanina odakliyken gondermek kutuya kacis karakteri
+/// yazabilirdi.
+async fn escape_bas(c: &Client) -> Result<()> {
+    let govde = c
+        .find(fantoccini::Locator::Css("body"))
+        .await
+        .context("ESCAPE icin body bulunamadi")?;
+    govde
+        .send_keys("\u{E00C}")
+        .await
+        .context("ESCAPE gonderilemedi")?;
+    Ok(())
+}
+
+/// Acma dugmesinin o anki metni (secili modelin ikinci tanigi).
+async fn dugme_metni(c: &Client, dugme: &str) -> String {
+    const METIN: &str = r#"
+const d = document.querySelector(arguments[0]);
+return d ? (d.innerText || d.textContent || '') : '';
+"#;
+    match c.execute(METIN, vec![serde_json::json!(dugme)]).await {
+        Ok(v) => v.as_str().unwrap_or_default().to_string(),
+        // Okunamayan tanik "yanlis" sayilmaz: karar isarete duser, hata mesaji
+        // zaten menudeki isaretli ogeyi yazar.
+        Err(_) => String::new(),
+    }
 }
 
 /// Katlanmis metin, katlanmis aranan'i iceriyor mu?

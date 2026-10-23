@@ -38,6 +38,7 @@ fn arti_isareti_kodlanir() {
             prompt_input: "a".into(),
             login_hint: "b".into(),
             response: "c".into(),
+            gonder: None,
         },
         giris_kalibi: "https://o/?Email={eposta}".into(),
         cloudflare: false,

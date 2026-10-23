@@ -139,6 +139,15 @@ pub struct SaglayiciAyar {
     pub prompt_input: Option<String>,
     pub login_hint: Option<String>,
     pub response: Option<String>,
+    /// Istemi GONDEREN dugmenin secicisi.
+    ///
+    /// Neden gerekli: `ask` normalde istem kutusuna ENTER basar. Bu, `<textarea>`
+    /// icinde satir atlamaktan baska bir sey yapmayan sitelerde ise yaramaz —
+    /// AI Studio gonderimi Ctrl+Enter/Run dugmesiyle yapar (olculdu 2026-10-23:
+    /// `ms-run-button` icindeki dugme; ENTER yalniz yeni satir aciyor ve 120 sn
+    /// sonra "yanit gelmedi" hatasi cikiyordu). Verilirse ENTER yerine bu dugme
+    /// tiklanir; dugme bulunamazsa ACIK hata verilir, sessizce ENTER'a donulmez.
+    pub gonder: Option<String>,
     /// Model menusunu acan dugme secicisi (olculur; tahmin edilmez).
     pub model_dugmesi: Option<String>,
     /// Menudeki oge secicisi.
