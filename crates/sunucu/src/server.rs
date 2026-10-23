@@ -103,6 +103,10 @@ fn model_kimligi(saglayici: &str) -> String {
 pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/v1/models", get(models))
+        // Panelin secim listesi: her saglayicinin GERCEKTEN uygulanabilir model
+        // kodlari ve ac/kapa anahtarlari. Yalniz yapilandirilmis (olculmus)
+        // olanlar listelenir; olmayan secenek gostermek yanlis model riskidir.
+        .route("/kervan/secenekler", get(secenekler))
         .route("/v1/chat/completions", post(chat))
         .route("/health", get(|| async { "ok" }))
         .route("/telemetri", get(telemetri_handler))
@@ -453,6 +457,20 @@ pub struct ChatRequest {
     /// yönergesi eklenir, yanıttaki ```json bloğu `tool_calls`'a çevrilir.
     #[serde(default)]
     pub tools: Vec<serde_json::Value>,
+    /// Kervan'a özgü alanlar (site aç/kapa özellikleri). OpenAI istemcileri bunu
+    /// bilmez ve göndermez; panel gönderir. Sessiz yok sayılmaz: tanımsız anahtar
+    /// ya da anahtar desteklemeyen yol AÇIK hataya düşer.
+    #[serde(default)]
+    pub kervan: Option<KervanIstegi>,
+}
+
+/// `kervan` alanı: sitedeki aç/kapa özelliklerinin istenen durumu.
+///
+/// Örnek: `{"anahtarlar": {"derin": true, "arama": false}}`.
+#[derive(Debug, Default, Deserialize)]
+pub struct KervanIstegi {
+    #[serde(default)]
+    pub anahtarlar: std::collections::BTreeMap<String, bool>,
 }
 
 #[derive(Serialize)]
@@ -494,9 +512,29 @@ struct ModelInfo {
     object: &'static str,
     created: u64,
     owned_by: &'static str,
+    /// Menude var ama bu hesapta secilemiyor (ucretli plan). Alan her zaman
+    /// gonderilir: istemci `false` gorurse "secilebilir" demektir.
+    kilitli: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    kilit_nedeni: Option<String>,
 }
 
 // ─── Uclar ───────────────────────────────────────────────────────────────────
+
+/// Panelin seçim listesi: sağlayıcı başına gerçekten uygulanabilir seçenekler.
+///
+/// Yalnız `kervan.toml`da ÖLÇÜLMÜŞ olarak tanımlananlar listelenir: model kodları
+/// ve aç/kapa anahtarları. Tanımsız bir seçeneği burada göstermek, panelde
+/// "seçilebilir" izlenimi yaratıp isteği 400'e düşürürdü.
+async fn secenekler(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let mut saglayicilar = serde_json::Map::new();
+    for (ad, s) in &st.saglayicilar {
+        if let Some(v) = kervan_secim::secenek_kaydi(s.model.as_ref(), &s.anahtarlar) {
+            saglayicilar.insert(ad.clone(), v);
+        }
+    }
+    Json(serde_json::json!({ "saglayicilar": saglayicilar }))
+}
 
 async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
     // Hem havuzdaki hesaplar hem de canli bagli eklenti sekmeleri ve REST sağlayıcıları listelenir.
@@ -516,9 +554,9 @@ async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
     adlar.sort();
 
     // Her saglayici icin: `kervan/<ad>` (site varsayilani) + OLCULMUS ve
-    // yapilandirilmis modeller (`kervan/<ad>/<kod>`). Listelenen her kimlik
-    // gercekten uygulanabilir olmali; uygulanamayan bir kimligi listelemek
-    // istemciye "secilir" izlenimi verirdi.
+    // yapilandirilmis modeller (`kervan/<ad>/<kod>`). Kilitli secenekler de
+    // listelenir ama `kilitli: true` ile: hesabin potansiyeli gorunur, istemci
+    // secerse 402 alir — sessizce varsayilana dusmez.
     let mut veri: Vec<ModelInfo> = Vec::new();
     for ad in adlar {
         veri.push(ModelInfo {
@@ -526,6 +564,8 @@ async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
             object: "model",
             created: simdi(),
             owned_by: "kervan",
+            kilitli: false,
+            kilit_nedeni: None,
         });
         if let Some(s) = st.saglayicilar.get(&ad)
             && let Some(menu) = &s.model
@@ -536,6 +576,8 @@ async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
                     object: "model",
                     created: simdi(),
                     owned_by: "kervan",
+                    kilitli: m.kilitli,
+                    kilit_nedeni: m.kilit_nedeni.clone(),
                 });
             }
         }
@@ -576,6 +618,22 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
     // Model kimliginden saglayiciyi sec. 'auto' verilirse SmartRouter adayları sıralar.
     // Model KODU ayrica cozulur: `kervan/gemini/yuksek`. Bos ise site varsayilani.
     let mut model_kodu: Option<String> = None;
+
+    // Ac/kapa ozellikleri: "auto" yolunda hangi saglayicinin secilecegi onceden
+    // bilinmedigi icin uygulanamaz — sessizce yok saymak yerine acik hata.
+    let istenen_anahtarlar: Vec<(String, bool)> = req
+        .kervan
+        .as_ref()
+        .map(|k| k.anahtarlar.iter().map(|(a, b)| (a.clone(), *b)).collect())
+        .unwrap_or_default();
+    if otomatik && !istenen_anahtarlar.is_empty() {
+        return hata(
+            StatusCode::BAD_REQUEST,
+            "ac/kapa anahtarlari icin saglayiciyi acikca belirt ('auto' ile uygulanamaz)",
+        );
+    }
+    // Cozulmus istek: (tanim, istenen durum). Cozulmemis kod istek GONDERILMEDEN hata.
+    let mut anahtar_istegi: Vec<(crate::browser::Anahtar, bool)> = Vec::new();
     let (adaylar, yedeklenebilir) = if otomatik {
         // 'auto' adayları ÜÇ kaynaktan gelir: bağlı eklenti sekmeleri, havuz
         // hesapları ve REST hedefleri. Böylece yerel (anahtarlı) ve web
@@ -620,41 +678,33 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
                 }
             }
         };
-        // Model kodu istendiyse UYGULANABILIR olmali. Uygulanamayan kodu kabul edip
-        // site varsayilaniyla cevap vermek sessiz yanlis model olurdu.
-        if let Some(k) = kod.as_deref() {
-            let menu = st
-                .saglayicilar
-                .get(&saglayici)
-                .and_then(|s| s.model.clone());
-            match menu {
-                None => {
-                    return hata(
-                        StatusCode::NOT_IMPLEMENTED,
-                        &format!(
-                            "'{saglayici}' icin model secimi tanimli degil: sitede olculmus bir \
-                             model menusu yok. Yalniz '{}' kullanilabilir.",
-                            model_kimligi(&saglayici)
-                        ),
-                    );
-                }
-                Some(m) if m.etiket(k).is_none() => {
-                    let kodlar: Vec<String> = m
-                        .modeller
-                        .iter()
-                        .map(|s| format!("{} => {}", s.kod, s.etiket))
-                        .collect();
-                    return hata(
-                        StatusCode::BAD_REQUEST,
-                        &format!(
-                            "'{saglayici}' icin tanimsiz model kodu '{k}'. Tanimli: {}",
-                            kodlar.join(", ")
-                        ),
-                    );
-                }
-                Some(_) => model_kodu = Some(k.to_string()),
+        // Model kodu ve anahtarlar SITeye dokunmadan once tanima gore cozulur:
+        // tanimsiz (400), tanimsiz menu (501), kilitli (402) durumlari burada
+        // kesilir. Mantik `kervan-secim` sandiginda; burasi yalniz HTTP eslemesi.
+        let menu = st
+            .saglayicilar
+            .get(&saglayici)
+            .and_then(|s| s.model.as_ref());
+        let tanimli_anahtarlar = st
+            .saglayicilar
+            .get(&saglayici)
+            .map(|s| s.anahtarlar.as_slice())
+            .unwrap_or_default();
+        let cozulen = match kervan_secim::coz_istek(
+            &saglayici,
+            menu,
+            kod.as_deref(),
+            tanimli_anahtarlar,
+            &istenen_anahtarlar,
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                let durum = StatusCode::from_u16(e.durum).unwrap_or(StatusCode::BAD_REQUEST);
+                return hata(durum, &e.mesaj);
             }
-        }
+        };
+        model_kodu = cozulen.model_kodu;
+        anahtar_istegi = cozulen.anahtarlar;
         (vec![saglayici], false)
     };
 
@@ -697,6 +747,11 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
     };
 
     let mut son_hata: Option<Response> = None;
+    // Secimler tek yapida toplanir: deneme dongusu icinde ayni sekilde kullanilir.
+    let secim = SecimIstegi {
+        model_kodu: model_kodu.clone(),
+        anahtarlar: anahtar_istegi.clone(),
+    };
     for ad in adaylar.iter().take(azami) {
         if otomatik {
             println!("akilli-rota   : 'auto' adayı deneniyor -> [{ad}]");
@@ -705,16 +760,16 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
         let sonuc = if let Some(hedef) = st.rest_hedefleri.get(ad).cloned() {
             rest_denemesi(&st, &hedef, &raw_val, None, req.stream).await
         } else if st.eklenti_hub.sekme_var_mi(ad).await {
-            // Eklenti yolunda model secimi HENUZ uygulanmiyor (D1d). Sessizce
-            // sekmenin o anki modeliyle cevap vermek yanlis model olurdu.
-            if let Some(k) = model_kodu.as_deref() {
+            // Eklenti yolunda model/anahtar secimi HENUZ uygulanmiyor (D1d). Sessizce
+            // sekmenin o anki durumuyla cevap vermek yanlis model/ozellik olurdu.
+            if model_kodu.is_some() || !anahtar_istegi.is_empty() {
                 Err((
                     hata(
                         StatusCode::NOT_IMPLEMENTED,
                         &format!(
-                            "'{ad}' eklenti sekmesi uzerinden calisiyor; model secimi ('{k}') bu \
+                            "'{ad}' eklenti sekmesi uzerinden calisiyor; model/ac-kapa secimi bu \
                              yolda henuz uygulanmiyor. Eklenti sekmesini kapatip havuz yolunu \
-                             kullan ya da model kodu olmadan '{}' iste.",
+                             kullan ya da secimsiz '{}' iste.",
                             model_kimligi(ad)
                         ),
                     ),
@@ -724,16 +779,7 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
                 eklenti_denemesi(&st, ad, &gonderilecek_istem, &req).await
             }
         } else {
-            havuz_denemesi(
-                &st,
-                ad,
-                &req,
-                &istem,
-                &yonerge,
-                &gonderilecek_istem,
-                model_kodu.as_deref(),
-            )
-            .await
+            havuz_denemesi(&st, ad, &req, &istem, &yonerge, &gonderilecek_istem, &secim).await
         };
 
         match sonuc {
@@ -820,6 +866,17 @@ async fn eklenti_denemesi(
     }
 }
 
+/// Tek bir denemede site arayuzune uygulanacak secimler (model + ac/kapa).
+///
+/// NEDEN TEK YAPI: ikisi de ayni yerde cozulur, ayni `ask` cagrisina gider ve
+/// ikisi de "uygulanamazsa acik hata" kuralina tabidir. Ayri parametreler
+/// `havuz_denemesi` imzasini okunamaz hale getiriyordu.
+#[derive(Debug, Default)]
+struct SecimIstegi {
+    model_kodu: Option<String>,
+    anahtarlar: Vec<(crate::browser::Anahtar, bool)>,
+}
+
 /// WebDriver havuzundan tek deneme. Hesap kiralanamazsa ya da model yanıtı
 /// gelmezse hata yedeklenebilir sayılır (akış henüz başlamadı).
 #[allow(
@@ -833,32 +890,33 @@ async fn havuz_denemesi(
     istem: &str,
     yonerge: &str,
     gonderilecek_istem: &str,
-    model_kodu: Option<&str>,
+    secim: &SecimIstegi,
 ) -> Result<Response, (Response, bool)> {
     // Model kodu cozulurken dogrulanmisti; burada yalniz eslestirme yapilir.
     // Yine de savunma amacli: tanimsiz kod istek gonderilmeden acik hataya duser.
-    let model_istegi: Option<(crate::browser::ModelMenusu, String)> = match model_kodu {
-        None => None,
-        Some(kod) => {
-            let menu = st.saglayicilar.get(saglayici).and_then(|s| s.model.clone());
-            let etiket = menu
-                .as_ref()
-                .and_then(|m| m.etiket(kod))
-                .map(str::to_string);
-            match (menu, etiket) {
-                (Some(m), Some(e)) => Some((m, e)),
-                _ => {
-                    return Err((
-                        hata(
-                            StatusCode::BAD_REQUEST,
-                            &format!("'{saglayici}' icin tanimsiz model kodu '{kod}'"),
-                        ),
-                        false,
-                    ));
+    let model_istegi: Option<(crate::browser::ModelMenusu, String)> =
+        match secim.model_kodu.as_deref() {
+            None => None,
+            Some(kod) => {
+                let menu = st.saglayicilar.get(saglayici).and_then(|s| s.model.clone());
+                let etiket = menu
+                    .as_ref()
+                    .and_then(|m| m.etiket(kod))
+                    .map(str::to_string);
+                match (menu, etiket) {
+                    (Some(m), Some(e)) => Some((m, e)),
+                    _ => {
+                        return Err((
+                            hata(
+                                StatusCode::BAD_REQUEST,
+                                &format!("'{saglayici}' icin tanimsiz model kodu '{kod}'"),
+                            ),
+                            false,
+                        ));
+                    }
                 }
             }
-        }
-    };
+        };
     // Havuzdan hesap kirala: konusma kendi hesabina sabitlenir, hiz butcesi burada
     // uygulanir, gerekirse beklenir.
     let mut lease = match st
@@ -901,6 +959,7 @@ async fn havuz_denemesi(
         &gonderilecek,
         st.timeout,
         model_cagrisi,
+        &secim.anahtarlar,
     )
     .await;
 

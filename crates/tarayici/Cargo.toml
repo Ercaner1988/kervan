@@ -7,6 +7,7 @@ description = "Kervan tarayıcı katmanı: WebDriver oturumu, süreç, tarama, k
 
 [dependencies]
 kervan-config = { path = "../config" }
+kervan-secim = { path = "../secim" }
 fantoccini.workspace = true
 katla.workspace = true
 tokio.workspace = true

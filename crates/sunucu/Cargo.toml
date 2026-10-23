@@ -7,6 +7,7 @@ description = "Kervan HTTP/WebSocket sunucusu (OpenAI uyumlu uç)"
 
 [dependencies]
 kervan-tarayici = { path = "../tarayici" }
+kervan-secim = { path = "../secim" }
 kervan-saglayici = { path = "../saglayici" }
 kervan-havuz = { path = "../havuz" }
 kervan-mcp = { path = "../mcp" }

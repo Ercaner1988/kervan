@@ -2400,6 +2400,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "kervan-secim"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "fantoccini",
+ "katla",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "kervan-sunucu"
 version = "0.1.0"
 dependencies = [
@@ -2413,6 +2424,7 @@ dependencies = [
  "kervan-istem",
  "kervan-mcp",
  "kervan-saglayici",
+ "kervan-secim",
  "kervan-tarayici",
  "kervan-yukari",
  "rand 0.10.2",
@@ -2443,6 +2455,7 @@ dependencies = [
  "fantoccini",
  "katla",
  "kervan-config",
+ "kervan-secim",
  "serde",
  "serde_json",
  "tokio",

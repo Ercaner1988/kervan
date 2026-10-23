@@ -14,18 +14,22 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
 use anyhow::{Context, Result, bail};
-use fantoccini::{Client, ClientBuilder, Locator};
+use fantoccini::{Client, ClientBuilder, Locator, elements::Element};
 
-// Alt moduller: iskelet (bu dosya) + model menusu + olcum araclari. Ayri dosyalar
-// cunku bu dosya 1500 satir sinirinda ve iki is farkli sorumluluklar.
-mod model;
+// Alt moduller: iskelet (bu dosya) + olcum araclari. Model/secim mantigi ayri
+// sandikta (`kervan-secim`): bu dosya 1500 satir sinirinda ve secim farkli bir
+// sorumluluk.
 mod olcum;
 
 #[cfg(test)]
-pub(crate) use model::metin_iceriyor_mu;
-pub(crate) use model::model_sec;
-pub use model::{ModelMenusu, ModelSecenegi, SecimSonucu};
-pub use olcum::{js_calistir, metinle_tikla, oge_dokumu, oge_metni, tikla_ilk};
+pub(crate) use kervan_secim::metin_iceriyor_mu;
+pub(crate) use kervan_secim::model_sec;
+pub use kervan_secim::{
+    Anahtar, AnahtarSonucu, ModelMenusu, ModelSecenegi, SecimSonucu, anahtar_ayarla,
+};
+pub use olcum::{
+    js_calistir, metinle_tikla, metinle_uzerine_gel, oge_dokumu, oge_metni, tikla_ilk, uzerine_gel,
+};
 
 /// Gizli pencerenin konumu: gorunur masaustunun sagi/altinda kalan bos alan.
 /// WebDriver `set_window_rect` isaretsiz sayi aliyor, yani negatif koordinat yok;
@@ -525,6 +529,9 @@ pub struct Provider {
     /// Model menusu: `kervan.toml`da OLCULMUS secicilerle tanimlanir.
     /// `None` ise sitede model secimi yapilamiyor; model kimligi istemek acik hatadir.
     pub model: Option<ModelMenusu>,
+    /// Ac/kapa ozellikleri: `kervan.toml`da OLCULMUS dugme + ad ile tanimlanir.
+    /// Bos ise sitede tanimli ac/kapa ozelligi yok; anahtar istemek acik hatadir.
+    pub anahtarlar: Vec<Anahtar>,
 }
 
 impl Provider {
@@ -620,6 +627,7 @@ pub async fn ask(
     prompt: &str,
     zaman_asimi: std::time::Duration,
     model: Option<(&ModelMenusu, &str)>,
+    anahtarlar: &[(Anahtar, bool)],
 ) -> Result<String> {
     // Model secimi ISTEM YAZILMADAN ONCE yapilir: sayfa model degistirirken istemi
     // yutabiliyor (olculdu: gemini menusu acikken yazilan istem kutuya dusmedi).
@@ -634,6 +642,23 @@ pub async fn ask(
         )
         .await?;
         println!("model        : {etiket} ({sonuc:?})");
+    }
+
+    // Ac/kapa ozellikleri de istemden ONCE uygulanir: ayni gerekce (sayfa yeniden
+    // cizilirken istem yutulabiliyor) ve ayni kural — uygulanamazsa acik hata.
+    for (anahtar, istenen) in anahtarlar {
+        let sonuc = anahtar_ayarla(
+            c,
+            anahtar,
+            *istenen,
+            zaman_asimi.min(std::time::Duration::from_secs(60)),
+        )
+        .await?;
+        println!(
+            "anahtar      : {}={} ({sonuc:?})",
+            anahtar.kod,
+            if *istenen { "acik" } else { "kapali" }
+        );
     }
 
     // Once sayfanin yerlesmesini bekle. Beklemeden bakmak, sayfa henuz cizilmemisken

@@ -28,6 +28,54 @@ pub async fn tikla_ilk(c: &Client, secici: &str) -> Result<()> {
     Ok(())
 }
 
+/// Olcum icin: fareyi seciciye uyan ILK ogenin uzerine gotur ve bekle.
+///
+/// NEDEN VAR: bazi arayuzler alt menuyu YALNIZ fare girdisiyle aciyor; tiklama
+/// metodu alt menuyu acmak yerine ana menuyu kapatiyor (olculdu 2026-10-22,
+/// perplexity: `[role=menuitem][aria-haspopup=menu]` tiklaninca menu kapaniyor).
+/// Tiklama degil gercek isaretci hareketi gonderilir.
+pub async fn uzerine_gel(c: &Client, secici: &str) -> Result<()> {
+    let ogeler = c.find_all(Locator::Css(secici)).await?;
+    let ilk = ogeler
+        .into_iter()
+        .next()
+        .with_context(|| format!("'{secici}' hicbir oge eslemedi"))?;
+    fareyi_gotur(c, ilk).await
+}
+
+/// Seciciye uyan ogeler arasindan metni `metin` iceren ILK ogenin uzerine gel.
+///
+/// Perplexity'de alt menuyu acmak icin hedef ogenin KENDISINE hover gerekiyor;
+/// ilk ogeye hover yapmak yanlis alt menuyu acar.
+pub async fn metinle_uzerine_gel(c: &Client, secici: &str, metin: &str) -> Result<()> {
+    let ogeler = c.find_all(Locator::Css(secici)).await?;
+    for oge in ogeler {
+        let t = oge.text().await.unwrap_or_default();
+        if katla::katla(&t).contains(&katla::katla(metin)) {
+            return fareyi_gotur(c, oge).await;
+        }
+    }
+    bail!("'{secici}' icinde '{metin}' metnini tasiyan oge yok");
+}
+
+/// Fareyi bir ogenin merkezine goturup kisa sure bekle.
+async fn fareyi_gotur(c: &Client, oge: Element) -> Result<()> {
+    use fantoccini::actions::{InputSource, MouseActions, PointerAction};
+    let fare = MouseActions::new("kervan-fare".to_string())
+        .then(PointerAction::MoveToElement {
+            element: oge,
+            duration: Some(std::time::Duration::from_millis(300)),
+            x: 0.0,
+            y: 0.0,
+        })
+        .pause(std::time::Duration::from_millis(400));
+    c.perform_actions(fare)
+        .await
+        .context("fare hareketi uygulanamadi")?;
+    tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+    Ok(())
+}
+
 /// Bir secicinin ILK ogesinin metnini oku (model dugmesindeki secili model gibi).
 pub async fn oge_metni(c: &Client, secici: &str) -> Result<String> {
     let ogeler = c.find_all(Locator::Css(secici)).await?;

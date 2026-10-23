@@ -57,6 +57,8 @@ fn p(ad: &str, url: &str, giris: &str, istem: &str, giris_isareti: &str, yanit: 
         // Model menusu YALNIZ kervan.toml'da olculmus secicilerle tanimlanir;
         // yerlesik varsayilan olarak tahmin edilmez.
         model: None,
+        // Ac/kapa ozellikleri de ayni kurala tabi: yerlesik tahmin yok.
+        anahtarlar: Vec::new(),
     }
 }
 
@@ -269,6 +271,8 @@ pub fn kayit_defteri(ayarlar: &HashMap<String, SaglayiciAyar>) -> HashMap<String
                             .map(|m| crate::browser::ModelSecenegi {
                                 kod: m.kod.clone(),
                                 etiket: m.etiket.clone(),
+                                kilitli: m.kilitli,
+                                kilit_nedeni: m.kilit_nedeni.clone(),
                             })
                             .collect(),
                     });
@@ -283,6 +287,19 @@ pub fn kayit_defteri(ayarlar: &HashMap<String, SaglayiciAyar>) -> HashMap<String
                     );
                 }
             }
+            // Ac/kapa ozellikleri: her biri dugme + ad ile tanimli. Bos liste
+            // "ozellik yok" demektir; yarim tanim dogrulamada reddedilir.
+            sag.anahtarlar = a
+                .anahtarlar
+                .as_deref()
+                .unwrap_or_default()
+                .iter()
+                .map(|x| crate::browser::Anahtar {
+                    kod: x.kod.clone(),
+                    dugme: x.dugme.clone(),
+                    etiket: x.etiket.clone(),
+                })
+                .collect();
         }
         d.insert(sag.ad.clone(), Arc::new(sag));
     }

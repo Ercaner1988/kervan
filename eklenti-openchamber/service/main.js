@@ -336,6 +336,45 @@ const sunucu = http.createServer(async (req, res) => {
     return;
   }
 
+  // Panelin seçim listesi: sağlayıcı başına ölçülmüş model kodları ve aç/kapa
+  // anahtarları. Kervan kapalıysa panel "seçenek yok" görmemeli; 503 döner ki
+  // kullanıcı bunu "model yok" sanmasın.
+  if (req.method === "GET" && url.pathname === "/secenekler") {
+    const sonuc = await kervan("/kervan/secenekler");
+    if (!sonuc) {
+      json(res, 503, { hata: "Kervan kapalı; seçenekler okunamadı." });
+      return;
+    }
+    json(res, sonuc.durum, sonuc.veri);
+    return;
+  }
+
+  // Paneldeki "Dene" düğmesi: gerçek bir tur. Tarayıcı turu 120 sn'yi bulabildiği
+  // için uzun zaman aşımı kullanılır; ayrıca zaman aşımı ile "Kervan kapalı"
+  // ayrılır — ikisini aynı mesaja indirmek yanlış teşhis üretirdi.
+  if (req.method === "POST" && url.pathname === "/dene") {
+    try {
+      const govde = await okuGovde(req);
+      const sonuc = await kervanUzun("/v1/chat/completions", {
+        method: "POST",
+        body: govde,
+      });
+      if (!sonuc) {
+        const acik = await kervanAcikMi();
+        json(res, acik ? 504 : 503, {
+          hata: acik
+            ? "Kervan yanıt vermedi (zaman aşımı); site modeli uygulayamadı ya da yanıt gelmedi."
+            : "Kervan kapalı.",
+        });
+        return;
+      }
+      json(res, sonuc.durum, sonuc.veri);
+    } catch (hata) {
+      json(res, 400, { hata: hata.message });
+    }
+    return;
+  }
+
   // Yapılandırma değiştikten sonra havuzu tazeleme: kapat → yeniden başlat.
   if (req.method === "POST" && url.pathname === "/yeniden-baslat") {
     try {

@@ -177,7 +177,7 @@ Tanımlı: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, 
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P3 (2026-10-22T12:26:54.082Z)
+- Faz: P3 (2026-10-23T01:05:52.071Z)
 - Tüm kapılar yeşil mi: hayır (9/11)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
@@ -193,14 +193,82 @@ Tanımlı: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, 
 | `copilot-m365` | ✅ Havuzda — iş/okul hesabı, ~14 sn |
 | `perplexity` | ⚠️ Kararsız — bazı hesaplarda Cloudflare |
 | `claude` | ❌ Cloudflare — havuzda devre dışı |
-| `deepseek` | ❌ Cloudflare — çoğu hesapta |
+| `deepseek` | ✅ Bu hesapta çalıştı (2026-10-22; model ekseni yok, iki aç/kapa düğmesi var). Başka hesaplarda Cloudflare |
 | `qwen` | ❌ Cloudflare — tüm hesaplarda |
-| `z.ai` | ❌ Cloudflare — yanıltıcı boş yanıt |
+| `z.ai` | ✅ Bu hesapta çalıştı (2026-10-22, GLM-5.3, ~14 sn). Başka hesaplarda Cloudflare görülebilir |
+
+##### Model menüsü (yalnız ölçülmüş olanlar)
+
+`kervan/<sağlayıcı>/<kod>` adları buradan gelir. Ölçüm tarihi 2026-10-22/23, tek hesap
+(`emineyildizer92@gmail.com`). Seçim, hedef öğenin KENDİ işareti okunarak doğrulanır.
+
+| Sağlayıcı | Kodlar | Seçim işareti |
+|---|---|---|
+| `gemini` | `dusuk`, `orta`, `yuksek` (düşünme düzeyi) | `.selected` / `aria-label="Seçildi"` |
+| `gemini` (kilitli) | `3-1-pro`, `4-argon` | menüde var, **tıklanınca seçilmiyor** (ücretli plan) |
+| `kimi` | `k3`, `k2-8`, `hizli` | öğede `checked` sınıfı |
+| `z.ai` | `glm-5.3-flash`, `glm-5.3`, `glm-5.2` | `data-selected="true"` |
+
+Kilitli kod, hesabın potansiyelini gösterir ama **seçilebilir gibi sunulmaz**:
+`/v1/models` ve `/kervan/secenekler` bunları `kilitli: true` + `kilit_nedeni` ile
+listeler, panelde seçenek `disabled` olur, istek gelirse siteye hiç dokunulmadan
+**402 Payment Required** döner:
+
+```json
+{"error":{"message":"'gemini' icin '3.1 Pro' bu hesapta secilemiyor: ücretli plan gerekiyor. Secilebilir kodlar: dusuk, orta, yuksek"}}
+```
+
+Ölçülemeyenler (kod yazılmadı; `kervan/<sağlayıcı>/<kod>` istenirse 400, hiç menü
+tanımlı değilse 501 döner — sessizce varsayılana düşmez):
+
+- `perplexity`: model menüsünün BÜTÜN üst düzey öğeleri alt menü açıyor
+  (`aria-haspopup="menu"`); açılan tek alt menü "Upgrade plan" upsell'i ve seçim
+  sonrası hiçbir öğede işaret yayınlanmıyor → model seçimi DOM'dan doğrulanamıyor.
+- `kimi` ek ekseni: "Düşünme yoğunluğu" ayrı bir alt menü; model kodlarına dahil değil.
+- `kimi` yanıt okuma: seçim doğrulandı (`K3 (Degisti)`) ama aynı koşuda yanıt 120 sn
+  içinde okunamadı; okuma seçicisi ayrıca ölçülmeli.
+- `gemini` web'de video/görsel/slayt araçları: kompozörde böyle bir düğme/menü öğesi
+  YOK (2026-10-23 ölçümü, iki hesapta da). Menüde bağlanacak bir şey olmadığı için
+  kodlanmadı. AI Studio (`aistudio.google.com`) aynı hesapla girişli ve orada
+  görsel modelleri (Nano Banana) model listesinde görünüyor; ayrı sağlayıcı olarak
+  ölçülmesi gerekiyor.
+
+##### Aç/kapa özellikleri (yalnız ölçülmüş olanlar)
+
+Model ekseninden AYRI bir eksen: tek seçimli menü değil, bağımsız düğmeler.
+İstek gövdesinde `kervan.anahtarlar` olarak taşınır (`{"kod": true|false}`);
+model kimliğine gömülmez.
+
+| Sağlayıcı | Kod | Düğme (ölçülmüş) | Durum işareti |
+|---|---|---|---|
+| `deepseek` | `derin` | `.ds-toggle-button` (metin "DeepThink") | `aria-pressed` + `ds-toggle-button--selected` |
+| `deepseek` | `arama` | `.ds-toggle-button` (metin "Search") | aynı |
+
+Kurallar:
+
+- Yalnız `kervan.toml`'da tanımlı kod kabul edilir; tanımsız kod **400** (tanımlıları listeler).
+- Anahtar, açıkça seçilmiş tek sağlayıcıda uygulanır. `auto` + anahtar = **400**.
+- Sağlayıcının hiç anahtarı yoksa = **501**.
+- Uygulama: oku → durum zaten istenen ise `ZatenIstendigi` → tıkla → **yeniden oku ve doğrula**.
+  Doğrulanamazsa açık hata; "uygulandı" denmez. Sayfa yenilenince site kendi varsayılanına döner.
+
+##### Panel (OpenChamber uzantısı)
+
+Panel, Kervan'la doğrudan değil uzantı servisi üzerinden konuşur; servis beyaz listesi:
+
+| Uç | Ne yapar |
+|---|---|
+| `GET /durum` | sağlayıcı/hesap özeti |
+| `GET /secenekler` | sağlayıcı başına `modeller` (kilitli bilgisiyle) + `anahtarlar` |
+| `POST /dene` | seçilen model + anahtarlarla gerçek deneme; sonuç Kervan günlüğünden okunur |
+
+Anahtarlar panelde **üç durumludur**: "değiştirme" / "açık" / "kapalı". "Değiştirme"
+istek gövdesine hiç yazılmaz — alanın yokluğu "dokunma" demektir.
 
 ## ⚠️ Bilinen Sorunlar / Deneysel Kısımlar
 
 - **Kota öğrenme:** Web sağlayıcıları kota durumunu açıklamaz. Kervan her isteğin sonucunu `%LOCALAPPDATA%\kervan\kota.jsonl`'ye yazar ve kota dolduğunda işaretler.
-- **Cloudflare:** Claude, Deepseek, Qwen, Z.ai çoğu hesapta Cloudflare duvarına çarpar.
+- **Cloudflare:** Claude, Deepseek, Qwen çoğu hesapta Cloudflare duvarına çarpar; z.ai'de bu hesapta görülmedi (2026-10-22).
 - **İnsan kapısı:** Doğrulama duvarında hesabı duraklatır ve pencereyi öne getirir — otomatik çözüm yok.
 
 ## 🤝 Katkıda Bulunanlar

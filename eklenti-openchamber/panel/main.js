@@ -291,6 +291,155 @@
     }
   };
 
+  // ── Model ve özellik seçimi ────────────────────────────────────────────────
+  // Seçenekler SUNUCUDAN gelir (/kervan/secenekler): yalnız kervan.toml'da
+  // ÖLÇÜLMÜŞ model kodları ve aç/kapa anahtarları. Panelde serbest metin model
+  // adı yoktur; olmayan bir ad yazmak 400'e düşer ve kullanıcı bunu ancak
+  // yanıt gelmeyince anlardı.
+  let secenekOnbellek = null;
+
+  const secenekGetir = async (yenileZorla = false) => {
+    if (!secenekOnbellek || yenileZorla) {
+      const veri = await servis("GET", "/secenekler");
+      secenekOnbellek = veri?.saglayicilar ?? {};
+    }
+    return secenekOnbellek;
+  };
+
+  const secModeliDoldur = (ad) => {
+    const secim = $("#secModel");
+    const kayit = secenekOnbellek?.[ad];
+    const modeller = Array.isArray(kayit?.modeller) ? kayit.modeller : [];
+    secim.textContent = "";
+
+    // Bos deger = site varsayilani: istekte `kervan/<ad>` gonderilir. Bu, sitede
+    // hicbir menuye dokunmamak demektir; "secilmis gibi" davranilmaz.
+    const varsayilan = eleman("option", null, "site varsayılanı");
+    varsayilan.value = "";
+    secim.append(varsayilan);
+    for (const m of modeller) {
+      // Kilitli secenek GORUNUR ama secilemez: hesabin potansiyeli gorunur,
+      // yanlislikla secilip 402 almak yerine neden yazili olur.
+      const etiket = m.kilitli
+        ? `${m.etiket} · ${m.kilit_nedeni ?? "plan gerekir"}`
+        : m.etiket;
+      const secenek = eleman("option", null, etiket ?? m.kod);
+      secenek.value = m.kod;
+      if (m.kilitli) secenek.disabled = true;
+      secim.append(secenek);
+    }
+    secim.disabled = modeller.length === 0;
+    kimlikYaz(ad);
+  };
+
+  const kimlikYaz = (ad) => {
+    const kod = $("#secModel").value;
+    $("#secKimlik").textContent = kod ? `kervan/${ad}/${kod}` : `kervan/${ad}`;
+  };
+
+  const secAnahtarlariDoldur = (ad) => {
+    const kap = $("#secAnahtarlar");
+    kap.textContent = "";
+    const anahtarlar = Array.isArray(secenekOnbellek?.[ad]?.anahtarlar)
+      ? secenekOnbellek[ad].anahtarlar
+      : [];
+    if (anahtarlar.length === 0) return;
+    for (const a of anahtarlar) {
+      const satir = eleman("div", "satir");
+      const secim = eleman("select");
+      secim.dataset.anahtar = a.kod;
+      secim.setAttribute("aria-label", a.etiket ?? a.kod);
+      for (const [deger, metin] of [
+        ["", "değiştirme"],
+        ["acik", "açık"],
+        ["kapali", "kapalı"],
+      ]) {
+        const secenek = eleman("option", null, metin);
+        secenek.value = deger;
+        secim.append(secenek);
+      }
+      satir.append(eleman("span", "ad", a.etiket ?? a.kod), secim);
+      kap.append(satir);
+    }
+  };
+
+  let secImza = "";
+
+  const cizSecenekler = async () => {
+    const veri = await secenekGetir();
+    const adlar = Object.keys(veri).sort();
+    const secim = $("#secSaglayici");
+    const mevcut = [...secim.options].map((o) => o.value);
+    if (mevcut.join("|") !== adlar.join("|")) {
+      secim.textContent = "";
+      for (const ad of adlar) {
+        const secenek = eleman("option", null, ad);
+        secenek.value = ad;
+        secim.append(secenek);
+      }
+    }
+    if (adlar.length === 0) {
+      secModeliDoldur("");
+      $("#secAnahtarlar").textContent = "";
+      $("#secKimlik").textContent = "";
+      secImza = "";
+      return;
+    }
+    if (!adlar.includes(secim.value)) secim.value = adlar[0];
+
+    // 5 sn'lik tazeleme kullanıcının seçimini SIFIRLAMAMALI: aynı sağlayıcı için
+    // model/anahtar listesi değişmediyse DOM'a dokunulmaz.
+    const kayit = veri[secim.value] ?? {};
+    const imza = [
+      secim.value,
+      (kayit.modeller ?? [])
+        .map((m) => `${m.kod}:${m.kilitli ? 1 : 0}`)
+        .join(","),
+      (kayit.anahtarlar ?? []).map((a) => a.kod).join(","),
+    ].join("|");
+    if (imza === secImza) return;
+    secImza = imza;
+    secModeliDoldur(secim.value);
+    secAnahtarlariDoldur(secim.value);
+  };
+
+  const secimGovdesi = () => {
+    const ad = $("#secSaglayici").value;
+    if (!ad) throw new Error("Önce bir sağlayıcı seçin.");
+    const kod = $("#secModel").value;
+    const anahtarlar = {};
+    for (const secim of document.querySelectorAll("#secAnahtarlar select")) {
+      if (!secim.value) continue; // "değiştirme" → istekte yok
+      anahtarlar[secim.dataset.anahtar] = secim.value === "acik";
+    }
+    const govde = {
+      model: kod ? `kervan/${ad}/${kod}` : `kervan/${ad}`,
+      messages: [{ role: "user", content: $("#secIstem").value.trim() || "merhaba" }],
+    };
+    if (Object.keys(anahtarlar).length) govde.kervan = { anahtarlar };
+    return govde;
+  };
+
+  const secDene = () => calistir(async () => {
+    const govde = secimGovdesi();
+    $("#secNot").textContent = "İstek gönderiliyor: model uygulanmazsa sunucu açık hata döner…";
+    $("#secNot").className = "alt";
+    $("#secYanit").classList.add("gizli");
+    try {
+      // Tarayıcı turu 120 sn'yi bulabiliyor; genel 35 sn'lik sınır yetmez.
+      const yanit = await servis("POST", "/dene", govde, 180_000);
+      const metin = yanit?.choices?.[0]?.message?.content ?? "(boş yanıt)";
+      $("#secNot").textContent = `${govde.model} · yanıt geldi`;
+      $("#secYanit").textContent = metin;
+      $("#secYanit").classList.remove("gizli");
+      await yenile();
+    } catch (hata) {
+      // Sunucunun 400/501 mesajı burada görünür: "seçtim ama uygulanmadı" sessizliği yok.
+      $("#secNot").textContent = hata.message ?? String(hata);
+      $("#secNot").className = "hata";
+    }
+  });
+
   const ciz = (durum) => {
     sonDurum = durum;
     const acik = durum.kervan === true;
@@ -308,6 +457,11 @@
     cizHesapEkle(durum);
     cizWebHesaplar(durum);
     cizKota(durum);
+    // Secenekler ayri bir uctan gelir; hata olsa bile panelin geri kalani cizili kalir.
+    cizSecenekler().catch((hata) => {
+      $("#secNot").textContent = hata.message ?? String(hata);
+      $("#secNot").className = "hata";
+    });
   };
 
   const yenile = async () => {
@@ -376,6 +530,18 @@
   $("#yenile").addEventListener("click", () => calistir(yenile));
   $("#baslat").addEventListener("click", basla);
   $("#uygula").addEventListener("click", uygula);
+  // Saglayici/model degisince kimlik ve secenekler tazelenir. Model listesi ayni
+  // saglayici icin onbellekten gelir; secim kullaniciya kalir (imza degismedikce
+  // DOM'a dokunulmaz).
+  $("#secSaglayici").addEventListener("change", () => {
+    secImza = "";
+    cizSecenekler().catch((hata) => {
+      $("#secNot").textContent = hata.message ?? String(hata);
+      $("#secNot").className = "hata";
+    });
+  });
+  $("#secModel").addEventListener("change", () => kimlikYaz($("#secSaglayici").value));
+  $("#secDene").addEventListener("click", secDene);
   $("#hesapAc").addEventListener("click", hesapAc);
   $("#hesapDogrula").addEventListener("click", hesapDogrula);
   $("#hesapYenidenBaslat").addEventListener("click", hesabiDevreyeAl);

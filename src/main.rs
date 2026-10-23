@@ -399,6 +399,54 @@ async fn main() -> Result<()> {
         None => None,
     };
 
+    // --anahtar <kod=acik|kapali>: site arayuzundeki AC/KAPA ozelliklerini ayarla.
+    // TEKRARLANABILIR; her bayrak uygulanir (ikinciyi sessizce yutmak, kullanicinin
+    // istedigi ayarla istek gonderdigini sanmasina yol acardi).
+    // Uretim yoluyla AYNI fonksiyondan gecer (`anahtar_ayarla`): durum okunur,
+    // gerekirse tıklanır ve YENIDEN OKUNARAK dogrulanir. Dogrulanamazsa komut hata verir.
+    let mut anahtar_istegi: Vec<(browser::Anahtar, bool)> = Vec::new();
+    let mut ara_indeks = 0usize;
+    while let Some(goreli) = args[ara_indeks..].iter().position(|a| a == "--anahtar") {
+        let i = ara_indeks + goreli;
+        let ham = args
+            .get(i + 1)
+            .context("--anahtar icin 'kod=acik|kapali' gerekli")?;
+        let (kod, durum) = ham
+            .split_once('=')
+            .context("--anahtar bicimi: 'kod=acik' ya da 'kod=kapali'")?;
+        let istenen = match durum {
+            "acik" => true,
+            "kapali" => false,
+            _ => anyhow::bail!("--anahtar durumu 'acik' ya da 'kapali' olmali, verilen: '{durum}'"),
+        };
+        let anahtar = saglayici
+            .anahtarlar
+            .iter()
+            .find(|a| a.kod.eq_ignore_ascii_case(kod))
+            .with_context(|| {
+                let tanimli: Vec<String> = saglayici
+                    .anahtarlar
+                    .iter()
+                    .map(|a| format!("{} => {}", a.kod, a.etiket))
+                    .collect();
+                format!(
+                    "'{}' icin tanimsiz anahtar kodu '{kod}'. Tanimli: {}",
+                    saglayici.ad,
+                    if tanimli.is_empty() {
+                        "yok (kervan.toml > [providers.\"x\".anahtarlar])".to_string()
+                    } else {
+                        tanimli.join(", ")
+                    }
+                )
+            })?;
+        println!(
+            "anahtar      : {kod} => {}",
+            if istenen { "acik" } else { "kapali" }
+        );
+        anahtar_istegi.push((anahtar.clone(), istenen));
+        ara_indeks = i + 2;
+    }
+
     // --sor "<istem>" verildiyse gercek bir tur at.
     if let Some(i) = args.iter().position(|a| a == "--sor") {
         let istem = args.get(i + 1).context("--sor icin istem metni gerekli")?;
@@ -414,6 +462,7 @@ async fn main() -> Result<()> {
             istem,
             YANIT_ZAMAN_ASIMI,
             model_cagrisi,
+            &anahtar_istegi,
         )
         .await
         {
@@ -424,6 +473,21 @@ async fn main() -> Result<()> {
             // {e:#} tum neden zincirini basar. Ham hatayi yutmak, OmniRoute'un
             // gemini-web'de yaptigi ve bize saatler kaybettiren seydi.
             Err(e) => println!("HATA         : {e:#}"),
+        }
+    } else if !anahtar_istegi.is_empty() {
+        // --sor yoksa yalniz anahtarlari uygula ve dogrula (olcum icin).
+        for (anahtar, istenen) in &anahtar_istegi {
+            match browser::anahtar_ayarla(
+                &oturum.client,
+                anahtar,
+                *istenen,
+                YANIT_ZAMAN_ASIMI.min(std::time::Duration::from_secs(60)),
+            )
+            .await
+            {
+                Ok(sonuc) => println!("anahtar      : {} ({sonuc:?})", anahtar.kod),
+                Err(e) => println!("HATA         : {e:#}"),
+            }
         }
     }
 
@@ -470,6 +534,25 @@ async fn main() -> Result<()> {
         println!("\ntiklandi     : {secici} -> {metin}");
     }
 
+    // --uzerine-gel "<css>" veya "<css>::<metin>": fareyi ogenin uzerine gotur.
+    // Alt menuler yalniz fare girdisiyle aciliyor (perplexity); hedef oge metinle
+    // secilebilsin diye "::" bicimi de kabul edilir.
+    if let Some(i) = args.iter().position(|a| a == "--uzerine-gel") {
+        let ham = args
+            .get(i + 1)
+            .context("--uzerine-gel icin bir CSS secici gerekli")?;
+        match ham.split_once("::") {
+            Some((secici, metin)) => {
+                browser::metinle_uzerine_gel(&oturum.client, secici, metin).await?;
+                println!("\nuzerine-gel  : {secici} -> {metin}");
+            }
+            None => {
+                browser::uzerine_gel(&oturum.client, ham).await?;
+                println!("\nuzerine-gel  : {ham}");
+            }
+        }
+    }
+
     // --metin <css>: ilk eslesen ogenin metni (secili modeli okumak icin).
     if let Some(i) = args.iter().position(|a| a == "--metin") {
         let secici = args.get(i + 1).context("--metin icin CSS secici gerekli")?;
@@ -510,7 +593,7 @@ async fn main() -> Result<()> {
 
 /// Profiller depo disinda tutulur — icinde cerez ve oturum var, asla commit'lenmez.
 /// Deger alan bayraklar. Bunlardan sonraki arguman DEGERDIR, hesap adi degil.
-const DEGERLI_BAYRAKLAR: [&str; 10] = [
+const DEGERLI_BAYRAKLAR: [&str; 12] = [
     "--saglayici",
     "--port",
     "--url",
@@ -518,9 +601,11 @@ const DEGERLI_BAYRAKLAR: [&str; 10] = [
     "--incele",
     "--tikla",
     "--tikla-metin",
+    "--uzerine-gel",
     "--metin",
     "--js",
     "--model",
+    "--anahtar",
 ];
 
 /// Ilk konumsal arguman = hesap adi.

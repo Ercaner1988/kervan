@@ -42,6 +42,7 @@ fn arti_isareti_kodlanir() {
         giris_kalibi: "https://o/?Email={eposta}".into(),
         cloudflare: false,
         model: None,
+        anahtarlar: Vec::new(),
     };
     assert_eq!(
         p.giris_url("ad+etiket@gmail.com"),

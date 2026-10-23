@@ -146,6 +146,12 @@ pub struct SaglayiciAyar {
     /// Bu sitede GERCEKTEN secilebilen modeller. Bos/verilmezse site model
     /// secimi sunmuyor sayilir ve model kimligi istemek acik hataya duser.
     pub modeller: Option<Vec<ModelAyar>>,
+    /// Site arayuzundeki AC/KAPA ozellikleri (deepseek "DeepThink", "Search").
+    ///
+    /// Model menusunden bagimsiz bir eksen: tek secim degil, iki durum. Her biri
+    /// OLCULMUS dugme secicisi + gorunen ad ile tanimlanir; Kervan durumu siteden
+    /// okur ve uyguladiktan sonra yeniden okuyarak dogrular.
+    pub anahtarlar: Option<Vec<AnahtarAyar>>,
     /// Bu saglayiciya ayni anda kac istek gidebilir. Verilmezse 1.
     ///
     /// Olculdu: ayni siteye ayni anda yedi profille gitmek Cloudflare'i interaktif
@@ -168,6 +174,28 @@ pub struct SaglayiciAyar {
 #[serde(deny_unknown_fields)]
 pub struct ModelAyar {
     pub kod: String,
+    pub etiket: String,
+    /// Sitede MENUDE VAR ama bu hesapta TIKLANINCA SECILMIYOR (ucretli plan).
+    ///
+    /// Gosterilir cunku hesabin potansiyeli gorunmeli; ama `kilitli = true` olan
+    /// kod istenirse Kervan istegi siteye hic gondermez, acik hata doner.
+    #[serde(default)]
+    pub kilitli: bool,
+    /// Kilit nedeninin insan okunur hali; panelde ve hata mesajinda gorunur.
+    #[serde(default)]
+    pub kilit_nedeni: Option<String>,
+}
+
+/// `kervan.toml`da tanimli tek bir AC/KAPA ozelligi.
+///
+/// `dugme` OLCULMUS kapsayici secicidir (`.ds-toggle-button`), `etiket` sitedeki
+/// gorunen addir ("DeepThink"). Ikisi birlikte gerekli: secici tek basina hangi
+/// dugmenin hangi ozellik oldugunu soylemez, ad tek basina kararli degildir.
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct AnahtarAyar {
+    pub kod: String,
+    pub dugme: String,
     pub etiket: String,
 }
 
@@ -396,6 +424,28 @@ impl Config {
                      modeller UCU BIRLIKTE gerekli"
                 ),
             }
+            // Ac/kapa ozellikleri: her biri dugme + ad ile TAM tanimli olmali ve
+            // ayni kod iki kez gecmemeli. Eksik tanim "ozellik var" sanilip
+            // sessizce yanlis ayarla istek gonderilmesine yol acabilir.
+            if let Some(anahtarlar) = &s.anahtarlar {
+                let mut kodlar = std::collections::BTreeSet::new();
+                for a in anahtarlar {
+                    if a.kod.trim().is_empty()
+                        || a.dugme.trim().is_empty()
+                        || a.etiket.trim().is_empty()
+                    {
+                        anyhow::bail!(
+                            "[providers.\"{ad}\"] anahtarlar icinde kod, dugme ve etiket bos olamaz"
+                        );
+                    }
+                    if !kodlar.insert(a.kod.as_str()) {
+                        anyhow::bail!(
+                            "[providers.\"{ad}\"] anahtar kodu tekrar ediyor: '{}'",
+                            a.kod
+                        );
+                    }
+                }
+            }
         }
         Ok(())
     }
@@ -486,6 +536,30 @@ mod tests {
         let c: Config = toml::from_str(t).expect("toml okunmali");
         let h = c.dogrula().unwrap_err().to_string();
         assert!(h.contains("tekrar ediyor"), "beklenen mesaj, gelen: {h}");
+    }
+
+    /// `kilitli` varsayilan olarak YOKTUR (false). Yalniz acikca yazilan model
+    /// kilitli sayilir; aksi halde her model sessizce 402'ye duserdi.
+    #[test]
+    fn kilitli_model_okunur_ve_varsayilani_serbesttir() {
+        let t = r#"
+            [[accounts]]
+            name = "a"
+            [providers."gemini"]
+            model_dugmesi = "b"
+            model_oge = "o"
+            modeller = [
+              { kod = "orta", etiket = "Orta" },
+              { kod = "pro", etiket = "3.1 Pro", kilitli = true, kilit_nedeni = "ucretli plan" },
+            ]
+        "#;
+        let c: Config = toml::from_str(t).expect("toml okunmali");
+        c.dogrula().expect("kilitli model gecerli yapilandirmadir");
+        let modeller = c.providers["gemini"].modeller.as_ref().expect("modeller");
+        assert!(!modeller[0].kilitli, "varsayilan serbest olmali");
+        assert_eq!(modeller[0].kilit_nedeni, None);
+        assert!(modeller[1].kilitli);
+        assert_eq!(modeller[1].kilit_nedeni.as_deref(), Some("ucretli plan"));
     }
 
     #[test]

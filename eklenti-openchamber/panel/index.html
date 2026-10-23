@@ -40,7 +40,7 @@
       .satir .ad { font-weight: 600; }
       .satir .alt { color: var(--k-muted); font-size: 12px; }
       .satir .sag { margin-left: auto; display: flex; gap: 6px; align-items: center; }
-      button, select, input[type="email"] {
+      button, select, input[type="email"], input[type="text"] {
         font: inherit;
         color: var(--k-fg);
         background: var(--k-card-2);
@@ -49,7 +49,7 @@
         padding: 5px 10px;
         cursor: pointer;
       }
-      input[type="email"] { cursor: text; min-width: 15rem; }
+      input[type="email"], input[type="text"] { cursor: text; min-width: 15rem; }
       button:hover:not(:disabled) { border-color: var(--k-primary); }
       button:disabled { opacity: 0.55; cursor: default; }
       button.birincil { background: var(--k-primary); color: var(--primary-foreground, #000); border-color: transparent; font-weight: 600; }
@@ -91,6 +91,28 @@
           <button id="uygula">Uygula</button>
           <span id="stratejiNot" class="alt"></span>
         </div>
+      </div>
+
+      <h2>Model ve özellik seçimi</h2>
+      <div class="kutu">
+        <div class="satir">
+          <select id="secSaglayici" aria-label="Sağlayıcı"></select>
+          <select id="secModel" aria-label="Model"></select>
+          <span class="alt" id="secKimlik"></span>
+        </div>
+        <div id="secAnahtarlar"></div>
+        <div class="satir">
+          <input id="secIstem" type="text" placeholder="deneme istemi" aria-label="Deneme istemi" value="Tek kelimeyle cevapla: 2+2 kaç?" />
+          <button id="secDene" class="birincil">Dene</button>
+        </div>
+        <div class="satir">
+          <span id="secNot" class="alt">
+            Yalnız ölçülmüş seçenekler listelenir; hesabın planı yetmeyen seçenekler
+          <strong>kilitli</strong> görünür (seçilemez, neden yanında yazar). "Değiştirme"
+          bırakılan özellik istekte gönderilmez.
+          </span>
+        </div>
+        <pre id="secYanit" class="gizli"></pre>
       </div>
 
       <h2>Havuz hesapları</h2>

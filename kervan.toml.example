@@ -111,5 +111,60 @@ bilinmeyen_pencere_dk = 60
 #   { kod = "dusuk", etiket = "Düşük" },
 #   { kod = "orta", etiket = "Orta" },
 #   { kod = "yuksek", etiket = "Yüksek" },
+#   # Menüde GÖRÜNÜYOR ama bu hesapta SEÇİLMİYOR (ücretli plan). `kilitli = true`
+#   # olan kod istenirse Kervan siteye hiç dokunmaz ve 402 döner: hesabın
+#   # potansiyeli görünür, sessizce site varsayılanına düşülmez.
+#   { kod = "3-1-pro", etiket = "3.1 Pro", kilitli = true, kilit_nedeni = "ücretli plan gerekiyor" },
+#   { kod = "4-argon", etiket = "4 Argon", kilitli = true, kilit_nedeni = "ücretli plan gerekiyor" },
 # ]
+#
+# Ölçülmüş örnek (kimi / kimi.ai, 2026-10-22): menüde üç model var, seçim işareti
+# öğenin kendi `checked` sınıfı. "Düşünme yoğunluğu" ayrı bir alt eksendir ve bu
+# tanıma girmez; yalnız model ekseni kodlanır. Öğe adı ilk satırdan okunur, bu
+# yüzden "K2.8 Preview · ..." öğesinin etiketi "K2.8"dir.
+#
+# [providers."kimi"]
+# model_dugmesi = "[data-testid='model-select-trigger']"
+# model_oge = "[role=menuitemradio][data-testid='model-option']"
+# modeller = [
+#   { kod = "k3", etiket = "K3" },
+#   { kod = "k2-8", etiket = "K2.8" },
+#   { kod = "hizli", etiket = "Hızlı" },
+# ]
+#
+# Ölçülmüş örnek (z.ai / chat.z.ai, 2026-10-22): seçim işareti
+# `data-selected="true"`. Etiketler TAM ad olmalı: "GLM-5.3" ile "GLM-5.3-Flash"
+# birbirinin içinde geçer, eşleştirme önce ad tam eşitliğine bakar.
+#
+# [providers."z.ai"]
+# model_dugmesi = "button.modelSelectorButton"
+# model_oge = "[role=menu] button[data-value]"
+# modeller = [
+#   { kod = "glm-5.3-flash", etiket = "GLM-5.3-Flash" },
+#   { kod = "glm-5.3", etiket = "GLM-5.3" },
+#   { kod = "glm-5.2", etiket = "GLM-5.2" },
+# ]
+#
+# Ölçülmüş örnek (deepseek / chat.deepseek.com, 2026-10-22): MODEL MENÜSÜ YOK.
+# İki bağımsız aç/kapa düğmesi var (`.ds-toggle-button`), durum `aria-pressed`.
+# Bu yüzden model kodu değil `anahtarlar` tanımlanır: istek gövdesindeki
+# `kervan.anahtarlar` alanıyla istenir, Kervan durumu okur, uygular ve yeniden
+# okuyarak doğrular. Doğrulanamazsa istek açık hataya düşer.
+#
+# [providers."deepseek"]
+# [[providers."deepseek".anahtarlar]]
+# kod = "derin"
+# dugme = ".ds-toggle-button"
+# etiket = "DeepThink"
+#
+# [[providers."deepseek".anahtarlar]]
+# kod = "arama"
+# dugme = ".ds-toggle-button"
+# etiket = "Search"
+#
+# ÖLÇÜLEMEYENLER (2026-10-22) — kod yazmak yanlış model riski taşır:
+#   perplexity: menü öğelerinin hepsi `aria-haspopup=menu` taşıyor ama fareyle
+#     açılan alt menü yalnız "Upgrade plan" tanıtımı; modelin kendi seçim işareti
+#     DOM'da HİÇ yok (aria-checked/class işareti yok). Seçim doğrulanamadığı için
+#     kodlanmadı: doğrulanamayan seçim sessiz yanlış model demektir.
 
