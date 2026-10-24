@@ -760,24 +760,7 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
         let sonuc = if let Some(hedef) = st.rest_hedefleri.get(ad).cloned() {
             rest_denemesi(&st, &hedef, &raw_val, None, req.stream).await
         } else if st.eklenti_hub.sekme_var_mi(ad).await {
-            // Eklenti yolunda model/anahtar secimi HENUZ uygulanmiyor (D1d). Sessizce
-            // sekmenin o anki durumuyla cevap vermek yanlis model/ozellik olurdu.
-            if model_kodu.is_some() || !anahtar_istegi.is_empty() {
-                Err((
-                    hata(
-                        StatusCode::NOT_IMPLEMENTED,
-                        &format!(
-                            "'{ad}' eklenti sekmesi uzerinden calisiyor; model/ac-kapa secimi bu \
-                             yolda henuz uygulanmiyor. Eklenti sekmesini kapatip havuz yolunu \
-                             kullan ya da secimsiz '{}' iste.",
-                            model_kimligi(ad)
-                        ),
-                    ),
-                    false,
-                ))
-            } else {
-                eklenti_denemesi(&st, ad, &gonderilecek_istem, &req).await
-            }
+            eklenti_denemesi(&st, ad, &gonderilecek_istem, &req, &secim).await
         } else {
             havuz_denemesi(&st, ad, &req, &istem, &yonerge, &gonderilecek_istem, &secim).await
         };
@@ -812,6 +795,7 @@ async fn eklenti_denemesi(
     saglayici: &str,
     gonderilecek_istem: &str,
     req: &ChatRequest,
+    secim: &SecimIstegi,
 ) -> Result<Response, (Response, bool)> {
     println!(
         "[{}] istek Kervan Eklentisi uzerinden iletiliyor ({} karakter)",
@@ -819,9 +803,17 @@ async fn eklenti_denemesi(
         gonderilecek_istem.len()
     );
     let t = std::time::Instant::now();
+    // Model menusu cozulurken dogrulanmisti; burada yalniz etiket eslestirmesi
+    // icin gerekli. Secim turlari ISTEMDEN ONCE, ayni sekmede uygulanir.
+    let menu = st.saglayicilar.get(saglayici).and_then(|s| s.model.clone());
+    let es = crate::eklenti::EklentiSecimi {
+        menu,
+        model_kodu: secim.model_kodu.clone(),
+        anahtarlar: secim.anahtarlar.clone(),
+    };
     let sonuc = match st
         .eklenti_hub
-        .sor(saglayici, gonderilecek_istem, st.timeout)
+        .sor_secimli(saglayici, gonderilecek_istem, Vec::new(), &es, st.timeout)
         .await
     {
         Err(e) => match e.downcast::<crate::eklenti::YarimYanit>() {

@@ -11,6 +11,10 @@
 //! ile yanıtlar canlı olarak Kervan'a geri akar.
 
 use anyhow::{Context, Result, bail};
+use kervan_secim::{
+    Anahtar, AnahtarSonucu, ModelMenusu, OgeDurum, SecimSonucu, hedef_indeks, secim_dogrulandi,
+    zaten_secili,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -52,6 +56,12 @@ pub enum GelenMesaj {
         durum: String,
         detay: Option<String>,
     },
+    /// Seçim turu yanıtı: sayfadan okunan ham öğe listesi (ad, tam metin, işaret).
+    ///
+    /// KATLAMA/EŞLEŞTİRME BURADA YAPILMAZ: eklenti yalnız ölçümü döndürür, karar
+    /// `kervan-secim::hedef_indeks` ile Rust tarafında verilir. İki katlama
+    /// ayrışınca var olan seçenek "menüde yok" sayılmıştı (2026-10-22 ölçümü).
+    Ogeler { id: String, ogeler: Vec<OgeDurum> },
     /// Nabız kontrolü.
     Pong,
 }
@@ -89,6 +99,30 @@ pub enum GidenMesaj {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         profile: Option<String>,
     },
+    /// Sayfadaki öğeleri oku ve ham listeyi döndür.
+    ///
+    /// `dugme` verilirse önce o düğmeye basılır (model menüsü); menü zaten
+    /// açıksa basılmaz. Okuma sonrası menü ESCAPE ile kapatılır.
+    OgeOku {
+        id: String,
+        provider: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        profile: Option<String>,
+        secici: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        dugme: Option<String>,
+    },
+    /// Sırasındaki öğeye bas ve GÜNCEL listeyi döndür (doğrulama çağıranda).
+    OgeBas {
+        id: String,
+        provider: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        profile: Option<String>,
+        secici: String,
+        indeks: usize,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        dugme: Option<String>,
+    },
     /// Nabız sorusu.
     Ping,
 }
@@ -99,6 +133,8 @@ pub enum YanitKanali {
     Tekil(oneshot::Sender<Result<String>>),
     /// Canlı akış (streaming) bekleyen akış.
     Akan(mpsc::Sender<Result<String>>),
+    /// Seçim turu: okunan ham öğe listesini bekleyen akış.
+    Ogeler(oneshot::Sender<Result<Vec<OgeDurum>>>),
 }
 
 /// Bağlı bir eklenti oturumu. Birden çok hesap (profil) aynı sağlayıcıda
@@ -107,6 +143,31 @@ pub struct BagliSekme {
     pub provider: String,
     pub profile: String,
     pub gonderici: mpsc::Sender<GidenMesaj>,
+}
+
+/// Seçim turlarının gideceği hesap.
+///
+/// Tur mesajları sekme kanalına yazılsa da eklenti arka planı hangi sekmeye
+/// ileteceğini bu alanlardan çözer; `sor` ile aynı çözüm kuralı geçerli.
+struct Hedef {
+    provider: String,
+    profile: String,
+}
+
+/// Eklenti yolunda istemden ÖNCE uygulanacak seçimler.
+///
+/// NEDEN TEK YAPI: model menüsü, model kodu ve aç/kapa anahtarları ayrı
+/// parametre olarak verildiğinde imza okunamaz hale geliyordu (clippy 8/7).
+/// Üçü de "istemden önce, aynı sekmede" kuralına tabi olduğu için birlikte
+/// taşınmaları doğal.
+#[derive(Debug, Default, Clone)]
+pub struct EklentiSecimi {
+    /// Sağlayıcının ÖLÇÜLMÜŞ model menüsü; tanımlı değilse model seçilemez.
+    pub menu: Option<ModelMenusu>,
+    /// `kervan.toml`daki kimlik kodu ("orta"), site etiketi değil.
+    pub model_kodu: Option<String>,
+    /// Aç/kapa anahtarları: (anahtar, istenen durum).
+    pub anahtarlar: Vec<(Anahtar, bool)>,
 }
 
 /// Tarayıcı eklentisinin bağlanırken kullanacağı paylaşılan token.
@@ -209,6 +270,29 @@ pub fn token_esit_mi(gelen: &str, beklenen: &str) -> bool {
         == 0
 }
 
+/// Hata metninde menünün ne gösterdiğini insan okunur biçimde verir.
+/// İşaretli öğe `*` ile ayrılır: "yanlış seçenek işaretli" tanısı tek bakışta görünür.
+fn oge_listesi(ogeler: &[OgeDurum]) -> String {
+    if ogeler.is_empty() {
+        return "hic oge yok".to_string();
+    }
+    ogeler
+        .iter()
+        .map(|o| {
+            if o.isaretli {
+                if o.kanit.is_empty() {
+                    format!("{}*", o.metin)
+                } else {
+                    format!("{}*[{}]", o.metin, o.kanit)
+                }
+            } else {
+                o.metin.clone()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" | ")
+}
+
 /// Sekme anahtarı. Profil adı `:` içerebildiği için ayırıcı ilk `:`dir.
 pub fn hesap_anahtari(provider: &str, profile: &str) -> String {
     format!("{provider}:{profile}")
@@ -289,6 +373,15 @@ pub struct EklentiHub {
     durumlar: Arc<Mutex<HashMap<String, String>>>,
     /// Eklenti bağlantısında istenen paylaşılan token.
     token: Arc<String>,
+    /// Hesap başına seçim/istem kilidi: `provider:profile` -> kilit.
+    ///
+    /// NEDEN: seçim turları (oku → tıkla → doğrula) ile istem aynı sekmede
+    /// üç ayrı gidiş-dönüştür. Aynı hesaba eşzamanlı iki istek gelirse A'nın
+    /// doğrulamasından sonra B'nin tıklaması sayfadaki modeli değiştirir ve
+    /// A'nın istemi **B'nin modeliyle** gider (2026-10-24 incelemesi). Bu,
+    /// dilimin kapatmayı vaat ettiği "sessiz yanlış model" arızasının ta
+    /// kendisidir; kilit seçim + istem + yanıtı tek kritik bölgeye alır.
+    kilits: Arc<Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>>,
 }
 
 impl Default for EklentiHub {
@@ -300,6 +393,7 @@ impl Default for EklentiHub {
             biriken_metinler: Arc::new(Mutex::new(HashMap::new())),
             durumlar: Arc::new(Mutex::new(HashMap::new())),
             token: Arc::new(rastgele_token()),
+            kilits: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -328,6 +422,24 @@ impl EklentiHub {
         &self.token
     }
 
+    /// Hesap kilidini verir (`provider:profile`). Kilit seçim turları ile
+    /// istemi tek kritik bölgede tutar; aynı sekmede iç içe seçim olmaz.
+    ///
+    /// Kilit TEMBEL kurulur: hesap başına bir tane, ilk istekte. Tablo küçük
+    /// kalır (görülen hesap sayısı kadar) ve sekme ayrılınca TEMİZLENMEZ.
+    /// Gerekçe (2026-10-24 incelemesi, karar): temizlik, kilidi tutan istek
+    /// sürerken yeni bir `Mutex` üretir; sonraki istek o yeni kilidi alır ve
+    /// eski istekle aynı hesapta iç içe girer — yani temizlik, kilidin
+    /// engellediği arızayı geri getirir. Sınırsız büyüme de yok: anahtar
+    /// `provider:profile`, sayısı yapılandırmadaki hesaplarla sınırlı.
+    async fn hesap_kilidi(&self, anahtar: &str) -> Arc<tokio::sync::Mutex<()>> {
+        let mut kilitler = self.kilits.lock().await;
+        kilitler
+            .entry(anahtar.to_string())
+            .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(())))
+            .clone()
+    }
+
     /// Yeni bir sekme bağlandığında kaydeder. Aynı `provider:profile` yeniden
     /// bağlanırsa (sayfa yenileme) eski kaydın yerine geçer; sayaç korunur.
     pub async fn sekme_kaydet(
@@ -338,15 +450,21 @@ impl EklentiHub {
     ) {
         let anahtar = hesap_anahtari(&provider, &profile);
         let mut map = self.sekmeler.lock().await;
-        println!("eklenti      : '{anahtar}' sekmesi bağlandı");
-        map.insert(
-            anahtar,
-            BagliSekme {
-                provider,
-                profile,
-                gonderici,
-            },
-        );
+        // Yalnız YENİ kayıt duyurulur: 10 sn'lik tarama aynı sekmeyi yeniden
+        // bildiriyor ve log okunamaz hale geliyordu (2026-10-24).
+        if map
+            .insert(
+                anahtar.clone(),
+                BagliSekme {
+                    provider,
+                    profile,
+                    gonderici,
+                },
+            )
+            .is_none()
+        {
+            println!("eklenti      : '{anahtar}' sekmesi bağlandı");
+        }
     }
 
     /// Sekme kapandığında kaydı siler. `profile` yoksa sağlayıcının tüm
@@ -430,6 +548,11 @@ impl EklentiHub {
         timeout: std::time::Duration,
     ) -> Result<String> {
         let (tx_giden, profile) = self.hesap_sec(provider).await?;
+        // Aynı hesaba eşzamanlı istek: seçim turları ve istem sırayla koşmalı.
+        // Kilit yanıt bitene kadar tutulur; aynı sekmede akan iki yanıt zaten
+        // birbirine karışır.
+        let kilit = self.hesap_kilidi(&hesap_anahtari(provider, &profile)).await;
+        let _bolge = kilit.lock().await;
         let id = format!("req-{}", rand::random::<u32>());
         self.sor_gonder(
             tx_giden,
@@ -531,6 +654,250 @@ impl EklentiHub {
         self.sor_ekli(provider, istem, Vec::new(), timeout).await
     }
 
+    /// Model ve aç/kapa seçimlerini uygulayıp AYNI hesaba soru sorar.
+    ///
+    /// NEDEN TEK ÇAĞRI: seçim turları ile istem aynı sekmeye gitmeli. Hesap
+    /// seçimi (`hesap_sec`) en-az-kullanılanı döndürdüğü için iki ayrı çağrı
+    /// seçimi bir sekmeye, istemi başka bir hesaba gönderebilirdi.
+    ///
+    /// SIRA: model önce, aç/kapa sonra — tarayıcı yolundaki `ask` ile aynı;
+    /// istem yazılmadan önce seçim yapılır (sayfa menü açıkken istemi yutuyor).
+    pub async fn sor_secimli(
+        &self,
+        provider: &str,
+        istem: &str,
+        dosyalar: Vec<DosyaEki>,
+        secim: &EklentiSecimi,
+        timeout: std::time::Duration,
+    ) -> Result<String> {
+        let (tx_giden, profile) = self.hesap_sec(provider).await?;
+        // SEÇİM + İSTEM TEK KRİTİK BÖLGE: kilit olmadan B'nin tıklaması A'nın
+        // doğrulamasından sonra sayfadaki modeli değiştirir ve A'nın istemi
+        // B'nin modeliyle gider (2026-10-24 incelemesi).
+        let kilit = self.hesap_kilidi(&hesap_anahtari(provider, &profile)).await;
+        let _bolge = kilit.lock().await;
+        let hedef = Hedef {
+            provider: provider.to_string(),
+            profile: profile.clone(),
+        };
+        let tur_zamani = timeout.min(std::time::Duration::from_secs(45));
+        if let Some(kod) = secim.model_kodu.as_deref() {
+            let Some(menu) = secim.menu.as_ref() else {
+                bail!("'{provider}' icin olculmus model menusu tanimli degil");
+            };
+            let etiket = menu.etiket(kod).with_context(|| {
+                format!(
+                    "'{provider}' icin tanimsiz model kodu '{kod}'. Tanimli: {}",
+                    menu.kodlar().join(", ")
+                )
+            })?;
+            let sonuc = self
+                .model_turu(&tx_giden, &hedef, menu, etiket, tur_zamani)
+                .await?;
+            println!("model        : {etiket} ({sonuc:?}) [eklenti]");
+        }
+        for (anahtar, istenen) in &secim.anahtarlar {
+            let sonuc = self
+                .anahtar_turu(&tx_giden, &hedef, anahtar, *istenen, tur_zamani)
+                .await?;
+            println!("anahtar      : {} ({sonuc:?}) [eklenti]", anahtar.kod);
+        }
+        let id = format!("req-{}", rand::random::<u32>());
+        self.sor_gonder(
+            tx_giden,
+            provider,
+            Some(profile),
+            id,
+            istem,
+            dosyalar,
+            timeout,
+        )
+        .await
+    }
+
+    /// Model seçimini site menüsünde uygular ve seçimi HEDEF öğenin kendi
+    /// işaretinden doğrular.
+    ///
+    /// TIKLAMAYI ATLAMA ŞARTI (2026-10-24 incelemesi): hedefin kendi işareti
+    /// GÜÇLÜ ve menüde işaretli tek öğe o. Bunun dışında her hâlde tıklanır —
+    /// hedef zaten seçiliyse tıklama radyoda durumu değiştirmez, seçili
+    /// değilse doğru modeli kurar. Yani şüphe tıklamaya çözülür, "zaten
+    /// seçili"ye değil.
+    ///
+    /// NEDEN LİSTE GENELİNDE "TAM BİR İŞARET" ARANMIYOR: menü iki eksen
+    /// taşıyabiliyor (gemini: mod ekseni + düşünme düzeyi; `kervan.toml:57-62`
+    /// ve `kervan_secim::model_sec` belgesi). O hâlde iki işaret NORMALDİR;
+    /// doğrulamayı liste sayımına bağlamak, doğru seçilmiş modeli her turda
+    /// "doğrulanamadı" diye düşürürdü.
+    async fn model_turu(
+        &self,
+        tx_giden: &mpsc::Sender<GidenMesaj>,
+        hedef: &Hedef,
+        menu: &ModelMenusu,
+        etiket: &str,
+        zaman_asimi: std::time::Duration,
+    ) -> Result<SecimSonucu> {
+        let ogeler = self
+            .oge_oku(tx_giden, hedef, &menu.oge, Some(&menu.dugme), zaman_asimi)
+            .await?;
+        let Some(i) = hedef_indeks(&ogeler, etiket) else {
+            bail!(
+                "'{etiket}' modeli sayfadaki menude bulunamadi. Menudekiler: {}",
+                oge_listesi(&ogeler)
+            );
+        };
+        if zaten_secili(&ogeler, i) {
+            return Ok(SecimSonucu::ZatenSecili);
+        }
+        let sonra = self
+            .oge_bas(
+                tx_giden,
+                hedef,
+                &menu.oge,
+                i,
+                Some(&menu.dugme),
+                zaman_asimi,
+            )
+            .await?;
+        match hedef_indeks(&sonra, etiket) {
+            Some(j) if secim_dogrulandi(&sonra, j) => Ok(SecimSonucu::Degisti),
+            _ => bail!(
+                "'{etiket}' tiklandi ama secim dogrulanamadi (simdiki menu: {}). Sessizce \
+                 yanlis modelle devam etmemek icin istek dusuruldu.",
+                oge_listesi(&sonra)
+            ),
+        }
+    }
+
+    /// Aç/kapa özelliğini istenen duruma getirir ve durumu yeniden okuyarak doğrular.
+    async fn anahtar_turu(
+        &self,
+        tx_giden: &mpsc::Sender<GidenMesaj>,
+        hedef: &Hedef,
+        anahtar: &Anahtar,
+        istenen: bool,
+        zaman_asimi: std::time::Duration,
+    ) -> Result<AnahtarSonucu> {
+        let ogeler = self
+            .oge_oku(tx_giden, hedef, &anahtar.dugme, None, zaman_asimi)
+            .await?;
+        let Some(i) = hedef_indeks(&ogeler, &anahtar.etiket) else {
+            bail!(
+                "'{}' ac/kapa ozelligi sayfada bulunamadi ('{}'). Sayfadakiler: {}",
+                anahtar.kod,
+                anahtar.dugme,
+                oge_listesi(&ogeler)
+            );
+        };
+        if ogeler[i].isaretli == istenen {
+            return Ok(AnahtarSonucu::ZatenIstendigi);
+        }
+        let sonra = self
+            .oge_bas(tx_giden, hedef, &anahtar.dugme, i, None, zaman_asimi)
+            .await?;
+        // DOGRULAMA: oge tiklamadan sonra listede YOKSA durum bilinmiyor demektir;
+        // "kapali" diye yorumlanip istenen=false icin sahte basari uretiyordu
+        // (2026-10-24 incelemesi: istem dogrulanmadan siteye gitti).
+        let Some(j) = hedef_indeks(&sonra, &anahtar.etiket) else {
+            bail!(
+                "'{}' ac/kapa ozelligi tiklandiktan sonra listede bulunamadi; durum \
+                 dogrulanamadi, istek dusuruldu. Simdiki liste: {}",
+                anahtar.kod,
+                oge_listesi(&sonra)
+            );
+        };
+        let simdi = sonra[j].isaretli;
+        if simdi == istenen {
+            Ok(AnahtarSonucu::Degisti)
+        } else {
+            bail!(
+                "'{}' tiklandi ama durum degismedi (istenen: {}, simdi: {}). Ozellik plan/kota \
+                 nedeniyle kilitli olabilir; istek dusuruldu.",
+                anahtar.kod,
+                if istenen { "acik" } else { "kapali" },
+                if simdi { "acik" } else { "kapali" }
+            )
+        }
+    }
+
+    /// Tek bir okuma turu: eklentiye `OgeOku` gönderir, ham listeyi bekler.
+    async fn oge_oku(
+        &self,
+        tx_giden: &mpsc::Sender<GidenMesaj>,
+        hedef: &Hedef,
+        secici: &str,
+        dugme: Option<&str>,
+        zaman_asimi: std::time::Duration,
+    ) -> Result<Vec<OgeDurum>> {
+        let id = format!("tur-{}", rand::random::<u32>());
+        let (tx_y, rx_y) = oneshot::channel();
+        self.bekleyen_istekler
+            .lock()
+            .await
+            .insert(id.clone(), YanitKanali::Ogeler(tx_y));
+        if let Err(e) = tx_giden.try_send(GidenMesaj::OgeOku {
+            id: id.clone(),
+            provider: hedef.provider.clone(),
+            profile: Some(hedef.profile.clone()),
+            secici: secici.to_string(),
+            dugme: dugme.map(str::to_string),
+        }) {
+            self.bekleyen_istekler.lock().await.remove(&id);
+            bail!("eklenti okuma turu gonderilemedi: {e}");
+        }
+        self.tur_yaniti(rx_y, &id, zaman_asimi).await
+    }
+
+    /// Tek bir tıklama turu: öğeye basar, eklentinin döndürdüğü GÜNCEL listeyi verir.
+    async fn oge_bas(
+        &self,
+        tx_giden: &mpsc::Sender<GidenMesaj>,
+        hedef: &Hedef,
+        secici: &str,
+        indeks: usize,
+        dugme: Option<&str>,
+        zaman_asimi: std::time::Duration,
+    ) -> Result<Vec<OgeDurum>> {
+        let id = format!("tur-{}", rand::random::<u32>());
+        let (tx_y, rx_y) = oneshot::channel();
+        self.bekleyen_istekler
+            .lock()
+            .await
+            .insert(id.clone(), YanitKanali::Ogeler(tx_y));
+        if let Err(e) = tx_giden.try_send(GidenMesaj::OgeBas {
+            id: id.clone(),
+            provider: hedef.provider.clone(),
+            profile: Some(hedef.profile.clone()),
+            secici: secici.to_string(),
+            indeks,
+            dugme: dugme.map(str::to_string),
+        }) {
+            self.bekleyen_istekler.lock().await.remove(&id);
+            bail!("eklenti tiklama turu gonderilemedi: {e}");
+        }
+        self.tur_yaniti(rx_y, &id, zaman_asimi).await
+    }
+
+    /// Tur yanıtını zaman aşımıyla bekler; süre dolunca kayıt DÜŞÜRÜLÜR.
+    async fn tur_yaniti(
+        &self,
+        rx_y: oneshot::Receiver<Result<Vec<OgeDurum>>>,
+        id: &str,
+        zaman_asimi: std::time::Duration,
+    ) -> Result<Vec<OgeDurum>> {
+        match tokio::time::timeout(zaman_asimi, rx_y).await {
+            Ok(Ok(sonuc)) => sonuc,
+            Ok(Err(_)) => {
+                self.bekleyen_istekler.lock().await.remove(id);
+                bail!("eklenti secim turu kanali beklenmedik sekilde kapandi")
+            }
+            Err(_) => {
+                self.bekleyen_istekler.lock().await.remove(id);
+                bail!("eklenti secim turu zaman asimina ugradi ({zaman_asimi:?})")
+            }
+        }
+    }
+
     /// Eklentiden gelen bir mesajı işler.
     pub async fn mesaji_isle(&self, mesaj: GelenMesaj) {
         match mesaj {
@@ -571,9 +938,21 @@ impl EklentiHub {
             GelenMesaj::Hata { id, mesaj } => {
                 self.biriken_metinler.lock().await.remove(&id);
                 let mut bekleyen = self.bekleyen_istekler.lock().await;
-                if let Some(YanitKanali::Tekil(tx)) = bekleyen.remove(&id) {
-                    // Alıcı düşmüşse hata kaybolur; bekleyen istek yok.
-                    drop(tx.send(Err(anyhow::anyhow!("Eklenti hatası: {mesaj}"))));
+                match bekleyen.remove(&id) {
+                    Some(YanitKanali::Tekil(tx)) => {
+                        // Alıcı düşmüşse hata kaybolur; bekleyen istek yok.
+                        drop(tx.send(Err(anyhow::anyhow!("{mesaj}"))));
+                    }
+                    Some(YanitKanali::Ogeler(tx)) => {
+                        drop(tx.send(Err(anyhow::anyhow!("{mesaj}"))));
+                    }
+                    _ => {}
+                }
+            }
+            GelenMesaj::Ogeler { id, ogeler } => {
+                let mut bekleyen = self.bekleyen_istekler.lock().await;
+                if let Some(YanitKanali::Ogeler(tx)) = bekleyen.remove(&id) {
+                    drop(tx.send(Ok(ogeler)));
                 }
             }
             GelenMesaj::Durum {
@@ -625,6 +1004,7 @@ impl EklentiHub {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use kervan_secim::ModelSecenegi;
 
     #[test]
     fn test_giden_mesaj_sor_dosyasiz_geriye_uyumluluk() {
@@ -804,5 +1184,783 @@ mod tests {
         assert!(matches!(durdur, GidenMesaj::Durdur { .. }));
         assert!(hub.bekleyen_istekler.lock().await.is_empty());
         assert!(hub.biriken_metinler.lock().await.is_empty());
+    }
+
+    fn deneme_menusu() -> ModelMenusu {
+        ModelMenusu {
+            dugme: "button#m".into(),
+            oge: "[role=menuitem]".into(),
+            modeller: vec![
+                ModelSecenegi {
+                    kod: "hizli".into(),
+                    etiket: "Hızlı".into(),
+                    kilitli: false,
+                    kilit_nedeni: None,
+                },
+                ModelSecenegi {
+                    kod: "yuksek".into(),
+                    etiket: "Yüksek".into(),
+                    kilitli: false,
+                    kilit_nedeni: None,
+                },
+            ],
+        }
+    }
+
+    fn oge(metin: &str, isaretli: bool) -> OgeDurum {
+        OgeDurum {
+            metin: metin.into(),
+            tam: metin.into(),
+            isaretli,
+            kanit: String::new(),
+        }
+    }
+
+    /// Tel biçimi sabittir: eklenti bu adları bekler (`action` + alanlar).
+    #[test]
+    fn secim_turu_tel_bicimi() {
+        let oku = serde_json::to_value(GidenMesaj::OgeOku {
+            id: "tur-1".into(),
+            provider: "gemini".into(),
+            profile: Some("p".into()),
+            secici: "[role=menuitem]".into(),
+            dugme: Some("button#m".into()),
+        })
+        .unwrap();
+        assert_eq!(oku["action"], "oge_oku");
+        assert_eq!(oku["indeks"], serde_json::Value::Null);
+
+        let bas = serde_json::to_value(GidenMesaj::OgeBas {
+            id: "tur-2".into(),
+            provider: "gemini".into(),
+            profile: None,
+            secici: ".toggle".into(),
+            indeks: 3,
+            dugme: None,
+        })
+        .unwrap();
+        assert_eq!(bas["action"], "oge_bas");
+        assert_eq!(bas["indeks"], 3);
+        assert!(bas.get("dugme").is_none(), "boş dugme tele yazılmamalı");
+
+        let yanit: GelenMesaj = serde_json::from_str(
+            r#"{"action":"ogeler","id":"tur-2","ogeler":[{"metin":"Yüksek","tam":"Yüksek","isaretli":true}]}"#,
+        )
+        .expect("eklenti yanıtı çözülmeli");
+        match yanit {
+            GelenMesaj::Ogeler { id, ogeler } => {
+                assert_eq!(id, "tur-2");
+                assert!(ogeler[0].isaretli);
+                assert_eq!(ogeler[0].metin, "Yüksek");
+            }
+            _ => panic!("Ogeler bekleniyordu"),
+        }
+    }
+
+    /// Mutlu yol: menü okunur, DOĞRU indekse tıklanır, seçim doğrulanır ve
+    /// istem AYNI hesaba gider (seçim başka sekmeye kaçmaz).
+    #[tokio::test]
+    async fn secim_turu_dogru_indekse_tiklar_ve_ayni_hesaba_sorar() {
+        let hub = EklentiHub::new();
+        let (tx, mut rx) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+        hub.sekme_kaydet("gemini".into(), "p".into(), tx).await;
+
+        let h = hub.clone();
+        let besleyici = tokio::spawn(async move {
+            let Some(GidenMesaj::OgeOku {
+                id,
+                provider,
+                profile,
+                secici,
+                dugme,
+            }) = rx.recv().await
+            else {
+                panic!("önce OgeOku gelmeli")
+            };
+            assert_eq!(provider, "gemini");
+            assert_eq!(profile.as_deref(), Some("p"));
+            assert_eq!(secici, "[role=menuitem]");
+            assert_eq!(dugme.as_deref(), Some("button#m"));
+            h.mesaji_isle(GelenMesaj::Ogeler {
+                id,
+                ogeler: vec![oge("Hızlı", true), oge("Yüksek", false)],
+            })
+            .await;
+
+            let Some(GidenMesaj::OgeBas { id, indeks, .. }) = rx.recv().await else {
+                panic!("sonra OgeBas gelmeli")
+            };
+            assert_eq!(indeks, 1, "Yüksek ikinci sırada");
+            h.mesaji_isle(GelenMesaj::Ogeler {
+                id,
+                ogeler: vec![oge("Hızlı", false), oge("Yüksek", true)],
+            })
+            .await;
+
+            let Some(GidenMesaj::Sor { id, profile, .. }) = rx.recv().await else {
+                panic!("en son Sor gelmeli")
+            };
+            assert_eq!(profile.as_deref(), Some("p"));
+            h.mesaji_isle(GelenMesaj::Parca {
+                id: id.clone(),
+                delta: "yanıt".into(),
+                done: false,
+            })
+            .await;
+            h.mesaji_isle(GelenMesaj::Parca {
+                id,
+                delta: String::new(),
+                done: true,
+            })
+            .await;
+        });
+
+        let menu = deneme_menusu();
+        let yanit = hub
+            .sor_secimli(
+                "gemini",
+                "soru",
+                Vec::new(),
+                &EklentiSecimi {
+                    menu: Some(menu.clone()),
+                    model_kodu: Some("yuksek".into()),
+                    anahtarlar: Vec::new(),
+                },
+                std::time::Duration::from_secs(5),
+            )
+            .await
+            .expect("seçim ve istem tamamlanmalı");
+        assert_eq!(yanit, "yanıt");
+        besleyici.await.unwrap();
+    }
+
+    /// Menüde zaten seçiliyse TIKLAMA YAPILMAZ (gereksiz tıklama seçimi bozabilir).
+    #[tokio::test]
+    async fn secili_model_icin_tiklama_yapilmaz() {
+        let hub = EklentiHub::new();
+        let (tx, mut rx) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+        hub.sekme_kaydet("gemini".into(), "p".into(), tx).await;
+
+        let h = hub.clone();
+        let besleyici = tokio::spawn(async move {
+            let Some(GidenMesaj::OgeOku { id, .. }) = rx.recv().await else {
+                panic!("OgeOku gelmeli")
+            };
+            h.mesaji_isle(GelenMesaj::Ogeler {
+                id,
+                ogeler: vec![oge("Hızlı", false), oge("Yüksek", true)],
+            })
+            .await;
+            let Some(GidenMesaj::Sor { id, .. }) = rx.recv().await else {
+                panic!("tıklama olmadan Sor gelmeli")
+            };
+            h.mesaji_isle(GelenMesaj::Parca {
+                id,
+                delta: "tamam".into(),
+                done: true,
+            })
+            .await;
+        });
+
+        let menu = deneme_menusu();
+        let yanit = hub
+            .sor_secimli(
+                "gemini",
+                "soru",
+                Vec::new(),
+                &EklentiSecimi {
+                    menu: Some(menu.clone()),
+                    model_kodu: Some("yuksek".into()),
+                    anahtarlar: Vec::new(),
+                },
+                std::time::Duration::from_secs(5),
+            )
+            .await
+            .unwrap();
+        assert_eq!(yanit, "tamam");
+        besleyici.await.unwrap();
+    }
+
+    /// ALT DÜĞÜM İŞARETİ GÜÇLÜ KANITI GÖLGELEMEZ (2026-10-24 canlı ölçümü).
+    ///
+    /// Menü "3.6 Flash*[sinif:selected] | 3.6 Düşünen*[torun:aria-checked=true]"
+    /// okunmuştu. Hedef "Düşünen" olsaydı eski kod onu işaretli sanıp tıklamayı
+    /// atlar, istek sessizce Flash ile giderdi. Güçlü kanıt varken zayıf kanıt
+    /// yok hükmündedir; hedef tıklanır.
+    #[tokio::test]
+    async fn alt_dugum_isareti_guclu_kaniti_golgelemez() {
+        let hub = EklentiHub::new();
+        let (tx, mut rx) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+        hub.sekme_kaydet("gemini".into(), "p".into(), tx).await;
+
+        let h = hub.clone();
+        let besleyici = tokio::spawn(async move {
+            let Some(GidenMesaj::OgeOku { id, .. }) = rx.recv().await else {
+                panic!("OgeOku gelmeli")
+            };
+            let kanitli = |ad: &str, kanit: &str| OgeDurum {
+                metin: ad.into(),
+                tam: ad.into(),
+                isaretli: true,
+                kanit: kanit.into(),
+            };
+            h.mesaji_isle(GelenMesaj::Ogeler {
+                id,
+                ogeler: vec![
+                    kanitli("Hızlı", "sinif:selected"),
+                    kanitli("Yüksek", "torun:aria-checked=true"),
+                ],
+            })
+            .await;
+            let Some(GidenMesaj::OgeBas { id, indeks, .. }) = rx.recv().await else {
+                panic!("güçlü kanıt varken hedefe tıklanmalı")
+            };
+            assert_eq!(indeks, 1);
+            h.mesaji_isle(GelenMesaj::Ogeler {
+                id,
+                ogeler: vec![oge("Hızlı", false), oge("Yüksek", true)],
+            })
+            .await;
+            let Some(GidenMesaj::Sor { id, .. }) = rx.recv().await else {
+                panic!("doğrulama sonrası Sor gelmeli")
+            };
+            h.mesaji_isle(GelenMesaj::Parca {
+                id,
+                delta: "tamam".into(),
+                done: true,
+            })
+            .await;
+        });
+
+        let yanit = hub
+            .sor_secimli(
+                "gemini",
+                "soru",
+                Vec::new(),
+                &EklentiSecimi {
+                    menu: Some(deneme_menusu()),
+                    model_kodu: Some("yuksek".into()),
+                    anahtarlar: Vec::new(),
+                },
+                std::time::Duration::from_secs(5),
+            )
+            .await
+            .unwrap();
+        assert_eq!(yanit, "tamam");
+        besleyici.await.unwrap();
+    }
+
+    /// Zayıf kanıt tıklamayı ATLAMAYA yetmez; tıklama sonrası doğrulamaya yeter
+    /// (yalnız listede zayıf kanıtlı tek öğe ise).
+    #[test]
+    fn zayif_kanit_atlamaya_yetmez_dogrulamaya_yeter() {
+        let kanitli = |ad: &str, kanit: &str| OgeDurum {
+            metin: ad.into(),
+            tam: ad.into(),
+            isaretli: true,
+            kanit: kanit.into(),
+        };
+        let liste = vec![
+            oge("Hızlı", false),
+            kanitli("Yüksek", "torun:aria-checked=true"),
+        ];
+        assert!(!zaten_secili(&liste, 1), "zayıf kanıt atlamaya yetmez");
+        assert!(secim_dogrulandi(&liste, 1), "tek zayıf işaret hedefte");
+    }
+
+    /// İKİ EKSENLİ MENÜ (2026-10-24 incelemesinin blocker'ı): mod ekseni güçlü
+    /// işaretli, düşünme düzeyi hedefi zayıf işaretli. Kural liste genelinde
+    /// "tam bir işaret" arasaydı bu menüde seçim HİÇ doğrulanamaz, her istek
+    /// düşerdi. Tıklanır ve hedefin kendi kanıtıyla doğrulanır.
+    #[test]
+    fn iki_eksenli_menude_hedef_dogrulanir() {
+        let kanitli = |ad: &str, kanit: &str| OgeDurum {
+            metin: ad.into(),
+            tam: ad.into(),
+            isaretli: true,
+            kanit: kanit.into(),
+        };
+        let liste = vec![
+            kanitli("Otomatik", "sinif:selected"),
+            kanitli("Yüksek", "torun:aria-checked=true"),
+        ];
+        assert!(
+            !zaten_secili(&liste, 1),
+            "iki eksenli menüde atlama hükmü verilmez"
+        );
+        assert!(
+            secim_dogrulandi(&liste, 1),
+            "hedef tek zayıf işaretli öğeyse doğrulanır"
+        );
+    }
+
+    /// Gemini'nin gerçek işareti `aria-label="Seçildi"` (güçlü), yanlış
+    /// eşleşme ise çıplak `aria-checked` (zayıf). Güçlü kanıtlı hedef, başka
+    /// satır işaretli olsa da doğrulanır; zayıf kanıtlı satır atlamaya yetmez.
+    #[test]
+    fn secildi_etiketi_cikplak_aria_checked_den_ustundur() {
+        let kanitli = |ad: &str, kanit: &str| OgeDurum {
+            metin: ad.into(),
+            tam: ad.into(),
+            isaretli: true,
+            kanit: kanit.into(),
+        };
+        let liste = vec![
+            kanitli("3.6 Flash", "torun:secildi"),
+            kanitli("3.6 Düşünen", "torun:aria-checked=true"),
+        ];
+        assert!(
+            secim_dogrulandi(&liste, 0),
+            "güçlü kanıtlı öğe seçili sayılmalı"
+        );
+        assert!(!zaten_secili(&liste, 1), "zayıf kanıt atlamaya yetmez");
+    }
+
+    /// ÇOK İŞARETLİ MENÜ (2026-10-24 canlı ölçümü: "3.6 Flash* | 3.6 Düşünen*").
+    ///
+    /// Hedef "işaretli" görünse bile atlama hükmü verilmez (atlamak için güçlü
+    /// ve TEK işaret gerekir); tıklanır ve hedefin kendi kanıtıyla doğrulanır.
+    #[tokio::test]
+    async fn cok_isaretli_menude_tiklama_atlanmaz() {
+        let hub = EklentiHub::new();
+        let (tx, mut rx) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+        hub.sekme_kaydet("gemini".into(), "p".into(), tx).await;
+
+        let h = hub.clone();
+        let besleyici = tokio::spawn(async move {
+            let Some(GidenMesaj::OgeOku { id, .. }) = rx.recv().await else {
+                panic!("OgeOku gelmeli")
+            };
+            // Bozuk okuma: iki öğe birden işaretli, hedef de aralarında.
+            h.mesaji_isle(GelenMesaj::Ogeler {
+                id,
+                ogeler: vec![oge("Hızlı", true), oge("Yüksek", true)],
+            })
+            .await;
+            let Some(GidenMesaj::OgeBas { id, indeks, .. }) = rx.recv().await else {
+                panic!("çok işaretli menüde OgeBas gelmeli")
+            };
+            assert_eq!(indeks, 1, "hedef öğe (Yüksek) tıklanmalı");
+            // Tıklama sonrası sağlıklı okuma: tek işaret, o da hedefte.
+            h.mesaji_isle(GelenMesaj::Ogeler {
+                id,
+                ogeler: vec![oge("Hızlı", false), oge("Yüksek", true)],
+            })
+            .await;
+            let Some(GidenMesaj::Sor { id, .. }) = rx.recv().await else {
+                panic!("doğrulama sonrası Sor gelmeli")
+            };
+            h.mesaji_isle(GelenMesaj::Parca {
+                id,
+                delta: "tamam".into(),
+                done: true,
+            })
+            .await;
+        });
+
+        let yanit = hub
+            .sor_secimli(
+                "gemini",
+                "soru",
+                Vec::new(),
+                &EklentiSecimi {
+                    menu: Some(deneme_menusu()),
+                    model_kodu: Some("yuksek".into()),
+                    anahtarlar: Vec::new(),
+                },
+                std::time::Duration::from_secs(5),
+            )
+            .await
+            .unwrap();
+        assert_eq!(yanit, "tamam");
+        besleyici.await.unwrap();
+    }
+
+    /// İKİ EKSENLİ MENÜ UÇTAN UCA (2026-10-24 incelemesinin blocker'ı).
+    ///
+    /// Gerçek gemini menüsü: mod ekseni `sinif:selected` ile GÜÇLÜ işaretli,
+    /// düşünme düzeyi hedefi (`Yüksek`) alt düğüm `aria-checked` ile ZAYIF
+    /// işaretli. Eski kural liste genelinde "tam bir işaret" aradığı için bu
+    /// menüde seçimi hiç doğrulayamaz, her isteği düşürürdü. Doğru davranış:
+    /// tıkla, sonra hedefin kendi kanıtına bak (zayıf işaret tek zayıfsa yeter)
+    /// ve isteği gönder — mod ekseninin güçlü işareti hedefi geçersiz kılmaz.
+    #[tokio::test]
+    async fn iki_eksenli_menude_istem_gonderilir() {
+        let hub = EklentiHub::new();
+        let (tx, mut rx) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+        hub.sekme_kaydet("gemini".into(), "p".into(), tx).await;
+
+        let kanitli = |ad: &str, kanit: &str| OgeDurum {
+            metin: ad.into(),
+            tam: ad.into(),
+            isaretli: true,
+            kanit: kanit.into(),
+        };
+        let h = hub.clone();
+        let besleyici = tokio::spawn(async move {
+            let Some(GidenMesaj::OgeOku { id, .. }) = rx.recv().await else {
+                panic!("OgeOku gelmeli")
+            };
+            // Mod ekseni güçlü + hedef zayıf: tıklanmalı (atlanmamalı).
+            h.mesaji_isle(GelenMesaj::Ogeler {
+                id,
+                ogeler: vec![
+                    kanitli("Otomatik", "sinif:selected"),
+                    kanitli("Yüksek", "torun:aria-checked=true"),
+                ],
+            })
+            .await;
+            let Some(GidenMesaj::OgeBas { id, indeks, .. }) = rx.recv().await else {
+                panic!("iki eksenli menüde hedefe tıklanmalı")
+            };
+            assert_eq!(indeks, 1, "hedef öğe (Yüksek) tıklanmalı");
+            // Tıklama sonrası menü yine iki eksenli; hedef zayıf işaretli.
+            h.mesaji_isle(GelenMesaj::Ogeler {
+                id,
+                ogeler: vec![
+                    kanitli("Otomatik", "sinif:selected"),
+                    kanitli("Yüksek", "torun:aria-checked=true"),
+                ],
+            })
+            .await;
+            let Some(GidenMesaj::Sor { id, .. }) = rx.recv().await else {
+                panic!("iki eksenli menüde doğrulama sonrası Sor gelmeli")
+            };
+            h.mesaji_isle(GelenMesaj::Parca {
+                id,
+                delta: "tamam".into(),
+                done: true,
+            })
+            .await;
+        });
+
+        let yanit = hub
+            .sor_secimli(
+                "gemini",
+                "soru",
+                Vec::new(),
+                &EklentiSecimi {
+                    menu: Some(deneme_menusu()),
+                    model_kodu: Some("yuksek".into()),
+                    anahtarlar: Vec::new(),
+                },
+                std::time::Duration::from_secs(5),
+            )
+            .await
+            .unwrap();
+        assert_eq!(yanit, "tamam");
+        besleyici.await.unwrap();
+    }
+
+    /// Seçim DOĞRULANAMAZSA istem hiç gönderilmez: sessizce yanlış modelle
+    /// cevap vermek en pahalı hata türü.
+    #[tokio::test]
+    async fn dogrulanmayan_secim_istemi_dusurur() {
+        let hub = EklentiHub::new();
+        let (tx, mut rx) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+        hub.sekme_kaydet("gemini".into(), "p".into(), tx).await;
+
+        let h = hub.clone();
+        let besleyici = tokio::spawn(async move {
+            let Some(GidenMesaj::OgeOku { id, .. }) = rx.recv().await else {
+                panic!("OgeOku gelmeli")
+            };
+            h.mesaji_isle(GelenMesaj::Ogeler {
+                id,
+                ogeler: vec![oge("Hızlı", true), oge("Yüksek", false)],
+            })
+            .await;
+            let Some(GidenMesaj::OgeBas { id, .. }) = rx.recv().await else {
+                panic!("OgeBas gelmeli")
+            };
+            // Tıklama işe yaramadı: işaret yerinde değil.
+            h.mesaji_isle(GelenMesaj::Ogeler {
+                id,
+                ogeler: vec![oge("Hızlı", true), oge("Yüksek", false)],
+            })
+            .await;
+            // Sonraki mesaj Sor OLSAYDI test kırılırdı; 1 sn bekleyip None döner.
+            tokio::time::timeout(std::time::Duration::from_secs(1), rx.recv())
+                .await
+                .ok()
+                .flatten()
+        });
+
+        let menu = deneme_menusu();
+        let hata = hub
+            .sor_secimli(
+                "gemini",
+                "soru",
+                Vec::new(),
+                &EklentiSecimi {
+                    menu: Some(menu.clone()),
+                    model_kodu: Some("yuksek".into()),
+                    anahtarlar: Vec::new(),
+                },
+                std::time::Duration::from_secs(5),
+            )
+            .await
+            .expect_err("doğrulanmayan seçim hata vermeli");
+        assert!(
+            format!("{hata:#}").contains("dogrulanamadi"),
+            "hata doğrulamayı söylemeli: {hata:#}"
+        );
+        assert!(
+            besleyici.await.unwrap().is_none(),
+            "istem gönderilmemeliydi"
+        );
+        assert!(hub.bekleyen_istekler.lock().await.is_empty());
+    }
+
+    /// Tur yanıtı gelmezse bekleyen kayıt DÜŞÜRÜLÜR; sızıntı süreç ömrü boyunca kalırdı.
+    #[tokio::test]
+    async fn zaman_asiminda_bekleyen_tur_silinir() {
+        let hub = EklentiHub::new();
+        let (tx, mut rx) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+        hub.sekme_kaydet("gemini".into(), "p".into(), tx).await;
+
+        let h = hub.clone();
+        tokio::spawn(async move {
+            assert!(matches!(rx.recv().await, Some(GidenMesaj::OgeOku { .. })));
+            // Yanıt yok: zaman aşımı bekleniyor.
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            let _ = &h;
+        });
+
+        let menu = deneme_menusu();
+        let hata = hub
+            .sor_secimli(
+                "gemini",
+                "soru",
+                Vec::new(),
+                &EklentiSecimi {
+                    menu: Some(menu.clone()),
+                    model_kodu: Some("yuksek".into()),
+                    anahtarlar: Vec::new(),
+                },
+                std::time::Duration::from_millis(300),
+            )
+            .await
+            .expect_err("tur zaman aşımına uğramalı");
+        assert!(
+            format!("{hata:#}").contains("zaman asimina"),
+            "hata zaman aşımını söylemeli: {hata:#}"
+        );
+        assert!(
+            hub.bekleyen_istekler.lock().await.is_empty(),
+            "zaman aşımından sonra bekleyen kayıt kalmamalı"
+        );
+    }
+
+    /// Tanımsız model kodu seçim turuna ÇIKMADAN hata verir (menüde arama yok).
+    #[tokio::test]
+    async fn tanimsiz_kod_tura_cikmadan_hata_verir() {
+        let hub = EklentiHub::new();
+        let (tx, mut rx) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+        hub.sekme_kaydet("gemini".into(), "p".into(), tx).await;
+        let menu = deneme_menusu();
+        let hata = hub
+            .sor_secimli(
+                "gemini",
+                "soru",
+                Vec::new(),
+                &EklentiSecimi {
+                    menu: Some(menu.clone()),
+                    model_kodu: Some("yok-boyle".into()),
+                    anahtarlar: Vec::new(),
+                },
+                std::time::Duration::from_secs(2),
+            )
+            .await
+            .expect_err("tanımsız kod hata vermeli");
+        assert!(format!("{hata:#}").contains("tanimsiz model kodu"));
+        assert!(
+            rx.try_recv().is_err(),
+            "eklentiye hiçbir mesaj gitmemeliydi"
+        );
+    }
+
+    /// Aç/kapa doğrulaması "yokluk = kapalı" saymamalı.
+    ///
+    /// 2026-10-24 incelemesi: tıklamadan sonra öğe listeden kaybolduğunda
+    /// `unwrap_or(false)` devreye giriyor, istenen durum `false` ise SAHTE
+    /// BAŞARI üretiyor ve istem doğrulanmamış seçimle siteye gidiyordu.
+    #[tokio::test]
+    async fn kaybolan_anahtar_sahte_basari_vermez() {
+        let hub = EklentiHub::new();
+        let (tx, mut rx) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+        hub.sekme_kaydet("deepseek".into(), "p".into(), tx).await;
+        let h = hub.clone();
+        let besleyici = tokio::spawn(async move {
+            let Some(GidenMesaj::OgeOku { id, .. }) = rx.recv().await else {
+                panic!("OgeOku bekleniyordu")
+            };
+            h.mesaji_isle(GelenMesaj::Ogeler {
+                id,
+                ogeler: vec![OgeDurum {
+                    metin: "DeepThink".into(),
+                    tam: "DeepThink".into(),
+                    isaretli: true,
+                    kanit: String::new(),
+                }],
+            })
+            .await;
+            let Some(GidenMesaj::OgeBas { id, indeks, .. }) = rx.recv().await else {
+                panic!("OgeBas bekleniyordu")
+            };
+            assert_eq!(indeks, 0);
+            // Tıklamadan sonra öğe sayfadan kayboldu: liste boş.
+            h.mesaji_isle(GelenMesaj::Ogeler {
+                id,
+                ogeler: Vec::new(),
+            })
+            .await;
+            // Buradan sonra istem GELMEMELİ.
+            rx.try_recv()
+        });
+
+        let hata = hub
+            .sor_secimli(
+                "deepseek",
+                "soru",
+                Vec::new(),
+                &EklentiSecimi {
+                    menu: None,
+                    model_kodu: None,
+                    anahtarlar: vec![(
+                        Anahtar {
+                            kod: "derin".into(),
+                            dugme: ".ds-toggle-button".into(),
+                            etiket: "DeepThink".into(),
+                        },
+                        false,
+                    )],
+                },
+                std::time::Duration::from_secs(2),
+            )
+            .await
+            .expect_err("kaybolan öğe doğrulanamadı sayılmalı");
+        assert!(
+            format!("{hata:#}").contains("durum dogrulanamadi"),
+            "beklenen hata: {hata:#}"
+        );
+        assert!(
+            besleyici.await.unwrap().is_err(),
+            "doğrulanmayan seçimde istem eklentiye gitmemeliydi"
+        );
+    }
+
+    /// AYNI HESABA EŞZAMANLI İKİ İSTEK İÇ İÇE GEÇMEZ (2026-10-24 incelemesi).
+    ///
+    /// Seçim turları üç ayrı gidiş-dönüştür (oku → tıkla → doğrula). Kilit
+    /// yokken A'nın doğrulaması bittikten sonra B'nin tıklaması sayfadaki
+    /// modeli değiştiriyor, A'nın istemi **B'nin modeliyle** gidiyordu; üstelik
+    /// seçim "doğrulanmış" göründüğü için arıza sessiz kalıyordu.
+    ///
+    /// Ölçüt: eklentiye giden mesajlarda bir isteğin kimliği bitmeden
+    /// diğerinin kimliği başlamamalı (bitişiklik).
+    #[tokio::test]
+    async fn es_zamanli_istekler_ayni_hesapta_ic_ice_gecmez() {
+        let hub = EklentiHub::new();
+        let (tx, mut rx) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+        hub.sekme_kaydet("gemini".into(), "p".into(), tx).await;
+
+        let h = hub.clone();
+        let besleyici = tokio::spawn(async move {
+            // Sahte sayfa: seçili modelin indeksi. Tıklama bunu değiştirir.
+            let mut secili = 0usize;
+            let mut sira: Vec<(String, &'static str)> = Vec::new();
+            let mut biten = 0usize;
+            while let Some(mesaj) = rx.recv().await {
+                match mesaj {
+                    GidenMesaj::OgeOku { id, .. } => {
+                        sira.push((id.clone(), "oku"));
+                        h.mesaji_isle(GelenMesaj::Ogeler {
+                            id,
+                            ogeler: vec![oge("Hızlı", secili == 0), oge("Yüksek", secili == 1)],
+                        })
+                        .await;
+                    }
+                    GidenMesaj::OgeBas { id, indeks, .. } => {
+                        sira.push((id.clone(), "bas"));
+                        secili = indeks;
+                        h.mesaji_isle(GelenMesaj::Ogeler {
+                            id,
+                            ogeler: vec![oge("Hızlı", secili == 0), oge("Yüksek", secili == 1)],
+                        })
+                        .await;
+                    }
+                    GidenMesaj::Sor { id, .. } => {
+                        sira.push((id.clone(), "sor"));
+                        // Yayın sürüyor: kilit olmasa diğer istek TAM bu boşlukta
+                        // seçim turlarına girerdi.
+                        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                        h.mesaji_isle(GelenMesaj::Parca {
+                            id: id.clone(),
+                            delta: "ok".into(),
+                            done: false,
+                        })
+                        .await;
+                        sira.push((id.clone(), "bitti"));
+                        h.mesaji_isle(GelenMesaj::Parca {
+                            id,
+                            delta: String::new(),
+                            done: true,
+                        })
+                        .await;
+                        biten += 1;
+                        if biten == 2 {
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            sira
+        });
+
+        let menu = deneme_menusu();
+        let istek = |k: &'static str| {
+            let hub = hub.clone();
+            let menu = menu.clone();
+            tokio::spawn(async move {
+                hub.sor_secimli(
+                    "gemini",
+                    k,
+                    Vec::new(),
+                    &EklentiSecimi {
+                        menu: Some(menu),
+                        model_kodu: Some("yuksek".into()),
+                        anahtarlar: Vec::new(),
+                    },
+                    std::time::Duration::from_secs(5),
+                )
+                .await
+            })
+        };
+        let (a, b) = (istek("bir"), istek("iki"));
+        assert_eq!(a.await.unwrap().unwrap(), "ok");
+        assert_eq!(b.await.unwrap().unwrap(), "ok");
+
+        let sira = besleyici.await.unwrap();
+        // Her istek "oku" ile başlar; bitişiklik ölçütü: bir isteğin grubu
+        // "bitti" ile kapanmadan yeni bir "oku" gelmemeli.
+        let mut gruplar: Vec<Vec<&str>> = Vec::new();
+        for (_, tur) in &sira {
+            if *tur == "oku" {
+                gruplar.push(Vec::new());
+            }
+            gruplar.last_mut().expect("ilk mesaj oku olmalı").push(*tur);
+        }
+        assert_eq!(gruplar.len(), 2, "iki istek iki grup açmalı: {sira:?}");
+        for (i, grup) in gruplar.iter().enumerate() {
+            assert_eq!(grup.first(), Some(&"oku"), "{i}. grup: {sira:?}");
+            assert_eq!(
+                grup.last(),
+                Some(&"bitti"),
+                "{i}. grup kapanmadan diğer istek başladı (kilit tutmuyor): {sira:?}"
+            );
+            assert_eq!(grup.iter().filter(|t| **t == "sor").count(), 1);
+        }
     }
 }

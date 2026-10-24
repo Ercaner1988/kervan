@@ -176,7 +176,7 @@ REST呼び出しは取り消せない（ブロッキングHTTPクライアント
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P3 (2026-10-23T03:45:15.060Z)
+- Faz: P3 (2026-10-24T08:34:31.702Z)
 - Tüm kapılar yeşil mi: hayır (10/11)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730

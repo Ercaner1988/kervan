@@ -267,13 +267,89 @@ pub enum AnahtarSonucu {
 ///
 /// `metin` HAM gelir (buyuk harf, satir sonu, bosluk ne varsa); katlama ve
 /// karsilastirma Rust tarafinda yapilir.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct OgeDurum {
     /// Ogenin ADI: `.label` varsa o, yoksa ilk satir (site aciklamayi alt satira koyar).
     pub metin: String,
     /// Ogenin tum metni (ad + aciklama); eslestirmede son care.
     pub tam: String,
     pub isaretli: bool,
+    /// Isaretin HANGI kuraldan geldigi (`sinif:selected`, `aria-checked=true`,
+    /// `torun:aria-checked=true` gibi). Bos ise: oge isaretsiz ya da eski
+    /// eklenti bu alani gondermiyor. Teshis icin: "iki oge birden secili"
+    /// gibi bozuk okumada yanlis eslesen kural adi hata metninde gorunur.
+    #[serde(default)]
+    pub kanit: String,
+}
+
+/// İşaret kanıtı **zayıf** mı? Yalnız alt düğümdeki çıplak `aria-checked=true`
+/// zayıftır: satırdaki herhangi bir alt denetimin durumu olabilir. 2026-10-24
+/// canlı ölçümünde seçili OLMAYAN satırda eşleşti. Geri kalan her kanıt
+/// (öğenin kendi sınıfı/özniteliği, alt düğümdeki `aria-label="Seçildi"`)
+/// güçlüdür. Boş kanıt (eski eklenti ya da işaretsiz öğe) de güçlü sayılır.
+///
+/// DİKKAT: "güçlü" demek "seçili" demek DEĞİLDİR. Bu yalnız kanıtın niteliğini
+/// söyler; "zaten seçili" hükmü için ayrıca menüde işaretli TEK öğe olması
+/// gerekir (`zaten_secili`). Bu yüzden boş kanıtlı eski eklenti, çok işaretli
+/// menüde artık `ZatenSecili` değil TIKLAMA alır — eski davranış birebir
+/// korunmaz, bilerek sıkılaştırıldı.
+pub fn guclu_kanit(kanit: &str) -> bool {
+    !kanit.starts_with("torun:aria-checked")
+}
+
+/// "ZATEN SEÇİLİ": tıklamayı atlamaya yetecek kanıt.
+///
+/// İki şart birlikte: hedefin KENDİ işareti güçlü **ve** menüde işaretli tek
+/// öğe o. Bu, tıklamayı atlamanın tek güvenli hâlidir; başka her durumda
+/// tıklanır — model menüsü radyo olduğu için seçili öğeye tıklamak durumu
+/// değiştirmez, seçili değilse doğru modeli kurar. Yani şüphede kalınca
+/// **tıkla**, "zaten seçili" deme.
+///
+/// NEDEN SAYIM TEK BAŞINA YETMİYOR (2026-10-24 incelemesi): aynı menü iki
+/// eksen taşıyabiliyor (gemini: mod ekseni + düşünme düzeyi; bkz. `model_sec`
+/// belgesi ve `kervan.toml`). O hâlde liste genelinde İKİ işaret normaldir ve
+/// "tam bir işaret" kuralı doğru seçilmiş modeli doğrulanamaz sayardı. Bu
+/// yüzden sayım yalnız "atla" hükmünde ve yalnız güçlü kanıtla kullanılır.
+pub fn zaten_secili(ogeler: &[OgeDurum], hedef: usize) -> bool {
+    let Some(o) = ogeler.get(hedef) else {
+        return false;
+    };
+    if !o.isaretli || !guclu_kanit(&o.kanit) {
+        return false;
+    }
+    ogeler.iter().filter(|x| x.isaretli).count() == 1
+}
+
+/// TIKLAMA SONRASI DOĞRULAMA: hedefin işareti yerinde mi?
+///
+/// 1. Hedef güçlü kanıtla işaretli → doğrulandı. Başka eksenin de işaretli
+///    olması bunu geçersiz kılmaz (iki eksenli menü).
+/// 2. Hedef yalnız zayıf kanıtla işaretli → listede zayıf kanıtlı TEK öğe ise
+///    doğrulandı. Gerekçe: radyo ekseninde işaret tek yerdedir; zayıf kanıt
+///    başka bir satırda da varsa hangisinin gerçek seçim olduğu bilinmiyor.
+///
+/// KALAN RİSK (açıkça): tıklama yutulur ve hedefte tıklamadan ÖNCE de duran
+/// bir zayıf işaret (satır içi bir alt denetimin `aria-checked`ı) varsa 2.
+/// madde yanlış pozitif verebilir. Bunu elemek için "işaret hedefe taşındı"
+/// farkı gerekir; ama zayıf kanıtla işaretlenen eksende seçim zaten hedefteyse
+/// tıklama hiçbir değişiklik üretmez ve fark ölçülemez — o hâlde 2. maddeyi
+/// sıkılaştırmak, doğru seçilmiş isteği her turda düşürürdü (2026-10-24
+/// incelemesi: "işlev yok"). Tercih: isteği düşürmemek, riski belgelemek.
+pub fn secim_dogrulandi(sonra: &[OgeDurum], hedef: usize) -> bool {
+    let Some(o) = sonra.get(hedef) else {
+        return false;
+    };
+    if !o.isaretli {
+        return false;
+    }
+    if guclu_kanit(&o.kanit) {
+        return true;
+    }
+    sonra
+        .iter()
+        .filter(|x| x.isaretli && !guclu_kanit(&x.kanit))
+        .count()
+        == 1
 }
 
 /// Menudeki ogeleri sira ile dondurur (ad + tam metin + isaret). Menu ACIK olmali.
@@ -286,10 +362,31 @@ pub struct OgeDurum {
 /// AD TAHMINI: z.ai gibi siteler adi ve aciklamayi ayri satira koyar. Tam metinle
 /// icerme aramasi yapilirsa "GLM-5.3" etiketi "GLM-5.3-Flash" ogesine de uyar ve
 /// yanlis model secilirdi; bu yuzden ad ilk satirdan okunur, tam metin son caredir.
+/// BU BETİK `eklenti/content_common.js`teki `kervanOgeOkuHam` İLE AYNI KURALI
+/// UYGULAMAK ZORUNDA. İki kopya ayrıştığında bir yolun "seçili" dediğine öbürü
+/// "seçili değil" diyor ve aynı arıza yalnız bir yolda kapanıyordu (2026-10-24
+/// incelemesi). `eklenti/test/oge_listesi.test.js` iki uygulamayı aynı DOM
+/// üzerinde karşılaştırır; kural değişecekse İKİSİ BİRDEN değişmeli.
 const OGE_LISTESI: &str = r#"
 const d = (s) => (s || '').replace(/[ \t\r]+/g, ' ').trim();
-const isaret = (e) => /(^|[\s-])(selected|checked|active|on)(\s|$)/.test(e.className || '') || ['data-selected','data-state','aria-checked','aria-selected','aria-pressed'].some((a) => ['true','checked'].includes(e.getAttribute(a)))
+// SVG ogesinde className nesnedir (SVGAnimatedString); dogrudan regex'e vermek
+// sinif isaretini sessizce kaciriyordu (2026-10-24).
+const sinif = (e) => (typeof e.className === 'string' ? e.className : (e.className && e.className.baseVal) || '');
+const isaret = (e) => /(^|[\s-])(selected|checked|active|on)(\s|$)/.test(sinif(e)) || ['data-selected','data-state','aria-checked','aria-selected','aria-pressed'].some((a) => ['true','checked'].includes(e.getAttribute(a)))
   || !!e.querySelector('[aria-label="Seçildi"],[aria-label="Selected"],[aria-checked="true"]');
+// KANIT: hangi kural esledi? "torun:aria-checked=true" ZAYIF kanittir (satirdaki
+// herhangi bir alt denetimin durumu olabilir); gerisi guclu. Bkz. zaten_secili.
+const isaretKaniti = (e) => {
+  const m = /(^|[\s-])(selected|checked|active|on)(\s|$)/.exec(sinif(e));
+  if (m) return 'sinif:' + m[2];
+  for (const a of ['data-selected','data-state','aria-checked','aria-selected','aria-pressed']) {
+    const v = e.getAttribute(a);
+    if (['true','checked'].includes(v)) return a + '=' + v;
+  }
+  if (e.querySelector('[aria-label="Seçildi"],[aria-label="Selected"]')) return 'torun:secildi';
+  if (e.querySelector('[aria-checked="true"]')) return 'torun:aria-checked=true';
+  return '';
+};
 const ad = (e) => {
   const l = d((e.querySelector('.label') || {}).innerText);
   if (l) return l;
@@ -304,7 +401,7 @@ const ad = (e) => {
   return satirlar.find((s) => !ikonlar.has(s)) || satirlar[0] || '';
 };
 return [...document.querySelectorAll(arguments[0])].map((e) => {
-  return { metin: ad(e), tam: d((e.innerText || e.textContent || '').replace(/\s+/g, ' ')), isaretli: isaret(e) };
+  return { metin: ad(e), tam: d((e.innerText || e.textContent || '').replace(/\s+/g, ' ')), isaretli: isaret(e), kanit: isaretKaniti(e) };
 });
 "#;
 
@@ -416,7 +513,7 @@ pub async fn model_sec(
         dugmeye_bas(c, &menu.dugme).await?;
         bail!("model menusunde '{etiket}' yok. Menudekiler: {liste}");
     };
-    if ogeler[i].isaretli {
+    if zaten_secili(&ogeler, i) {
         dugmeye_bas(c, &menu.dugme).await?;
         return Ok(SecimSonucu::ZatenSecili);
     }
@@ -444,12 +541,16 @@ pub async fn model_sec(
         bail!("model menusu dogrulama icin yeniden acilmadi");
     }
     let sonra = oge_listesi(c, &menu.oge).await?;
+    // TEŞHİS: işaretli satırların HEPSİ, hangi kanıtla işaretlendiğiyle birlikte.
+    // Yalnız ilk işaretliyi metin olarak basmak, zayıf (güvenilmez) bir satırı
+    // "işaretli" diye adlandırıp teşhisi yanıltıyordu (2026-10-24 incelemesi).
     let isaretli = sonra
         .iter()
-        .find(|o| o.isaretli)
-        .map(|o| o.metin.clone())
-        .unwrap_or_default();
-    let hedef_isaretli = hedef_indeks(&sonra, etiket).is_some_and(|j| sonra[j].isaretli);
+        .filter(|o| o.isaretli)
+        .map(|o| format!("{}[{}]", o.metin, o.kanit))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let hedef_isaretli = hedef_indeks(&sonra, etiket).is_some_and(|j| secim_dogrulandi(&sonra, j));
     // IKINCI TANIK: dugmenin kendi metni. AI Studio'da (olculdu 2026-10-23) model
     // kartlarinda HICBIR isaret yok — ne sinif ne aria; secili model yalnizca acma
     // dugmesinin metninde gorunuyor ("Gemini 3.8 Flash"). Yalniz isarete bakmak bu
@@ -639,6 +740,11 @@ async fn oge_listesi(c: &Client, oge: &str) -> Result<Vec<OgeDurum>> {
                     .and_then(|m| m.as_str())
                     .unwrap_or_default()
                     .to_string(),
+                kanit: e
+                    .get("kanit")
+                    .and_then(|m| m.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
             });
         }
     }
@@ -745,6 +851,7 @@ mod testler {
             metin: ad.to_string(),
             tam: tam.to_string(),
             isaretli: false,
+            kanit: String::new(),
         };
         let menudekiler = vec![
             oge(
@@ -765,6 +872,90 @@ mod testler {
         assert_eq!(hedef_indeks(&menudekiler, "flagship"), Some(0));
         assert_eq!(hedef_indeks(&menudekiler, "premium quality"), Some(0));
         assert_eq!(hedef_indeks(&menudekiler, "yok-boyle-bir-sey"), None);
+    }
+
+    /// İşaret kuralı: "zaten seçili" (atla) ile "doğrulandı" (tıklama sonrası)
+    /// AYRI hükümlerdir; ikisi de bu dosyada TEK YERDE yaşar, eklenti yolu da
+    /// buradan çağırır.
+    ///
+    /// 2026-10-24 canlı ölçümü iki eksenli menüyü gösterdi (bir satır
+    /// `sinif:selected`, başka satır `torun:aria-checked=true`). Bu yüzden
+    /// doğrulama liste genelinde "tam bir işaret" şartına BAĞLANMAZ; şart
+    /// hedefin kendi kanıtıdır.
+    #[test]
+    fn zaten_secili_yalniz_guclu_ve_tek_isarette_atar() {
+        let isaretli = |ad: &str, kanit: &str| OgeDurum {
+            metin: ad.to_string(),
+            tam: ad.to_string(),
+            isaretli: true,
+            kanit: kanit.to_string(),
+        };
+        let isaretsiz = |ad: &str| OgeDurum {
+            metin: ad.to_string(),
+            tam: ad.to_string(),
+            isaretli: false,
+            kanit: String::new(),
+        };
+
+        // Tek güçlü işaret, o da hedefte → tıklama atlanır.
+        let tek = vec![
+            isaretli("3.6 Flash", "sinif:selected"),
+            isaretsiz("3.1 Pro"),
+        ];
+        assert!(zaten_secili(&tek, 0));
+        assert!(!zaten_secili(&tek, 1));
+
+        // İki eksen: mod ekseni güçlü + düşünme düzeyi zayıf. Sayım iki olduğu
+        // için "zaten seçili" DENMEZ; tıklanır (radyoda zararsız) ve tıklama
+        // sonrası hedefin kendi kanıtıyla doğrulanır.
+        let iki_eksen = vec![
+            isaretli("Otomatik", "sinif:selected"),
+            isaretli("Yüksek", "torun:aria-checked=true"),
+        ];
+        assert!(!zaten_secili(&iki_eksen, 0), "iki işaret = atlama yok");
+        assert!(!zaten_secili(&iki_eksen, 1), "zayıf kanıt atlamaya yetmez");
+        assert!(
+            secim_dogrulandi(&iki_eksen, 1),
+            "tıklama sonrası hedef zayıf ve tek zayıf işaret onda → doğrulandı"
+        );
+
+        // Zayıf kanıt başka satırda da varsa hangisinin gerçek seçim olduğu
+        // bilinmez: doğrulama reddedilir.
+        let iki_zayif = vec![
+            isaretli("Düşük", "torun:aria-checked=true"),
+            isaretli("Yüksek", "torun:aria-checked=true"),
+        ];
+        assert!(!secim_dogrulandi(&iki_zayif, 1));
+
+        // İki güçlü işaret: iki eksen de olabilir bozuk okuma da. Atlama yok;
+        // doğrulama hedefin kendi güçlü kanıtına bakar (iki eksenli menü).
+        let iki_guclu = vec![
+            isaretli("Otomatik", "sinif:selected"),
+            isaretli("Yüksek", "sinif:selected"),
+        ];
+        assert!(
+            !zaten_secili(&iki_guclu, 1),
+            "iki güçlü işaret = atlama yok"
+        );
+        assert!(
+            secim_dogrulandi(&iki_guclu, 1),
+            "hedefin kendi güçlü kanıtı"
+        );
+
+        // Hedef hiç işaretsizse doğrulanmaz (upsell / uygulanmayan tıklama).
+        let isaretsiz_hedef = vec![isaretli("Otomatik", "sinif:selected"), isaretsiz("3.1 Pro")];
+        assert!(!secim_dogrulandi(&isaretsiz_hedef, 1));
+
+        // Boş kanıt (eski eklenti) güçlü sayılır; ama atlama için yine TEK
+        // işaret şartı aranır — eski davranış birebir korunmaz.
+        let eski = vec![isaretli("3.6 Flash", ""), isaretsiz("3.1 Pro")];
+        assert!(zaten_secili(&eski, 0));
+        let eski_cok = vec![isaretli("3.6 Flash", ""), isaretli("3.6 Düşünen", "")];
+        assert!(
+            !zaten_secili(&eski_cok, 1),
+            "çok işaretli menüde atlama yok"
+        );
+        assert!(secim_dogrulandi(&eski_cok, 1));
     }
 
     fn menu() -> ModelMenusu {

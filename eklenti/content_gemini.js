@@ -1,4 +1,4 @@
-﻿// Kervan WebExtension — Gemini Content Script (Metin, Resim ve Video Destekli)
+// Kervan WebExtension — Gemini Content Script (Metin, Resim ve Video Destekli)
 const api = typeof browser !== "undefined" ? browser : chrome;
 
 console.log("[Kervan Gemini] Content script yüklendi:", window.location.href);
@@ -93,30 +93,199 @@ async function geminiSoruSor(id, istem, dosyalar = []) {
       }
     }
 
-    // 2. Metni insan gibi yaz (Gemini contenteditable paragraflarını temizleyip yerleştirir)
-    kutu.focus();
-    document.execCommand("selectAll", false, null);
-    document.execCommand("insertText", false, istem);
-    kutu.dispatchEvent(new Event("input", { bubbles: true }));
+    // 2. Metni yaz — ve YAZILDIĞINI OKUYARAK doğrula.
+    //
+    // ÖLÇÜM (2026-10-24, gerçek profil): `execCommand("insertText")` bu
+    // editörde sessizce hiçbir şey yazmadı; kutu boş kaldı. Kod bunu fark
+    // etmediği için boş istem gönderiliyor, sunucu 120 sn sonra "zaman aşımı"
+    // diyordu. Artık üç yol sırayla denenir ve her adımdan sonra kutunun
+    // içeriği okunur; hiçbiri tutmazsa açık hata verilir.
+    const kutuBosMu = () => (kutu.innerText || kutu.textContent || "").trim().length === 0;
+    const yazmaYollari = [
+      [
+        "execCommand",
+        () => {
+          kutu.focus();
+          document.execCommand("selectAll", false, null);
+          document.execCommand("insertText", false, istem);
+        }
+      ],
+      [
+        "yapistirma",
+        () => {
+          kutu.focus();
+          const veri = new DataTransfer();
+          veri.setData("text/plain", istem);
+          kutu.dispatchEvent(
+            new ClipboardEvent("paste", {
+              clipboardData: veri,
+              bubbles: true,
+              cancelable: true
+            })
+          );
+        }
+      ],
+      [
+        "metin",
+        () => {
+          kutu.focus();
+          kutu.textContent = istem;
+          kutu.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      ]
+    ];
 
-    // 3. Gönder butonuna tıkla
+    const yazmaGunlugu = [];
+    let yazildi = false;
+    for (const [ad, uygula] of yazmaYollari) {
+      try {
+        uygula();
+        kutu.dispatchEvent(new Event("input", { bubbles: true }));
+        if (!kutuBosMu()) {
+          yazildi = true;
+          break;
+        }
+      } catch (e) {
+        yazmaGunlugu.push(`${ad}: hata=${e.message}`);
+        continue;
+      }
+      yazmaGunlugu.push(`${ad}: kutu bos kaldi`);
+    }
+    if (!yazildi) {
+      throw new Error(
+        `istem kutusuna yazılamadı — denemeler: ${yazmaGunlugu.join(" | ")} — kutu: ${
+          kutu.tagName
+        }[contenteditable=${kutu.getAttribute("contenteditable")}]`
+      );
+    }
+
+    // 3. Gönder — ve GERÇEKTEN gönderildiğini doğrula.
+    //
+    // ÖLÇÜM (2026-10-24, gerçek profil): düğme görünür ve etkin, `click()`
+    // işlenmiyor; istem kutuda kalıyor, yanıt hiç başlamıyor, sunucu 120 sn
+    // sonra "zaman aşımı" diyor. Sessiz çıkmaz yerine üç yol denenir ve
+    // başarı "kutu boşaldı" ya da "yeni kullanıcı mesajı düğümü belirdi" ile
+    // ölçülür; olmadıysa açık hata verilir.
     await new Promise((r) => setTimeout(r, 500));
-    let gonderBtn = document.querySelector("button[aria-label*='Send']") ||
-                    document.querySelector("button[aria-label*='Gönder']") ||
-                    document.querySelector(".send-button") ||
-                    document.querySelector("button.send-button-container");
 
-    if (gonderBtn && !gonderBtn.disabled) {
-      gonderBtn.click();
-    } else {
-      kutu.dispatchEvent(new KeyboardEvent("keydown", {
-        key: "Enter",
-        code: "Enter",
-        keyCode: 13,
-        which: 13,
-        bubbles: true,
-        cancelable: true
-      }));
+    const soruSayisi = () =>
+      document.querySelectorAll(
+        "user-query, .user-query-container, [data-test-id='user-query']"
+      ).length;
+    const yanitSayisi = () =>
+      document.querySelectorAll("model-response, message-content, .model-response-text")
+        .length;
+    const bosaldi = () => (kutu.innerText || kutu.textContent || "").trim().length === 0;
+
+    if (bosaldi()) {
+      throw new Error(
+        "istem kutusu yazımdan hemen sonra boşaldı — editör içeriği kabul etmedi"
+      );
+    }
+
+    const oncekiSoru = soruSayisi();
+    // ÖNCEKİ YANIT SAYISI: sohbette eski yanıtlar varsa mutlak sayı zaten
+    // sıfırdan büyük olur ve "iz var" denetimi hiç beklemeden geçerdi
+    // (2026-10-24 incelemesi). Ölçüt FARK olmalı: yalnız bu turda eklenen
+    // yanıt izdir.
+    const oncekiYanit = yanitSayisi();
+    const gonderBtn =
+      document.querySelector("button[aria-label*='Send']") ||
+      document.querySelector("button[aria-label*='Gönder']") ||
+      document.querySelector(".send-button") ||
+      document.querySelector("button.send-button-container");
+
+    const enter = (el) => {
+      if (typeof window.kervanTus === "function") {
+        window.kervanTus(el, "Enter");
+        return;
+      }
+      for (const tur of ["keydown", "keyup"]) {
+        el.dispatchEvent(
+          new KeyboardEvent(tur, {
+            key: "Enter",
+            code: "Enter",
+            keyCode: 13,
+            which: 13,
+            bubbles: true,
+            cancelable: true
+          })
+        );
+      }
+    };
+
+    const dene = (ad) => {
+      if (!gonderBtn || gonderBtn.disabled) {
+        kutu.focus();
+        enter(kutu);
+        return;
+      }
+      if (ad === "isaretci" && typeof window.kervanTikla === "function") {
+        window.kervanTikla(gonderBtn);
+      } else if (ad === "click") {
+        gonderBtn.click();
+      } else {
+        gonderBtn.focus();
+        enter(gonderBtn);
+      }
+    };
+
+    const bekle = async () => {
+      const bas = Date.now();
+      while (Date.now() - bas < 3000) {
+        if (soruSayisi() > oncekiSoru || bosaldi()) return true;
+        await new Promise((r) => setTimeout(r, 150));
+      }
+      return false;
+    };
+
+    let gonderildi = false;
+    const gunluk = [];
+    for (const ad of ["isaretci", "click", "odak+enter"]) {
+      if (ad !== "isaretci") await new Promise((r) => setTimeout(r, 300));
+      dene(ad);
+      if (await bekle()) {
+        gonderildi = true;
+        break;
+      }
+      gunluk.push(`${ad}: kutu=${(kutu.innerText || "").trim().length}kr`);
+    }
+    if (!gonderildi) {
+      throw new Error(
+        `istem gönderilemedi — düğme: ${
+          gonderBtn
+            ? `aria-label=${gonderBtn.getAttribute("aria-label")} disabled=${gonderBtn.disabled}`
+            : "yok"
+        } — denemeler: ${gunluk.join(" | ")}`
+      );
+    }
+
+    // 3b. Gönderim doğrulaması tek başına yetmez: kutu, Angular yeniden
+    // çizdiği için kendiliğinden de boşalabilir. Gerçek gönderimin sayfadaki
+    // izi "durdurma düğmesi" ya da bir yanıt düğümüdür. Yoksa 120 sn bekleyip
+    // "zaman aşımı" demek yerine burada, kanıtla durulur.
+    {
+      const bas = Date.now();
+      let iz = "";
+      while (Date.now() - bas < 10000) {
+        const durdur = document.querySelector(
+          "button[aria-label*='Stop'], button[aria-label*='Durdur'], button[aria-label*='Yanıtı durdur']"
+        );
+        const yanit = yanitSayisi();
+        if (durdur || yanit > oncekiYanit) {
+          iz = "";
+          break;
+        }
+        iz = `durdurma düğmesi yok, yeni yanıt düğümü yok (önce=${oncekiYanit}, şimdi=${yanit})`;
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      if (iz) {
+        throw new Error(
+          `istem gönderildi sanıldı ama sayfada iz yok (${iz}) — düğme: ${
+            gonderBtn ? gonderBtn.getAttribute("aria-label") : "yok"
+          } — kutu=${(kutu.innerText || "").trim().length}kr — denemeler: ${gunluk.join(" | ")}`
+        );
+      }
     }
 
     // 4. Yanıtı canlı gözlemle
@@ -235,7 +404,6 @@ async function geminiSoruSor(id, istem, dosyalar = []) {
             }
           }
         }
-
         console.log("[Kervan Gemini] Yanıt tamamlandı, metin uzunluğu:", sonMetin.length, "medya sayısı:", gonderilenMedyalar.size);
         api.runtime.sendMessage({
           type: "STREAM_CHUNK",

@@ -9,5 +9,6 @@ description = "Kervan secim katmanı: site arayuzundeki model menusu ve ac/kapa 
 fantoccini.workspace = true
 katla.workspace = true
 tokio.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true

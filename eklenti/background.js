@@ -77,44 +77,139 @@ function kervanaKaydet(provider, url, profile, tabId) {
   }
 }
 
-// Açık olan sekmeleri tara ve eşleşenleri otomatik bağla
+/** URL'den sağlayıcı adı. Eşleme tek yerde dursun diye ayrıldı. */
+function saglayiciBul(url) {
+  if (!url) return null;
+  if (url.includes("qwen.ai") || url.includes("qwenlm.ai")) return "qwen";
+  if (url.includes("kimi.ai")) return "kimi";
+  if (url.includes("gemini.google.com")) return "gemini";
+  if (url.includes("deepseek.com")) return "deepseek";
+  if (url.includes("chatgpt.com") || url.includes("chat.openai.com")) return "chatgpt";
+  if (
+    url.includes("copilot.com") ||
+    url.includes("copilot.microsoft.com") ||
+    url.includes("m365.cloud.microsoft")
+  ) {
+    return "copilot";
+  }
+  if (url.includes("chat.z.ai")) return "z.ai";
+  if (url.includes("perplexity.ai")) return "perplexity";
+  if (url.includes("chat.mistral.ai")) return "mistral";
+  return null;
+}
+
+/**
+ * Sekmenin içerik betiği gerçekten çalışıyor mu?
+ *
+ * URL'ye bakmak YETMİYOR: yeni yüklenen sekmede betik henüz enjekte olmamış,
+ * boşaltılmış (discarded) sekmede hiç çalışmamış olur ve ilk mesaj "Receiving
+ * end does not exist" ile düşer. Bu yüzden haritaya yazmadan önce ping atılır
+ * (2026-10-24 incelemesi: URL tabanlı kayıt kaydı ölü sekme üzerinde tutuyordu).
+ */
+async function sekmeHazirMi(tabId) {
+  try {
+    const y = await api.tabs.sendMessage(tabId, { type: "KERVAN_PING" });
+    return !!(y && y.ok);
+  } catch (e) {
+    return false;
+  }
+}
+
+/** Bir hesabı hem yerel haritadan hem Kervan'dan düşürür. */
+function kervandanDusur(k) {
+  if (!k) return;
+  bagliSekmeler.delete(k);
+  const ayrac = k.indexOf(":");
+  const provider = k.slice(0, ayrac);
+  const profile = k.slice(ayrac + 1);
+  console.log(`[Kervan Extension] Hesap düşürüldü: ${k}`);
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ action: "ayril", provider: provider, profile: profile }));
+  }
+}
+
+// Açık olan sekmeleri tara, ULAŞILABİLİR olanları bağla, ulaşılamayanları düşür.
+//
+// SEÇİM KURALI (2026-10-24 ölçümü): aynı sağlayıcının birden çok sekmesi
+// açıkken `tabs.query` sırasında SON görülen sekmeye yazmak, isteği bayat bir
+// sekmeye gönderiyordu; kullanıcı yeni sekmede çalışırken eski sekme yanıt
+// veriyor, tanı ise "yanıt yok" diyordu. Artık sıralama sabit: ETKİN sekme,
+// yoksa en son erişilen sekme kazanır. Böylece hangi sekmenin kullanılacağı
+// tarayıcı sırasına değil, kullanıcının gerçekte baktığı sekmeye bağlıdır.
 async function acikSekmeleriTara() {
   try {
     const tabs = await api.tabs.query({});
+    const ulasilan = new Set();
+    const adaylar = new Map();
     for (const tab of tabs) {
       if (!tab.url) continue;
+      // Boşaltılmış (discarded) sekme: içerik betiği HİÇ çalışmamıştır.
+      if (tab.discarded) continue;
+      const provider = saglayiciBul(tab.url);
+      if (!provider) continue;
+      if (!(await sekmeHazirMi(tab.id))) continue;
+
+      ulasilan.add(tab.id);
       const cId = tab.cookieStoreId || "varsayilan";
-      let provider = null;
-
-      if (tab.url.includes("qwen.ai") || tab.url.includes("qwenlm.ai")) {
-        provider = "qwen";
-      } else if (tab.url.includes("kimi.ai")) {
-        provider = "kimi";
-      } else if (tab.url.includes("gemini.google.com")) {
-        provider = "gemini";
-      } else if (tab.url.includes("deepseek.com")) {
-        provider = "deepseek";
-      } else if (tab.url.includes("chatgpt.com") || tab.url.includes("chat.openai.com")) {
-        provider = "chatgpt";
-      } else if (tab.url.includes("copilot.com") || tab.url.includes("copilot.microsoft.com") || tab.url.includes("m365.cloud.microsoft")) {
-        provider = "copilot";
-      } else if (tab.url.includes("chat.z.ai")) {
-        provider = "z.ai";
-      } else if (tab.url.includes("perplexity.ai")) {
-        provider = "perplexity";
-      } else if (tab.url.includes("chat.mistral.ai")) {
-        provider = "mistral";
+      const k = anahtar(provider, cId);
+      const puan = (tab.active ? 1e12 : 0) + (tab.lastAccessed || 0);
+      const onceki = adaylar.get(k);
+      if (!onceki || puan > onceki.puan) {
+        adaylar.set(k, { tabId: tab.id, url: tab.url, provider, cId, puan });
       }
-
-      if (provider) {
-        const k = anahtar(provider, cId);
-        console.log(`[Kervan] Açık sekme bulundu: ${k} (Tab: ${tab.id})`);
-        bagliSekmeler.set(k, tab.id);
-        kervanaKaydet(provider, tab.url, cId, tab.id);
+    }
+    for (const [k, sec] of adaylar) {
+      if (bagliSekmeler.get(k) !== sec.tabId) {
+        console.log(`[Kervan] Açık sekme seçildi: ${k} (Tab: ${sec.tabId})`);
+        bagliSekmeler.set(k, sec.tabId);
+        kervanaKaydet(sec.provider, sec.url, sec.cId, sec.tabId);
       }
+    }
+    // Budama: bu taramada ulaşılamayan kayıtlar ölü sekmedir. Silmezsek
+    // 10 sn'lik tarama onları yeniden yazıp çıkmazı sürdürüyordu.
+    for (const [k, id] of [...bagliSekmeler.entries()]) {
+      if (!ulasilan.has(id)) kervandanDusur(k);
     }
   } catch (e) {
     console.warn("[Kervan] Sekmeleri tarama hatası:", e);
+  }
+}
+
+// Sağlayıcı sekmesini bulur ve mesajı iletir.
+//
+// Yeniden deneme KÖR değil: her deneme öncesi ping atılır, yani yalnız içerik
+// betiği gerçekten hazır olan sekmeye yazılır. Yalnız BAĞLANTI hatasında
+// denenir; "port closed" gibi belirsiz hatalarda mesaj zaten sayfaya ulaşmış
+// olabileceği için yeniden gönderilmez (istemin iki kez işlenmesini önler).
+async function sekmeyeGonder(provider, profile, mesaj) {
+  const bul = async () => {
+    let k = profile ? anahtar(provider, profile) : saglayiciAnahtari(provider);
+    let tabId = k ? bagliSekmeler.get(k) : null;
+    if (!tabId) {
+      await acikSekmeleriTara();
+      k = profile ? anahtar(provider, profile) : saglayiciAnahtari(provider);
+      tabId = k ? bagliSekmeler.get(k) : null;
+    }
+    return { k, tabId };
+  };
+  const baglantiHatasi = (e) =>
+    /Receiving end does not exist|Could not establish connection/i.test(
+      (e && e.message) || ""
+    );
+
+  let { k, tabId } = await bul();
+  if (!tabId) return null;
+  try {
+    return await api.tabs.sendMessage(tabId, mesaj);
+  } catch (e) {
+    if (!baglantiHatasi(e)) throw e;
+    // Ölü kayıt hemen düşürülür; ardından içerik betiğinin enjekte olması için
+    // kısa bir bekleme, sonra taze (ping'li) tarama.
+    if (k) kervandanDusur(k);
+    await new Promise((r) => setTimeout(r, 600));
+    ({ k, tabId } = await bul());
+    if (!tabId) throw e;
+    return await api.tabs.sendMessage(tabId, mesaj);
   }
 }
 
@@ -161,28 +256,8 @@ async function kervanaBaglan() {
 
       if (msg.action === "sor") {
         // Yeni Kervan profile gönderir; eski Kervan göndermez.
-        let k = msg.profile ? anahtar(msg.provider, msg.profile) : saglayiciAnahtari(msg.provider);
-        let tabId = k ? bagliSekmeler.get(k) : null;
-
-        // Haritada yoksa yeniden tara
-        if (!tabId) {
-          await acikSekmeleriTara();
-          k = msg.profile ? anahtar(msg.provider, msg.profile) : saglayiciAnahtari(msg.provider);
-          tabId = k ? bagliSekmeler.get(k) : null;
-        }
-
-        if (!tabId) {
-          socket.send(JSON.stringify({
-            action: "hata",
-            id: msg.id,
-            mesaj: `'${msg.provider}' için açık bir sekme bulunamadı.`
-          }));
-          return;
-        }
-
-        // İlgili sekmeye soruyu ilet
         try {
-          await api.tabs.sendMessage(tabId, {
+          const yanit = await sekmeyeGonder(msg.provider, msg.profile, {
             type: "KERVAN_PROMPT",
             id: msg.id,
             provider: msg.provider,
@@ -190,12 +265,56 @@ async function kervanaBaglan() {
             istem: msg.istem,
             dosyalar: msg.dosyalar || []
           });
+          if (yanit === null) {
+            socket.send(JSON.stringify({
+              action: "hata",
+              id: msg.id,
+              mesaj: `'${msg.provider}' için açık bir sekme bulunamadı.`
+            }));
+          }
         } catch (e) {
           console.warn("[Kervan] Sekmeye mesaj gönderilemedi...", e);
           socket.send(JSON.stringify({
             action: "hata",
             id: msg.id,
             mesaj: `Sekmeye ulaşılamadı. Sayfayı bir kez yenileyin (F5): ${e.message}`
+          }));
+        }
+      } else if (msg.action === "oge_oku" || msg.action === "oge_bas") {
+        // Seçim turu: okuma/tıklama ilgili sekmeye iletilir, yanıt HAM öğe
+        // listesi olarak Kervan'a döner. Katlama/eşleştirme Kervan tarafındadır;
+        // burada hiçbir metin yorumu yapılmaz.
+        try {
+          const yanit = await sekmeyeGonder(msg.provider, msg.profile, {
+            type: "KERVAN_SECIM",
+            komut: msg.action,
+            id: msg.id,
+            secici: msg.secici,
+            dugme: msg.dugme,
+            indeks: msg.indeks
+          });
+          if (yanit === null) {
+            socket.send(JSON.stringify({
+              action: "hata",
+              id: msg.id,
+              mesaj: `'${msg.provider}' için açık bir sekme bulunamadı.`
+            }));
+            return;
+          }
+          if (yanit && yanit.ok) {
+            socket.send(JSON.stringify({ action: "ogeler", id: msg.id, ogeler: yanit.ogeler }));
+          } else {
+            socket.send(JSON.stringify({
+              action: "hata",
+              id: msg.id,
+              mesaj: (yanit && yanit.mesaj) || "seçim turu yanıtsız kaldı"
+            }));
+          }
+        } catch (e) {
+          socket.send(JSON.stringify({
+            action: "hata",
+            id: msg.id,
+            mesaj: `seçim turu sekmeye ulaştırılamadı: ${e.message}`
           }));
         }
       } else if (msg.action === "durdur") {

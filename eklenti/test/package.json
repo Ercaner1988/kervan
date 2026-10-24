@@ -1,0 +1,11 @@
+{
+  "name": "kervan-eklenti-test",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "linkedom": "^0.18.14"
+  }
+}

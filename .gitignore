@@ -19,6 +19,10 @@
 # Calisma zamani gunlukleri
 *.log
 
+# Eklenti test kosucusunun bagimliliklari (bun install ile yeniden uretilir).
+# Kilit dosyasi (bun.lock) SURUM SABITLEMEK icin commit'lenir.
+node_modules/
+
 # Gecici worktree dizinleri
 /port/kayit/_gecici/
 

@@ -7,6 +7,7 @@ description = "Kervan tarayıcı eklentisi köprüsü: protokol, hesap hub'ı ve
 
 [dependencies]
 anyhow.workspace = true
+kervan-secim = { path = "../secim" }
 serde.workspace = true
 rand.workspace = true
 tokio.workspace = true
