@@ -15,4 +15,5 @@ pub use kervan_havuz::{pool, router};
 pub use kervan_mcp::{compressor, mcp_server, task_router};
 pub use kervan_saglayici::{kota, saglayicilar};
 pub use kervan_sunucu::{eklenti, server};
-pub use kervan_tarayici::{browser, config, kurulum, surec, tara};
+pub use kervan_surec as surec;
+pub use kervan_tarayici::{browser, config, kurulum, tara};

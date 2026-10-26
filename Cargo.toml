@@ -10,7 +10,7 @@ default = []
 gui = ["dep:kervan-gui"]
 
 [workspace]
-members = ["crates/config", "crates/istem", "crates/tarayici", "crates/secim", "crates/saglayici", "crates/havuz", "crates/mcp", "crates/akis", "crates/akis-gui", "crates/sunucu", "crates/eklenti", "crates/gui", "crates/yukari", "crates/ceviri", "crates/direnc", "crates/pano-veri", "crates/pano-ekran", "crates/tani"]
+members = ["crates/config", "crates/surec", "crates/istem", "crates/tarayici", "crates/secim", "crates/saglayici", "crates/havuz", "crates/mcp", "crates/akis", "crates/akis-gui", "crates/sunucu", "crates/eklenti", "crates/gui", "crates/yukari", "crates/ceviri", "crates/direnc", "crates/pano-veri", "crates/pano-ekran", "crates/tani"]
 resolver = "3"
 
 [workspace.package]
@@ -34,10 +34,18 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 tokio = { version = "1.53.1", features = ["full"] }
 toml = "1.1.4"
-windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_JobObjects", "Win32_System_Threading"] }
+windows-sys = { version = "0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Wdk_System_Threading",
+] }
 
 [dependencies]
 kervan-tarayici = { path = "crates/tarayici" }
+kervan-surec = { path = "crates/surec" }
 kervan-saglayici = { path = "crates/saglayici" }
 kervan-havuz = { path = "crates/havuz" }
 kervan-mcp = { path = "crates/mcp" }

@@ -48,6 +48,15 @@ async fn main() -> Result<()> {
     let headless = args.iter().any(|a| a == "--headless");
 
     let profiles_root = profiles_root();
+
+    // Ikinci emniyet agi: is nesnesi yalnizca bugunden sonrasini kurtarir. Onceki
+    // kosudan kalan bir tarayici profili kilitli tutuyorsa sonraki acilis modal
+    // "zaten calisiyor" penceresinde asili kalir. Artiklari kapat, kilitleri sil.
+    // Baska bir Kervan'in acik tarayicisina dokunulmaz (bkz. `kervan-surec`).
+    if let Some(ozet) = surec::artiklari_supur(&profiles_root).ozet() {
+        println!("{ozet}");
+    }
+
     let browser = BrowserBinary::discover()?;
     let geckodriver = geckodriver_yolu()?;
 

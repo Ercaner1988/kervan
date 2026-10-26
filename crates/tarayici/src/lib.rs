@@ -7,5 +7,4 @@
 pub mod browser;
 pub use kervan_config as config;
 pub mod kurulum;
-pub mod surec;
 pub mod tara;

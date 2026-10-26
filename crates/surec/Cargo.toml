@@ -1,0 +1,9 @@
+[package]
+name = "kervan-surec"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Süreç katmanı: Kervan'ın açtığı tarayıcılar onunla birlikte ölsün, artıklar süpürülsün"
+
+[dependencies]
+windows-sys.workspace = true

@@ -2247,6 +2247,7 @@ dependencies = [
  "kervan-mcp",
  "kervan-saglayici",
  "kervan-sunucu",
+ "kervan-surec",
  "kervan-tarayici",
  "kervan-yukari",
  "serde_json",
@@ -2437,6 +2438,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "kervan-surec"
+version = "0.1.0"
+dependencies = [
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "kervan-tani"
 version = "0.1.0"
 dependencies = [
@@ -2462,7 +2470,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "toml",
- "windows-sys 0.61.2",
 ]
 
 [[package]]
