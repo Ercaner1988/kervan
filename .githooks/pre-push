@@ -50,9 +50,15 @@ CARGO_BIN="$(command -v cargo 2>/dev/null || true)"
 [ -n "$CARGO_BIN" ] || for c in "$HOME/.cargo/bin/cargo" "$USERPROFILE/.cargo/bin/cargo.exe"; do
   [ -x "$c" ] && { CARGO_BIN="$c"; break; }
 done
+# Cargo yoksa olcum YAPILMAMISTIR: bu yesil degil, kirmizidir (2026-10-26 karari:
+# "olculmedi" sessizce gecmez, acik onay ister). Ercan secenegi (b).
 [ -n "$CARGO_BIN" ] || {
-  echo "pre-push: cargo bulunamadi — kapi OLCULMEDI (yesil degil). CI son savunma." >&2
-  exit 0
+  echo "" >&2
+  echo "PUSH DURDURULDU — cargo bulunamadi, kapi OLCULMEDI." >&2
+  echo "  Olculmemis push yesil sayilmaz; acik onay istiyor." >&2
+  echo "  Kur        : cargo install --path ../altin-kapi (rustup ile birlikte)" >&2
+  echo "  Yine de it : KERVAN_SKIP_GATE=1 git push   (bilincli, gorunur atlatma)" >&2
+  exit 1
 }
 # kapi, cargo'yu PATH'ten cagirir; kapi.exe de ayni dizinde durur.
 PATH="$(dirname "$CARGO_BIN"):$PATH"

@@ -107,6 +107,8 @@ pub fn router(state: Arc<AppState>) -> Router {
         // kodlari ve ac/kapa anahtarlari. Yalniz yapilandirilmis (olculmus)
         // olanlar listelenir; olmayan secenek gostermek yanlis model riskidir.
         .route("/kervan/secenekler", get(secenekler))
+        // OLCUM: bagli her hesabin GERCEK menusunu sayfadan okur. Tahmin yok.
+        .route("/kervan/olc", get(crate::olc::olc))
         .route("/v1/chat/completions", post(chat))
         .route("/health", get(|| async { "ok" }))
         .route("/telemetri", get(telemetri_handler))
@@ -471,6 +473,13 @@ pub struct ChatRequest {
 pub struct KervanIstegi {
     #[serde(default)]
     pub anahtarlar: std::collections::BTreeMap<String, bool>,
+    /// Panelden SEÇİLEN hesap: `provider:profile` (ör. `gemini:ercaner1988@gmail.com`).
+    ///
+    /// NEDEN: sağlayıcıda yedi hesap bağlıyken sunucu en-az-kullanılanı seçiyordu;
+    /// kullanıcı panelde A'yı seçip B'den yanıt alabiliyordu. Verilirse yalnız O
+    /// hesap kullanılır; bağlı değilse açık hata (sessiz hesap değişimi yasak).
+    #[serde(default)]
+    pub hesap: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -526,10 +535,26 @@ struct ModelInfo {
 /// Yalnız `kervan.toml`da ÖLÇÜLMÜŞ olarak tanımlananlar listelenir: model kodları
 /// ve aç/kapa anahtarları. Tanımsız bir seçeneği burada göstermek, panelde
 /// "seçilebilir" izlenimi yaratıp isteği 400'e düşürürdü.
+///
+/// ÖLÇÜM DEFTERİ AYRICA VERİLİR. `kervan.toml` listesi sağlayıcı GENELİ bir
+/// varsayımdır; site menüsü hesaba göre değişiyor (bir hesapta yalnız "Otomatik",
+/// başka hesapta dört model). Defterde o sağlayıcı için ölçüm varsa:
+///   - `kaynak = "yapilandirma"` ile listenin varsayım olduğu AÇIKÇA yazılır,
+///   - `hesaplar` altında her hesabın ÖLÇÜLMÜŞ kataloğu ve özellikleri verilir.
+///
+/// Böylece panel "kervan.toml ne diyorsa o" ile "site ne gösteriyor" farkını
+/// görebilir; ikisini tek listeye karıştırmak sessiz yanlış model riskidir.
 async fn secenekler(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let defter = crate::olcum::yukle();
     let mut saglayicilar = serde_json::Map::new();
     for (ad, s) in &st.saglayicilar {
-        if let Some(v) = kervan_secim::secenek_kaydi(s.model.as_ref(), &s.anahtarlar) {
+        let olculen: Vec<crate::olcum::HesapOlcumu> = defter
+            .iter()
+            .filter(|o| &o.saglayici == ad)
+            .cloned()
+            .collect();
+        let kayit = kervan_secim::secenek_kaydi(s.model.as_ref(), &s.anahtarlar);
+        if let Some(v) = crate::olcum::panel_kaydi(kayit, &olculen) {
             saglayicilar.insert(ad.clone(), v);
         }
     }
@@ -557,6 +582,14 @@ async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
     // yapilandirilmis modeller (`kervan/<ad>/<kod>`). Kilitli secenekler de
     // listelenir ama `kilitli: true` ile: hesabin potansiyeli gorunur, istemci
     // secerse 402 alir — sessizce varsayilana dusmez.
+    // Ölçüm defteri: hesap bazlı gerçek. Ölçüm varsa o hesabın kataloğu
+    // `kervan/<sag>/<kod>@<profil>` kimliğiyle listelenir; yoksa sağlayıcı
+    // geneli yapılandırma kullanılır. İki kaynağı karıştırmıyoruz: hangi
+    // girdinin ölçüm hangisinin varsayım olduğu böylece görünür kalır.
+    let defter = crate::olcum::yukle();
+    let bagli = st.eklenti_hub.bagli_hesaplar().await;
+    let sekmeler = st.eklenti_hub.bagli_sekmeler().await;
+
     let mut veri: Vec<ModelInfo> = Vec::new();
     for ad in adlar {
         veri.push(ModelInfo {
@@ -567,6 +600,54 @@ async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
             kilitli: false,
             kilit_nedeni: None,
         });
+        let olculen: Vec<&crate::olcum::HesapOlcumu> = defter
+            .iter()
+            .filter(|o| o.saglayici == ad && sekmeler.contains(&o.saglayici))
+            .collect();
+        if !olculen.is_empty() {
+            for o in olculen {
+                // Hesap varsayılanı: model seçmeden o hesabı kullan.
+                veri.push(ModelInfo {
+                    id: format!("{}@{}", model_kimligi(&ad), o.hesap),
+                    object: "model",
+                    created: simdi(),
+                    owned_by: "kervan",
+                    kilitli: false,
+                    kilit_nedeni: None,
+                });
+                for m in &o.modeller {
+                    veri.push(ModelInfo {
+                        id: format!("{}/{}@{}", model_kimligi(&ad), m.kod, o.hesap),
+                        object: "model",
+                        created: simdi(),
+                        owned_by: "kervan",
+                        kilitli: !m.secilebilir,
+                        kilit_nedeni: (!m.secilebilir)
+                            .then(|| "bu hesapta seçilemedi (ölçüldü)".to_string()),
+                    });
+                }
+            }
+            continue;
+        }
+        // Ölçüm yok: sağlayıcı geneli yapılandırma. Bağlı hesap varsa hesap
+        // ekiyle de sunulur; kilit durumu yapılandırmadan gelir ve bu bir
+        // VARSAYIMDIR (ölçüm değil) — panel bunu ölçümle güncelleyebilir.
+        let hesaplar: Vec<&str> = bagli
+            .iter()
+            .filter_map(|k| k.split_once(':'))
+            .filter(|(s, _)| *s == ad)
+            .map(|(_, p)| p)
+            .collect();
+        for h in hesaplar {
+            veri.push(ModelInfo {
+                id: format!("{}@{}", model_kimligi(&ad), h),
+                object: "model",
+                created: simdi(),
+                owned_by: "kervan",
+                kilitli: false,
+                kilit_nedeni: None,
+            });
+        }
         if let Some(s) = st.saglayicilar.get(&ad)
             && let Some(menu) = &s.model
         {
@@ -582,6 +663,14 @@ async fn models(State(st): State<Arc<AppState>>) -> Json<ModelList> {
             }
         }
     }
+
+    // HESAP BAZLI kimlikler yukarıdaki döngüde üretilir:
+    // `kervan/<sag>/<kod>@<profil>`. Ölçüm YOKSA hiç üretilmez — ölçülmemiş
+    // bir hesap için "seçilebilir" iddiası yazılmaz.
+    //
+    // DİKKAT: bu blok bir kez daha eklenirse her hesap modeli İKİ KEZ listelenir
+    // (2026-10-25'te yaşandı: 72 model, 36 olması gerekirken). Katalog tek
+    // kaynaktan, tek döngüde üretilir.
     Json(ModelList {
         object: "list",
         data: veri,
@@ -609,6 +698,11 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
         };
     }
 
+    // Hesap kimliğe gömülü gelir: `kervan/gemini/3-1-pro@eposta`. OpenCode
+    // istekte yalnız `model` alanını gönderdiği için hesap ancak böyle taşınır.
+    let (model_temel, model_hesap) = crate::olcum::hesap_eki(model_adi);
+    let model_temel = model_temel.as_str();
+
     let Some(istem) = son_kullanici_mesaji(&req.messages) else {
         return hata(StatusCode::BAD_REQUEST, "messages icinde user rolu yok");
     };
@@ -618,6 +712,8 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
     // Model kimliginden saglayiciyi sec. 'auto' verilirse SmartRouter adayları sıralar.
     // Model KODU ayrica cozulur: `kervan/gemini/yuksek`. Bos ise site varsayilani.
     let mut model_kodu: Option<String> = None;
+    // İsteğin çözüldüğü menü: seçim aşamasına AYNEN taşınır (bkz. SecimIstegi::menu).
+    let mut secim_menusu: Option<kervan_secim::ModelMenusu> = None;
 
     // Ac/kapa ozellikleri: "auto" yolunda hangi saglayicinin secilecegi onceden
     // bilinmedigi icin uygulanamaz — sessizce yok saymak yerine acik hata.
@@ -646,10 +742,12 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
             (sirali, true)
         }
     } else {
-        let (saglayici, kod) = match crate::saglayicilar::model_coz(model_adi, &st.saglayicilar) {
+        // Hesap eki yukarıda kimlikten çözüldü; burada yalnız sağlayıcı+kod
+        // ayrıştırılır. Ek yoksa davranış eskisi gibi (havuz/site varsayılanı).
+        let (saglayici, kod) = match crate::saglayicilar::model_coz(model_temel, &st.saglayicilar) {
             Some(v) => v,
             None => {
-                let sade = model_adi.strip_prefix("kervan/").unwrap_or(model_adi);
+                let sade = model_temel.strip_prefix("kervan/").unwrap_or(model_temel);
                 if st.eklenti_hub.sekme_var_mi(sade).await {
                     (sade.to_string(), None)
                 } else {
@@ -678,16 +776,25 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
                 }
             }
         };
-        // Model kodu ve anahtarlar SITeye dokunmadan once tanima gore cozulur:
-        // tanimsiz (400), tanimsiz menu (501), kilitli (402) durumlari burada
-        // kesilir. Mantik `kervan-secim` sandiginda; burasi yalniz HTTP eslemesi.
-        let menu = st
-            .saglayicilar
-            .get(&saglayici)
-            .and_then(|s| s.model.as_ref());
-        let tanimli_anahtarlar = st
-            .saglayicilar
-            .get(&saglayici)
+        // Ölçüm varsa O hesabın menüsü otoritedir (kilit kararı tek yerde:
+        // `coz_istek`). Ölçüm yoksa sağlayıcı geneli yapılandırma kullanılır.
+        let yapilandirma = st.saglayicilar.get(&saglayici);
+        let olculen_menu = match (model_hesap.as_deref(), yapilandirma) {
+            (Some(profil), Some(y)) => y.model.as_ref().and_then(|m| {
+                crate::olcum::menu_olarak(
+                    &crate::olcum::yukle(),
+                    &saglayici,
+                    profil,
+                    m.dugme.clone(),
+                    m.oge.clone(),
+                )
+            }),
+            _ => None,
+        };
+        let menu = olculen_menu
+            .as_ref()
+            .or_else(|| yapilandirma.and_then(|s| s.model.as_ref()));
+        let tanimli_anahtarlar = yapilandirma
             .map(|s| s.anahtarlar.as_slice())
             .unwrap_or_default();
         let cozulen = match kervan_secim::coz_istek(
@@ -705,8 +812,88 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
         };
         model_kodu = cozulen.model_kodu;
         anahtar_istegi = cozulen.anahtarlar;
+        secim_menusu = menu.cloned();
         (vec![saglayici], false)
     };
+
+    // Panelden hesap sabitleme (`kervan.hesap`): "saglayici:profil" ya da yalniz
+    // "profil". Sabitlenen hesap bagli degilse SESSIZCE baska hesaba dusmek
+    // yasak — istek acik hatayla doner.
+    //
+    // İki kaynak çelişirse (kimlikte `@A`, `kervan.hesap`=`B`) sessiz seçim
+    // yapılmaz: hangisinin kastedildiği istemciden gelmeli, sunucu tahmin etmez.
+    let panel_hesabi: Option<String> = match req.kervan.as_ref().and_then(|k| k.hesap.as_deref()) {
+        None => None,
+        Some(ham) if ham.trim().is_empty() => None,
+        Some(ham) => {
+            if otomatik {
+                return hata(
+                    StatusCode::BAD_REQUEST,
+                    "'auto' ile hesap sabitlenemez; saglayiciyi acikca belirt",
+                );
+            }
+            let ham = ham.trim();
+            let (onek, profil) = match ham.split_once(':') {
+                Some((s, p)) => (Some(s.trim()), p.trim()),
+                None => (None, ham),
+            };
+            let saglayici_adi = adaylar.first().map(|s| s.as_str()).unwrap_or_default();
+            if let Some(onek) = onek
+                && onek != saglayici_adi
+            {
+                return hata(
+                    StatusCode::BAD_REQUEST,
+                    &format!("'{ham}' secilen saglayiciya ('{saglayici_adi}') ait degil"),
+                );
+            }
+            if profil.is_empty() {
+                return hata(StatusCode::BAD_REQUEST, "kervan.hesap icinde profil bos");
+            }
+            if !st.eklenti_hub.sekme_var_mi(saglayici_adi).await {
+                return hata(
+                    StatusCode::BAD_REQUEST,
+                    &format!("'{saglayici_adi}' icin bagli eklenti hesabi yok; hesap sabitlenemez"),
+                );
+            }
+            Some(profil.to_string())
+        }
+    };
+    if let (Some(a), Some(b)) = (panel_hesabi.as_deref(), model_hesap.as_deref())
+        && a != b
+    {
+        return hata(
+            StatusCode::BAD_REQUEST,
+            &format!(
+                "hesap celiskisi: model kimligi '{b}' diyor, kervan.hesap '{a}' diyor. \
+                 Tek kaynak birak: ya model kimligindeki eki kullan ya kervan.hesap'i kaldir"
+            ),
+        );
+    }
+    let hedef_profil: Option<String> = panel_hesabi.or_else(|| model_hesap.clone());
+
+    // Hesap GERÇEKTEN bağlı mı? Bağlı değilse sessizce başka hesaba düşmek
+    // yasak: istek, hangi sağlayıcıda hangi hesapların bağlı olduğunu söyleyen
+    // açık 400 ile döner. (2026-10-25: bu denetim yoktu, `kervan/gemini@olmayan`
+    // eklentiye gidip 500 üretiyordu — kullanıcı sebebi göremiyordu.)
+    if let Some(profil) = hedef_profil.as_deref() {
+        let saglayici_adi = adaylar.first().map(|s| s.as_str()).unwrap_or_default();
+        let bagli = st.eklenti_hub.bagli_hesaplar().await;
+        let aranan = format!("{saglayici_adi}:{profil}");
+        if !bagli.iter().any(|k| k == &aranan) {
+            return hata(
+                StatusCode::BAD_REQUEST,
+                &format!(
+                    "'{profil}' hesabi '{saglayici_adi}' icin bagli degil. Bagli hesaplar: {}",
+                    bagli
+                        .iter()
+                        .filter(|k| k.starts_with(&format!("{saglayici_adi}:")))
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            );
+        }
+    }
 
     // TOKEN SIKIŞTIRMA (RTK + Caveman): Gelen istemi göndermeden önce gereksiz boşluk ve kalıplardan arındır
     let sikistirma = st.compressor.rtk_sikistir(&istem);
@@ -751,6 +938,8 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
     let secim = SecimIstegi {
         model_kodu: model_kodu.clone(),
         anahtarlar: anahtar_istegi.clone(),
+        hesap: hedef_profil,
+        menu: secim_menusu,
     };
     for ad in adaylar.iter().take(azami) {
         if otomatik {
@@ -805,7 +994,13 @@ async fn eklenti_denemesi(
     let t = std::time::Instant::now();
     // Model menusu cozulurken dogrulanmisti; burada yalniz etiket eslestirmesi
     // icin gerekli. Secim turlari ISTEMDEN ONCE, ayni sekmede uygulanir.
-    let menu = st.saglayicilar.get(saglayici).and_then(|s| s.model.clone());
+    // Ölçüm varsa ÖLÇÜLEN menü, yoksa yapılandırma. Karar aşamasıyla AYNI
+    // kaynak kullanılmalı; aksi hâlde ölçülen kod ("otomatik") burada tanımsız
+    // görünüp 500 üretiyordu (2026-10-25).
+    let menu = secim
+        .menu
+        .clone()
+        .or_else(|| st.saglayicilar.get(saglayici).and_then(|s| s.model.clone()));
     let es = crate::eklenti::EklentiSecimi {
         menu,
         model_kodu: secim.model_kodu.clone(),
@@ -813,7 +1008,14 @@ async fn eklenti_denemesi(
     };
     let sonuc = match st
         .eklenti_hub
-        .sor_secimli(saglayici, gonderilecek_istem, Vec::new(), &es, st.timeout)
+        .sor_secimli_hesap(
+            saglayici,
+            secim.hesap.as_deref(),
+            gonderilecek_istem,
+            Vec::new(),
+            &es,
+            st.timeout,
+        )
         .await
     {
         Err(e) => match e.downcast::<crate::eklenti::YarimYanit>() {
@@ -842,7 +1044,12 @@ async fn eklenti_denemesi(
                 saglayici,
                 t.elapsed().as_secs_f32()
             );
-            Ok(yanit_olustur(st, req, yanit, model_kimligi(saglayici)))
+            Ok(yanit_olustur(
+                st,
+                req,
+                yanit,
+                yanit_model_adi(&req.model, saglayici),
+            ))
         }
         Err(e) => {
             st.router.record_failure(saglayici).await;
@@ -867,6 +1074,16 @@ async fn eklenti_denemesi(
 struct SecimIstegi {
     model_kodu: Option<String>,
     anahtarlar: Vec<(crate::browser::Anahtar, bool)>,
+    /// Panelden sabitlenen eklenti profili (hesap). `None` = en-az-kullanılan.
+    hesap: Option<String>,
+    /// İsteğin çözüldüğü ANDAKİ menü (ölçüm varsa ÖLÇÜLEN, yoksa yapılandırma).
+    ///
+    /// NEDEN TAŞINIYOR: seçim aşaması menüyü yeniden `kervan.toml`'dan okuduğu
+    /// için ölçülen menüde olup yapılandırmada olmayan kodlar ("otomatik")
+    /// burada "tanımsız model kodu" hatasına düşüyordu (2026-10-25 ölçüldü:
+    /// `kervan/gemini/otomatik@hesap` → 500). Karar ile uygulama AYNI menüyü
+    /// görmek zorunda.
+    menu: Option<kervan_secim::ModelMenusu>,
 }
 
 /// WebDriver havuzundan tek deneme. Hesap kiralanamazsa ya da model yanıtı
@@ -1057,6 +1274,21 @@ async fn kurtar(st: &AppState, saglayici: &str, yarim: String) -> Result<String>
     Ok(Dikis::dikis_ekle(&yarim, &devam))
 }
 
+/// Yanıtta gösterilecek model adı: istemcinin İSTEDİĞİ kimlik.
+///
+/// NEDEN: `kervan/gemini/otomatik@hesap` istendiğinde yanıt `kervan/gemini`
+/// diyordu; istemci hangi hesabın/modeline cevap verdiğini göremiyordu
+/// (2026-10-25 ölçüldü). Kimlik istemciden geldiyse aynen yankılanır; istemci
+/// model belirtmediyse (`auto`/boş) sağlayıcı kimliği yazılır.
+fn yanit_model_adi(istenen: &str, saglayici: &str) -> String {
+    let t = istenen.trim();
+    if t.is_empty() || t == "auto" {
+        model_kimligi(saglayici)
+    } else {
+        t.to_string()
+    }
+}
+
 /// Başarılı yanıtı istemcinin istediği biçimde (akış ya da tek parça) kurar; araç
 /// tanımı geldiyse yanıttaki çağrıları `tool_calls`'a çevirir.
 fn yanit_olustur(st: &AppState, req: &ChatRequest, metin: String, model: String) -> Response {
@@ -1219,7 +1451,7 @@ fn sse_yanit(metin: &str, cagrilar: &[serde_json::Value], neden: &str, model: &s
         .into_response()
 }
 
-fn simdi() -> u64 {
+pub(crate) fn simdi() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())

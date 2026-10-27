@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Kervan AI Köprüsü",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "description": "Kervan yerel ağ geçidi için bot-tespiti içermeyen doğrudan WebExtension köprüsü",
   "browser_specific_settings": {
     "gecko": {
@@ -36,7 +36,7 @@
     "*://chat.mistral.ai/*"
   ],
   "background": {
-    "scripts": ["background.js"]
+    "scripts": ["kimlik.js", "background.js"]
   },
   "content_scripts": [
     {

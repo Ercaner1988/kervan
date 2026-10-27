@@ -8,16 +8,21 @@ pub mod ekran2_rota;
 pub mod ekran3_izleme;
 pub mod ekran4_baglam;
 pub mod ekran5_ayarlar;
+pub mod ekran6_canli;
 pub mod esleme;
 
 use eframe::egui::{self, Color32, RichText, Ui};
-use kervan_pano_veri::Ozet;
-use kervan_tani::{Kanit, Oneri, Sinif, TaniKarti, Yetenek, YetenekKarti};
+use kervan_pano_veri::{CanliDurum, GonderimDurumu, Ozet};
+use kervan_tani::{TaniKarti, YetenekKarti};
 use kilim_tema::TemaTercihi;
+
+pub use ekran6_canli::CanliSecim;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PanoSekmesi {
+    /// Hesaplar + modeller + özellikler tek ekranda (canlı veri).
     #[default]
+    Canli = 0,
     Oturumlar = 1,
     Rota = 2,
     Izleme = 3,
@@ -32,68 +37,23 @@ pub struct PanoEkraniDurumu {
     pub test_yaniti: String,
     pub ornek_tani: Option<TaniKarti>,
     pub ornek_yetenek: Option<YetenekKarti>,
+    /// Canlı ekranın hesap + model + araç seçimi.
+    pub canli_secim: CanliSecim,
 }
 
 impl Default for PanoEkraniDurumu {
     fn default() -> Self {
         Self {
-            aktif_sekme: PanoSekmesi::Oturumlar,
+            aktif_sekme: PanoSekmesi::Canli,
             secili_hesap_indeks: 0,
-            test_istemi: "Kervan test istemi".to_string(),
+            test_istemi: String::new(),
             test_yaniti: String::new(),
-            ornek_tani: Some(TaniKarti {
-                zaman: "2026-10-09 15:42".to_string(),
-                hesap: "ercan-gemini-ana".to_string(),
-                saglayici: "gemini".to_string(),
-                tetik: "elle".to_string(),
-                sinif: Sinif::OturumDusto,
-                guven: kervan_tani::Guven::Kural,
-                kanit: vec![
-                    Kanit {
-                        tur: "dom".to_string(),
-                        metin: "prompt_input: 1 eşleşme".to_string(),
-                    },
-                    Kanit {
-                        tur: "url".to_string(),
-                        metin: "https://gemini.google.com/app".to_string(),
-                    },
-                ],
-                goruntu: None,
-                oneri: Oneri {
-                    eylem: "giris".to_string(),
-                    ayrinti: "[Giriş] akışı hazır".to_string(),
-                },
-            }),
-            ornek_yetenek: Some(YetenekKarti {
-                saglayici: "gemini".to_string(),
-                zaman: "2026-10-09 15:40".to_string(),
-                yetenekler: vec![
-                    Yetenek {
-                        ad: "Model Seçici".to_string(),
-                        var: true,
-                        kanit: Some("button[aria-label*=model]".to_string()),
-                        degerler: vec!["2.5 Pro".to_string(), "Flash".to_string()],
-                    },
-                    Yetenek {
-                        ad: "Dosya Yükleme".to_string(),
-                        var: true,
-                        kanit: Some("input[type=file]".to_string()),
-                        degerler: vec![],
-                    },
-                    Yetenek {
-                        ad: "Görsel Üretimi".to_string(),
-                        var: true,
-                        kanit: Some("Imagen 3".to_string()),
-                        degerler: vec![],
-                    },
-                    Yetenek {
-                        ad: "Derin Araştırma".to_string(),
-                        var: false,
-                        kanit: None,
-                        degerler: vec![],
-                    },
-                ],
-            }),
+            // Örnek tanı/yetenek kartları KALDIRILDI: içlerinde gerçek olmayan
+            // hesap adı ve ölçülmemiş yetenekler vardı. Tanı kartı ancak gerçek
+            // bir taramadan sonra doldurulur.
+            ornek_tani: None,
+            ornek_yetenek: None,
+            canli_secim: CanliSecim::default(),
         }
     }
 }
@@ -120,9 +80,11 @@ pub fn render_ust_serit(
                 .size(12.0),
         );
 
-        ui.add_space(12.0);
-        ui.label(RichText::new("strateji:").size(11.0).color(Color32::GRAY));
-        ui.label(RichText::new(&ozet.aktif_strateji).strong().size(11.0));
+        if !ozet.aktif_strateji.is_empty() {
+            ui.add_space(12.0);
+            ui.label(RichText::new("strateji:").size(11.0).color(Color32::GRAY));
+            ui.label(RichText::new(&ozet.aktif_strateji).strong().size(11.0));
+        }
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let _ = ui.button("⚙").clicked();
@@ -137,6 +99,7 @@ pub fn render_sol_nav(ui: &mut Ui, durum: &mut PanoEkraniDurumu) {
         ui.add_space(4.0);
 
         let sekmeler = [
+            (PanoSekmesi::Canli, "◉ Canlı"),
             (PanoSekmesi::Oturumlar, "🔑 Oturum"),
             (PanoSekmesi::Rota, "🧭 Rota"),
             (PanoSekmesi::Izleme, "📊 İzleme"),
@@ -198,8 +161,13 @@ pub fn render_ana_ekran(
     durum: &mut PanoEkraniDurumu,
     ozet: &Ozet,
     tema_tercihi: &mut TemaTercihi,
-) {
+    canli: &CanliDurum,
+    gonderim: &GonderimDurumu,
+) -> bool {
     match durum.aktif_sekme {
+        PanoSekmesi::Canli => {
+            return ekran6_canli::render(ui, canli, &mut durum.canli_secim, gonderim);
+        }
         PanoSekmesi::Oturumlar => {
             ekran1_oturum::render(
                 ui,
@@ -222,4 +190,5 @@ pub fn render_ana_ekran(
             ekran5_ayarlar::render(ui, ozet, tema_tercihi);
         }
     }
+    false
 }

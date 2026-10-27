@@ -2327,7 +2327,9 @@ dependencies = [
  "kervan-tani",
  "kilim-tema",
  "log",
+ "serde_json",
  "tokio",
+ "ureq",
 ]
 
 [[package]]

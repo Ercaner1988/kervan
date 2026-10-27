@@ -6,5 +6,6 @@
 
 pub use kervan_sunucu::{eklenti, server};
 
+pub mod canli;
 pub mod gui;
 pub mod gui_modeller;

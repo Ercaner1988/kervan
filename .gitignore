@@ -29,3 +29,7 @@ node_modules/
 
 # gauntlet harness durumu (yerel)
 /.harness/
+
+# Gecici olcum ve döküm dosyalari
+/olc-*
+/olcum-defter.json

@@ -23,6 +23,12 @@ test = "p5_secenekler_testi"
 testDosyasi = "crates/sunucu/tests/p5_secenekler_test.rs"
 
 [[uc]]
+yol = "/kervan/olc"
+yontem = "GET"
+durum = "kapsam-disi"
+gerekce = "Kervan'a özgü ölçüm ucu: bağlı her hesabın gerçek menüsünü sayfadan okur; OmniRoute'ta karşılığı yok"
+
+[[uc]]
 yol = "/health"
 yontem = "GET"
 durum = "kapsam-disi"

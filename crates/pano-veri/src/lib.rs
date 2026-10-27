@@ -137,6 +137,72 @@ pub fn sir_temizle(ham_metin: &str) -> String {
     sonuc
 }
 
+/// Panelden canlı izlenen bir eklenti hesabı (`provider:profile`).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct CanliHesap {
+    /// `gemini:ercaner1988@gmail.com` — istekte `kervan.hesap` olarak bu gider.
+    pub anahtar: String,
+    /// Yalnız profil adı (eklenti kimliği).
+    pub profil: String,
+    pub saglayici: String,
+    /// Eklenti sekmesi şu an bağlı mı?
+    pub bagli: bool,
+    pub istek_sayisi: u32,
+    pub son_saatte: usize,
+    pub saatlik_tavan: u32,
+    /// İnsan kapısı / duraklatma nedeni (varsa).
+    pub duraklatildi: Option<String>,
+}
+
+/// Sağlayıcının ölçülmüş model menüsünden bir seçenek.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct CanliModel {
+    /// `None` = site varsayılanı (`kervan/<saglayici>`).
+    pub kod: Option<String>,
+    pub etiket: String,
+    pub kilitli: bool,
+    pub kilit_nedeni: Option<String>,
+}
+
+/// Sağlayıcının ölçülmüş aç/kapa özelliği.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct CanliAnahtar {
+    pub kod: String,
+    pub etiket: String,
+}
+
+/// Bir sağlayıcının panelde görünen bütün seçenekleri (kervan.toml'dan).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct CanliSaglayici {
+    pub ad: String,
+    pub modeller: Vec<CanliModel>,
+    pub anahtarlar: Vec<CanliAnahtar>,
+}
+
+/// Panel canlı pano durumu: hesaplar + sağlayıcı seçenekleri.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct CanliDurum {
+    pub hesaplar: Vec<CanliHesap>,
+    pub saglayicilar: Vec<CanliSaglayici>,
+    /// Son başarılı yoklama (unix saniye); 0 = henüz yoklanmadı.
+    pub guncelleme: u64,
+    /// Yoklama hatası (sunucu kapalı vb.).
+    pub hata: Option<String>,
+}
+
+/// Panelden gönderilen sınamanın durumu.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct GonderimDurumu {
+    pub calisiyor: bool,
+    pub yanit: String,
+    pub hata: Option<String>,
+    pub sure_ms: u64,
+    /// İsteğin gittiği model kimliği (`kervan/gemini/orta`).
+    pub model: String,
+    /// İsteğin sabitlendiği hesap (`gemini:...`), boşsa seçim sunucuda.
+    pub hesap: String,
+}
+
 /// Pano veri okuyucusu (arka plan yoklayıcısı).
 pub struct PanoOkuyucu {
     ozet_deposusu: Arc<Mutex<Arc<Ozet>>>,
@@ -158,91 +224,15 @@ impl PanoOkuyucu {
                 "latency-optimized".to_string(),
                 "reset-aware".to_string(),
             ],
-            hesaplar: vec![
-                HesapOzeti {
-                    ad: "ercan-gemini-ana".to_string(),
-                    saglayicilar: vec!["gemini".to_string(), "kimi".to_string()],
-                    durum: HesapDurumu::Hazir,
-                    saatlik_tavan: 30,
-                    kota_penceresi: "4 saat".to_string(),
-                },
-                HesapOzeti {
-                    ad: "copilot-yedek".to_string(),
-                    saglayicilar: vec!["copilot".to_string()],
-                    durum: HesapDurumu::KotaBekliyor { kalan_dk: 41 },
-                    saatlik_tavan: 30,
-                    kota_penceresi: "3 saat".to_string(),
-                },
-                HesapOzeti {
-                    ad: "perplexity-arastirma".to_string(),
-                    saglayicilar: vec!["perplexity".to_string()],
-                    durum: HesapDurumu::GirisGerekli,
-                    saatlik_tavan: 20,
-                    kota_penceresi: "henüz ölçülmedi".to_string(),
-                },
-                HesapOzeti {
-                    ad: "claude-sonnet-hesabi".to_string(),
-                    saglayicilar: vec!["claude".to_string()],
-                    durum: HesapDurumu::InsanKapisi,
-                    saatlik_tavan: 15,
-                    kota_penceresi: "5 saat".to_string(),
-                },
-            ],
-            modeller: vec![
-                "kervan/gemini-2.5-pro".to_string(),
-                "kervan/gemini-2.0-flash".to_string(),
-                "kervan/kimi-k1.5".to_string(),
-            ],
-            telemetri: TelemetriOzeti {
-                toplam_istek: 1482,
-                basarili_istek: 1473,
-                ortalama_gecikme_ms: 1120,
-                aktif_yuvalar: 4,
-            },
-            canli_akis: vec![
-                AkisIstegi {
-                    model: "gemini-2.5-pro".to_string(),
-                    hesap: "ercan-gemini-ana".to_string(),
-                    sure_ms: 1420,
-                    durum_kodu: 200,
-                    basarili: true,
-                },
-                AkisIstegi {
-                    model: "kimi-k1.5".to_string(),
-                    hesap: "ercan-gemini-ana".to_string(),
-                    sure_ms: 980,
-                    durum_kodu: 200,
-                    basarili: true,
-                },
-                AkisIstegi {
-                    model: "copilot-pro".to_string(),
-                    hesap: "copilot-yedek".to_string(),
-                    sure_ms: 310,
-                    durum_kodu: 429,
-                    basarili: false,
-                },
-            ],
+            // Sahte veri YOK: hesaplar canlı kaynaktan (eklenti hub + havuz)
+            // doldurulur. Pano boş açılır, ilk yoklamada gerçek hesaplar gelir.
+            hesaplar: Vec::new(),
+            modeller: Vec::new(),
+            telemetri: TelemetriOzeti::default(),
+            canli_akis: Vec::new(),
             son_hatalar: Vec::new(),
-            sekmeler: vec![
-                SekmeOzeti {
-                    id: "tab-1".to_string(),
-                    baslik: "Gemini 2.5 Pro Web".to_string(),
-                    url: "https://gemini.google.com/app".to_string(),
-                    ping_ms: 12,
-                    aktif: true,
-                },
-                SekmeOzeti {
-                    id: "tab-2".to_string(),
-                    baslik: "Kimi Chat".to_string(),
-                    url: "https://kimi.moonshot.cn/chat".to_string(),
-                    ping_ms: 18,
-                    aktif: true,
-                },
-            ],
-            kimlikler: vec![
-                "OPENAI_API_KEY".to_string(),
-                "ANTHROPIC_API_KEY".to_string(),
-            ],
+            sekmeler: Vec::new(),
+            kimlikler: Vec::new(),
             saglik: SaglikOzeti::default(),
         });
 
@@ -312,7 +302,10 @@ mod tests {
         let okuyucu = PanoOkuyucu::yeni();
         let ozet = okuyucu.guncel_ozet();
         assert_eq!(ozet.baglanti_adresi, "127.0.0.1:20129");
-        assert_eq!(ozet.hesaplar.len(), 4);
+        assert!(
+            ozet.hesaplar.is_empty(),
+            "başlangıç özeti sahte hesap içermemeli"
+        );
 
         let mut degistirilmis = (*ozet).clone();
         degistirilmis.aktif_strateji = "round-robin".to_string();

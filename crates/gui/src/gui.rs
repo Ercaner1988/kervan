@@ -7,10 +7,10 @@
 //! - Beş ekran modüler kervan-pano-ekran sandığından çağrılır
 //! - Sabit/sahte göstergeler (bonus token, saatlik 30 tavanı vb.) tamamen temizlenmiştir.
 
+use crate::canli::{CanliDepo, GonderIstegi};
 use crate::server::AppState;
 use eframe::egui;
 use kervan_pano_ekran::PanoEkraniDurumu;
-use kervan_pano_veri::PanoOkuyucu;
 use kilim_tema::{TemaTercihi, Varyant};
 use std::io::Write;
 use std::sync::Arc;
@@ -107,28 +107,29 @@ static LOGGER: FileLogger = FileLogger;
 /// Kervan Sade Pano Uygulama Durumu
 pub struct KervanApp {
     pub state: Arc<AppState>,
-    pub okuyucu: PanoOkuyucu,
+    /// Canlı pano verisi + diğer ekranların özeti + sınama göndericisi.
+    pub canli: CanliDepo,
     pub pano_durumu: PanoEkraniDurumu,
     pub tema_tercihi: TemaTercihi,
     pub kare_sayisi: u64,
 }
 
 impl KervanApp {
-    pub fn new(state: Arc<AppState>) -> Self {
-        let okuyucu = PanoOkuyucu::yeni();
+    pub fn new(state: Arc<AppState>, port: u16) -> Self {
+        let canli = CanliDepo::yeni(Arc::clone(&state), port);
         let pano_durumu = PanoEkraniDurumu::default();
         let tema_tercihi = TemaTercihi::varsayilan(Varyant::CamGobegiAltin);
 
         Self {
             state,
-            okuyucu,
+            canli,
             pano_durumu,
             tema_tercihi,
             kare_sayisi: 0,
         }
     }
 
-    pub fn baslat(state: Arc<AppState>) -> Result<(), eframe::Error> {
+    pub fn baslat(state: Arc<AppState>, port: u16) -> Result<(), eframe::Error> {
         // 1. Panik yakalayıcı
         std::panic::set_hook(Box::new(|info| {
             let msg = format!("KERVAN GUI PANİK: {info}");
@@ -182,7 +183,7 @@ impl KervanApp {
                 // kilim-tema açık ve koyu temalarını egui context'e kur
                 kilim_tema::iki_temayi_kur(&cc.egui_ctx);
                 log_yaz("kilim-tema iki_temayi_kur başarıyla bağlandı.");
-                Ok(Box::new(Self::new(state)))
+                Ok(Box::new(Self::new(state, port)))
             }),
         )
     }
@@ -197,7 +198,9 @@ impl eframe::App for KervanApp {
                 self.kare_sayisi
             ));
         }
-        let ozet = self.okuyucu.guncel_ozet();
+        let ozet = self.canli.ozet();
+        let canli = self.canli.durum();
+        let gonderim = self.canli.gonderim();
 
         // ─── 1. ÜST ŞERİT ────────────────────────────────────────────────────────
         egui::Panel::top("pano_ust_serit").show(ui, |ui| {
@@ -222,15 +225,30 @@ impl eframe::App for KervanApp {
                 kervan_pano_ekran::render_sol_nav(ui, &mut self.pano_durumu);
             });
 
-        // ─── 4. MERKEZİ EKRAN ALANI (5 EKRANDAN BİRİ) ────────────────────────────
+        // ─── 4. MERKEZİ EKRAN ALANI (6 EKRANDAN BİRİ) ────────────────────────────
+        let mut gonder = false;
         egui::CentralPanel::default().show(ui, |ui| {
-            kervan_pano_ekran::render_ana_ekran(
+            gonder = kervan_pano_ekran::render_ana_ekran(
                 ui,
                 &mut self.pano_durumu,
                 &ozet,
                 &mut self.tema_tercihi,
+                &canli,
+                &gonderim,
             );
         });
+
+        if gonder {
+            let secim = self.pano_durumu.canli_secim.clone();
+            let istek = GonderIstegi {
+                port: self.canli.port(),
+                model: kervan_pano_ekran::ekran6_canli::model_kimligi(&secim),
+                hesap: secim.hesap.clone().unwrap_or_default(),
+                istem: secim.istem.clone(),
+                anahtarlar: secim.anahtarlar.clone(),
+            };
+            self.canli.gonder(istek);
+        }
 
         // Windows DWM / egui olay döngüsünü canlı tutmak için hafif arka plan yenilemesi (500 ms)
         ui.ctx()

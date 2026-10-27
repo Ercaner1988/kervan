@@ -110,7 +110,13 @@ window.kervanOgeOkuHam = function (secici) {
         .filter(Boolean)
     );
     const satirlar = (e.innerText || "").split("\n").map(d).filter(Boolean);
-    return satirlar.find((s) => !ikonlar.has(s)) || satirlar[0] || "";
+    return (
+      satirlar.find((s) => !ikonlar.has(s)) ||
+      satirlar[0] ||
+      // Yalnız ikon taşıyan düğmelerde görünen ad `aria-label`/`title`dadır;
+      // araç düğmelerini ölçerken metin boş kalıp liste işe yaramazdı.
+      d(e.getAttribute("aria-label") || e.getAttribute("title"))
+    );
   };
   return [...document.querySelectorAll(secici)].map((e) => ({
     metin: ad(e),

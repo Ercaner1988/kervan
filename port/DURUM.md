@@ -1,11 +1,11 @@
-<!-- URETILMIS_DURUM_HASH: 3d08dc87cd3f49239eaab4aa05fb20592ccb83c95c5841dfedc247f2e80b9c34 -->
+<!-- URETILMIS_DURUM_HASH: dd9e22385e1da5e0e0da282ebc3a18d582e86d3f6760b81117d398aa162204c6 -->
 # DURUM.md — Kervan Aktarım Durum Defteri (ÜRETİLMİŞTİR)
 
 > ⚠️ BU DOSYA araclar/kapilar/durum-uret.ts ÇIKTISIDIR. ELLE DÜZENLEMEYİNİZ.
 > durum-kontrol bu dosyayı port/durum.json'dan yeniden üretip bayt bayt karşılaştırır.
 
 - **Mevcut Faz:** P3
-- **Üretim Zamanı (durum.json):** 2026-10-24T08:34:31.702Z
+- **Üretim Zamanı (durum.json):** 2026-10-27T11:03:26.061Z
 - **Üretici Özeti:** sha256:a9b4a56d5170899a65c47db3b903d5561728b859572da9ad9ffc547b6f9f0612
 - **Tüm Kapılar Yeşil mi:** ❌ HAYIR
 
@@ -15,17 +15,17 @@
 
 | Kapı Adı | Çıkış Kodu | Süre (ms) | Log Dosyası |
 |---|:---:|:---:|---|
-| makine-sakin | ✅ 0 | 60128 | port\kayit\P3\makine-sakin.log |
-| kabul-haritasi | ✅ 0 | 375465 | port\kayit\P3\kabul-haritasi.log |
-| ulasilabilirlik | ✅ 0 | 2861 | port\kayit\P3\ulasilabilirlik.log |
-| sabit-yanit | ✅ 0 | 126 | port\kayit\P3\sabit-yanit.log |
-| uc-kaydi | ✅ 0 | 4836 | port\kayit\P3\uc-kaydi.log |
-| muhur-kontrol | ❌ 1 | 13515 | port\kayit\P3\muhur-kontrol.log |
-| kulliyat-tara | ✅ 0 | 8758 | port\kayit\P3\kulliyat-tara.log |
-| mutasyon-kontrol | ✅ 0 | 80976 | port\kayit\P3\mutasyon-kontrol.log |
-| durum-kontrol | ✅ 0 | 406 | port\kayit\P3\durum-kontrol.log |
-| defter-kontrol | ✅ 0 | 26496 | port\kayit\P3\defter-kontrol.log |
-| rapor-kontrol | ✅ 0 | 92 | port\kayit\P3\rapor-kontrol.log |
+| makine-sakin | ✅ 0 | 60115 | port\kayit\P3\makine-sakin.log |
+| kabul-haritasi | ✅ 0 | 374788 | port\kayit\P3\kabul-haritasi.log |
+| ulasilabilirlik | ✅ 0 | 960 | port\kayit\P3\ulasilabilirlik.log |
+| sabit-yanit | ✅ 0 | 142 | port\kayit\P3\sabit-yanit.log |
+| uc-kaydi | ✅ 0 | 4816 | port\kayit\P3\uc-kaydi.log |
+| muhur-kontrol | ❌ 1 | 18153 | port\kayit\P3\muhur-kontrol.log |
+| kulliyat-tara | ✅ 0 | 10756 | port\kayit\P3\kulliyat-tara.log |
+| mutasyon-kontrol | ✅ 0 | 105560 | port\kayit\P3\mutasyon-kontrol.log |
+| durum-kontrol | ❌ 1 | 502 | port\kayit\P3\durum-kontrol.log |
+| defter-kontrol | ✅ 0 | 34938 | port\kayit\P3\defter-kontrol.log |
+| rapor-kontrol | ✅ 0 | 338 | port\kayit\P3\rapor-kontrol.log |
 
 ## 2. Fazlar
 
@@ -65,6 +65,12 @@ yontem = "GET"
 durum = "gercek"
 test = "p5_secenekler_testi"
 testDosyasi = "crates/sunucu/tests/p5_secenekler_test.rs"
+
+[[uc]]
+yol = "/kervan/olc"
+yontem = "GET"
+durum = "kapsam-disi"
+gerekce = "Kervan'a özgü ölçüm ucu: bağlı her hesabın gerçek menüsünü sayfadan okur; OmniRoute'ta karşılığı yok"
 
 [[uc]]
 yol = "/health"

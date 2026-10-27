@@ -150,7 +150,7 @@ async function acikSekmeleriTara() {
       if (!(await sekmeHazirMi(tab.id))) continue;
 
       ulasilan.add(tab.id);
-      const cId = tab.cookieStoreId || "varsayilan";
+      const cId = await window.kervanProfilKimligi(tab.cookieStoreId);
       const k = anahtar(provider, cId);
       const puan = (tab.active ? 1e12 : 0) + (tab.lastAccessed || 0);
       const onceki = adaylar.get(k);
@@ -213,6 +213,22 @@ async function sekmeyeGonder(provider, profile, mesaj) {
   }
 }
 
+/**
+ * Yeniden bağlanmayı planlar.
+ *
+ * NEDEN AYRI: zamanlayıcı tutamacı, iş çalışırken sıfırlanmazsa tek bir başarısız
+ * deneme tutamacı dolu bırakır ve `if (!yenidenBaglanmaZamanlayicisi)` kapısı bir
+ * daha açılmaz. Ölçüldü 2026-10-24: sunucu yeniden başlatıldığında açık yedi
+ * tarayıcı köprüye geri DÖNMEDİ; her pencere elle yeniden açılmak zorunda kaldı.
+ */
+function yenidenDene(ms = 3000) {
+  if (yenidenBaglanmaZamanlayicisi) return;
+  yenidenBaglanmaZamanlayicisi = setTimeout(() => {
+    yenidenBaglanmaZamanlayicisi = null;
+    kervanaBaglan();
+  }, ms);
+}
+
 async function kervanaBaglan() {
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
     return;
@@ -223,9 +239,7 @@ async function kervanaBaglan() {
     t = await tokenAl();
   } catch (err) {
     console.warn("[Kervan Extension] Token alınamadı, 3 sn sonra yeniden denenecek:", err);
-    if (!yenidenBaglanmaZamanlayicisi) {
-      yenidenBaglanmaZamanlayicisi = setTimeout(kervanaBaglan, 3000);
-    }
+    yenidenDene();
     return;
   }
 
@@ -234,7 +248,7 @@ async function kervanaBaglan() {
     socket = new WebSocket(`${WS_URL}?token=${encodeURIComponent(t)}`);
   } catch (err) {
     console.error("[Kervan Extension] WebSocket başlatma hatası:", err);
-    yenidenBaglanmaZamanlayicisi = setTimeout(kervanaBaglan, 3000);
+    yenidenDene();
     return;
   }
 
@@ -245,7 +259,12 @@ async function kervanaBaglan() {
       yenidenBaglanmaZamanlayicisi = null;
     }
 
-    // Açık sekmeleri tara ve Kervan'a bildir
+    // Sekme kaydı KENAR-tetiklemeliydi: eşleme değişmedikçe `kayit` yeniden
+    // gönderilmiyordu. Sunucu yeniden başlatıldığında yeni oturum boş kalıyor,
+    // WebSocket ayakta olduğu hâlde hesap panelden kayboluyordu (ölçüldü
+    // 2026-10-24: bağlantı Established, /eklenti/sekmeler `sayi: 0`). Artık her
+    // bağlantı kuruluşunda kayıt tazelenir.
+    bagliSekmeler.clear();
     acikSekmeleriTara();
   };
 
@@ -334,9 +353,7 @@ async function kervanaBaglan() {
     socket = null;
     // Token dosyası silinmiş/yenilenmiş olabilir: sonraki denemede yeniden al.
     tokenYenile = true;
-    if (!yenidenBaglanmaZamanlayicisi) {
-      yenidenBaglanmaZamanlayicisi = setTimeout(kervanaBaglan, 3000);
-    }
+    yenidenDene();
   };
 
   socket.onerror = (err) => {
@@ -350,17 +367,22 @@ async function kervanaBaglan() {
 // Content script'lerden gelen mesajları dinle
 api.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const tabId = sender.tab ? sender.tab.id : null;
-  const profile = sender.tab && sender.tab.cookieStoreId ? sender.tab.cookieStoreId : "varsayilan";
 
   if (message.type === "TAB_REGISTER") {
     const provider = message.provider;
-    const k = anahtar(provider, profile);
-    console.log(`[Kervan Extension] Sekme kayıt oldu: ${k} (Tab ID: ${tabId})`);
-    if (tabId) {
-      bagliSekmeler.set(k, tabId);
-    }
-    kervanaKaydet(provider, sender.tab ? sender.tab.url : "", profile, tabId || 0);
-    sendResponse({ ok: true });
+    // Kimlik dosyası (kervan-profil.json) okuması async olduğu için yanıt da
+    // gecikmeli gönderilir: `return true` async yanıt kanalını açar.
+    window
+      .kervanProfilKimligi(sender.tab ? sender.tab.cookieStoreId : null)
+      .then((profile) => {
+        const k = anahtar(provider, profile);
+        console.log(`[Kervan Extension] Sekme kayıt oldu: ${k} (Tab ID: ${tabId})`);
+        if (tabId) {
+          bagliSekmeler.set(k, tabId);
+        }
+        kervanaKaydet(provider, sender.tab ? sender.tab.url : "", profile, tabId || 0);
+        sendResponse({ ok: true });
+      });
     return true;
   } else if (message.type === "STREAM_CHUNK") {
     if (socket && socket.readyState === WebSocket.OPEN) {

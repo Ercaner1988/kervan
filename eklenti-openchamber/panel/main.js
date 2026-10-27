@@ -316,25 +316,70 @@
     // hicbir menuye dokunmamak demektir; "secilmis gibi" davranilmaz.
     const varsayilan = eleman("option", null, "site varsayılanı");
     varsayilan.value = "";
+    varsayilan.dataset.kimlik = `kervan/${ad}`;
     secim.append(varsayilan);
-    for (const m of modeller) {
-      // Kilitli secenek GORUNUR ama secilemez: hesabin potansiyeli gorunur,
-      // yanlislikla secilip 402 almak yerine neden yazili olur.
-      const etiket = m.kilitli
-        ? `${m.etiket} · ${m.kilit_nedeni ?? "plan gerekir"}`
-        : m.etiket;
-      const secenek = eleman("option", null, etiket ?? m.kod);
-      secenek.value = m.kod;
-      if (m.kilitli) secenek.disabled = true;
-      secim.append(secenek);
+
+    // `kervan.toml` listesi saglayici GENELI bir varsayimdir. Olcum defteri
+    // varsa gercek menuler hesap basina ayri gosterilir: ayni "3.1 Pro" bir
+    // hesapta secilebilirken digerinde kilitli. Ikisini tek listeye karistirmak
+    // "secilir sandim, 402 aldim" durumunu uretirdi.
+    const olculen = kayit?.olcum?.hesaplar ?? {};
+    const olcumVar = Object.keys(olculen).length > 0;
+    if (olcumVar) {
+      const grup = eleman("optgroup", null);
+      grup.label = "yapılandırma (varsayım)";
+      for (const m of modeller) {
+        const etiket = m.kilitli
+          ? `${m.etiket} · ${m.kilit_nedeni ?? "plan gerekir"}`
+          : m.etiket;
+        const secenek = eleman("option", null, etiket ?? m.kod);
+        secenek.value = m.kod;
+        if (m.kilitli) secenek.disabled = true;
+        secenek.dataset.kimlik = `kervan/${ad}/${m.kod}`;
+        grup.append(secenek);
+      }
+      if (grup.childElementCount) secim.append(grup);
+      for (const hesap of Object.keys(olculen).sort()) {
+        const kayitHesap = olculen[hesap] ?? {};
+        const hesapModelleri = Array.isArray(kayitHesap.modeller)
+          ? kayitHesap.modeller
+          : [];
+        if (!hesapModelleri.length) continue;
+        const hesapGrubu = eleman("optgroup", null);
+        hesapGrubu.label = `ölçüldü · ${hesap}`;
+        for (const m of hesapModelleri) {
+          const etiket = m.kilitli
+            ? `${m.etiket} · ${m.kilit_nedeni ?? "plan gerekir"}`
+            : m.etiket;
+          const secenek = eleman("option", null, etiket ?? m.kod);
+          secenek.value = `@${hesap}:${m.kod}`;
+          if (m.kilitli) secenek.disabled = true;
+          secenek.dataset.kimlik = `kervan/${ad}/${m.kod}@${hesap}`;
+          hesapGrubu.append(secenek);
+        }
+        secim.append(hesapGrubu);
+      }
+    } else {
+      for (const m of modeller) {
+        // Kilitli secenek GORUNUR ama secilemez: hesabin potansiyeli gorunur,
+        // yanlislikla secilip 402 almak yerine neden yazili olur.
+        const etiket = m.kilitli
+          ? `${m.etiket} · ${m.kilit_nedeni ?? "plan gerekir"}`
+          : m.etiket;
+        const secenek = eleman("option", null, etiket ?? m.kod);
+        secenek.value = m.kod;
+        if (m.kilitli) secenek.disabled = true;
+        secenek.dataset.kimlik = `kervan/${ad}/${m.kod}`;
+        secim.append(secenek);
+      }
     }
-    secim.disabled = modeller.length === 0;
+    secim.disabled = secim.options.length <= 1;
     kimlikYaz(ad);
   };
 
   const kimlikYaz = (ad) => {
-    const kod = $("#secModel").value;
-    $("#secKimlik").textContent = kod ? `kervan/${ad}/${kod}` : `kervan/${ad}`;
+    const secili = $("#secModel").selectedOptions?.[0];
+    $("#secKimlik").textContent = secili?.dataset?.kimlik || `kervan/${ad}`;
   };
 
   const secAnahtarlariDoldur = (ad) => {
@@ -395,6 +440,16 @@
       (kayit.modeller ?? [])
         .map((m) => `${m.kod}:${m.kilitli ? 1 : 0}`)
         .join(","),
+      // Ölçüm defteri de imzaya girer: yeni bir ölçüm (ya da hesap listesi
+      // değişimi) panelde görünmeli, yoksa 5 sn'lik tazeleme eski listeyi tutar.
+      Object.entries(kayit.olcum?.hesaplar ?? {})
+        .map(
+          ([hesap, o]) =>
+            `${hesap}=${(o.modeller ?? [])
+              .map((m) => `${m.kod}:${m.kilitli ? 1 : 0}`)
+              .join("+")}`,
+        )
+        .join(","),
       (kayit.anahtarlar ?? []).map((a) => a.kod).join(","),
     ].join("|");
     if (imza === secImza) return;
@@ -406,14 +461,17 @@
   const secimGovdesi = () => {
     const ad = $("#secSaglayici").value;
     if (!ad) throw new Error("Önce bir sağlayıcı seçin.");
-    const kod = $("#secModel").value;
+    const secili = $("#secModel").selectedOptions?.[0];
+    // Kimlik `data-kimlik`ten gelir: ölçülmüş seçeneklerde hesap eki taşır
+    // (`kervan/gemini/4-argon@hesap`). Kodu yeniden kurmak hesabı düşürürdü.
+    const kimlik = secili?.dataset?.kimlik || `kervan/${ad}`;
     const anahtarlar = {};
     for (const secim of document.querySelectorAll("#secAnahtarlar select")) {
       if (!secim.value) continue; // "değiştirme" → istekte yok
       anahtarlar[secim.dataset.anahtar] = secim.value === "acik";
     }
     const govde = {
-      model: kod ? `kervan/${ad}/${kod}` : `kervan/${ad}`,
+      model: kimlik,
       messages: [{ role: "user", content: $("#secIstem").value.trim() || "merhaba" }],
     };
     if (Object.keys(anahtarlar).length) govde.kervan = { anahtarlar };

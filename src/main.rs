@@ -230,7 +230,7 @@ async fn main() -> Result<()> {
                         eprintln!("sunucu hatasi: {e:#}");
                     }
                 });
-                return match kervan::gui::KervanApp::baslat(state) {
+                return match kervan::gui::KervanApp::baslat(state, port) {
                     Ok(()) => Ok(()),
                     Err(e) => anyhow::bail!("GUI baslatilamadi: {e}"),
                 };

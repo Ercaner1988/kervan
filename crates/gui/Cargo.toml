@@ -15,3 +15,5 @@ kilim-tema.workspace = true
 tokio.workspace = true
 log.workspace = true
 eframe.workspace = true
+serde_json.workspace = true
+ureq = { version = "3.4.2", default-features = false, features = ["rustls", "gzip", "json"] }

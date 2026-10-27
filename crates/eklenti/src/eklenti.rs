@@ -511,8 +511,15 @@ impl EklentiHub {
     }
 
     /// Sağlayıcı için en az kullanılan profili seçer ve sayacını artırır.
-    /// Profil yoksa `Ok(None)` (eski eklenti davranışı: provider ile ara).
-    async fn hesap_sec(&self, provider: &str) -> Result<(mpsc::Sender<GidenMesaj>, String)> {
+    ///
+    /// `istenen` verilirse O profil kullanılır (panelden hesap seçimi). Profil
+    /// bağlı değilse sessizce başka hesaba düşmek YASAK: kullanıcı A hesabını
+    /// seçtiğini sanırken istek B'ye giderdi. Açık hata döner.
+    async fn hesap_sec(
+        &self,
+        provider: &str,
+        istenen: Option<&str>,
+    ) -> Result<(mpsc::Sender<GidenMesaj>, String)> {
         let onek = format!("{provider}:");
         let map = self.sekmeler.lock().await;
         let mut adaylar: Vec<(&String, &BagliSekme)> =
@@ -521,6 +528,24 @@ impl EklentiHub {
             bail!(
                 "'{provider}' için bağlı bir eklenti sekmesi bulunamadı. Tarayıcıda ilgili sayfa açık mı?"
             );
+        }
+        if let Some(istenen) = istenen.filter(|p| !p.trim().is_empty()) {
+            let aranan = hesap_anahtari(provider, istenen.trim());
+            let Some(secilen) = adaylar.iter().find(|(k, _)| **k == aranan) else {
+                let mut mevcut: Vec<String> = adaylar
+                    .iter()
+                    .map(|(k, _)| k.trim_start_matches(&onek).to_string())
+                    .collect();
+                mevcut.sort();
+                bail!(
+                    "'{aranan}' bağlı değil. Bağlı hesaplar: {}",
+                    mevcut.join(", ")
+                );
+            };
+            let (gonderici, profile) = (secilen.1.gonderici.clone(), secilen.1.profile.clone());
+            let mut kullanim = self.kullanim.lock().await;
+            *kullanim.entry(aranan).or_insert(0) += 1;
+            return Ok((gonderici, profile));
         }
         // Eşitlikte anahtar sırası kararlı olsun: deterministik seçim.
         adaylar.sort_by(|a, b| a.0.cmp(b.0));
@@ -538,6 +563,71 @@ impl EklentiHub {
         Ok((gonderici, profile))
     }
 
+    /// Bir hesabın GERÇEK menüsünü okur — seçim YAPMAZ, yalnız okur.
+    ///
+    /// NEDEN: `kervan.toml`daki model listesi tek bir ölçümden geliyor ve
+    /// sağlayıcı geneli. "Bu hesabın menüsünde Pro var mı?" sorusunun cevabı
+    /// ancak o hesabın sayfasından okunur; tahmin edilemez.
+    ///
+    /// KULLANIM SAYACINI ARTIRMAZ: ölçüm bir istek değildir, yük dengelemesini
+    /// kaydırmamalı (aksi hâlde ölçülen hesap sonraki isteklerde geri plana düşer).
+    pub async fn menu_oku_hesap(
+        &self,
+        provider: &str,
+        profil: &str,
+        secici: &str,
+        dugme: Option<&str>,
+        zaman_asimi: std::time::Duration,
+    ) -> Result<Vec<OgeDurum>> {
+        let anahtar = hesap_anahtari(provider, profil);
+        let gonderici = {
+            let map = self.sekmeler.lock().await;
+            match map.get(&anahtar) {
+                Some(s) => s.gonderici.clone(),
+                None => bail!("'{anahtar}' bağlı değil"),
+            }
+        };
+        let kilit = self.hesap_kilidi(&anahtar).await;
+        let _bolge = kilit.lock().await;
+        let hedef = Hedef {
+            provider: provider.to_string(),
+            profile: profil.to_string(),
+        };
+        self.oge_oku(&gonderici, &hedef, secici, dugme, zaman_asimi)
+            .await
+    }
+
+    /// Menüdeki tek bir öğeye basar ve GÜNCEL listeyi döndürür (ölçüm için).
+    ///
+    /// Sayacı artırmaz: bu bir istek değil, "bu hesapta bu seçenek gerçekten
+    /// seçilebiliyor mu" sorusunun ölçümüdür.
+    pub async fn menu_bas_hesap(
+        &self,
+        provider: &str,
+        profil: &str,
+        secici: &str,
+        indeks: usize,
+        dugme: Option<&str>,
+        zaman_asimi: std::time::Duration,
+    ) -> Result<Vec<OgeDurum>> {
+        let anahtar = hesap_anahtari(provider, profil);
+        let gonderici = {
+            let map = self.sekmeler.lock().await;
+            match map.get(&anahtar) {
+                Some(s) => s.gonderici.clone(),
+                None => bail!("'{anahtar}' bağlı değil"),
+            }
+        };
+        let kilit = self.hesap_kilidi(&anahtar).await;
+        let _bolge = kilit.lock().await;
+        let hedef = Hedef {
+            provider: provider.to_string(),
+            profile: profil.to_string(),
+        };
+        self.oge_bas(&gonderici, &hedef, secici, indeks, dugme, zaman_asimi)
+            .await
+    }
+
     /// Eklentiye ek dosyalarla birlikte soru sorar ve yanıtın tamamlanmasını bekler.
     /// Sağlayıcıda birden çok profil bağlıysa en-az-kullanılan seçilir.
     pub async fn sor_ekli(
@@ -547,7 +637,21 @@ impl EklentiHub {
         dosyalar: Vec<DosyaEki>,
         timeout: std::time::Duration,
     ) -> Result<String> {
-        let (tx_giden, profile) = self.hesap_sec(provider).await?;
+        self.sor_ekli_hesap(provider, None, istem, dosyalar, timeout)
+            .await
+    }
+
+    /// `sor_ekli`nin hedef hesap alabildiği biçimi. `profil = None` eskisi gibi
+    /// en-az-kullanılan hesabı seçer.
+    pub async fn sor_ekli_hesap(
+        &self,
+        provider: &str,
+        profil: Option<&str>,
+        istem: &str,
+        dosyalar: Vec<DosyaEki>,
+        timeout: std::time::Duration,
+    ) -> Result<String> {
+        let (tx_giden, profile) = self.hesap_sec(provider, profil).await?;
         // Aynı hesaba eşzamanlı istek: seçim turları ve istem sırayla koşmalı.
         // Kilit yanıt bitene kadar tutulur; aynı sekmede akan iki yanıt zaten
         // birbirine karışır.
@@ -670,7 +774,23 @@ impl EklentiHub {
         secim: &EklentiSecimi,
         timeout: std::time::Duration,
     ) -> Result<String> {
-        let (tx_giden, profile) = self.hesap_sec(provider).await?;
+        self.sor_secimli_hesap(provider, None, istem, dosyalar, secim, timeout)
+            .await
+    }
+
+    /// `sor_secimli`nin hedef hesap alabildiği biçimi: panelden seçilen profil
+    /// hem model/anahtar tıklamalarını hem istemi AYNI sekmeye gönderir.
+    #[allow(clippy::too_many_arguments, reason = "tel mesajı alanları tek çağrıda")]
+    pub async fn sor_secimli_hesap(
+        &self,
+        provider: &str,
+        profil: Option<&str>,
+        istem: &str,
+        dosyalar: Vec<DosyaEki>,
+        secim: &EklentiSecimi,
+        timeout: std::time::Duration,
+    ) -> Result<String> {
+        let (tx_giden, profile) = self.hesap_sec(provider, profil).await?;
         // SEÇİM + İSTEM TEK KRİTİK BÖLGE: kilit olmadan B'nin tıklaması A'nın
         // doğrulamasından sonra sayfadaki modeli değiştirir ve A'nın istemi
         // B'nin modeliyle gider (2026-10-24 incelemesi).
@@ -1103,7 +1223,7 @@ mod tests {
 
         let mut secilenler = Vec::new();
         for _ in 0..4 {
-            let (_tx, profile) = hub.hesap_sec("gemini").await.unwrap();
+            let (_tx, profile) = hub.hesap_sec("gemini", None).await.unwrap();
             secilenler.push(profile);
         }
         secilenler.sort();
