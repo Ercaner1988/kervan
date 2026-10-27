@@ -437,7 +437,6 @@ pub use win::{kilitleri_temizle, komut_satiri};
 /// Artik tarayicilari bulur, kapatir ve sahipsiz kilitleri siler.
 ///
 /// Idempotent: artik yoksa hicbir sey yapmaz ve sessiz doner.
-#[cfg(windows)]
 pub fn artiklari_supur(kok: &Path) -> Rapor {
     supur_ile(kok, TARAYICI_ADLARI)
 }
