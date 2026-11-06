@@ -56,7 +56,7 @@ describe("p2::kapilar", () => {
   // P2-A3: Uç kaydı
   it("p2::a3_uc_kaydi_eksik_rota_ve_test_hatalarinda_kirmizidir", () => {
     // 1. Mevcut port/uclar.toml geçerli olmalı
-    const onbellekliTestler = new Set(["server::tests::tohum_gecmisi_ve_asil_soruyu_tasir", "p5_e2e_nonce_testi", "p5_models_testi"]);
+    const onbellekliTestler = new Set(["server::tests::tohum_gecmisi_ve_asil_soruyu_tasir", "p5_e2e_nonce_testi", "p5_models_testi", "p5_secenekler_testi"]);
     const gecerliSonuc = ucKaydiniDenetle(process.cwd(), undefined, onbellekliTestler);
     expect(gecerliSonuc.gecerli).toBe(true);
 
@@ -162,5 +162,34 @@ describe("p2::kapilar", () => {
     expect(bagisizSonuc.hatalar.some((h) => h.includes("Bağsız başarı iddiası"))).toBe(true);
 
     fs.unlinkSync(sahteRapor);
+  }, 30000);
+
+  // P2-A6: BASARI_IDDIASI sertleştirmesi — sıradan Türkçe çekim, renk adı, şema durumu ve SSE sabiti
+  // iddia sayılmaz; karşıt gerçek iddialar sayılmaya devam eder. Regex'i gevşetip iddia kaçırmayı
+  // engelleyen kilit: her iki yön de sabitlenir.
+  it("p2::a6_siradan_cekim_ve_veri_sozcukleri_basari_iddiasi_sayilmaz", () => {
+    const dosya = "temp_p2a6_rapor.md";
+    const ekD = EK_D_MADDELERI.map((m) => `- ${m}: baktım: araclar/kapilar/rapor-kontrol.ts:1`).join("\n");
+    const dene = (cumle: string): number => {
+      fs.writeFileSync(dosya, `# Rapor\n## Ek D Sahte-Kapı\n${ekD}\n\n${cumle}\n`, "utf-8");
+      return raporuDenetle(dosya).kontrolEdilenIddiaSayisi;
+    };
+
+    // İddia DEĞİL: ölçülen yanlış pozitiflerin beşi
+    expect(dene("`kapi dosya` çıktısı: yeşil dosya sınırı 159 kod dosyası ölçüldü.")).toBe(0);
+    expect(dene("Bu kural geçer, istisnası yok.")).toBe(0);
+    expect(dene("İstek geçtiğinde sayaç artar.")).toBe(0);
+    expect(dene("`dogrulandi` durumundaki satırlar var olan hedef dosyalara bağlıdır.")).toBe(0);
+    expect(dene("Akış sonlandığında `data: [DONE]` iletilir.")).toBe(0);
+
+    // İddia: karşıt biçimler hâlâ yakalanır (sertleştirme kaçak açmadı)
+    expect(dene("P3 koşusu geçti.")).toBe(1);
+    expect(dene("muhur-kontrol yeşil.")).toBe(1);
+    expect(dene("Çalışan ikiliyle doğrulandı.")).toBe(1);
+    expect(dene("Dört kabul maddesi gerçek koşuda geçmiştir.")).toBe(1);
+    expect(dene("All checks passed.")).toBe(1);
+    expect(dene("3 mutantın tamamı başarıyla öldürüldü.")).toBe(1);
+
+    fs.unlinkSync(dosya);
   }, 30000);
 });

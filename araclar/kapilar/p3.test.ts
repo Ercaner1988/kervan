@@ -155,5 +155,9 @@ Sadece tanıtım metni, Gereksinimler veya Kurulum başlığı yok!
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
-  }, 30000);
+    // Süre sınırı ÖLÇÜME dayanır: `defteriDenetle()` kanıtları doğrulamak için
+    // `cargo test --workspace --no-run` koşar (ölçüldü: soğuk 32 s, sıcak 17 s).
+    // Tam takım koşusunda cargo diğer testlerle aynı anda derlediği için 30 s
+    // yetmiyor ve test zaman aşımından kırmızı oluyor (ölçüm, 2026-11-06).
+  }, 180000);
 });

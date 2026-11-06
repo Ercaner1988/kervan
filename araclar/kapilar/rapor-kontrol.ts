@@ -56,17 +56,27 @@ export function bicimsiz(s: string): string {
 // tamamlandı / çalışıyor' ve aynı anlamı taşıyan biçimler). Olumsuz/nötr biçimler (geçersiz, geçici,
 // başarısız, çalışma, çalıştır-) bilerek dışarıda. ponytail: sözlük tavanı var; 'ortada pürüz kalmadı'
 // gibi yeniden kurulmuş cümleyi betik yakalamaz, PRD gereği doğruluğu hakem denetler. Kaçak bulunursa kök buraya eklenir.
+//
+// SERTLEŞTİRME (2026-11-07, ölçülmüş yanlış pozitifler): kök tek başına yetmiyordu, sıradan Türkçe
+// çekim ve veri sözcükleri iddia sayılıyordu. Beş cerrahi istisna — hepsi `port/kayit/**/*.md` taramasıyla
+// yakalandı; hiçbiri gerçek kapı-sonucu iddiasını düşürmüyor:
+//   1) `geçer` (kural geçerli) iddia değil → `er\b` çıkarıldı.
+//   2) `geçtiğinde/geçtiyse` (koşul/zaman zarfı) iddia değil → gec köküne `(?!\p{L})` eklendi.
+//   3) `yeşil dosya sınırı` (kapi dosya çıktısı, renk adı) iddia değil → `(?!\s+dosya)`.
+//   4) `dogrulandi satırları` (defter şema durumu) iddia değil → `(?!\s+satir)`.
+//   5) `data: [DONE]` (SSE akış sonlandırıcısı) iddia değil → `(?<!\[)done`.
+// Kilit: `araclar/kapilar/p2.test.ts` p2::a6_* testleri bu beş biçimi ve karşıtlarını sabitler.
 const BASARI_IDDIASI = new RegExp(
   [
-    String.raw`\bgec(?:ti|iyor|er\b|mistir|mekte|ecek|ebil|tik|tiler)`,
-    String.raw`\byesil`,
+    String.raw`\bgec(?:ti|iyor|mistir|mekte|ecek|ebil|tik|tiler)(?!\p{L})`,
+    String.raw`\byesil(?!\s+dosya)`,
     String.raw`\btamam(?:\b|la(?:ndi|nmis|niyor|nacak|nir|di|dik))`,
     String.raw`\bcalis(?:iyor|ir|ti(?!r)|mis|makta|abil)`,
     String.raw`\bbasar(?:i(?!siz)|di|ili)`,
     String.raw`\b(?:sorunsuz|hatasiz|kusursuz|eksiksiz)`,
-    String.raw`\bdogrulan(?:di|mis)`,
+    String.raw`\bdogrulan(?:di|mis)\p{L}*(?![\s` + "`" + String.raw`']*(?:durum|satir|alan)\p{L}*)`,
     String.raw`\b(?:sorun|hata)(?:u|lar)? (?:yok|kalmadi)\b`,
-    String.raw`\b(?:pass(?:ed|es|ing)?|succe(?:ss|ed)\w*|green|works?|working|done|complete[ds]?|ok(?:ay)?|fixed|verified|lgtm)\b`,
+    String.raw`\b(?:pass(?:ed|es|ing)?|succe(?:ss|ed)\w*|green|works?|working|(?<!\[)done|complete[ds]?|ok(?:ay)?|fixed|verified|lgtm)\b`,
     String.raw`[✅✔✓☑🟢💚👍]`,
     String.raw`\[x\]`,
   ].join("|"),
