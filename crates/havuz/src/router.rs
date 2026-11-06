@@ -258,7 +258,7 @@ impl RoutingStrategy {
             Self::Headroom => {
                 let sinyal = |h: &Hedef| durum.headroom.get(&h.execution_key);
                 let mut dekor: Vec<(usize, f64)> = sonuc.iter().enumerate().map(|(i, h)| {
-                    (i, sinyal(h).map_or(1.0, |s| kota::headroom(s.util5h, s.util7d)))
+                    (i, sinyal(h).map_or(1.0, |s| kota::headroom(s.util5h, s.util7d, s.util_gun)))
                 }).collect();
                 dekor.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal).then(a.0.cmp(&b.0)));
                 sonuc = dekor.iter().map(|(i, _)| sonuc[*i].clone()).collect();
@@ -514,13 +514,16 @@ struct Deste {
     kume: String,
 }
 
-/// Bir hedefin kota doygunluğu (OmniRoute `HeadroomSaturation`).
+/// Bir hedefin kota doygunluğu (OmniRoute `HeadroomSaturation` + günlük pencere eki).
 #[derive(Debug, Clone, Copy, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct HeadroomSinyali {
     #[serde(default)]
     pub util5h: f64,
     #[serde(default)]
     pub util7d: f64,
+    /// Günlük (geriye dönük 24 saat) doluluk; 0,0 = günlük tavan tanımlı değil.
+    #[serde(default)]
+    pub util_gun: f64,
 }
 
 /// Stratejilerin okuduğu durum: fiyat ve bağlam tabloları, istek metrikleri
@@ -824,10 +827,15 @@ impl SmartRouter {
         let mut durum = self.durum.write().await;
         durum.headroom.clear();
         for (anahtar, snap) in &sinyaller {
-            let (util5h, util7d) = snap.doluluk_orani();
-            durum
-                .headroom
-                .insert(anahtar.clone(), HeadroomSinyali { util5h, util7d });
+            let (util5h, util7d, util_gun) = snap.doluluk_orani();
+            durum.headroom.insert(
+                anahtar.clone(),
+                HeadroomSinyali {
+                    util5h,
+                    util7d,
+                    util_gun,
+                },
+            );
         }
         durum.kota = sinyaller;
     }
@@ -1326,6 +1334,7 @@ mod tests {
             HeadroomSinyali {
                 util5h: 0.9,
                 util7d: 0.8,
+                util_gun: 0.0,
             },
         );
         assert_eq!(

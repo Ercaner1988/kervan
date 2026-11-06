@@ -257,63 +257,70 @@ pub(crate) async fn kota_anlik_goruntuleri(
     let mut harita = std::collections::HashMap::new();
     let t5 = st.kota_ayar.tavan_5saat_istek;
     let th = st.kota_ayar.tavan_hafta_istek;
-    if t5.is_none() && th.is_none() && st.kota_ayar.saglayici_tavan.is_empty() {
+    let tg = st.kota_ayar.tavan_gun_istek;
+    if t5.is_none() && th.is_none() && tg.is_none() && st.kota_ayar.saglayici_tavan.is_empty() {
         return harita;
     }
-    let oran =
-        |sayi: usize, tavan: Option<u64>| tavan.map(|t| (sayi as f64 / t as f64).clamp(0.0, 1.0));
-    // (hesap, sağlayıcı, 5s tavanı, hafta tavanı) üçlüsünden anlık görüntü kurar.
-    // Tarayıcı hesabı = hesap başına tavan; REST = sağlayıcı başına tavan.
+    // (hesap, sağlayıcı, 5s tavanı, hafta tavanı, gün tavanı) beşlisinden anlık
+    // görüntü kurar. Tarayıcı hesabı = hesap başına tavan; REST = sağlayıcı başına.
+    // Sayı → doluluk eşlemesi `KotaSnapshot::anlik_goruntu` içinde (orada test edilir).
     macro_rules! goruntu {
-        ($harita:expr, $hesap:expr, $saglayici:expr, $t5:expr, $th:expr) => {{
+        ($harita:expr, $hesap:expr, $saglayici:expr, $t5:expr, $th:expr, $tg:expr) => {{
             let bes = match $t5 {
-                Some(_) => {
-                    let n = st
-                        .defter
+                Some(t) => Some((
+                    st.defter
                         .son_izler($hesap, $saglayici, 5 * 3600)
                         .await
-                        .len();
-                    oran(n, $t5)
-                }
+                        .len(),
+                    t,
+                )),
                 None => None,
             };
             let hafta = match $th {
-                Some(_) => {
-                    let n = st
-                        .defter
+                Some(t) => Some((
+                    st.defter
                         .son_izler($hesap, $saglayici, 7 * 24 * 3600)
                         .await
-                        .len();
-                    oran(n, $th)
-                }
+                        .len(),
+                    t,
+                )),
                 None => None,
             };
-            if bes.is_some() || hafta.is_some() {
+            // Günlük pencere = geriye dönük 24 saat. Gün sayan sağlayıcının
+            // (OpenRouter) takvim günü sıfırlaması bilinmediği için bu daha sıkı.
+            let gun = match $tg {
+                Some(t) => Some((
+                    st.defter
+                        .son_izler($hesap, $saglayici, 24 * 3600)
+                        .await
+                        .len(),
+                    t,
+                )),
+                None => None,
+            };
+            if bes.is_some() || hafta.is_some() || gun.is_some() {
                 $harita.insert(
                     crate::router::hedef_anahtari($saglayici, Some($hesap)),
-                    kervan_havuz::kota_duyarli::KotaSnapshot {
-                        oturum: bes.map(|p| kervan_havuz::kota_duyarli::KotaPenceresi {
-                            percent_used: Some(p),
-                            reset_at: None,
-                        }),
-                        haftalik: hafta.map(|p| kervan_havuz::kota_duyarli::KotaPenceresi {
-                            percent_used: Some(p),
-                            reset_at: None,
-                        }),
-                        ..Default::default()
-                    },
+                    kervan_havuz::kota_duyarli::KotaSnapshot::anlik_goruntu(bes, hafta, gun),
                 );
             }
         }};
     }
     for slot in &st.pool.slots {
-        goruntu!(harita, &slot.hesap_adi, &slot.provider.ad, t5, th);
+        goruntu!(harita, &slot.hesap_adi, &slot.provider.ad, t5, th, tg);
     }
     // REST hedefi: hesap kimliği yok, defter anahtarı sağlayıcı adının kendisi.
     // Sıralamadaki `execution_key` de yalın sağlayıcı adıdır (Hedef::saglayici),
     // bu yüzden aynı haritaya çakışmadan girer.
     for (ad, t) in &st.kota_ayar.saglayici_tavan {
-        goruntu!(harita, ad, ad, t.tavan_5saat_istek, t.tavan_hafta_istek);
+        goruntu!(
+            harita,
+            ad,
+            ad,
+            t.tavan_5saat_istek,
+            t.tavan_hafta_istek,
+            t.tavan_gun_istek
+        );
     }
     harita
 }

@@ -309,8 +309,9 @@
         );
         const t = kayit.tavan ?? null;
         const tavanMetni =
-          t && (t.tavan_5saat_istek ?? t.tavan_hafta_istek) != null
-            ? `tavan: ${t.tavan_5saat_istek ?? "—"}/5sa · ${t.tavan_hafta_istek ?? "—"}/hafta`
+          t &&
+          (t.tavan_5saat_istek ?? t.tavan_hafta_istek ?? t.tavan_gun_istek) != null
+            ? `tavan: ${t.tavan_5saat_istek ?? "—"}/5sa · ${t.tavan_hafta_istek ?? "—"}/hafta · ${t.tavan_gun_istek ?? "—"}/gün`
             : "tavan tanımsız — kota stratejileri bu sağlayıcıda sinyalsiz (priority gibi)";
         sol.append(eleman("div", "alt", tavanMetni));
         const tahmin = k.tahmin ?? {};

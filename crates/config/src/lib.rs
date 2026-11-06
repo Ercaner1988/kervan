@@ -235,6 +235,15 @@ pub struct Kota {
     /// Haftalık pencerenin istek tavanı. Ölçüm birimi `tavan_5saat_istek` ile aynı.
     #[serde(default)]
     pub tavan_hafta_istek: Option<u64>,
+    /// Günlük (geriye dönük 24 saat) pencerenin istek tavanı.
+    ///
+    /// GÜNLÜK limitli ücretsiz katmanlar içindir: OpenRouter ücretsiz modelleri
+    /// krediye göre günde 50 ya da 1000 istek sayar, 5 saat/hafta değil. Ölçüm
+    /// geriye dönük 24 saattir; takvim günü sayan sağlayıcının sıfırlama anı
+    /// bilinmediği için bu pencere ondan DAHA SIKI davranır (uydurulmuş bir
+    /// sıfırlama anı yazılmaz). `None` = günlük sinyal üretilmez.
+    #[serde(default)]
+    pub tavan_gun_istek: Option<u64>,
     /// REST sağlayıcıları için ayrı tavanlar (`[kota.saglayici_tavan.openrouter]`).
     ///
     /// NEDEN AYRI: tarayıcı hesaplarının tavanı hesap başına, REST hedeflerinin
@@ -256,6 +265,9 @@ pub struct SaglayiciTavan {
     /// Haftalık pencerede sayılan olay tavanı.
     #[serde(default)]
     pub tavan_hafta_istek: Option<u64>,
+    /// Günlük (geriye dönük 24 saat) olay tavanı. Birim istek, token değil.
+    #[serde(default)]
+    pub tavan_gun_istek: Option<u64>,
 }
 
 fn varsayilan_isaretler() -> Vec<String> {
@@ -278,6 +290,7 @@ impl Default for Kota {
             bilinmeyen_pencere_dk: varsayilan_kota_bekleme(),
             tavan_5saat_istek: None,
             tavan_hafta_istek: None,
+            tavan_gun_istek: None,
             saglayici_tavan: std::collections::HashMap::new(),
         }
     }
@@ -391,13 +404,19 @@ impl Config {
         if self.kota.tavan_hafta_istek == Some(0) {
             anyhow::bail!("[kota] tavan_hafta_istek 0 olamaz (tavan bilinmiyorsa alanı yazmayın)");
         }
+        if self.kota.tavan_gun_istek == Some(0) {
+            anyhow::bail!("[kota] tavan_gun_istek 0 olamaz (tavan bilinmiyorsa alanı yazmayın)");
+        }
         // Sağlayıcı tavanı yalnız [rest.X] tanımlıysa anlamlı: ad yazım hatası
         // sessizce "tavan yok" davranışına düşmemeli.
         for (ad, t) in &self.kota.saglayici_tavan {
             if !self.rest.contains_key(ad) {
                 anyhow::bail!("[kota.saglayici_tavan.{ad}] tanımlı bir [rest.{ad}] hedefi yok");
             }
-            if t.tavan_5saat_istek == Some(0) || t.tavan_hafta_istek == Some(0) {
+            if t.tavan_5saat_istek == Some(0)
+                || t.tavan_hafta_istek == Some(0)
+                || t.tavan_gun_istek == Some(0)
+            {
                 anyhow::bail!(
                     "[kota.saglayici_tavan.{ad}] tavan 0 olamaz (tavan bilinmiyorsa alanı yazmayın)"
                 );
@@ -657,15 +676,26 @@ mod tests {
         let c: Config = toml::from_str("[[accounts]]\nname = \"a\"\n").unwrap();
         assert_eq!(c.kota.tavan_5saat_istek, None);
         assert_eq!(c.kota.tavan_hafta_istek, None);
+        assert_eq!(c.kota.tavan_gun_istek, None);
 
         let c: Config =
             toml::from_str("[[accounts]]\nname = \"a\"\n[kota]\ntavan_5saat_istek = 30\n").unwrap();
         assert_eq!(c.kota.tavan_5saat_istek, Some(30));
         assert!(c.dogrula().is_ok());
 
+        // Günlük pencere: OpenRouter gibi gün sayan sağlayıcı için ayrı alan.
+        let c: Config =
+            toml::from_str("[[accounts]]\nname = \"a\"\n[kota]\ntavan_gun_istek = 50\n").unwrap();
+        assert_eq!(c.kota.tavan_gun_istek, Some(50));
+        assert!(c.dogrula().is_ok());
+
         let c: Config =
             toml::from_str("[[accounts]]\nname = \"a\"\n[kota]\ntavan_hafta_istek = 0\n").unwrap();
         assert!(c.dogrula().is_err(), "0 tavan acik hata olmali");
+
+        let c: Config =
+            toml::from_str("[[accounts]]\nname = \"a\"\n[kota]\ntavan_gun_istek = 0\n").unwrap();
+        assert!(c.dogrula().is_err(), "gunluk 0 tavan acik hata olmali");
     }
 
     /// pacing blogu hic yoksa muhafazakar varsayilan gelmeli — yapilandirma

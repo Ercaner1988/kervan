@@ -85,20 +85,25 @@ bilinmeyen_pencere_dk = 60
 # tavan_5saat_istek = 300
 # tavan_hafta_istek = 2000
 #
+# GÜNLÜK pencere (tavan_gun_istek): geriye dönük 24 saat sayılır. Gün sayan
+# sağlayıcılar içindir (OpenRouter ücretsiz modelleri: krediye göre günde 50
+# ya da 1000 istek). Takvim günü sıfırlama anı bilinmediği için bu pencere
+# sağlayıcıdan DAHA SIKI davranır: günün erken saatinde hedefi gereğinden
+# erken "dolu" gösterebilir, 429'a karşı güvenli tarafta kalır.
+# tavan_gun_istek = 50
+#
 # REST sağlayıcıları için AYRI tavanlar: ücretsiz katman limiti (OpenRouter vb.)
 # hesap başına değil SAĞLAYICI başınadır. Ad, tanımlı bir [rest.X] hedefi
 # olmalıdır; olmayan ad açılışta hatadır (yazım hatası sessizce "tavan yok"
 # davranışına düşmesin). Bu sağlayıcının 429'ları da /kota panelinde görünür.
 #
-# [kota.saglayici_tavan.openrouter]
+# [kota.saglayici_tavan.bir_rest_saglayicisi]
 # tavan_5saat_istek = 50
 # tavan_hafta_istek = 1000
+# tavan_gun_istek = 50
 #
-# SINIR: defterde yalnız 5 saatlik ve haftalık pencere var. GÜNLÜK limitli
-# ücretsiz katmanlar (OpenRouter ücretsiz modelleri gibi) bu iki pencereye
-# birebir oturmaz; günlük sayıyı "5 saatlik" diye yazmak ölçümü yanlış yapar.
-# Böyle bir sağlayıcıyı bağlarken gerçek pencere ölçülmeden tavan YAZILMAZ —
-# sinyalsiz kalır (priority davranışı) ve 429'lar yine /kota panelinde görünür.
+# SINIR: günlük sayıyı "5 saatlik" tavan diye yazmak ölçümü yanlış yapar;
+# gün sayan sağlayıcıya `tavan_gun_istek` yazılır.
 
 # --- doğrudan REST sağlayıcıları ---
 #

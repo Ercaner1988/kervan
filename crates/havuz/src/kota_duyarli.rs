@@ -88,6 +88,14 @@ pub struct KotaSnapshot {
     pub oturum: Option<KotaPenceresi>,
     #[serde(default)]
     pub haftalik: Option<KotaPenceresi>,
+    /// Günlük (geriye dönük 24 saat) pencere.
+    ///
+    /// Gün sayan sağlayıcılar içindir (OpenRouter ücretsiz modelleri). Pencere
+    /// YOKSA "günlük kısıt tanımlı değil" demektir; oturum/haftalık pencerelerin
+    /// aksine 0,5 doluluk varsayılmaz — uydurulmuş bir sinyal yönlendirmeyi
+    /// yanıltırdı.
+    #[serde(default)]
+    pub gunluk: Option<KotaPenceresi>,
     #[serde(default)]
     pub aylik: Option<KotaPenceresi>,
     /// Tek sinyalli üst düzey `quota.resetAt` (epoch ms).
@@ -103,16 +111,68 @@ pub struct KotaSnapshot {
 }
 
 impl KotaSnapshot {
-    /// Pencerelerin doluluk oranı: (util5h, util7d) — `headroom` sinyalinin kaynağı.
+    /// Ölçülen istek sayılarından anlık görüntü kurar.
     ///
-    /// `limit_reached` ise ikisi de 1,0 (tam dolu). Eksik pencere üst düzey
-    /// `percent_used`e, o da yoksa 0,5 doluluğa düşer (OmniRoute kuralı).
-    pub fn doluluk_orani(&self) -> (f64, f64) {
+    /// Her argüman `(pencere içinde sayılan istek, tavan)` çiftidir; `None`
+    /// "o pencere için tavan tanımlı değil" demektir ve o pencere boş bırakılır
+    /// (uydurulmuş bir doluluk yazılmaz). Üçü de `None` ise varsayılan (boş)
+    /// anlık görüntü döner.
+    ///
+    /// Bu fonksiyon SAF: defteri okumaz, saat tutmaz. Sunucu defterden sayıları
+    /// toplar, oran burada hesaplanır — böylece eşleme (sayı → doluluk) AppState
+    /// kurmadan test edilebilir.
+    pub fn anlik_goruntu(
+        oturum: Option<(usize, u64)>,
+        haftalik: Option<(usize, u64)>,
+        gunluk: Option<(usize, u64)>,
+    ) -> Self {
+        let oran = |(sayi, tavan): (usize, u64)| KotaPenceresi {
+            percent_used: Some((sayi as f64 / tavan as f64).clamp(0.0, 1.0)),
+            reset_at: None,
+        };
+        Self {
+            oturum: oturum.map(oran),
+            haftalik: haftalik.map(oran),
+            gunluk: gunluk.map(oran),
+            ..Default::default()
+        }
+    }
+
+    /// Pencerelerin doluluk oranı: `(util5h, util7d, utilGun)` — `headroom`
+    /// sinyalinin kaynağı.
+    ///
+    /// `limit_reached` ise üçü de 1,0 (tam dolu). Oturum/haftalık eksikse üst
+    /// düzey `percent_used`e, o da yoksa 0,5 doluluğa düşer (OmniRoute kuralı).
+    /// GÜNLÜK pencere yoksa 0,0 döner: "günlük tavan tanımlı değil" demektir,
+    /// "yarı dolu" değil. Günlük tavan yalnız gün sayan sağlayıcılara yazılır.
+    pub fn doluluk_orani(&self) -> (f64, f64, f64) {
         if self.limit_reached {
-            return (1.0, 1.0);
+            return (1.0, 1.0, 1.0);
         }
         let (_, oturum_kalan, haftalik_kalan) = self.doluluklar();
-        (1.0 - oturum_kalan, 1.0 - haftalik_kalan)
+        (
+            1.0 - oturum_kalan,
+            1.0 - haftalik_kalan,
+            self.gunluk_doluluk(),
+        )
+    }
+
+    /// Günlük pencerenin doluluğu; pencere yoksa 0,0 (kısıt yok).
+    fn gunluk_doluluk(&self) -> f64 {
+        self.gunluk
+            .and_then(|w| w.percent_used)
+            .filter(|v| v.is_finite())
+            .map(kirp01)
+            .unwrap_or(0.0)
+    }
+
+    /// Günlük pencerenin kalan oranı; pencere yoksa 1,0 (kısıt yok).
+    fn gunluk_kalan(&self) -> f64 {
+        self.gunluk
+            .and_then(|w| w.percent_used)
+            .filter(|v| v.is_finite())
+            .map(|v| kirp01(1.0 - v))
+            .unwrap_or(1.0)
     }
 
     fn pencere(&self, p: Pencere) -> Option<&KotaPenceresi> {
@@ -235,6 +295,11 @@ pub fn reset_aware_skor(snap: Option<&KotaSnapshot>, ayar: &ResetAwareAyar, simd
         return f64::NEG_INFINITY;
     }
     let (_, oturum_kalan, haftalik_kalan) = q.doluluklar();
+    // SAPMA (Kervan eki): günlük pencere, kısa ufuklu kalan kapasitenin ÜST
+    // sınırıdır — 5 saatlik pencere boş olsa bile günlük tavan dolduysa hesap
+    // kısa ufukta doludur. Günlük pencere tanımlı değilse `gunluk_kalan` 1,0
+    // döner, yani bu satır OmniRoute davranışını değiştirmez.
+    let oturum_kalan = oturum_kalan.min(q.gunluk_kalan());
     let oturum_skor = skor_pencere(
         oturum_kalan,
         q.oturum.and_then(|w| w.reset_at),
@@ -268,7 +333,8 @@ pub fn kalan_yuzde(snap: Option<&KotaSnapshot>) -> f64 {
         return 0.0;
     }
     let (_, oturum, haftalik) = q.doluluklar();
-    let dar = oturum.min(haftalik) * 100.0;
+    // Günlük pencere de en dar penceredir: kalan yüzde onu aşamaz.
+    let dar = oturum.min(haftalik).min(q.gunluk_kalan()) * 100.0;
     (dar * 1e6).round() / 1e6
 }
 
@@ -301,20 +367,17 @@ pub fn reset_window_kalan_ms(
     }
 }
 
-/// OmniRoute `computeHeadroom`: `1 - max(util5h, util7d)`, sonlu olmayan 0 sayılır
-/// (tam boşluk — fail-open).
-pub fn headroom(util5h: f64, util7d: f64) -> f64 {
-    let u5 = if util5h.is_finite() {
-        kirp01(util5h)
-    } else {
-        0.0
-    };
-    let u7 = if util7d.is_finite() {
-        kirp01(util7d)
-    } else {
-        0.0
-    };
-    1.0 - u5.max(u7)
+/// OmniRoute `computeHeadroom` + günlük pencere eki:
+/// `1 - max(util5h, util7d, utilGun)`.
+///
+/// Günlük doluluk, gün sayan sağlayıcıların (OpenRouter ücretsiz modelleri)
+/// gerçek kısıtıdır: haftalık pencere boş görünürken günlük tavan dolabilir.
+/// Üçüncü değer 0,0 geldiğinde (günlük tavan tanımlı değil) max'ı değiştirmez,
+/// yani eski davranış korunur. Sonlu olmayan değer 0 sayılır (tam boşluk —
+/// fail-open).
+pub fn headroom(util5h: f64, util7d: f64, util_gun: f64) -> f64 {
+    let kirp = |x: f64| if x.is_finite() { kirp01(x) } else { 0.0 };
+    1.0 - kirp(util5h).max(kirp(util7d)).max(kirp(util_gun))
 }
 
 /// OmniRoute `pickWeightedIndex`: yalnız pozitif ağırlıklar; ilk kümülatif ağırlık
@@ -506,23 +569,37 @@ mod tests {
             }),
             ..Default::default()
         };
-        let (o, h) = q.doluluk_orani();
+        let (o, h, g) = q.doluluk_orani();
         assert!((o - 0.2).abs() < 1e-9);
         assert!((h - 0.6).abs() < 1e-9);
+        // Günlük pencere yok: kısıt tanımlı değil, 0,5 değil 0,0.
+        assert_eq!(g, 0.0);
 
         // Eksik pencere üst düzeye düşer; o da yoksa 0,5.
         let q = KotaSnapshot {
             percent_used: Some(0.25),
             ..Default::default()
         };
-        let (o, h) = q.doluluk_orani();
+        let (o, h, g) = q.doluluk_orani();
         assert!((o - 0.25).abs() < 1e-9);
         assert!((h - 0.25).abs() < 1e-9);
-        let (o, h) = KotaSnapshot::default().doluluk_orani();
+        assert_eq!(g, 0.0);
+        let (o, h, g) = KotaSnapshot::default().doluluk_orani();
         assert!((o - 0.5).abs() < 1e-9);
         assert!((h - 0.5).abs() < 1e-9);
+        assert_eq!(g, 0.0);
 
-        // limitReached her iki pencereyi dolu sayar.
+        // Günlük pencere varsa kendi doluluğunu verir.
+        let q = KotaSnapshot {
+            gunluk: Some(KotaPenceresi {
+                percent_used: Some(0.8),
+                reset_at: None,
+            }),
+            ..Default::default()
+        };
+        assert_eq!(q.doluluk_orani(), (0.5, 0.5, 0.8));
+
+        // limitReached üç pencereyi de dolu sayar.
         let q = KotaSnapshot {
             limit_reached: true,
             oturum: Some(KotaPenceresi {
@@ -531,7 +608,7 @@ mod tests {
             }),
             ..Default::default()
         };
-        assert_eq!(q.doluluk_orani(), (1.0, 1.0));
+        assert_eq!(q.doluluk_orani(), (1.0, 1.0, 1.0));
 
         // Sonlu olmayan değerler yok sayılır (NaN sızmaz).
         let q = KotaSnapshot {
@@ -540,16 +617,102 @@ mod tests {
                 percent_used: Some(f64::INFINITY),
                 reset_at: None,
             }),
+            gunluk: Some(KotaPenceresi {
+                percent_used: Some(f64::NAN),
+                reset_at: None,
+            }),
             ..Default::default()
         };
-        assert_eq!(q.doluluk_orani(), (0.5, 0.5));
+        assert_eq!(q.doluluk_orani(), (0.5, 0.5, 0.0));
+    }
+
+    /// Defter sayısı → anlık görüntü: sunucunun kurduğu eşlemenin aynısı.
+    #[test]
+    fn test_anlik_goruntu_sayidan_doluluga() {
+        // Yalnız günlük tavan: oturum/haftalık pencere YOK (uydurulmaz).
+        let q = KotaSnapshot::anlik_goruntu(None, None, Some((50, 50)));
+        assert!(q.oturum.is_none());
+        assert!(q.haftalik.is_none());
+        assert_eq!(q.doluluk_orani(), (0.5, 0.5, 1.0));
+        assert_eq!(
+            headroom(
+                q.doluluk_orani().0,
+                q.doluluk_orani().1,
+                q.doluluk_orani().2
+            ),
+            0.0
+        );
+
+        // Tavanı aşan sayı 1,0'a kırpılır (yüzde taşmaz).
+        let q = KotaSnapshot::anlik_goruntu(None, None, Some((120, 50)));
+        assert_eq!(q.doluluk_orani().2, 1.0);
+
+        // Yarısı dolu: gerçekten yarı.
+        let q = KotaSnapshot::anlik_goruntu(None, None, Some((10, 50)));
+        assert_eq!(q.doluluk_orani().2, 0.2);
+
+        // Hiç tavan yok: üç pencere de yok, günlük doluluk 0 (kısıt yok).
+        let q = KotaSnapshot::anlik_goruntu(None, None, None);
+        assert_eq!(q, KotaSnapshot::default());
+        assert_eq!(q.doluluk_orani().2, 0.0);
+
+        // Üç pencere birlikte: her biri kendi sayısından.
+        let q = KotaSnapshot::anlik_goruntu(Some((1, 20)), Some((31, 31)), Some((5, 50)));
+        let (u5, u7, ug) = q.doluluk_orani();
+        assert!((u5 - 0.05).abs() < 1e-12);
+        assert_eq!(u7, 1.0);
+        assert!((ug - 0.1).abs() < 1e-12);
     }
 
     #[test]
     fn test_headroom_hesabi() {
-        assert_eq!(headroom(0.2, 0.6), 0.4);
-        assert_eq!(headroom(f64::NAN, 0.0), 1.0);
-        assert_eq!(headroom(2.0, 2.0), 0.0);
+        assert_eq!(headroom(0.2, 0.6, 0.0), 0.4);
+        assert_eq!(headroom(f64::NAN, 0.0, 0.0), 1.0);
+        assert_eq!(headroom(2.0, 2.0, 0.0), 0.0);
+        // Günlük pencere en dar olanı belirler.
+        assert!((headroom(0.1, 0.2, 0.9) - 0.1).abs() < 1e-9);
+    }
+
+    /// Günlük pencere: skoru ve kalan yüzdeyi daraltır; yoksa davranış değişmez.
+    #[test]
+    fn test_gunluk_pencere_skoru_daraltir() {
+        let ayar = ResetAwareAyar::default();
+        let temel = KotaSnapshot {
+            oturum: Some(KotaPenceresi {
+                percent_used: Some(0.0),
+                reset_at: None,
+            }),
+            haftalik: Some(KotaPenceresi {
+                percent_used: Some(0.0),
+                reset_at: None,
+            }),
+            ..Default::default()
+        };
+        let gunluk_dolu = KotaSnapshot {
+            gunluk: Some(KotaPenceresi {
+                percent_used: Some(1.0),
+                reset_at: None,
+            }),
+            ..temel.clone()
+        };
+        let skor_bos = reset_aware_skor(Some(&temel), &ayar, 0);
+        let skor_dolu = reset_aware_skor(Some(&gunluk_dolu), &ayar, 0);
+        assert!(
+            skor_dolu < skor_bos,
+            "günlük tavan doluyken skor düşmeli: {skor_dolu} < {skor_bos}"
+        );
+        // Günlük pencere tanımlı değilken skor aynı kalır.
+        let mut gunluk_yok = temel.clone();
+        gunluk_yok.gunluk = None;
+        assert_eq!(reset_aware_skor(Some(&gunluk_yok), &ayar, 0), skor_bos);
+        // Kalan yüzde en dar pencereyi aşamaz.
+        let yuzde = kalan_yuzde(Some(&gunluk_dolu));
+        assert!(
+            yuzde <= 1e-9,
+            "günlük tavan doluyken kalan yüzde 0: {yuzde}"
+        );
+        let yuzde_bos = kalan_yuzde(Some(&temel));
+        assert!((yuzde_bos - 100.0).abs() < 1e-9);
     }
 
     #[test]
