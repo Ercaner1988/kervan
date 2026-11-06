@@ -10,6 +10,7 @@ pub use kervan_saglayici::{kota, saglayicilar};
 pub use kervan_tarayici::{browser, config, kurulum};
 
 pub use kervan_eklenti::eklenti;
+mod chat;
 mod eklenti_uc;
 mod hesap;
 mod olc;
