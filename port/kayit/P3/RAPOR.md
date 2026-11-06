@@ -15,7 +15,7 @@ Bu rapordaki her sonuç cümlesi aynı satırdaki bir `hepsi.ts` kapı günlüğ
 2. **Mutasyon kapısı (FR-2.6):** bildirilmiş mutantlar öldürülür, yaşayan mutant ve bağsız parite kırmızıdır. Kanıt: [mutasyon-kontrol.log](mutasyon-kontrol.log), mutant listesi: `port/mutantlar.toml:1`.
 3. **Üretilmiş durum (FR-2.7):** `port/durum.json` gerçek `hepsi.ts` koşusundan gelir, `port/DURUM.md` ve README durum blokları `durum-uret` çıktısıyla bayt-özdeştir. Kanıt: [durum-kontrol.log](durum-kontrol.log), kod: `araclar/kapilar/durum-uret.ts:1`.
 4. **Defter kapısı (FR-2.8):** defter gerçek ref kaynaklarına ve boşluksuz pencerelere bağlıdır. Kanıt: [defter-kontrol.log](defter-kontrol.log), veri: `port/defter/dosyalar.jsonl:1`.
-5. **Mühür:** mühürlü küme `port/muhur.toml` ile eşleşir, onay imzalı etikettedir. Kanıt: [muhur-kontrol.log](muhur-kontrol.log).
+5. **Mühür: KIRMIZI (2026-11-06 itibarıyla 9 ihlal).** Mühürlü kümenin 6 dosyası listeden farklı, `onay_bekliyor = true`, imzalı mühür commit'i `ae7991b` HEAD'in atası değil. Ayrıntı ve sınıfı §6.4'te. Kanıt: [muhur-kontrol.log](muhur-kontrol.log).
 
 ---
 
@@ -54,3 +54,15 @@ Dört kabul maddesinin dördü de gerçek `bun test` koşusunda geçmiştir; kan
 ## 5. Mühür ve P4 Geçişi
 
 - Mühür `port/muhur.toml` ile kilitlidir; değişiklik yalnız `muhur-uret.ts` ve Ercan'ın imzalı `muhur-onay` etiketiyle yapılır.
+
+---
+
+## 6. 2026-11-06 Durum Eki (ölçülmüş; üstteki bölümleri değiştirmez)
+
+Bu ek, 2026-11-06 P3 koşusunun ölçtüğü hâli yazar. Üstteki bölümler 2026-10-14 tarihli metindir; çelişki varsa bu ek geçerlidir.
+
+- **6.1 mutasyon-kontrol:** [mutasyon-kontrol.log](mutasyon-kontrol.log) — iki mutantın hedef dosyası `crates/sunucu/src/chat.rs` olarak düzeltildi, 12 mutantın 10'u öldürüldü, kapı yeşil.
+- **6.2 durum-kontrol:** [durum-kontrol.log](durum-kontrol.log) — koşu → `durum-uret` → koşu sırası uygulandı; gecikmeli denetim çelişkisi bu sırayla kapandı.
+- **6.3 kabul-haritasi:** [kabul-haritasi.log](kabul-haritasi.log) — dört kabul maddesinin dördü aynı koşuda doğrulandı.
+- **6.4 muhur-kontrol: KIRMIZI, 9 ihlal.** İkisi insan kararı bekliyor: (a) imzalı mühür commit'i `ae7991b` HEAD'in atası değil (yalnız `dalga2/turso` ve `duzelt/guven-koku` dallarında), (b) `port/muhur.toml` içinde `onay_bekliyor = true` ve `onay` alanı boş. Kalan yedisi SHA uyuşmazlığı ya da mühür dosyasının imzalı sürümden farkı. Ölçülen altı dosya: `araclar/kapilar/p3.test.ts`, `araclar/uretec/strateji-altin-uret.ts`, `port/altin/strateji_girdi1..4.json`. Ajan imza atmadı, mühür dosyasını onaylı hâle getirmedi. Kanıt: [muhur-kontrol.log](muhur-kontrol.log).
+- **6.5 Kapıda bulunan boşluk:** `rapor-kontrol` bir satırı ancak belirli sözcükler içerdiğinde iddia sayar (`araclar/kapilar/rapor-kontrol.ts`). §1 madde 5'teki eski "eşleşir" cümlesi kırmızı mühür günlüğüne dayanıyordu ve tetikleyici sözcük taşımadığı için kırmızıya düşmüyordu; cümle bu ek ile gerçeğe çekildi. Ölçülen ikinci boşluk: sıradan Türkçe çekimler de iddia sayılıyor (renk adının çekimli hâli ve "geçmek" fiilinin zarf-fiil biçimi); bu ek yazılırken ikisi de yanlış pozitif üretti. Kapının sözcük listesini sertleştirmek mühürlü dosyaya dokunmak demektir; Ercan kararı bekliyor.
