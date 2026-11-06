@@ -493,6 +493,22 @@ impl Pool {
     /// claude istegi gemini hesabina DUSMEMELI, dusseydi baska bir modelin cevabini
     /// istenen modelin cevabi diye dondururduk.
     pub async fn acquire_for(&self, oturum: Option<u64>, saglayici: &str) -> Result<Lease<'_>> {
+        self.acquire_for_hesap(oturum, saglayici, None).await
+    }
+
+    /// `acquire_for` + yönlendiricinin seçtiği hesap TERCİHİ.
+    ///
+    /// TERCİHTİR, KİLİT DEĞİL: tercih edilen hesap hazırsa o seçilir; hazır
+    /// değilse (duraklatılmış, saatlik tavan dolu, insan kapısında, kota
+    /// beklemesinde) en-az-kullanılan yoluna düşülür ve tercih için BEKLENMEZ.
+    /// 9Router/OmniRoute da kotası dolan bağlantıyı atlar; burada beklemek
+    /// isteği tek bir dolu hesaba kilitlerdi.
+    pub async fn acquire_for_hesap(
+        &self,
+        oturum: Option<u64>,
+        saglayici: &str,
+        tercih: Option<&str>,
+    ) -> Result<Lease<'_>> {
         let uygun: Vec<usize> = self
             .slots
             .iter()
@@ -508,6 +524,10 @@ impl Pool {
         // bekleme uykusu boyunca tutmak, tek slotlu bir sağlayıcıda bütün
         // trafiği kilitliyordu (S2): sırada bekleyen istek, uyuyan isteğin
         // bırakmasını bekliyordu.
+        //
+        // `tercih_denendi`: tercih edilen hesap bir kez denenir. Her turda
+        // yeniden denemek, açılamayan bir hesapta sonsuz döngü riski taşır.
+        let mut tercih_denendi = false;
         loop {
             let simdi = Instant::now();
 
@@ -573,6 +593,50 @@ impl Pool {
             }
             let mut aday: Option<(usize, u32)> = None;
             let mut en_erken: Option<Instant> = None;
+
+            // 0) Yönlendiricinin seçtiği hesap: HAZIRSA doğrudan onu al. Hazır
+            // değilse aşağıdaki en-az-kullanılan yoluna düşülür ve tercih için
+            // BEKLENMEZ (bkz. `acquire_for_hesap` belgesi).
+            if !tercih_denendi
+                && let Some(tercih) = tercih
+                && let Some(i) = uygun
+                    .iter()
+                    .copied()
+                    .find(|&i| self.slots[i].hesap_adi == tercih)
+            {
+                tercih_denendi = true;
+                let hazir = {
+                    let mut st = self.slots[i].state.lock().await;
+                    matches!(st.hazir_zamani(simdi, &self.pacing), Some(t) if t <= simdi)
+                };
+                if hazir {
+                    let izin = self.kapi_izin(saglayici).await?;
+                    match self.kilitle(i, oturum).await {
+                        Ok((guard, yeni_dizi)) => {
+                            if let Some(anahtar) = oturum {
+                                self.sabitle(anahtar, i).await;
+                            }
+                            return Ok(Lease {
+                                index: i,
+                                name: self.slots[i].hesap_adi.clone(),
+                                provider: self.slots[i].provider.clone(),
+                                yeni_dizi,
+                                _kapi: izin,
+                                guard,
+                            });
+                        }
+                        Err(e) => {
+                            // Tercih açılamadı: cezalandır ve normal yola düş.
+                            let mesaj = format!("{e:#}");
+                            if mesaj.contains(crate::browser::SURUCU_ARIZASI) {
+                                bail!("{mesaj}");
+                            }
+                            eprintln!("[{}] tercih edilen hesap acilamadi: {mesaj}", tercih);
+                            self.basarisiz(i, &mesaj).await;
+                        }
+                    }
+                }
+            }
 
             for &i in &uygun {
                 let slot = &self.slots[i];
@@ -1134,6 +1198,36 @@ mod tests {
         assert!(
             !p.sabitler.lock().await.contains_key(&7),
             "duraklatilan hesabin sabiti birakilmaliydi"
+        );
+    }
+
+    /// Yönlendiricinin hesap TERCİHİ kilit değildir: tercih edilen hesap hazır
+    /// değilse (burada: duraklatılmış) istek o hesabı BEKLEMEZ, açık hataya
+    /// düşer. Bekleseydi kota dolmuş tek bir hesap bütün trafiği kilitlerdi.
+    #[tokio::test]
+    async fn tercih_duraklatilmis_hesapta_beklemez() {
+        let p = havuz_n(
+            Pacing {
+                min_delay_ms: 0,
+                jitter_ms: 0,
+                hourly_cap: 0,
+            },
+            2,
+            &HashMap::new(),
+        );
+        assert_eq!(p.slots[1].hesap_adi, "hesap1");
+        p.duraklat(0, "elle duraklatildi").await;
+        p.duraklat(1, "elle duraklatildi").await;
+
+        let sonuc = tokio::time::timeout(
+            Duration::from_secs(2),
+            p.acquire_for_hesap(None, "gemini", Some("hesap1")),
+        )
+        .await
+        .expect("tercih edilen hesap duraklatilmissa beklememeli — istek asili kaldi");
+        assert!(
+            sonuc.is_err(),
+            "kullanilabilir hesap yokken acik hata donmeli, sessiz bekleme degil"
         );
     }
 

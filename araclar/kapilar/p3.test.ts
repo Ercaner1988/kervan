@@ -83,8 +83,10 @@ describe("p3::kapilar", () => {
   it("p3::a3_durum_ve_belge_butunlugu", () => {
     // 1. Mevcut port/DURUM.md ve README.md geçerli olmalı
     const durumSonuc = durumDenetle();
+    // Önce ihlal listesi: `uygun` false olduğunda hangi kapının/başlığın koptuğu
+    // test çıktısında görünmeli (yoksa kapı yalnız "kırmızı" der, sebep kalmaz).
+    expect(durumSonuc.hatalar).toEqual([]);
     expect(durumSonuc.uygun).toBe(true);
-    expect(durumSonuc.hatalar.length).toBe(0);
 
     // 2. Elle değiştirilmiş (hash bozulmuş) DURUM.md -> kırmızı olmalı
     const sahteDurumMd = "temp_sahte_durum.md";

@@ -174,6 +174,10 @@ async fn telemetri_handler(State(st): State<Arc<AppState>>) -> Json<serde_json::
 /// 'auto' isteklerinin yarıştığı aday listesi: eklenti sekmeleri + havuz
 /// hesapları + REST hedefleri. Aynı birleştirme `chat` içinde de yapılır;
 /// burada yalnız görünürlük için döndürülür.
+///
+/// GÖRÜNÜRLÜK düzeyi sağlayıcıdır (panelde hesap hesap listelemek gürültü
+/// olurdu). Yönlendirme kararı ise `yonlendirme_hedefleri` ile HESAP düzeyinde
+/// verilir.
 async fn yonlendirme_adaylari(st: &Arc<AppState>) -> Vec<String> {
     let mut adaylar = st.eklenti_hub.bagli_sekmeler().await;
     for slot in &st.pool.slots {
@@ -188,6 +192,127 @@ async fn yonlendirme_adaylari(st: &Arc<AppState>) -> Vec<String> {
     }
     adaylar.sort();
     adaylar
+}
+
+/// Yönlendirme kararının gerçek adayları: (sağlayıcı, hesap) çiftleri.
+///
+/// NEDEN hesap düzeyi: kota ve hız bütçesi (kimlik, sağlayıcı) biriminde
+/// işliyor (`Slot`). Sağlayıcı adı tek aday olsaydı `least-used` / `lkgp` /
+/// kota stratejileri hep aynı hesabı seçer, diğer hesaplar boş dururdu.
+///
+/// - Havuz hesapları: her `Slot` ayrı hedef (`connection_id` = hesap adı).
+/// - Eklenti sekmesi: hesap kimliği `saglayici:profil` biçiminde gelir; profil
+///   varsa `connection_id` odur.
+/// - REST hedefi: tek bağlantı, `connection_id` = sağlayıcı adı.
+///
+/// Aynı `execution_key` iki kez üretilmez: `Pool::slots` içinde aynı
+/// (sağlayıcı, hesap) çifti zaten tekildir, ama eklenti sekmesi ile havuz aynı
+/// profili gösterebildiği için tekilleştirme yapılır.
+async fn yonlendirme_hedefleri(st: &Arc<AppState>) -> Vec<crate::router::Hedef> {
+    let mut hedefler: Vec<crate::router::Hedef> = Vec::new();
+    let mut eklenen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut ekle = |h: crate::router::Hedef, eklenen: &mut std::collections::HashSet<String>| {
+        if eklenen.insert(h.execution_key.clone()) {
+            hedefler.push(h);
+        }
+    };
+
+    for slot in &st.pool.slots {
+        ekle(
+            crate::router::Hedef::hesap(&slot.provider.ad, &slot.hesap_adi),
+            &mut eklenen,
+        );
+    }
+    for sekme in st.eklenti_hub.bagli_sekmeler().await {
+        // `bagli_sekmeler` sağlayıcı adı döndürüyor; hesap kimliği ayrı uçtan
+        // (`bagli_hesaplar`) geliyor ve `auto` yolunda hesap seçimi havuz
+        // üzerinden yapılır. Sağlayıcı düzeyinde kalır.
+        ekle(crate::router::Hedef::saglayici(&sekme), &mut eklenen);
+    }
+    for rest_ad in st.rest_hedefleri.keys() {
+        ekle(crate::router::Hedef::saglayici(rest_ad), &mut eklenen);
+    }
+
+    hedefler.sort_by(|a, b| a.execution_key.cmp(&b.execution_key));
+    hedefler
+}
+
+/// Kota defterindeki ölçümü stratejilerin okuyacağı anlık görüntüye çevirir.
+///
+/// Ölçüm BUGÜN istek/olay sayısıdır: `Defter` token tüketimini tutmuyor. Bu
+/// yüzden tavanlar da istek tavanıdır (`[kota] tavan_5saat_istek`,
+/// `tavan_hafta_istek`); token tavanı sanılıp yazılırsa oran sessizce yanlış olur.
+///
+/// Tavan tanımlı DEĞİLSE o pencere için anlık görüntü üretilmez: kota duyarlı
+/// stratejiler sinyalsiz çalışır ve OmniRoute fail-open davranışıyla pratikte
+/// `priority` gibi sıralar. `limit_reached` da üretilmiyor — defterde "son olay
+/// kotaydı" bilgisi var ama pencere başına güvenilir bir bayrak yok; olmayan
+/// sinyali varmış gibi göstermek yönlendirmeyi yanıltırdı.
+async fn kota_anlik_goruntuleri(
+    st: &Arc<AppState>,
+) -> std::collections::HashMap<String, kervan_havuz::kota_duyarli::KotaSnapshot> {
+    let mut harita = std::collections::HashMap::new();
+    let t5 = st.kota_ayar.tavan_5saat_istek;
+    let th = st.kota_ayar.tavan_hafta_istek;
+    if t5.is_none() && th.is_none() && st.kota_ayar.saglayici_tavan.is_empty() {
+        return harita;
+    }
+    let oran =
+        |sayi: usize, tavan: Option<u64>| tavan.map(|t| (sayi as f64 / t as f64).clamp(0.0, 1.0));
+    // (hesap, sağlayıcı, 5s tavanı, hafta tavanı) üçlüsünden anlık görüntü kurar.
+    // Tarayıcı hesabı = hesap başına tavan; REST = sağlayıcı başına tavan.
+    macro_rules! goruntu {
+        ($harita:expr, $hesap:expr, $saglayici:expr, $t5:expr, $th:expr) => {{
+            let bes = match $t5 {
+                Some(_) => {
+                    let n = st
+                        .defter
+                        .son_izler($hesap, $saglayici, 5 * 3600)
+                        .await
+                        .len();
+                    oran(n, $t5)
+                }
+                None => None,
+            };
+            let hafta = match $th {
+                Some(_) => {
+                    let n = st
+                        .defter
+                        .son_izler($hesap, $saglayici, 7 * 24 * 3600)
+                        .await
+                        .len();
+                    oran(n, $th)
+                }
+                None => None,
+            };
+            if bes.is_some() || hafta.is_some() {
+                $harita.insert(
+                    crate::router::hedef_anahtari($saglayici, Some($hesap)),
+                    kervan_havuz::kota_duyarli::KotaSnapshot {
+                        oturum: bes.map(|p| kervan_havuz::kota_duyarli::KotaPenceresi {
+                            percent_used: Some(p),
+                            reset_at: None,
+                        }),
+                        haftalik: hafta.map(|p| kervan_havuz::kota_duyarli::KotaPenceresi {
+                            percent_used: Some(p),
+                            reset_at: None,
+                        }),
+                        ..Default::default()
+                    },
+                );
+            }
+        }};
+    }
+    for slot in &st.pool.slots {
+        goruntu!(harita, &slot.hesap_adi, &slot.provider.ad, t5, th);
+    }
+    // REST hedefi: hesap kimliği yok, defter anahtarı sağlayıcı adının kendisi.
+    // Sıralamadaki `execution_key` de yalın sağlayıcı adıdır (Hedef::saglayici),
+    // bu yüzden aynı haritaya çakışmadan girer.
+    for (ad, t) in &st.kota_ayar.saglayici_tavan {
+        goruntu!(harita, ad, ad, t.tavan_5saat_istek, t.tavan_hafta_istek);
+    }
+    harita
 }
 
 async fn yonlendirme_durum(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> {
@@ -286,9 +411,21 @@ async fn kota_ozeti(State(st): State<Arc<AppState>>) -> Json<serde_json::Value> 
             "kullanim": o,
         }));
     }
+    // REST hedefleri ayrı liste: hesap kimlikleri yok, defter anahtarı sağlayıcının
+    // kendisi. Ücretsiz katman (OpenRouter vb.) 429'ları burada öğrenilir.
+    let mut rest_liste = Vec::new();
+    for ad in st.rest_hedefleri.keys() {
+        let o = st.defter.ozet(ad, ad).await;
+        rest_liste.push(serde_json::json!({
+            "saglayici": ad,
+            "kullanim": o,
+            "tavan": st.kota_ayar.saglayici_tavan.get(ad),
+        }));
+    }
     Json(serde_json::json!({
         "defter": kota::yol_goster(&st.defter).display().to_string(),
         "hesaplar": liste,
+        "rest": rest_liste,
         "not": "tahmin yalnizca gozlenmis kota carpmalarindan cikar; kanit 0 ise tahmin yok",
     }))
 }
@@ -734,11 +871,22 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
         // 'auto' adayları ÜÇ kaynaktan gelir: bağlı eklenti sekmeleri, havuz
         // hesapları ve REST hedefleri. Böylece yerel (anahtarlı) ve web
         // (oturumlu) sağlayıcılar tek yönlendirme kararında yarışır.
-        let adaylar = yonlendirme_adaylari(&st).await;
-        if adaylar.is_empty() {
-            (vec![st.varsayilan_saglayici.clone()], false)
+        //
+        // Karar HESAP düzeyinde verilir: aynı sağlayıcının iki hesabı ayrı
+        // adaydır, böylece kota/least-used stratejileri hesap seçebilir.
+        let hedefler = yonlendirme_hedefleri(&st).await;
+        if hedefler.is_empty() {
+            (
+                vec![crate::router::Hedef::saglayici(&st.varsayilan_saglayici)],
+                false,
+            )
         } else {
-            let sirali = st.router.aday_sirasi(&adaylar).await;
+            // Kota sinyali sıralamadan ÖNCE beslenir: `headroom`/`reset-aware`/
+            // `reset-window`/`quota-weighted` ancak bu harita doluysa ayırt edici.
+            st.router
+                .kota_sinyalleri_besle(kota_anlik_goruntuleri(&st).await)
+                .await;
+            let sirali = st.router.hedef_sirasi(&hedefler).await;
             (sirali, true)
         }
     } else {
@@ -813,7 +961,7 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
         model_kodu = cozulen.model_kodu;
         anahtar_istegi = cozulen.anahtarlar;
         secim_menusu = menu.cloned();
-        (vec![saglayici], false)
+        (vec![crate::router::Hedef::saglayici(&saglayici)], false)
     };
 
     // Panelden hesap sabitleme (`kervan.hesap`): "saglayici:profil" ya da yalniz
@@ -837,7 +985,10 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
                 Some((s, p)) => (Some(s.trim()), p.trim()),
                 None => (None, ham),
             };
-            let saglayici_adi = adaylar.first().map(|s| s.as_str()).unwrap_or_default();
+            let saglayici_adi = adaylar
+                .first()
+                .map(|h| h.provider.as_str())
+                .unwrap_or_default();
             if let Some(onek) = onek
                 && onek != saglayici_adi
             {
@@ -876,7 +1027,10 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
     // açık 400 ile döner. (2026-10-25: bu denetim yoktu, `kervan/gemini@olmayan`
     // eklentiye gidip 500 üretiyordu — kullanıcı sebebi göremiyordu.)
     if let Some(profil) = hedef_profil.as_deref() {
-        let saglayici_adi = adaylar.first().map(|s| s.as_str()).unwrap_or_default();
+        let saglayici_adi = adaylar
+            .first()
+            .map(|h| h.provider.as_str())
+            .unwrap_or_default();
         let bagli = st.eklenti_hub.bagli_hesaplar().await;
         let aranan = format!("{saglayici_adi}:{profil}");
         if !bagli.iter().any(|k| k == &aranan) {
@@ -916,8 +1070,11 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
     // açıkça uyarılır.
     let mut adaylar = adaylar;
     if otomatik && !req.tools.is_empty() {
-        if adaylar.iter().any(|ad| st.rest_hedefleri.contains_key(ad)) {
-            adaylar.retain(|ad| st.rest_hedefleri.contains_key(ad));
+        if adaylar
+            .iter()
+            .any(|h| st.rest_hedefleri.contains_key(&h.provider))
+        {
+            adaylar.retain(|h| st.rest_hedefleri.contains_key(&h.provider));
         } else {
             println!(
                 "akilli-rota   : uyari: araç isteği var ama REST adayı yok; tarayıcı yolu yalnız yönergeyle denenecek"
@@ -933,17 +1090,65 @@ async fn chat(State(st): State<Arc<AppState>>, Json(raw_val): Json<serde_json::V
         1
     };
 
+    // Deneme listesi SAĞLAYICI ÇEŞİTLİLİĞİ ile kurulur. Neden: aday listesi
+    // hesap düzeyinde ve çok hesaplı bir sağlayıcının TÜM hesapları strateji
+    // sırasında art arda gelebiliyor; `azami_deneme = 3` ile ilk üç deneme tek
+    // sağlayıcıya gidip diğer sağlayıcıları dışarıda bırakıyordu. İlk tur her
+    // sağlayıcıdan bir aday alır, ikinci tur kalanları strateji sırasıyla doldurur.
+    //
+    // Bilinçli sapma: tek sağlayıcı + çok hesap kurulumunda ikinci tur devreye
+    // girer, yani hesap yedeği kaybolmaz. Stratejinin 2. tercihi, farklı bir
+    // sağlayıcı varsa 3. sıraya düşebilir — "üç deneme aynı sağlayıcıya gitmesin"
+    // kuralı bunu bilerek seçer (bkz. kervan.toml.example).
+    let mut denenecek: Vec<&crate::router::Hedef> = Vec::new();
+    if azami < adaylar.len() {
+        let mut gorulen: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        for h in &adaylar {
+            if denenecek.len() == azami {
+                break;
+            }
+            if gorulen.insert(h.provider.as_str()) {
+                denenecek.push(h);
+            }
+        }
+        for h in &adaylar {
+            if denenecek.len() == azami {
+                break;
+            }
+            if !denenecek.iter().any(|d| d.execution_key == h.execution_key) {
+                denenecek.push(h);
+            }
+        }
+    } else {
+        denenecek.extend(adaylar.iter());
+    }
+
     let mut son_hata: Option<Response> = None;
     // Secimler tek yapida toplanir: deneme dongusu icinde ayni sekilde kullanilir.
-    let secim = SecimIstegi {
+    // `tercih` her adayda değiştiği için döngü içinde kopyalanır.
+    let secim_temel = SecimIstegi {
         model_kodu: model_kodu.clone(),
         anahtarlar: anahtar_istegi.clone(),
         hesap: hedef_profil,
         menu: secim_menusu,
+        tercih: None,
     };
-    for ad in adaylar.iter().take(azami) {
+    for hedef in denenecek.iter().copied() {
+        let ad = hedef.provider.as_str();
+        let secim = SecimIstegi {
+            tercih: hedef.connection_id.clone(),
+            ..secim_temel.clone()
+        };
         if otomatik {
-            println!("akilli-rota   : 'auto' adayı deneniyor -> [{ad}]");
+            println!(
+                "akilli-rota   : 'auto' adayı deneniyor -> [{}{}]",
+                ad,
+                hedef
+                    .connection_id
+                    .as_deref()
+                    .map(|h| format!("@{h}"))
+                    .unwrap_or_default()
+            );
         }
 
         let sonuc = if let Some(hedef) = st.rest_hedefleri.get(ad).cloned() {
@@ -1070,7 +1275,7 @@ async fn eklenti_denemesi(
 /// NEDEN TEK YAPI: ikisi de ayni yerde cozulur, ayni `ask` cagrisina gider ve
 /// ikisi de "uygulanamazsa acik hata" kuralina tabidir. Ayri parametreler
 /// `havuz_denemesi` imzasini okunamaz hale getiriyordu.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct SecimIstegi {
     model_kodu: Option<String>,
     anahtarlar: Vec<(crate::browser::Anahtar, bool)>,
@@ -1084,6 +1289,13 @@ struct SecimIstegi {
     /// `kervan/gemini/otomatik@hesap` → 500). Karar ile uygulama AYNI menüyü
     /// görmek zorunda.
     menu: Option<kervan_secim::ModelMenusu>,
+    /// Yönlendiricinin seçtiği hesap (YUMUŞAK tercih).
+    ///
+    /// `hesap` ile karıştırılmamalı: `hesap` insanın sabitlediği profildir ve
+    /// bağlı değilse istek 400 döner. Buradaki `tercih` yalnız sıralama
+    /// sonucudur; hesap hazır değilse sessizce en-az-kullanılana düşülür —
+    /// kota dolmuş bir hesapta beklemek isteği kilitlerdi.
+    tercih: Option<String>,
 }
 
 /// WebDriver havuzundan tek deneme. Hesap kiralanamazsa ya da model yanıtı
@@ -1127,10 +1339,15 @@ async fn havuz_denemesi(
             }
         };
     // Havuzdan hesap kirala: konusma kendi hesabina sabitlenir, hiz butcesi burada
-    // uygulanir, gerekirse beklenir.
+    // uygulanir, gerekirse beklenir. `secim.tercih` yönlendiricinin seçtiği
+    // hesaptır; hazır değilse en-az-kullanılan yoluna düşülür (kilit değil).
     let mut lease = match st
         .pool
-        .acquire_for(konusma_izi(&req.messages), saglayici)
+        .acquire_for_hesap(
+            konusma_izi(&req.messages),
+            saglayici,
+            secim.tercih.as_deref(),
+        )
         .await
     {
         Ok(l) => l,
@@ -1200,7 +1417,9 @@ async fn havuz_denemesi(
     // ve dogrulama duvariysa hesabi insan kapisinda duraklatir.
     match (&kota_carpmasi, &sonuc) {
         (Some(metin), _) => {
-            st.router.record_failure(&lease.provider.ad).await;
+            st.router
+                .record_failure_hesap(&lease.provider.ad, Some(&lease.name))
+                .await;
             st.defter
                 .yaz(
                     &lease.name,
@@ -1226,14 +1445,18 @@ async fn havuz_denemesi(
         }
         (None, Ok(_)) => {
             let latency = t_wd.elapsed().as_millis() as u64;
-            st.router.record_success(&lease.provider.ad, latency).await;
+            st.router
+                .record_success_hesap(&lease.provider.ad, Some(&lease.name), latency)
+                .await;
             st.defter
                 .yaz(&lease.name, &lease.provider.ad, Sonuc::Basari, None)
                 .await;
             st.pool.basarili(lease.index).await;
         }
         (None, Err(e)) => {
-            st.router.record_failure(&lease.provider.ad).await;
+            st.router
+                .record_failure_hesap(&lease.provider.ad, Some(&lease.name))
+                .await;
             st.defter
                 .yaz(&lease.name, &lease.provider.ad, Sonuc::Hata, None)
                 .await;

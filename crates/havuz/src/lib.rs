@@ -7,5 +7,6 @@
 pub use kervan_saglayici::{kota, saglayicilar};
 pub use kervan_tarayici::{browser, config};
 
+pub mod kota_duyarli;
 pub mod pool;
 pub mod router;

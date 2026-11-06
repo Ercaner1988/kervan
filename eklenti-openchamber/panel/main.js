@@ -269,11 +269,15 @@
     kap.textContent = "";
     const kota = durum.kota;
     const satirlar = Array.isArray(kota) ? kota : Array.isArray(kota?.hesaplar) ? kota.hesaplar : null;
-    if (!satirlar || satirlar.length === 0) {
+    // Doğrudan REST hedefleri (OpenRouter vb.) AYRI liste: hesap kimlikleri yok,
+    // defter anahtarı sağlayıcının kendisi. Bu liste gösterilmediği sürece
+    // ücretsiz katmanın 429'ları kullanıcıya hiç görünmüyordu.
+    const restSatirlari = Array.isArray(kota?.rest) ? kota.rest : [];
+    if ((!satirlar || satirlar.length === 0) && restSatirlari.length === 0) {
       kap.append(eleman("div", "bos", "Kota verisi yok."));
       return;
     }
-    for (const kayit of satirlar) {
+    for (const kayit of satirlar ?? []) {
       const satir = eleman("div", "satir");
       const sol = eleman("div");
       sol.append(eleman("div", "ad", kayit.hesap ?? kayit.name ?? "hesap"));
@@ -288,6 +292,46 @@
       sol.append(detay);
       satir.append(sol);
       kap.append(satir);
+    }
+    if (restSatirlari.length > 0) {
+      kap.append(eleman("div", "alt", "doğrudan REST sağlayıcıları"));
+      for (const kayit of restSatirlari) {
+        const satir = eleman("div", "satir");
+        const sol = eleman("div");
+        sol.append(eleman("div", "ad", kayit.saglayici ?? "rest"));
+        const k = kayit.kullanim ?? {};
+        sol.append(
+          eleman(
+            "div",
+            "alt",
+            `son saat ${k.son_saat ?? 0} · son gün ${k.son_gun ?? 0} · toplam ${k.toplam ?? 0}`,
+          ),
+        );
+        const t = kayit.tavan ?? null;
+        const tavanMetni =
+          t && (t.tavan_5saat_istek ?? t.tavan_hafta_istek) != null
+            ? `tavan: ${t.tavan_5saat_istek ?? "—"}/5sa · ${t.tavan_hafta_istek ?? "—"}/hafta`
+            : "tavan tanımsız — kota stratejileri bu sağlayıcıda sinyalsiz (priority gibi)";
+        sol.append(eleman("div", "alt", tavanMetni));
+        const tahmin = k.tahmin ?? {};
+        if ((tahmin.kanit ?? 0) > 0) {
+          sol.append(
+            eleman(
+              "div",
+              "alt",
+              `gözlenen pencere: ${tahmin.pencere_dk ?? "?"} dk · ${tahmin.pencere_basina_istek ?? "?"} istek · kanıt ${tahmin.kanit}`,
+            ),
+          );
+        }
+        const detay = eleman("details");
+        detay.append(
+          eleman("summary", null, "kullanım"),
+          eleman("pre", null, JSON.stringify(kayit, null, 2)),
+        );
+        sol.append(detay);
+        satir.append(sol);
+        kap.append(satir);
+      }
     }
   };
 

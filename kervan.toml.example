@@ -17,14 +17,20 @@ hourly_cap = 30       # hesap başına saatlik tavan; 0 = sınırsız (önerilme
 # sekmeleri + havuz hesapları + [rest.*] hedefleri) arasından hangi sırayla
 # seçilir. Çalışma anında değiştirme: POST /yonlendirme {"strateji":"round-robin"}
 #
-# DİKKAT — 20 ad kabul edilir; üretimde sırayı fiilen değiştiren yalnız 7:
-#   weighted, round-robin, p2c, random, strict-random, least-used, lkgp.
-# Sırayı değiştirmeyen 13 ad iki gruptur:
-#   - henüz taşınmadı (açılışta uyarı basılır): reset-aware, reset-window,
-#     headroom, quota-weighted, auto, cache-optimized, fusion, pipeline
+# DİKKAT — 20 ad kabul edilir; üretimde sırayı fiilen değiştiren adlar:
+#   weighted, round-robin, p2c, random, strict-random, least-used, lkgp,
+#   reset-aware, reset-window, headroom, quota-weighted.
+# Sırayı değiştirmeyenler:
 #   - uyarısız ama etkisiz: cost-optimized, context-optimized (fiyat/bağlam
 #     tablosu üretimde boş); priority, fill-first, context-relay (çekirdek
 #     sırayı dokunmaz; üretimde aday listesi zaten alfabetik gelir)
+#   - taşınmadı (açılışta uyarı basılır): auto, cache-optimized, fusion, pipeline
+#
+# KOTA DUYARLI DÖRT STRATEJİ (`reset-aware`, `reset-window`, `headroom`,
+# `quota-weighted`) SİNYAL İSTER. Sinyal `[kota]` tavanlarından üretilir:
+# tavan yazılmadıysa o hedef için kota anlık görüntüsü YOKTUR ve bu dört ad
+# OmniRoute fail-open davranışıyla pratikte `priority` gibi sıralar. Yani:
+#   sinyal yok → priority davranışı (sessiz, uyarısız; bu bilinçli).
 #
 # `quota-share` dahili stratejidir; yapılandırmadan ve POST /yonlendirme'den
 # reddedilir.
@@ -32,6 +38,9 @@ hourly_cap = 30       # hesap başına saatlik tavan; 0 = sınırsız (önerilme
 strateji = "lkgp"     # lkgp: son başarılı sağlayıcıya yapış (devre kesiciyle birlikte)
 yedek_deneme = true   # başarısız adaydan sonra sıradakine geç
 azami_deneme = 3      # tek istekte en fazla kaç aday denenecek
+                      # Deneme listesi SAĞLAYICI ÇEŞİTLİLİĞİ ile kurulur: ilk tur
+                      # her sağlayıcıdan bir aday alır, sonra kalanlar gelir.
+                      # (Çok hesaplı tek sağlayıcı, diğerlerini dışarıda bırakmasın.)
 
 # --- örnek hesaplar ---
 #
@@ -64,6 +73,32 @@ providers = ["copilot"]
 [kota]
 isaretler = ["reached your limit", "sınırına ulaştınız"]
 bilinmeyen_pencere_dk = 60
+
+# Kota duyarlı yönlendirme için pencere tavanları. Birim TOKEN DEĞİL İSTEK:
+# kota defteri bugün olay/istek sayısı tutuyor, token tüketimi ölçülmüyor.
+# Tavanı token sanıp yazmak doluluk oranını sessizce yanlış yapar.
+#
+# Tavan YAZILMAZSA (varsayılan) o pencere için sinyal üretilmez; `headroom`,
+# `reset-aware`, `reset-window`, `quota-weighted` priority gibi davranır.
+# 0 yazmak açılışta hatadır ("her istek dolu" demek olurdu).
+#
+# tavan_5saat_istek = 300
+# tavan_hafta_istek = 2000
+#
+# REST sağlayıcıları için AYRI tavanlar: ücretsiz katman limiti (OpenRouter vb.)
+# hesap başına değil SAĞLAYICI başınadır. Ad, tanımlı bir [rest.X] hedefi
+# olmalıdır; olmayan ad açılışta hatadır (yazım hatası sessizce "tavan yok"
+# davranışına düşmesin). Bu sağlayıcının 429'ları da /kota panelinde görünür.
+#
+# [kota.saglayici_tavan.openrouter]
+# tavan_5saat_istek = 50
+# tavan_hafta_istek = 1000
+#
+# SINIR: defterde yalnız 5 saatlik ve haftalık pencere var. GÜNLÜK limitli
+# ücretsiz katmanlar (OpenRouter ücretsiz modelleri gibi) bu iki pencereye
+# birebir oturmaz; günlük sayıyı "5 saatlik" diye yazmak ölçümü yanlış yapar.
+# Böyle bir sağlayıcıyı bağlarken gerçek pencere ölçülmeden tavan YAZILMAZ —
+# sinyalsiz kalır (priority davranışı) ve 429'lar yine /kota panelinde görünür.
 
 # --- doğrudan REST sağlayıcıları ---
 #

@@ -11,7 +11,7 @@
     "open-sse/services/comboMetrics.ts",
     "src/lib/db/settings/pricing.ts"
   ],
-  "uretici_ozeti": "sha256:a670f8cb0ec008dab0bc9d7fec826bc1119292237282c7fba1482c0b370302ec",
+  "uretici_ozeti": "sha256:1176329c70ced23ee6835920cc7f86e1647e74c9f0a85b51e27d2843bc79edb8",
   "girdi_id": "strateji_girdi2",
   "hedefler": [
     {
@@ -230,6 +230,10 @@
     "cost-optimized": 0,
     "lkgp": 0,
     "context-optimized": 0,
+    "reset-aware": 0,
+    "reset-window": 0,
+    "headroom": 0,
+    "quota-weighted": 1,
     "strict-random": 46,
     "weighted": 8,
     "round-robin": 0
@@ -377,6 +381,42 @@
         "kvf/model-esit@kvf/model-esit",
         "kvg/model-ucuz#g1@kvg/model-ucuz",
         "kve/model-fiyatsiz#e1@kve/model-fiyatsiz"
+      ]
+    ],
+    "reset-aware": [
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ]
+    ],
+    "reset-window": [
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ]
+    ],
+    "headroom": [
+      [
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
+      ]
+    ],
+    "quota-weighted": [
+      [
+        "kvd/model-ortak#d2@kvd/model-ortak",
+        "kvd/model-ortak#d1@kvd/model-ortak",
+        "kve/model-fiyatsiz#e1@kve/model-fiyatsiz",
+        "kvf/model-esit@kvf/model-esit",
+        "kvg/model-ucuz#g1@kvg/model-ucuz"
       ]
     ],
     "strict-random": [

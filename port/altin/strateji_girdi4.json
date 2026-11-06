@@ -11,7 +11,7 @@
     "open-sse/services/comboMetrics.ts",
     "src/lib/db/settings/pricing.ts"
   ],
-  "uretici_ozeti": "sha256:a670f8cb0ec008dab0bc9d7fec826bc1119292237282c7fba1482c0b370302ec",
+  "uretici_ozeti": "sha256:1176329c70ced23ee6835920cc7f86e1647e74c9f0a85b51e27d2843bc79edb8",
   "girdi_id": "strateji_girdi4",
   "hedefler": [
     {
@@ -228,6 +228,10 @@
     "cost-optimized": 0,
     "lkgp": 0,
     "context-optimized": 0,
+    "reset-aware": 0,
+    "reset-window": 0,
+    "headroom": 0,
+    "quota-weighted": 1,
     "strict-random": 24,
     "weighted": 8,
     "round-robin": 0
@@ -355,6 +359,38 @@
       [
         "kvk/model.1#k1@kvk/model.1",
         "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ]
+    ],
+    "reset-aware": [
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ]
+    ],
+    "reset-window": [
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ]
+    ],
+    "headroom": [
+      [
+        "kvk/model.1#k1@kvk/model.1",
+        "ortak@kvl/model-2",
+        "ortak@kvm/model-3",
+        "kvn/model-4@kvn/model-4"
+      ]
+    ],
+    "quota-weighted": [
+      [
+        "ortak@kvl/model-2",
+        "kvk/model.1#k1@kvk/model.1",
         "ortak@kvm/model-3",
         "kvn/model-4@kvn/model-4"
       ]

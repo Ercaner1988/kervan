@@ -10,6 +10,27 @@ use axum::response::{IntoResponse, Response};
 
 use crate::server::{AppState, hata};
 
+/// Kota defterine olay yazar. REST hedefinin HESABI yoktur: hesap ve sağlayıcı
+/// aynı addır (`openrouter`), böylece `/kota` özeti ve tavan hesabı tek anahtarla
+/// çalışır ve OpenRouter gibi ücretsiz katmanların 429'ları da öğrenmeye girer.
+///
+/// NEDEN: tarayıcı yolu her isteği deftere yazıyordu, REST yolu yazmıyordu.
+/// Sonuç: REST sağlayıcısının kotası öğrenilmiyor, `/kota` panelinde hiç
+/// görünmüyor ve `[kota]` tavanı verilse bile doluluk oranı hesaplanamıyordu.
+async fn deftere_yaz(st: &Arc<AppState>, ad: &str, sonuc: crate::kota::Sonuc, not: Option<String>) {
+    st.defter.yaz(ad, ad, sonuc, not).await;
+}
+
+/// 429 gövdesini/Retry-After'ı defter notuna çevirir. Not, öğrenilen pencereyi
+/// açıklamak için tutulur; karar bu alandan verilmez.
+fn kota_notu(govde: &str, retry_after: Option<u64>) -> String {
+    let kisa: String = govde.chars().take(160).collect();
+    match retry_after {
+        Some(sn) => format!("HTTP 429 (Retry-After: {sn}s): {kisa}"),
+        None => format!("HTTP 429: {kisa}"),
+    }
+}
+
 /// Yukarı akış hatası sağlayıcının mı suçu? Yalnız bunlar devre kesiciyi ve
 /// LKGP gecikme tablosunu besler. Anahtar eksikliği, istemci JSON hatası ve
 /// "devre zaten açık" yanıtı sağlıklı sağlayıcıyı kapatmamalı.
@@ -78,6 +99,7 @@ pub(crate) async fn rest_denemesi(
                             tokio::spawn(async move {
                                 if bitti && !hata {
                                     st2.router.record_success(&ad2, gecen).await;
+                                    deftere_yaz(&st2, &ad2, crate::kota::Sonuc::Basari, None).await;
                                 } else {
                                     st2.router.record_failure(&ad2).await;
                                 }
@@ -106,6 +128,18 @@ pub(crate) async fn rest_denemesi(
             }
             Err(e) => {
                 let yeniden = yeniden_denenebilir(&e);
+                // 429 = kotanın gerçekten dolduğu tek kanıt. Tarayıcı yolu bunu
+                // deftere yazıyordu, REST yolu yazmıyordu (ücretsiz katmanların
+                // limitleri bu yüzden öğrenilmiyordu).
+                if let kervan_yukari::YukariHatasi::HttpHatasi(429, govde, retry) = &e {
+                    deftere_yaz(
+                        st,
+                        &hedef.ad,
+                        crate::kota::Sonuc::Kota,
+                        Some(kota_notu(govde, *retry)),
+                    )
+                    .await;
+                }
                 if saglayici_arizasi(&e) {
                     st.router.record_failure(&hedef.ad).await;
                 }
@@ -118,10 +152,23 @@ pub(crate) async fn rest_denemesi(
                 st.router
                     .record_success(&hedef.ad, t.elapsed().as_millis() as u64)
                     .await;
+                deftere_yaz(st, &hedef.ad, crate::kota::Sonuc::Basari, None).await;
                 Ok((StatusCode::OK, Json(yanit)).into_response())
             }
             Err(e) => {
                 let yeniden = yeniden_denenebilir(&e);
+                // 429 = kotanın gerçekten dolduğu tek kanıt. Tarayıcı yolu bunu
+                // deftere yazıyordu, REST yolu yazmıyordu (ücretsiz katmanların
+                // limitleri bu yüzden öğrenilmiyordu).
+                if let kervan_yukari::YukariHatasi::HttpHatasi(429, govde, retry) = &e {
+                    deftere_yaz(
+                        st,
+                        &hedef.ad,
+                        crate::kota::Sonuc::Kota,
+                        Some(kota_notu(govde, *retry)),
+                    )
+                    .await;
+                }
                 if saglayici_arizasi(&e) {
                     st.router.record_failure(&hedef.ad).await;
                 }

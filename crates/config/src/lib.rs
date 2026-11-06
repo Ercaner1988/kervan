@@ -219,6 +219,43 @@ pub struct Kota {
     /// Limit gorulunce, pencere daha ogrenilmemisken ne kadar beklenir (dakika).
     #[serde(default = "varsayilan_kota_bekleme")]
     pub bilinmeyen_pencere_dk: u64,
+    /// 5 saatlik pencerenin istek tavanı (o pencerede sayılan olay sayısı).
+    ///
+    /// `None` = tavan bilinmiyor. Bu durumda kota doluluğu HESAPLANMAZ: kota
+    /// duyarlı stratejiler (`headroom`, `reset-aware`, `reset-window`,
+    /// `quota-weighted`) sinyalsiz çalışır ve OmniRoute fail-open davranışıyla
+    /// pratikte `priority` gibi sıralar. Uydurma bir tavan yazmak, olmayan bir
+    /// ölçümü varmış gibi göstermek olurdu.
+    ///
+    /// Birim TOKEN değil İSTEK: kota defteri bugün olay sayısı tutuyor, token
+    /// tüketimi ölçülmüyor. Tavanı token sanıp yazmak oranı sessizce yanlış
+    /// yapar; alan adı bu yüzden "istek".
+    #[serde(default)]
+    pub tavan_5saat_istek: Option<u64>,
+    /// Haftalık pencerenin istek tavanı. Ölçüm birimi `tavan_5saat_istek` ile aynı.
+    #[serde(default)]
+    pub tavan_hafta_istek: Option<u64>,
+    /// REST sağlayıcıları için ayrı tavanlar (`[kota.saglayici_tavan.openrouter]`).
+    ///
+    /// NEDEN AYRI: tarayıcı hesaplarının tavanı hesap başına, REST hedeflerinin
+    /// (OpenRouter vb.) ücretsiz katman limiti SAĞLAYICI başınadır. Tek harita
+    /// ikisini karıştırırsa aynı ada düşen iki farklı ölçüm birbirini ezer.
+    #[serde(default)]
+    pub saglayici_tavan: std::collections::HashMap<String, SaglayiciTavan>,
+}
+
+/// Tek bir REST sağlayıcısının pencere tavanları.
+///
+/// `Serialize` gerekli: `/kota` ucu tavanı olduğu gibi panele veriyor.
+#[derive(Debug, Deserialize, serde::Serialize, Clone, PartialEq, Eq, Default)]
+#[serde(deny_unknown_fields)]
+pub struct SaglayiciTavan {
+    /// 5 saatlik pencerede sayılan olay tavanı. Birim istek, token değil.
+    #[serde(default)]
+    pub tavan_5saat_istek: Option<u64>,
+    /// Haftalık pencerede sayılan olay tavanı.
+    #[serde(default)]
+    pub tavan_hafta_istek: Option<u64>,
 }
 
 fn varsayilan_isaretler() -> Vec<String> {
@@ -239,6 +276,9 @@ impl Default for Kota {
         Self {
             isaretler: varsayilan_isaretler(),
             bilinmeyen_pencere_dk: varsayilan_kota_bekleme(),
+            tavan_5saat_istek: None,
+            tavan_hafta_istek: None,
+            saglayici_tavan: std::collections::HashMap::new(),
         }
     }
 }
@@ -343,6 +383,25 @@ impl Config {
     pub fn dogrula(&self) -> Result<()> {
         if self.yonlendirme.azami_deneme == 0 {
             anyhow::bail!("[yonlendirme] azami_deneme 0 olamaz");
+        }
+        // 0 tavan "her istek dolu" demek olurdu: sessiz değil, açık hata.
+        if self.kota.tavan_5saat_istek == Some(0) {
+            anyhow::bail!("[kota] tavan_5saat_istek 0 olamaz (tavan bilinmiyorsa alanı yazmayın)");
+        }
+        if self.kota.tavan_hafta_istek == Some(0) {
+            anyhow::bail!("[kota] tavan_hafta_istek 0 olamaz (tavan bilinmiyorsa alanı yazmayın)");
+        }
+        // Sağlayıcı tavanı yalnız [rest.X] tanımlıysa anlamlı: ad yazım hatası
+        // sessizce "tavan yok" davranışına düşmemeli.
+        for (ad, t) in &self.kota.saglayici_tavan {
+            if !self.rest.contains_key(ad) {
+                anyhow::bail!("[kota.saglayici_tavan.{ad}] tanımlı bir [rest.{ad}] hedefi yok");
+            }
+            if t.tavan_5saat_istek == Some(0) || t.tavan_hafta_istek == Some(0) {
+                anyhow::bail!(
+                    "[kota.saglayici_tavan.{ad}] tavan 0 olamaz (tavan bilinmiyorsa alanı yazmayın)"
+                );
+            }
         }
         for (ad, r) in &self.rest {
             r.dogrula(ad)?;
@@ -590,6 +649,23 @@ mod tests {
         // provider verilmezse varsayilan dolmali
         assert_eq!(c.accounts[0].saglayicilar(), vec!["gemini".to_string()]);
         assert_eq!(c.pacing.hourly_cap, 10);
+    }
+
+    /// Kota tavanları: yoksa sinyal de yok (None), 0 ise açılış hatası.
+    #[test]
+    fn kota_tavanlari_okunur_ve_sifir_reddedilir() {
+        let c: Config = toml::from_str("[[accounts]]\nname = \"a\"\n").unwrap();
+        assert_eq!(c.kota.tavan_5saat_istek, None);
+        assert_eq!(c.kota.tavan_hafta_istek, None);
+
+        let c: Config =
+            toml::from_str("[[accounts]]\nname = \"a\"\n[kota]\ntavan_5saat_istek = 30\n").unwrap();
+        assert_eq!(c.kota.tavan_5saat_istek, Some(30));
+        assert!(c.dogrula().is_ok());
+
+        let c: Config =
+            toml::from_str("[[accounts]]\nname = \"a\"\n[kota]\ntavan_hafta_istek = 0\n").unwrap();
+        assert!(c.dogrula().is_err(), "0 tavan acik hata olmali");
     }
 
     /// pacing blogu hic yoksa muhafazakar varsayilan gelmeli — yapilandirma

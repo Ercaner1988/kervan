@@ -47,7 +47,14 @@ export const KAYNAK_YOLLAR = [
 ];
 
 /** applyStrategyOrdering'den geçen ve altını üretilen stratejiler (adım sayısı = 1). */
-const CEKIRDEK = ["priority", "fill-first", "context-relay", "p2c", "random", "least-used", "cost-optimized", "lkgp", "context-optimized"];
+const CEKIRDEK = [
+  "priority", "fill-first", "context-relay", "p2c", "random", "least-used", "cost-optimized", "lkgp", "context-optimized",
+  // Kota duyarlı dört çekirdek: bu girdilerde kota sinyali / connectionId eşleşmesi
+  // beslenmediğinden OmniRoute girdi sırasını döndürür ve rastgele akıştan çekmez.
+  // Altın bu "sinyal yok → fail-open" davranışını sabitler; kota yolunun kendisi
+  // crates/havuz testlerinde birim düzeyinde ölçülür.
+  "reset-aware", "reset-window", "headroom", "quota-weighted",
+];
 
 export interface Hedef { model_str: string; provider: string; execution_key: string; connection_id: string | null; weight: number }
 export interface IstekKaydi { model_str: string; execution_key: string; basarili: boolean; gecikme_ms: number }
