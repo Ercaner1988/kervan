@@ -12,7 +12,7 @@ oldurmesi_gereken_test = ["server::tests::tohum_gecmisi_ve_asil_soruyu_tasir"]
 
 [[mutant]]
 ad = "sabit-yanit-enjekte-et"
-dosya = "crates/sunucu/src/server.rs"
+dosya = "crates/sunucu/src/chat.rs"
 bul = "async fn chat("
 yerine = "async fn chat(/* chatcmpl-123 */ "
 oldurmesi_gereken_test = ["bun araclar/kapilar/sabit-yanit.ts"]
@@ -75,7 +75,7 @@ oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; c
 
 [[mutant]]
 ad = "rest-kancasini-chatten-kaldir"
-dosya = "crates/sunucu/src/server.rs"
+dosya = "crates/sunucu/src/chat.rs"
 bul = "    if let Some((hedef, alt_model)) = st.rest_hedefi_coz(model_adi) {"
 yerine = "    if let Some((hedef, alt_model)) = None::<(kervan_yukari::Hedef, Option<String>)> {"
 oldurmesi_gereken_test = ["bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-sunucu', '--test', 'p5_e2e_test', '--', 'p5_e2e_nonce_testi'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\"", "bun -e \"import { spawnSync } from 'child_process'; const r = spawnSync('cargo', ['test', '-p', 'kervan-sunucu', '--test', 'p8_sse_ve_tool_test', '--', 'test_p8_gercek_sse_zamanlama_ve_parca_sirasi'], { stdio: 'inherit' }); process.exit(r.status ?? 1);\""]
