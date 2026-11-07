@@ -28,6 +28,13 @@ export const REF_DIZINI = "ref";
 export const MUHUR_YOLU = "port/muhur.toml";
 export const MUTANTLAR_YOLU = "port/mutantlar.toml";
 export const ONAY_ETIKETI = "refs/tags/muhur-onay";
+// Ercan'ın koşacağı imza komutu. ÖLÇÜLMÜŞ GEREKÇE (2026-11-07): bu makinede `git tag -s` tek başına
+// çalışmıyor, iki nedenle: (1) `gpg.format` tanımsız olduğu için gitvarsayılanı GPG'ye gider, (2)
+// `user.signingkey = BE6416B5323629CB` bir GPG anahtar kimliğidir, SSH anahtarı değildir; bu yüzden
+// `Couldn't load public key BE6416B5323629CB` hatası alınır (exit 128). Ayrıca `bash git ...` WSL
+// bash'ini açar ve Windows git.exe'yi çalıştıramaz ("cannot execute binary file"). Aşağıdaki biçim
+// PowerShell'de ölçülerek exit 0 verdi ve SSH imzası üretti.
+export const IMZA_KOMUTU = `git -c gpg.format=ssh -c "user.signingkey=%USERPROFILE%\\.ssh\\id_ed25519.pub" tag -s -f muhur-onay -m "<ad, tarih>"`;
 export const imzacilarYolu = () => path.join(os.homedir(), ".config", "kervan", "muhur-imzacilar");
 
 const sha = (b: Buffer | string) => crypto.createHash("sha256").update(b).digest("hex");
@@ -153,17 +160,17 @@ export function imzaliMuhurCommiti(kok: string, hatalar: string[]): string {
   const ref = git(kok, "rev-parse", "--verify", "--quiet", ONAY_ETIKETI);
   const nesne = ref.out.trim();
   if (!ref.ok || !OID.test(nesne)) {
-    hatalar.push(`Onay etiketi muhur-onay yok: Ercan 'git tag -s muhur-onay' ile imzalamalı`);
+    hatalar.push(`Onay etiketi muhur-onay yok: Ercan şu komutla imzalamalı → ${IMZA_KOMUTU}`);
     return "";
   }
   const tur = git(kok, "cat-file", "-t", nesne);
   if (!tur.ok || tur.out.trim() !== "tag") {
-    hatalar.push(`Onay etiketi muhur-onay açıklamalı değil: Ercan 'git tag -s muhur-onay' ile imzalamalı`);
+    hatalar.push(`Onay etiketi muhur-onay açıklamalı değil: Ercan şu komutla imzalamalı → ${IMZA_KOMUTU}`);
     return "";
   }
   const govde = git(kok, "cat-file", "tag", nesne);
   if (!govde.ok || !govde.out.includes("-----BEGIN SSH SIGNATURE-----")) {
-    hatalar.push("muhur-onay etiketinde SSH imzası yok (imzasız ya da GPG imzalı etiket kabul edilmez)");
+    hatalar.push(`muhur-onay etiketinde SSH imzası yok (imzasız ya da GPG imzalı etiket kabul edilmez): Ercan şu komutla imzalamalı → ${IMZA_KOMUTU}`);
     return "";
   }
   // İmza başlıkları da kapsar: 'tag muhur-onay' başlığı, Ercan'ın bu etiketi MÜHÜR ONAYI olarak imzaladığını

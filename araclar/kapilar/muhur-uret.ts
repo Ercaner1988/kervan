@@ -14,8 +14,11 @@ export function muhurDosyasiUret(kok: string = process.cwd(), cikisYolu = path.j
 
   let cikti = `# port/muhur.toml - SHA-256 mühür listesi (PRD FR-2.4), muhur-uret.ts çıktısı.
 # Onay alanlarını yalnız Ercan doldurur: onay_bekliyor = false ve onay = "<ad, tarih>", commit,
-# ardından imzalı etiket: git -c gpg.format=ssh tag -s -f muhur-onay -m "<ad, tarih>"
-# (genel anahtar depo dışında: ~/.config/kervan/muhur-imzacilar, allowed-signers biçimi).
+# ardından imzalı etiket: git -c gpg.format=ssh -c "user.signingkey=%USERPROFILE%\\.ssh\\id_ed25519.pub"
+#   tag -s -f muhur-onay -m "<ad, tarih>"
+# (gpg.format ve user.signingkey şart: user.signingkey bir GPG kimliği olduğu için düz 'git tag -s'
+#  'Couldn't load public key ...' ile düşer. Genel anahtar depo dışında: ~/.config/kervan/muhur-imzacilar,
+#  allowed-signers biçimi. Ayrıca 'bash git ...' WSL'i açar; komut PowerShell'de doğrudan koşulur.)
 onay_bekliyor = true
 onay = ""
 
