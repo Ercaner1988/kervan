@@ -178,8 +178,8 @@ Defined: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, `d
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P3 (2026-11-07T20:53:03.078Z)
-- Tüm kapılar yeşil mi: hayır (10/11)
+- Faz: P3 (2026-11-07T22:25:50.528Z)
+- Tüm kapılar yeşil mi: evet (11/11)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
 <!-- DURUM:BITIS -->
