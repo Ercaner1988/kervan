@@ -1,12 +1,14 @@
 # port/muhur.toml - SHA-256 mühür listesi (PRD FR-2.4), muhur-uret.ts çıktısı.
 # Onay alanlarını yalnız Ercan doldurur: onay_bekliyor = false ve onay = "<ad, tarih>", commit,
-# ardından imzalı etiket: git -c gpg.format=ssh -c "user.signingkey=%USERPROFILE%\.ssh\id_ed25519.pub"
+# ardından imzalı etiket: git -c gpg.format=ssh -c "user.signingkey=$env:USERPROFILE\.ssh\id_ed25519.pub"
 #   tag -s -f muhur-onay -m "<ad, tarih>"
+# (Yüzde biçimi (%USERPROFILE%) PowerShell'de genişlemez; git onu harfi harfine alır ve imza düşer.
+#  Ölçüm ve düzeltme: 2026-11-07, muhur-kontrol.ts IMZA_KOMUTU ile aynı.)
 # (gpg.format ve user.signingkey şart: user.signingkey bir GPG kimliği olduğu için düz 'git tag -s'
 #  'Couldn't load public key ...' ile düşer. Genel anahtar depo dışında: ~/.config/kervan/muhur-imzacilar,
 #  allowed-signers biçimi. Ayrıca 'bash git ...' WSL'i açar; komut PowerShell'de doğrudan koşulur.)
-onay_bekliyor = true
-onay = ""
+onay_bekliyor = false
+onay = "Ercan Er, 2026-11-07"
 
 [ref]
 ozet = "11be456a1f799ad76a8a1438a51daecc5087f03d989ddc16b017027d3ca8c504"
