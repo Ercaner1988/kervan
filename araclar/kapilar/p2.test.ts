@@ -104,6 +104,18 @@ describe("p2::kapilar", () => {
       const onaysiz = muhurDenetle(kok);
       expect(onaysiz.uygun).toBe(false);
       expect(onaysiz.hatalar.some((h) => h.includes("onayı bekliyor"))).toBe(true);
+
+      // Ters okuma kilidi: hata mesajı koşulun GEREKTİRDİĞİ değeri değil, dosyada BULUNAN değeri
+      // yazmalı. Aksi hâlde "onay_bekliyor = false" istenen değer gibi okunup teşhisi yanıltıyordu
+      // (2026-11-07 denetiminde yakalandı).
+      fs.writeFileSync(
+        path.join(kok, "port", "muhur.toml"),
+        'onay_bekliyor = true\nonay = "biri"\n',
+        "utf-8",
+      );
+      const ters = muhurDenetle(kok);
+      expect(ters.uygun).toBe(false);
+      expect(ters.hatalar.some((h) => h.includes("onay_bekliyor = true"))).toBe(true);
     } finally {
       fs.rmSync(kok, { recursive: true, force: true });
     }

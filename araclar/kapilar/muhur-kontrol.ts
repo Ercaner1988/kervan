@@ -224,7 +224,10 @@ export function muhurDenetle(kok: string = process.cwd()): { uygun: boolean; hat
   }
 
   if (muhur.onay_bekliyor !== false || typeof muhur.onay !== "string" || muhur.onay.trim() === "") {
-    hatalar.push(`Mühür Ercan onayı bekliyor: ${MUHUR_YOLU} içinde onay_bekliyor = false ve dolu onay alanı yok`);
+    // Mesaj koşulun GEREKTİRDİĞİ değeri değil, dosyada BULUNAN değeri yazmalı: ters okuma
+    // (istenen değeri olmuş gibi gösterme) 2026-11-07 denetiminde yakalandı.
+    const gercek = `dosyada onay_bekliyor = ${JSON.stringify(muhur.onay_bekliyor)}, onay = ${JSON.stringify(muhur.onay)}`;
+    hatalar.push(`Mühür Ercan onayı bekliyor: ${MUHUR_YOLU} içinde onay_bekliyor = false ve dolu onay alanı GEREKLİ; ${gercek}`);
   }
 
   // --- dosya listesi ↔ disk ---
