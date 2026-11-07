@@ -78,7 +78,7 @@ sha256 = "73efc9b2635ab2fc14d04e0a76922a5019ff2a4d695ba59b7f9204783e2e74e1"
 
 [[dosya]]
 yol = "araclar/kapilar/muhur-kontrol.ts"
-sha256 = "f02a9024dcdb07fea3119482294d39b6466b2d65cd9616fcee23bc6bfdf1e639"
+sha256 = "fde78d8752c856851d6047e2457585c8acb95858ec3ac454040a907871c33b6b"
 
 [[dosya]]
 yol = "araclar/kapilar/muhur-uret.ts"

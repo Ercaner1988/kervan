@@ -34,7 +34,12 @@ export const ONAY_ETIKETI = "refs/tags/muhur-onay";
 // `Couldn't load public key BE6416B5323629CB` hatası alınır (exit 128). Ayrıca `bash git ...` WSL
 // bash'ini açar ve Windows git.exe'yi çalıştıramaz ("cannot execute binary file"). Aşağıdaki biçim
 // PowerShell'de ölçülerek exit 0 verdi ve SSH imzası üretti.
-export const IMZA_KOMUTU = `git -c gpg.format=ssh -c "user.signingkey=%USERPROFILE%\\.ssh\\id_ed25519.pub" tag -s -f muhur-onay -m "<ad, tarih>"`;
+//
+// YOL BİÇİMİ ÖLÇÜLDÜ (2026-11-07): `%USERPROFILE%` PowerShell'de GENİŞLEMEZ; git onu literal
+// olarak alır (`git config --get user.signingkey` → `%USERPROFILE%\.ssh\id_ed25519.pub`) ve
+// imza "Couldn't load public key" ile düşer. Bu yüzden komut `$env:USERPROFILE` kullanır;
+// ölçüm: `... -c "user.signingkey=$env:USERPROFILE\.ssh\id_ed25519.pub"` → tam yol.
+export const IMZA_KOMUTU = `git -c gpg.format=ssh -c "user.signingkey=$env:USERPROFILE\\.ssh\\id_ed25519.pub" tag -s -f muhur-onay -m "<ad, tarih>"`;
 export const imzacilarYolu = () => path.join(os.homedir(), ".config", "kervan", "muhur-imzacilar");
 
 const sha = (b: Buffer | string) => crypto.createHash("sha256").update(b).digest("hex");
