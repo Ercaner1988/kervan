@@ -5,8 +5,8 @@
 # (gpg.format ve user.signingkey şart: user.signingkey bir GPG kimliği olduğu için düz 'git tag -s'
 #  'Couldn't load public key ...' ile düşer. Genel anahtar depo dışında: ~/.config/kervan/muhur-imzacilar,
 #  allowed-signers biçimi. Ayrıca 'bash git ...' WSL'i açar; komut PowerShell'de doğrudan koşulur.)
-onay_bekliyor = true
-onay = ""
+onay_bekliyor = false
+onay = "Ercan Er, 2026-11-07"
 
 [ref]
 ozet = "11be456a1f799ad76a8a1438a51daecc5087f03d989ddc16b017027d3ca8c504"
@@ -247,4 +247,3 @@ sha256 = "2fdd3d37e16075d8ddb9293e15aeca21a23f4faaddc87aca6df390d83804df85"
 [[dosya]]
 yol = "port/altin/strateji_girdi4.json"
 sha256 = "2416383aa282cff951bed93f4559129e50f2670a40dd8394e3c788a268569f13"
-
