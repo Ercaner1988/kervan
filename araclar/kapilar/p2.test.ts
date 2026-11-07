@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { ulasilabilirlikDenetle } from "./ulasilabilirlik.ts";
 import { sabitYanitlariTara, dosyayiTara } from "./sabit-yanit.ts";
 import { ucKaydiniDenetle, kayitliRotalariBul } from "./uc-kaydi.ts";
-import { muhurDenetle, dosyaSha256 } from "./muhur-kontrol.ts";
+import { muhurDenetle, dosyaSha256, IMZA_KOMUTU } from "./muhur-kontrol.ts";
 import { raporuDenetle, EK_D_MADDELERI } from "./rapor-kontrol.ts";
 import fs from "fs";
 import os from "os";
@@ -203,5 +203,29 @@ describe("p2::kapilar", () => {
     expect(dene("3 mutantın tamamı başarıyla öldürüldü.")).toBe(1);
 
     fs.unlinkSync(dosya);
+  }, 30000);
+
+  // P2-A7: Kapının bastığı imza komutu kopyalanınca çalışmalı. 2026-11-07'de iki kusur yakalandı:
+  // (a) mesaj istenen değeri yazıyordu (p2::a4 kilidi), (b) yol `%USERPROFILE%` biçimindeydi;
+  // PowerShell yüzde biçimini genişletmediği için git onu literal alıp imzayı düşürüyordu.
+  // Bu kilit, sabitin kabuk-dışı (literal) yol taşımadığını ve ortam değişkeni biçiminin gerçek
+  // bir dosyaya çözüldüğünü sabitler.
+  it("p2::a7_imza_komutu_kopyalaninca_calisir_yuzde_bicimi_yok", () => {
+    expect(IMZA_KOMUTU).not.toMatch(/%[A-Za-z_][A-Za-z0-9_]*%/);
+
+    const eslesme = IMZA_KOMUTU.match(/user\.signingkey=([^"]+)"/);
+    expect(eslesme).not.toBeNull();
+    const ham = eslesme![1];
+
+    // Ortam değişkeni biçimi ($env:AD ya da $AD) gerçek bir yola çözülmeli.
+    const genislet = (yol: string): string =>
+      yol
+        .replace(/\$env:([A-Za-z_][A-Za-z0-9_]*)/g, (_, ad) => process.env[ad] ?? `<${ad}>`)
+        .replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_, ad) => process.env[ad] ?? `<${ad}>`)
+        .replace(/\\/g, path.sep);
+
+    const cozulen = genislet(ham);
+    expect(cozulen).not.toContain("<");
+    expect(fs.existsSync(cozulen)).toBe(true);
   }, 30000);
 });
