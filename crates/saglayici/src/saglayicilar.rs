@@ -140,31 +140,42 @@ pub fn varsayilanlar() -> Vec<Provider> {
             "a[href*='/api/auth/signin'], button[data-testid='signin-button']",
             ".prose",
         )),
-        // KISMEN OLCULDU (cikis yapilmis profilde). Kisisel Microsoft hesabinin
-        // Copilot'u (hotmail/outlook/live) — is/okul hesabininkinden AYRI urun:
-        // ayri adres, ayri kota, ayri oturum.
+        // OLCULDU 2026-11-10 (girisli oturum, `buzbey_@hotmail.com` profili).
+        // Kisisel Microsoft hesabinin Copilot'u (hotmail/outlook/live) — is/okul
+        // hesabininkinden AYRI urun: ayri adres, ayri kota, ayri oturum.
         //
-        // Olcum: `textarea` 1, `div[contenteditable]` 0 — istem kutusu textarea.
-        // Cikisli sayfada `data-testid='anonymous-block-page-title'` var ve HIC
-        // giris BAGLANTISI yok; giris isareti bu yuzden bag degil o baslik. Bu
-        // olcumden once detect_login cikisli profile "GIRISLI" diyordu — kutuyu
-        // buluyor, giris isaretini bulamiyordu.
+        // ADRES TASINDI: `copilot.microsoft.com` -> 301 -> `copilot.com`
+        // (`Location: https://copilot.com/`). Eski kayit eski alan adini ve
+        // textarea tabanli secicileri tutuyordu; tasinmis sayfada hepsi OLU:
+        //   textarea                              -> 0 eslesme (kutu textarea DEGIL)
+        //   [data-testid='anonymous-block-page-title'] -> 0 (girisli VE girisli
+        //                                            olmayan yeni sayfada yok)
+        //   [data-testid='ai-message-body']        -> 0 (yanit bu testid'i birakti)
+        // Sonuc: detect_login 25 sn bekleyip `Unknown` donuyordu; oturum saglam
+        // oldugu halde dogrulama "belirsiz" cikiyordu.
         //
-        // Girisli oturumda da OLCULDU ve ucdan uca calisti (23x4 -> 132, 4.7 sn):
-        //   kutu   : sayfada 2 textarea var, dogrusu `composer-input`. Sirasiz
-        //            `textarea` calisiyordu ama yanlis olani ilk gelirse sessizce
-        //            bosluga yazardik.
-        //   yanit  : `[data-content='ai-message']` tuttu ama metni "Copilot said /
-        //            93 / Edit in a page" seklinde kabukla geliyordu; ayni turun
-        //            `ai-message-body` cocugu tam olarak "93" veriyor.
-        //   `.ac-textBlock` hicbir olcumde eslesmedi, atildi.
+        // Yeni olcum (300 bin karakterlik DOM, `/chat` ve acik sohbet):
+        //   kutu   : `SPAN#m365-chat-editor-target-element`, aria-label
+        //            "Message Copilot", `contenteditable="true"`, role="textbox".
+        //            Sayfada `textarea` 0, `[contenteditable="true"]` tam 1.
+        //            id ile secildi: sinif adlari uretimde karisik ve dil degisince
+        //            aria-label kirilir, id sabit.
+        //   yanit  : `[data-testid='markdown-reply']` -> acik sohbette 3 eslesme,
+        //            KABUKSUZ metin. Ayni turda `copilot-message-reply-div`
+        //            "Copilot said: ..." kabuguyla, `chatOutput`/`chatQuestion`
+        //            ise KULLANICI istemini tasiyor; ikisi de yanit seçici olamaz
+        //            (kendi sorumuzu cevap sanma tuzagi — `copilot-m365` notu).
+        //   giris  : girisli sayfada `a[href*='signin']` ve `a[href*='login']`
+        //            IKISI DE 0. detect_login bu isareti kutuya tercih ettigi
+        //            icin girisli oturumda dogru sonuc (`Ready`) verir; giris
+        //            baglantisi gorunurse `NeedsLogin`.
         p(
             "copilot",
-            "https://copilot.microsoft.com/",
-            "https://copilot.microsoft.com/",
-            "textarea[data-testid='composer-input']",
-            "[data-testid='anonymous-block-page-title']",
-            "[data-testid='ai-message-body']",
+            "https://copilot.com/",
+            "https://copilot.com/",
+            "#m365-chat-editor-target-element",
+            "a[href*='signin'], a[href*='login']",
+            "[data-testid='markdown-reply']",
         ),
         // KISMEN OLCULDU (cikis yapilmis profilde). Is/okul hesabinin Copilot'u.
         //
@@ -456,6 +467,42 @@ mod tests {
             model_saglayicisi("kervan/copilot-m365", &d).as_deref(),
             Some("copilot-m365")
         );
+    }
+
+    /// Copilot kaydinin TASINMIS adresi ve OLCULMUS secicileri tasimasi.
+    ///
+    /// NEDEN KILIT: 2026-11-10'da `copilot.microsoft.com` 301 ile `copilot.com`'a
+    /// gidiyordu ve kayit hala textarea tabanli eski secicileri tutuyordu. Sonuc
+    /// sessiz bir dogrulama arizasiydi — oturum saglam oldugu halde `detect_login`
+    /// 25 sn bekleyip `Unknown` donuyor, kullaniciya "giris yap" deniyordu.
+    /// Eski degerlerden biri geri sizarsa (elle duzenleme, geri alma, merge) bu
+    /// test derleme asamasinda yakalar; canli DOM'a karsi sinama pahali.
+    #[test]
+    fn copilot_tasinmis_adres_ve_olculmus_secicileri_tasir() {
+        let d = defter();
+        let c = &d["copilot"];
+        assert_eq!(c.url, "https://copilot.com/");
+        assert_eq!(c.giris_kalibi, "https://copilot.com/");
+        // Kutu textarea DEGIL: contenteditable span, id ile sabit.
+        assert_eq!(c.selectors.prompt_input, "#m365-chat-editor-target-element");
+        // Yanit: kullanici istemini (`chatQuestion`) ya da "Copilot said: ..."
+        // kabugunu degil, kabuksuz metni veren testid.
+        assert_eq!(c.selectors.response, "[data-testid='markdown-reply']");
+        // Giris isareti BAG olmali: girisli sayfada 0 eslesir (Ready),
+        // giris baglantisi gorunurse NeedsLogin.
+        assert!(c.selectors.login_hint.contains("signin"));
+        // Olu seciciler geri gelmesin.
+        for olu in [
+            "composer-input",
+            "anonymous-block-page-title",
+            "ai-message-body",
+            "copilot.microsoft.com",
+        ] {
+            assert!(
+                !format!("{:?}", c).contains(olu),
+                "olu secici/adres geri sizmis: {olu}"
+            );
+        }
     }
 
     /// Yapilandirma secicileri ezebilmeli — site arayuzu degisince yeniden derleme

@@ -1185,4 +1185,128 @@ mod tests {
 
         let _ = std::fs::remove_dir_all(&temp_dir);
     }
+
+    /// `[kota]` tavanı → defter sayımı → doluluk → `headroom` sıralaması halkası.
+    ///
+    /// NEDEN TEST: canlı uçtan uca denemede sıralama farkı sağlayıcı çağrısına ve
+    /// `[pacing] hourly_cap` tavanına bağlı kaldı; halkanın kendisi (defterdeki
+    /// son 5 saatlik olay sayısı → oran → headroom → sıra) G/Ç yapmadan sınanabilir.
+    /// Bu test, yazılan tavanın yönlendirmeye ULAŞTIĞINI kanıtlar; ulaşmadığı
+    /// durumun (tavan yok) kontrolünü de aynı testte tutar.
+    #[tokio::test]
+    async fn tavan_dolulugu_headroom_siralamasini_degistirir() {
+        let temp_dir = std::env::temp_dir().join(format!("kervan_test_{}", rand::random::<u64>()));
+        let _ = std::fs::create_dir_all(&temp_dir);
+
+        // Tek sağlayıcı, iki hesap: sıra farkı sağlayıcı çeşitliliğinden gelmesin.
+        let dolu = "dolu@example.com";
+        let bos = "bos@example.com";
+
+        // `Pool` ve `Defter` `Clone` değil; iki ayrı durum (tavanlı/tavansız) aynı
+        // olayları iki ayrı defter dosyasına yazarak kurulur.
+        let kur = |ad: &'static str, tavan: Option<u64>| {
+            let temp_dir = temp_dir.clone();
+            async move {
+                let defter = Defter::ac(temp_dir.join(ad)).unwrap();
+                for _ in 0..48 {
+                    defter
+                        .yaz(dolu, "gemini", crate::kota::Sonuc::Basari, None)
+                        .await;
+                }
+                for _ in 0..2 {
+                    defter
+                        .yaz(bos, "gemini", crate::kota::Sonuc::Basari, None)
+                        .await;
+                }
+                let ortam = crate::pool::Ortam {
+                    profiles_root: temp_dir.clone(),
+                    browser: crate::browser::BrowserBinary(std::path::PathBuf::from(".")),
+                    geckodriver: std::path::PathBuf::from("."),
+                    headless: true,
+                };
+                let hesaplar = vec![
+                    crate::config::Account {
+                        name: dolu.into(),
+                        provider: None,
+                        providers: vec!["gemini".into()],
+                    },
+                    crate::config::Account {
+                        name: bos.into(),
+                        provider: None,
+                        providers: vec!["gemini".into()],
+                    },
+                ];
+                let havuz = Pool::new(
+                    hesaplar,
+                    kervan_tarayici::config::Pacing::default(),
+                    &kervan_saglayici::saglayicilar::kayit_defteri(&Default::default()),
+                    &Default::default(),
+                    ortam,
+                )
+                .unwrap();
+                Arc::new(AppState {
+                    pool: havuz,
+                    defter,
+                    kota_ayar: crate::config::Kota {
+                        tavan_5saat_istek: tavan,
+                        ..Default::default()
+                    },
+                    saglayicilar: Default::default(),
+                    varsayilan_saglayici: "gemini".into(),
+                    timeout: Duration::from_secs(5),
+                    eklenti_hub: crate::eklenti::EklentiHub::new(),
+                    compressor: crate::compressor::Compressor::new(),
+                    router: crate::router::SmartRouter::new(
+                        crate::router::RoutingStrategy::Headroom,
+                    ),
+                    sayaclar: Default::default(),
+                    rest_hedefleri: Default::default(),
+                    yukari: kervan_yukari::Yukari::new(),
+                    yedek_deneme: false,
+                    azami_deneme: 1,
+                    panel: Default::default(),
+                })
+            }
+        };
+
+        // Aday sırası bilerek DOLU önce: tavan etkimese sıra bu kalır.
+        let adaylar = vec![
+            crate::router::Hedef::hesap("gemini", dolu),
+            crate::router::Hedef::hesap("gemini", bos),
+        ];
+
+        // 1) Tavan YOK: sinyal üretilmez, halka kapalı → sıra dokunulmaz.
+        let sinyalsiz = kur("defter1.log", None).await;
+        let harita = kota_anlik_goruntuleri(&sinyalsiz).await;
+        assert!(
+            harita.is_empty(),
+            "tavan yokken anlık görüntü üretilmemeliydi, {harita:?}"
+        );
+        sinyalsiz.router.kota_sinyalleri_besle(harita).await;
+        let s = sinyalsiz.router.hedef_sirasi(&adaylar).await;
+        assert_eq!(s[0].connection_id.as_deref(), Some(dolu));
+
+        // 2) Tavan VAR: 48/60 dolu hesap, 2/60 boş hesabın arkasına düşer.
+        let tavanli = kur("defter2.log", Some(60)).await;
+        let harita = kota_anlik_goruntuleri(&tavanli).await;
+        let anahtar = crate::router::hedef_anahtari("gemini", Some(dolu));
+        let snap = harita
+            .get(&anahtar)
+            .unwrap_or_else(|| panic!("{anahtar} için sinyal yok: {harita:?}"));
+        let (u5, _, _) = snap.doluluk_orani();
+        assert!(
+            (u5 - 0.8).abs() < 1e-9,
+            "5 saatlik doluluk 0,8 olmalı: {u5}"
+        );
+        tavanli.router.kota_sinyalleri_besle(harita).await;
+        let s = tavanli.router.hedef_sirasi(&adaylar).await;
+        assert_eq!(
+            s[0].connection_id.as_deref(),
+            Some(bos),
+            "boş hesap başa geçmeliydi: {s:?}"
+        );
+        assert_eq!(s[1].connection_id.as_deref(), Some(dolu));
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
 }
