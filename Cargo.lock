@@ -2422,6 +2422,7 @@ dependencies = [
  "axum",
  "futures-util",
  "kervan-akis",
+ "kervan-ceviri",
  "kervan-direnc",
  "kervan-eklenti",
  "kervan-havuz",

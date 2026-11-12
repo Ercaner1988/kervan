@@ -113,6 +113,8 @@ pub fn router(state: Arc<AppState>) -> Router {
         // OLCUM: bagli her hesabin GERCEK menusunu sayfadan okur. Tahmin yok.
         .route("/kervan/olc", get(crate::olc::olc))
         .route("/v1/chat/completions", post(chat))
+        // Claude Code / Desktop: Anthropic biçimi. Çekirdeğe çevrilerek verilir.
+        .route("/v1/messages", post(crate::messages::messages))
         .route("/health", get(|| async { "ok" }))
         .route("/telemetri", get(telemetri_handler))
         // Zcode tarzı dinamik bakiye ve hediye token takibi

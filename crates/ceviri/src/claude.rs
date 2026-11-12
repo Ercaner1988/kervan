@@ -82,6 +82,128 @@ pub fn openai_den_claude_istegi(
     })
 }
 
+/// Anthropic Messages isteğini OpenAI Chat Completion isteğine dönüştürür.
+///
+/// NEDEN VAR (2026-11-12): Kervan'ın `/v1/messages` ucu Claude Code/Desktop'ı
+/// karşılar; gelen gövde Anthropic biçimindedir, çekirdek ise OpenAI biçimiyle
+/// çalışır. Bu yön olmadan uç, çekirdeği ikinci kez yazmak zorunda kalırdı.
+///
+/// Taşınmayan alan sessizce düşürülmez: `tools`, `tool_choice` ve metin dışı
+/// içerik blokları açık hataya döner (FR-5.3 ile aynı kural).
+pub fn claude_den_openai_istegi(
+    istek: &ClaudeIstek,
+    hedef_model: &str,
+) -> Result<OpenAiIstek, CeviriHatasi> {
+    let mut mesajlar = Vec::with_capacity(istek.messages.len() + 1);
+
+    // Anthropic sistem metni ayrı bir alandır; OpenAI'de ilk `system` mesajıdır.
+    // Birden çok blok tek metne birleşir: OpenAI tarafı blok listesini bilmez.
+    if let Some(bloklar) = &istek.system {
+        let birlesik: String = bloklar
+            .iter()
+            .filter(|b| b.r#type == "text" && !b.text.trim().is_empty())
+            .map(|b| b.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n\n");
+        if !birlesik.is_empty() {
+            mesajlar.push(OpenAiMesaj {
+                role: "system".to_string(),
+                content: Some(serde_json::Value::String(birlesik)),
+                name: None,
+                tool_calls: None,
+                tool_call_id: None,
+            });
+        }
+    }
+
+    for m in &istek.messages {
+        let metin = claude_metni(m)?;
+        mesajlar.push(OpenAiMesaj {
+            role: m.role.clone(),
+            content: Some(serde_json::Value::String(metin)),
+            name: None,
+            tool_calls: None,
+            tool_call_id: None,
+        });
+    }
+
+    Ok(OpenAiIstek {
+        model: hedef_model.to_string(),
+        messages: mesajlar,
+        temperature: istek.temperature,
+        top_p: None,
+        max_tokens: Some(istek.max_tokens),
+        stream: istek.stream,
+        tools: None,
+    })
+}
+
+/// Bir Anthropic mesajının metin içeriğini tek dizeye indirir.
+fn claude_metni(m: &ClaudeMesaj) -> Result<String, CeviriHatasi> {
+    let mut parcalar = Vec::with_capacity(m.content.len());
+    for blok in &m.content {
+        match blok.r#type.as_str() {
+            "text" => parcalar.push(blok.text.as_str()),
+            // Anthropic boş metni reddeder ama istemciden gelebilir; "." ile
+            // doldurmak yerine olduğu gibi geçir: boş istem burada hata değildir.
+            other => {
+                return Err(CeviriHatasi::Desteklenmiyor(format!(
+                    "içerik bloğu türü '{other}'"
+                )));
+            }
+        }
+    }
+    Ok(parcalar.join("\n"))
+}
+
+/// OpenAI Chat Completion yanıtını Anthropic Messages yanıtına dönüştürür.
+///
+/// `/v1/messages` ucunun dönüş yolu; `claude_dan_openai_yaniti`nin tersi.
+pub fn openai_den_claude_yaniti(
+    yanit: &OpenAiYanit,
+    istenen_model: &str,
+) -> Result<ClaudeYanit, CeviriHatasi> {
+    let secenek = yanit
+        .choices
+        .first()
+        .ok_or_else(|| CeviriHatasi::GecersizIstek("yanitta hiç seçenek yok".to_string()))?;
+
+    let metin = secenek.message.content.clone().unwrap_or_default();
+
+    // OpenAI bitiş nedenleri Anthropic sözlüğüne geri çevrilir. `stop` iki
+    // anlama gelebilir; `end_turn` seçilir çünkü istemci "model bitirdi" görür.
+    let stop_reason = match secenek.finish_reason.as_deref() {
+        Some("length") => "max_tokens",
+        Some("tool_calls") => "tool_use",
+        Some("stop") | None => "end_turn",
+        Some(other) => other,
+    }
+    .to_string();
+
+    let usage = yanit.usage.as_ref().map(|u| ClaudeKullanim {
+        input_tokens: u.prompt_tokens,
+        output_tokens: u.completion_tokens,
+    });
+
+    Ok(ClaudeYanit {
+        id: yanit
+            .id
+            .strip_prefix("chatcmpl-")
+            .unwrap_or(&yanit.id)
+            .to_string(),
+        r#type: "message".to_string(),
+        role: "assistant".to_string(),
+        content: vec![ClaudeIcerikBloku {
+            r#type: "text".to_string(),
+            text: metin,
+            cache_control: None,
+        }],
+        model: istenen_model.to_string(),
+        stop_reason: Some(stop_reason),
+        usage,
+    })
+}
+
 /// Anthropic Claude yanıtını OpenAI Chat Completion yanıt biçimine dönüştürür.
 pub fn claude_dan_openai_yaniti(
     yanit: &ClaudeYanit,

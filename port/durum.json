@@ -1,7 +1,7 @@
 {
   "uretici_ozeti": "sha256:a9b4a56d5170899a65c47db3b903d5561728b859572da9ad9ffc547b6f9f0612",
   "kapilar_toml_ozeti": "sha256:7ce9f54f964dd6301a0824f9f7834d234e79e4f133f2f7be69dc3dedcad6710e",
-  "uretim_zamani": "2026-11-07T22:25:50.528Z",
+  "uretim_zamani": "2026-11-12T21:06:53.511Z",
   "faz": "P3",
   "kip": "faz",
   "kapilar": [
@@ -10,110 +10,110 @@
       "komut": "bun araclar/kapilar/makine-sakin.ts",
       "cikis": 0,
       "hukum": "yesil",
-      "sure_ms": 60184,
+      "sure_ms": 60143,
       "log": "port\\kayit\\P3\\makine-sakin.log",
-      "baslangic": "2026-11-07T22:11:08.799Z",
-      "zaman": "2026-11-07T22:12:08.984Z"
+      "baslangic": "2026-11-12T20:55:13.003Z",
+      "zaman": "2026-11-12T20:56:13.146Z"
     },
     {
       "ad": "kabul-haritasi",
       "komut": "bun araclar/kapilar/kabul-haritasi.ts P3",
       "cikis": 0,
       "hukum": "yesil",
-      "sure_ms": 523171,
+      "sure_ms": 402584,
       "log": "port\\kayit\\P3\\kabul-haritasi.log",
-      "baslangic": "2026-11-07T22:12:08.984Z",
-      "zaman": "2026-11-07T22:20:52.156Z"
+      "baslangic": "2026-11-12T20:56:13.147Z",
+      "zaman": "2026-11-12T21:02:55.731Z"
     },
     {
       "ad": "ulasilabilirlik",
       "komut": "bun araclar/kapilar/ulasilabilirlik.ts",
       "cikis": 0,
       "hukum": "yesil",
-      "sure_ms": 1432,
+      "sure_ms": 2736,
       "log": "port\\kayit\\P3\\ulasilabilirlik.log",
-      "baslangic": "2026-11-07T22:20:52.158Z",
-      "zaman": "2026-11-07T22:20:53.591Z"
+      "baslangic": "2026-11-12T21:02:55.732Z",
+      "zaman": "2026-11-12T21:02:58.468Z"
     },
     {
       "ad": "sabit-yanit",
       "komut": "bun araclar/kapilar/sabit-yanit.ts",
       "cikis": 0,
       "hukum": "yesil",
-      "sure_ms": 143,
+      "sure_ms": 148,
       "log": "port\\kayit\\P3\\sabit-yanit.log",
-      "baslangic": "2026-11-07T22:20:53.591Z",
-      "zaman": "2026-11-07T22:20:53.734Z"
+      "baslangic": "2026-11-12T21:02:58.469Z",
+      "zaman": "2026-11-12T21:02:58.618Z"
     },
     {
       "ad": "uc-kaydi",
       "komut": "bun araclar/kapilar/uc-kaydi.ts",
       "cikis": 0,
       "hukum": "yesil",
-      "sure_ms": 10949,
+      "sure_ms": 5962,
       "log": "port\\kayit\\P3\\uc-kaydi.log",
-      "baslangic": "2026-11-07T22:20:53.735Z",
-      "zaman": "2026-11-07T22:21:04.685Z"
+      "baslangic": "2026-11-12T21:02:58.619Z",
+      "zaman": "2026-11-12T21:03:04.581Z"
     },
     {
       "ad": "muhur-kontrol",
       "komut": "bun araclar/kapilar/muhur-kontrol.ts",
       "cikis": 0,
       "hukum": "yesil",
-      "sure_ms": 21042,
+      "sure_ms": 14571,
       "log": "port\\kayit\\P3\\muhur-kontrol.log",
-      "baslangic": "2026-11-07T22:21:04.686Z",
-      "zaman": "2026-11-07T22:21:25.729Z"
+      "baslangic": "2026-11-12T21:03:04.582Z",
+      "zaman": "2026-11-12T21:03:19.154Z"
     },
     {
       "ad": "kulliyat-tara",
       "komut": "bun araclar/kapilar/kulliyat-tara.ts ac2f18d3fa588dad886589ff901ebd1c7ad5afae",
       "cikis": 0,
       "hukum": "yesil",
-      "sure_ms": 10993,
+      "sure_ms": 8505,
       "log": "port\\kayit\\P3\\kulliyat-tara.log",
-      "baslangic": "2026-11-07T22:21:25.729Z",
-      "zaman": "2026-11-07T22:21:36.722Z"
+      "baslangic": "2026-11-12T21:03:19.154Z",
+      "zaman": "2026-11-12T21:03:27.660Z"
     },
     {
       "ad": "mutasyon-kontrol",
       "komut": "bun araclar/kapilar/mutasyon-kontrol.ts",
       "cikis": 0,
       "hukum": "yesil",
-      "sure_ms": 143459,
+      "sure_ms": 124108,
       "log": "port\\kayit\\P3\\mutasyon-kontrol.log",
-      "baslangic": "2026-11-07T22:21:36.723Z",
-      "zaman": "2026-11-07T22:24:00.183Z"
+      "baslangic": "2026-11-12T21:03:27.660Z",
+      "zaman": "2026-11-12T21:05:31.768Z"
     },
     {
       "ad": "durum-kontrol",
       "komut": "bun araclar/kapilar/durum-kontrol.ts",
       "cikis": 0,
       "hukum": "yesil",
-      "sure_ms": 429,
+      "sure_ms": 323,
       "log": "port\\kayit\\P3\\durum-kontrol.log",
-      "baslangic": "2026-11-07T22:24:00.184Z",
-      "zaman": "2026-11-07T22:24:00.614Z"
+      "baslangic": "2026-11-12T21:05:31.769Z",
+      "zaman": "2026-11-12T21:05:32.092Z"
     },
     {
       "ad": "defter-kontrol",
       "komut": "bun araclar/kapilar/defter-kontrol.ts",
       "cikis": 0,
       "hukum": "yesil",
-      "sure_ms": 109781,
+      "sure_ms": 81330,
       "log": "port\\kayit\\P3\\defter-kontrol.log",
-      "baslangic": "2026-11-07T22:24:00.614Z",
-      "zaman": "2026-11-07T22:25:50.396Z"
+      "baslangic": "2026-11-12T21:05:32.093Z",
+      "zaman": "2026-11-12T21:06:53.423Z"
     },
     {
       "ad": "rapor-kontrol",
       "komut": "bun araclar/kapilar/rapor-kontrol.ts P3",
       "cikis": 0,
       "hukum": "yesil",
-      "sure_ms": 130,
+      "sure_ms": 86,
       "log": "port\\kayit\\P3\\rapor-kontrol.log",
-      "baslangic": "2026-11-07T22:25:50.397Z",
-      "zaman": "2026-11-07T22:25:50.527Z"
+      "baslangic": "2026-11-12T21:06:53.423Z",
+      "zaman": "2026-11-12T21:06:53.509Z"
     }
   ],
   "fazlar": [],

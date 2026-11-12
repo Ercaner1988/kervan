@@ -16,6 +16,13 @@ test = "p5_models_testi"
 testDosyasi = "crates/sunucu/tests/p5_e2e_test.rs"
 
 [[uc]]
+yol = "/v1/messages"
+yontem = "POST"
+durum = "gercek"
+test = "p5_messages_nonce_testi"
+testDosyasi = "crates/sunucu/tests/p5_messages_test.rs"
+
+[[uc]]
 yol = "/kervan/secenekler"
 yontem = "GET"
 durum = "gercek"

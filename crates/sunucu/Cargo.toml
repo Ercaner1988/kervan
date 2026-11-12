@@ -13,6 +13,7 @@ kervan-havuz = { path = "../havuz" }
 kervan-mcp = { path = "../mcp" }
 kervan-akis = { path = "../akis" }
 kervan-yukari = { path = "../yukari" }
+kervan-ceviri = { path = "../ceviri" }
 kervan-direnc = { path = "../direnc" }
 kervan-eklenti = { path = "../eklenti" }
 kervan-istem = { path = "../istem" }

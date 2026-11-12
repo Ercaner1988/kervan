@@ -13,6 +13,7 @@ pub use kervan_eklenti::eklenti;
 mod chat;
 mod eklenti_uc;
 mod hesap;
+mod messages;
 mod olc;
 mod olcum;
 mod rest;

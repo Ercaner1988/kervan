@@ -9,6 +9,9 @@ pub mod gemini;
 pub mod modeller;
 
 pub use akis::{ClaudeAkisCevirici, GeminiAkisCevirici, openai_bitis_nedeni};
-pub use claude::{claude_dan_openai_yaniti, openai_den_claude_istegi};
+pub use claude::{
+    claude_dan_openai_yaniti, claude_den_openai_istegi, openai_den_claude_istegi,
+    openai_den_claude_yaniti,
+};
 pub use gemini::{gemini_den_openai_yaniti, openai_den_gemini_istegi};
 pub use modeller::*;

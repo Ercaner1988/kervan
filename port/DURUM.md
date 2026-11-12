@@ -1,11 +1,11 @@
-<!-- URETILMIS_DURUM_HASH: 1e96f5fbd1428e9a85de556c5d7e4a23b228e90c94184df1404d6cb40af2f8de -->
+<!-- URETILMIS_DURUM_HASH: 7dab2c3203f7139cf98991e8f24376bc366d5d482c67b55509132034b28876b7 -->
 # DURUM.md — Kervan Aktarım Durum Defteri (ÜRETİLMİŞTİR)
 
 > ⚠️ BU DOSYA araclar/kapilar/durum-uret.ts ÇIKTISIDIR. ELLE DÜZENLEMEYİNİZ.
 > durum-kontrol bu dosyayı port/durum.json'dan yeniden üretip bayt bayt karşılaştırır.
 
 - **Mevcut Faz:** P3
-- **Üretim Zamanı (durum.json):** 2026-11-07T22:25:50.528Z
+- **Üretim Zamanı (durum.json):** 2026-11-12T21:06:53.511Z
 - **Üretici Özeti:** sha256:a9b4a56d5170899a65c47db3b903d5561728b859572da9ad9ffc547b6f9f0612
 - **Tüm Kapılar Yeşil mi:** ✅ EVET
 
@@ -15,17 +15,17 @@
 
 | Kapı Adı | Çıkış Kodu | Süre (ms) | Log Dosyası |
 |---|:---:|:---:|---|
-| makine-sakin | ✅ 0 | 60184 | port\kayit\P3\makine-sakin.log |
-| kabul-haritasi | ✅ 0 | 523171 | port\kayit\P3\kabul-haritasi.log |
-| ulasilabilirlik | ✅ 0 | 1432 | port\kayit\P3\ulasilabilirlik.log |
-| sabit-yanit | ✅ 0 | 143 | port\kayit\P3\sabit-yanit.log |
-| uc-kaydi | ✅ 0 | 10949 | port\kayit\P3\uc-kaydi.log |
-| muhur-kontrol | ✅ 0 | 21042 | port\kayit\P3\muhur-kontrol.log |
-| kulliyat-tara | ✅ 0 | 10993 | port\kayit\P3\kulliyat-tara.log |
-| mutasyon-kontrol | ✅ 0 | 143459 | port\kayit\P3\mutasyon-kontrol.log |
-| durum-kontrol | ✅ 0 | 429 | port\kayit\P3\durum-kontrol.log |
-| defter-kontrol | ✅ 0 | 109781 | port\kayit\P3\defter-kontrol.log |
-| rapor-kontrol | ✅ 0 | 130 | port\kayit\P3\rapor-kontrol.log |
+| makine-sakin | ✅ 0 | 60143 | port\kayit\P3\makine-sakin.log |
+| kabul-haritasi | ✅ 0 | 402584 | port\kayit\P3\kabul-haritasi.log |
+| ulasilabilirlik | ✅ 0 | 2736 | port\kayit\P3\ulasilabilirlik.log |
+| sabit-yanit | ✅ 0 | 148 | port\kayit\P3\sabit-yanit.log |
+| uc-kaydi | ✅ 0 | 5962 | port\kayit\P3\uc-kaydi.log |
+| muhur-kontrol | ✅ 0 | 14571 | port\kayit\P3\muhur-kontrol.log |
+| kulliyat-tara | ✅ 0 | 8505 | port\kayit\P3\kulliyat-tara.log |
+| mutasyon-kontrol | ✅ 0 | 124108 | port\kayit\P3\mutasyon-kontrol.log |
+| durum-kontrol | ✅ 0 | 323 | port\kayit\P3\durum-kontrol.log |
+| defter-kontrol | ✅ 0 | 81330 | port\kayit\P3\defter-kontrol.log |
+| rapor-kontrol | ✅ 0 | 86 | port\kayit\P3\rapor-kontrol.log |
 
 ## 2. Fazlar
 
@@ -58,6 +58,13 @@ yontem = "GET"
 durum = "gercek"
 test = "p5_models_testi"
 testDosyasi = "crates/sunucu/tests/p5_e2e_test.rs"
+
+[[uc]]
+yol = "/v1/messages"
+yontem = "POST"
+durum = "gercek"
+test = "p5_messages_nonce_testi"
+testDosyasi = "crates/sunucu/tests/p5_messages_test.rs"
 
 [[uc]]
 yol = "/kervan/secenekler"

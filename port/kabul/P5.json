@@ -15,6 +15,11 @@
       "id": "P5-A3",
       "clause": "/v1/models REST sağlayıcılarını kervan/<ad> olarak listeler, gpt-4o gibi uydurma modeller bulunmaz",
       "kanit": ["p5_models_testi"]
+    },
+    {
+      "id": "P5-A4",
+      "clause": "POST /v1/messages Anthropic Messages isteğini kabul eder, system bloklarını tek system mesajında birleştirir, yukarı akışa stream=false gönderir ve dönen yanıtı Anthropic Messages zarfına (type/role/stop_reason/usage/content) çevirir; sahte yukarı akışa giden nonce istemciye geri döner",
+      "kanit": ["p5_messages_nonce_testi"]
     }
   ]
 }

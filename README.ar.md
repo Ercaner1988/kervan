@@ -168,7 +168,7 @@ curl http://127.0.0.1:20129/v1/chat/completions \
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P3 (2026-11-07T22:25:50.528Z)
+- Faz: P3 (2026-11-12T21:06:53.511Z)
 - Tüm kapılar yeşil mi: evet (11/11)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
