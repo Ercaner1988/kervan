@@ -167,9 +167,35 @@ pub struct ClaudeCacheControl {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ClaudeSistemBloku {
     pub r#type: String,
+    #[serde(default)]
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cache_control: Option<ClaudeCacheControl>,
+}
+
+/// `system` alanını dize veya blok dizisi olarak çözer. Anthropic ikisini de
+/// kabul eder; düz dize gönderen istemci 400 almamalı.
+fn claude_sistem_coz<'de, D>(cozucu: D) -> Result<Option<Vec<ClaudeSistemBloku>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Giris {
+        Metin(String),
+        Bloklar(Vec<ClaudeSistemBloku>),
+    }
+
+    let giris = Option::<Giris>::deserialize(cozucu)?;
+    Ok(match giris {
+        None => None,
+        Some(Giris::Metin(metin)) => Some(vec![ClaudeSistemBloku {
+            r#type: "text".to_string(),
+            text: metin,
+            cache_control: None,
+        }]),
+        Some(Giris::Bloklar(bloklar)) => Some(bloklar),
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -179,7 +205,11 @@ pub struct ClaudeIstek {
     #[serde(default)]
     pub stream: bool,
     pub messages: Vec<ClaudeMesaj>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "claude_sistem_coz"
+    )]
     pub system: Option<Vec<ClaudeSistemBloku>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
@@ -188,12 +218,56 @@ pub struct ClaudeIstek {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ClaudeMesaj {
     pub role: String,
+    // Anthropic `content` alanını İKİ biçimde kabul eder: düz dize ya da blok
+    // dizisi. Yalnız dizi beklemek, basit istemcileri (curl, SDK'nın kısa yolu)
+    // "invalid type: string \"ping\", expected a sequence" ile 400'e düşürüyordu.
+    // Yazarken her zaman dizi üretilir; Anthropic ikisini de kabul ettiği için
+    // en açık biçim budur.
+    #[serde(deserialize_with = "claude_icerik_coz")]
     pub content: Vec<ClaudeIcerikBloku>,
+}
+
+/// `content` alanını dize veya blok dizisi olarak çözer, her ikisini blok
+/// dizisine indirger.
+fn claude_icerik_coz<'de, D>(cozucu: D) -> Result<Vec<ClaudeIcerikBloku>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error as _;
+
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Giris {
+        Metin(String),
+        Bloklar(Vec<ClaudeIcerikBloku>),
+    }
+
+    match Giris::deserialize(cozucu)? {
+        Giris::Metin(metin) => Ok(vec![ClaudeIcerikBloku {
+            r#type: "text".to_string(),
+            text: metin,
+            cache_control: None,
+        }]),
+        Giris::Bloklar(bloklar) => {
+            // Blok türü boş olamaz: çözülmüş ama anlamsız bir blok, aşağıda
+            // "desteklenmiyor" hatası yerine sessiz veri kaybı üretirdi.
+            for blok in &bloklar {
+                if blok.r#type.trim().is_empty() {
+                    return Err(D::Error::custom("içerik bloğunun 'type' alanı boş olamaz"));
+                }
+            }
+            Ok(bloklar)
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ClaudeIcerikBloku {
     pub r#type: String,
+    // `default`: metinsiz bloklar (görsel, araç) çözümlemede değil, çeviride
+    // açık hataya düşsün. Aksi hâlde "missing field `text`" gibi anlaşılmaz bir
+    // serde hatası dönerdi.
+    #[serde(default)]
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cache_control: Option<ClaudeCacheControl>,

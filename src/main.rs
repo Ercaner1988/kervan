@@ -1,10 +1,10 @@
 //! Kervan — tarayici surulu, kota ogrenen AI ag gecidi.
 //!
-//! Su an Asama 2'nin ilk dikey dilimi: bir hesap, bir saglayici, tarayici acilip
-//! oturum durumu okunuyor. Sunucu (axum), yonlendirici ve kota ogrenici henuz yok —
-//! once tarayici surmenin kendisi kanitlanmali, gerisi kolay kisim.
+//! Sunucu (axum), yonlendirici, kota ogrenici ve tarayici surucusu bir arada:
+//! `--serve` ile HTTP ag gecidi, `--mcp` ile stdio MCP sunucusu, argumansiz
+//! cagrida tek hesapla tarayici oturumu acilir.
 //!
-//! Kullanim:  kervan <hesap-adi> [--headless]
+//! Kullanim:  kervan <hesap-adi> [--headless] | kervan --serve | kervan --mcp
 
 use std::path::PathBuf;
 use std::sync::Arc;

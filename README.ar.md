@@ -177,7 +177,7 @@ OpenAI ويعود الرد بصيغة رد `messages` الخاصة بـ Anthropi
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P10 (2026-11-13T19:03:36.370Z)
+- Faz: P10 (2026-11-13T21:27:17.948Z)
 - Tüm kapılar yeşil mi: hayır (11/13)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
