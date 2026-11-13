@@ -5,8 +5,8 @@
 # (gpg.format ve user.signingkey şart: user.signingkey bir GPG kimliği olduğu için düz 'git tag -s'
 #  'Couldn't load public key ...' ile düşer. Genel anahtar depo dışında: ~/.config/kervan/muhur-imzacilar,
 #  allowed-signers biçimi. Ayrıca 'bash git ...' WSL'i açar; komut PowerShell'de doğrudan koşulur.)
-onay_bekliyor = true
-onay = ""
+onay_bekliyor = false
+onay = "Ercan Er, 2026-11-13"
 
 [ref]
 ozet = "11be456a1f799ad76a8a1438a51daecc5087f03d989ddc16b017027d3ca8c504"
