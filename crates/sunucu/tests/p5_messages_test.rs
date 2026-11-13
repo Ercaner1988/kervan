@@ -29,9 +29,12 @@ async fn p5_messages_nonce_testi() {
     let gelen_govde_klon = gelen_govde.clone();
 
     let env_key_name = "TEST_P5_MESSAGES_API_KEY";
-    unsafe {
-        std::env::set_var(env_key_name, "test-messages-key");
-    }
+    // Anahtar süreç ortamına YAZILMAZ: çözücü dikişi aynı yolu (ad → değer)
+    // süreç-geneli yan etki olmadan sınar. Rust 2024'te `set_var` unsafe'tir ve
+    // çok iş parçacıklı testte veri yarışıdır; bu dikiş onu gereksiz kılar.
+    let cozucu_ad = env_key_name.to_string();
+    let anahtar_cozucu: kervan_yukari::AnahtarCozucu =
+        Arc::new(move |ad: &str| (ad == cozucu_ad).then(|| "test-messages-key".to_string()));
 
     tokio::spawn(async move {
         let (mut socket, _) = upstream_listener.accept().await.unwrap();
@@ -159,7 +162,7 @@ async fn p5_messages_nonce_testi() {
         ),
         sayaclar: Default::default(),
         rest_hedefleri,
-        yukari: kervan_yukari::Yukari::new(),
+        yukari: kervan_yukari::Yukari::yeni_cozuculu(Default::default(), anahtar_cozucu),
         yedek_deneme: true,
         azami_deneme: 3,
         panel: Default::default(),
@@ -256,8 +259,5 @@ async fn p5_messages_nonce_testi() {
         "Yanıt bu koşunun nonce'unu içermiyor! Beklenen: {nonce_degeri}, Gelen: {metin}"
     );
 
-    unsafe {
-        std::env::remove_var(env_key_name);
-    }
     let _ = std::fs::remove_dir_all(&temp_dir);
 }

@@ -79,13 +79,8 @@ pub async fn gonder_akis(
     // 0. Desteklenmeyen alanlar anahtar, izin ve ağdan önce
     on_denetim(hedef, istemci_govdesi)?;
 
-    // 1. Anahtar kontrolü
-    let anahtar = std::env::var(&hedef.anahtar_env)
-        .map_err(|_| YukariHatasi::AnahtarYok(hedef.anahtar_env.clone()))?;
-
-    if anahtar.trim().is_empty() {
-        return Err(YukariHatasi::AnahtarYok(hedef.anahtar_env.clone()));
-    }
+    // 1. Anahtar kontrolü (üretimde ortam değişkeni, çözücü dikişi üzerinden)
+    let anahtar = yukari.anahtar(hedef)?;
 
     // 2. Dayanıklılık izni al
     {

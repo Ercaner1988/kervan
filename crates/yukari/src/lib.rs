@@ -154,10 +154,22 @@ pub fn temizle_hata(govde: &str, gizli_anahtar: &str) -> String {
 
 pub mod akis;
 
+/// Yukarı akış anahtarını çözen işlev: ortam değişkeni adı → anahtar değeri.
+///
+/// Varsayılan çözücü süreç ortamını okur; anahtar hiçbir zaman yapılandırma
+/// dosyasına yazılmaz. Dikiş, testin anahtarı süreç ortamına yazmadan
+/// (Rust 2024'te bu `unsafe`'tir) aynı yolu sınamasına izin verir.
+pub type AnahtarCozucu = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
+
+fn ortamdan_anahtar(ad: &str) -> Option<String> {
+    std::env::var(ad).ok()
+}
+
 #[derive(Clone)]
 pub struct Yukari {
     pub(crate) ajan: ureq::Agent,
     pub direnc: Arc<Mutex<kervan_direnc::DirencYoneticisi>>,
+    pub(crate) anahtar_cozucu: AnahtarCozucu,
 }
 
 impl Default for Yukari {
@@ -172,6 +184,14 @@ impl Yukari {
     }
 
     pub fn yeni_direncli(direnc: kervan_direnc::DirencYoneticisi) -> Self {
+        Self::yeni_cozuculu(direnc, Arc::new(ortamdan_anahtar))
+    }
+
+    /// Direnç yöneticisi ve anahtar çözücüyü birlikte verir.
+    ///
+    /// Çözücü, ortamı okumayan bir işlevle değiştirilebilir; üretimde
+    /// `Yukari::new` ile aynı davranışı (`ortamdan_anahtar`) korur.
+    pub fn yeni_cozuculu(direnc: kervan_direnc::DirencYoneticisi, cozucu: AnahtarCozucu) -> Self {
         let config = ureq::config::Config::builder()
             .http_status_as_error(false)
             .timeout_global(Some(Duration::from_secs(60)))
@@ -180,7 +200,18 @@ impl Yukari {
         Self {
             ajan,
             direnc: Arc::new(Mutex::new(direnc)),
+            anahtar_cozucu: cozucu,
         }
+    }
+
+    /// Hedefin anahtarını çözücüden okur; yoksa ya da boşsa `AnahtarYok`.
+    pub(crate) fn anahtar(&self, hedef: &Hedef) -> Result<String, YukariHatasi> {
+        let anahtar = (self.anahtar_cozucu)(&hedef.anahtar_env)
+            .ok_or_else(|| YukariHatasi::AnahtarYok(hedef.anahtar_env.clone()))?;
+        if anahtar.trim().is_empty() {
+            return Err(YukariHatasi::AnahtarYok(hedef.anahtar_env.clone()));
+        }
+        Ok(anahtar)
     }
 
     /// OpenAI-biçimli istemci gövdesini yukarı akışa kayıpsız iletir ve yanıtı döner.
@@ -193,13 +224,8 @@ impl Yukari {
         // 0. Desteklenmeyen alanlar anahtar, izin ve ağdan önce
         akis::on_denetim(hedef, istemci_govdesi)?;
 
-        // 1. Anahtarı ortam değişkeninden oku
-        let anahtar = std::env::var(&hedef.anahtar_env)
-            .map_err(|_| YukariHatasi::AnahtarYok(hedef.anahtar_env.clone()))?;
-
-        if anahtar.trim().is_empty() {
-            return Err(YukariHatasi::AnahtarYok(hedef.anahtar_env.clone()));
-        }
+        // 1. Anahtarı çözücüden oku (üretimde ortam değişkeni)
+        let anahtar = self.anahtar(hedef)?;
 
         // 2. Dayanıklılık izni al (devre kesici ve soğuma kontrolü)
         {

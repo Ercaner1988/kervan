@@ -13,8 +13,16 @@ $exePath = if (Test-Path $release) { $release }
            }
 $workingDir = $repoRoot
 
-# Varsa eski süreci sonlandır
-Get-Process -Name kervan -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+# Varsa eski süreci sonlandır: yalnız kendi başlattığımız süreç, PID dosyasından okunur.
+# Ada göre öldürme yasak (başka bir kullanıcının/oturumun sürecini vurabilir).
+$pidFile = Join-Path $repoRoot "target\kervan.pid"
+if (Test-Path $pidFile) {
+    $eskiPid = (Get-Content $pidFile -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($eskiPid -match '^\d+$') {
+        Stop-Process -Id ([int]$eskiPid) -Force -ErrorAction SilentlyContinue
+    }
+    Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
+}
 Start-Sleep -Milliseconds 500
 
 # Yeni süreci masaüstü etkileşimli olarak başlat
@@ -28,6 +36,7 @@ Start-Sleep -Seconds 2
 
 $current = Get-Process -Id $proc.Id -ErrorAction SilentlyContinue
 if ($current) {
+    Set-Content -Path $pidFile -Value $current.Id -Encoding ascii -ErrorAction SilentlyContinue
     Write-Host "Kervan sunucu başarıyla başlatıldı (arayüzsuz)."
     Write-Host "PID: $($current.Id)"
     Write-Host "Sağlık: http://127.0.0.1:20129/health"
