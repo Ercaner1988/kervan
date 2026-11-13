@@ -27,6 +27,7 @@ Key differences from existing solutions:
 
 - **True per-account isolation** — each account in its own browser profile. Incognito mode is insufficient: all incognito windows in the same browser instance share a single profile.
 - **Persistent session** — no cookie pasting, no refreshing when cookies rotate.
+- **Single-point routing** — browser tabs, the session pool and keyed `[rest.*]` targets compete in the same decision; `model: "auto"` picks among them, and a failed candidate falls through to the next (see Routing).
 - **Human gate** — doesn't silently fail on verification walls; pauses the account, brings the window to the foreground, lets you resolve it. Doesn't attempt to bypass bot detection.
 
 ## ⚙ Installation
@@ -184,7 +185,7 @@ Defined: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, `d
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P10 (2026-11-13T13:55:44.381Z)
+- Faz: P10 (2026-11-13T19:03:36.370Z)
 - Tüm kapılar yeşil mi: hayır (11/13)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730

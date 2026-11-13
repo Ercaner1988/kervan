@@ -23,10 +23,11 @@ Web üzerinden yapay zekâ kullanımını istediğiniz arayüzlere yönlendirmey
 
 API anahtarı olmayan AI hesaplarını (Gemini, Claude, Perplexity web arayüzleri) OpenAI uyumlu tek bir uca dönüştürür. Çerez kopyalamak yerine **gerçek tarayıcı** sürer: bir kez giriş yaparsın, oturum profil dizininde kalır.
 
-Var olan çözümlerden farkı üç noktada:
+Var olan çözümlerden farkı dört noktada:
 
 - **Hesap başına gerçek yalıtım** — her hesap kendi tarayıcı profilinde. Gizli pencere yetmez: aynı tarayıcı örneğindeki tüm gizli pencereler tek profili paylaşır.
 - **Kalıcı oturum** — çerez yapıştırma yok, çerez döndüğünde yenileme yok.
+- **Tek yerden yönlendirme** — tarayıcı sekmeleri, oturum havuzu ve anahtarlı `[rest.*]` hedefleri aynı kararda yarışır; `model: "auto"` bunların arasından seçer, aday düşerse sıradakine geçer (bkz. Yönlendirme).
 - **İnsan kapısı** — doğrulama duvarına çarpıldığında sessizce düşmez; hesabı duraklatır, pencereyi öne getirir, sen çözersin. Bot tespitini yenmeye çalışmaz.
 
 ## ⚙ Kurulum
@@ -182,7 +183,7 @@ Tanımlı: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, 
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P10 (2026-11-13T13:55:44.381Z)
+- Faz: P10 (2026-11-13T19:03:36.370Z)
 - Tüm kapılar yeşil mi: hayır (11/13)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
