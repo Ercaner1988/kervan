@@ -1,11 +1,11 @@
-<!-- URETILMIS_DURUM_HASH: 2816d8d13149c360e1b639c06a59b96a2c5129fc8361437a0b2ca81df40ebf8f -->
+<!-- URETILMIS_DURUM_HASH: ef3f8124895dbfb1ce1709ced0acd97b0a8417989d4b9096dfa70df29a92660e -->
 # DURUM.md — Kervan Aktarım Durum Defteri (ÜRETİLMİŞTİR)
 
 > ⚠️ BU DOSYA araclar/kapilar/durum-uret.ts ÇIKTISIDIR. ELLE DÜZENLEMEYİNİZ.
 > durum-kontrol bu dosyayı port/durum.json'dan yeniden üretip bayt bayt karşılaştırır.
 
 - **Mevcut Faz:** P10
-- **Üretim Zamanı (durum.json):** 2026-11-13T02:00:08.774Z
+- **Üretim Zamanı (durum.json):** 2026-11-13T13:55:44.381Z
 - **Üretici Özeti:** sha256:a9b4a56d5170899a65c47db3b903d5561728b859572da9ad9ffc547b6f9f0612
 - **Tüm Kapılar Yeşil mi:** ❌ HAYIR
 
@@ -15,19 +15,19 @@
 
 | Kapı Adı | Çıkış Kodu | Süre (ms) | Log Dosyası |
 |---|:---:|:---:|---|
-| makine-sakin | ✅ 0 | 60124 | port\kayit\P10\makine-sakin.log |
-| kabul-haritasi | ✅ 0 | 478815 | port\kayit\P10\kabul-haritasi.log |
-| ulasilabilirlik | ✅ 0 | 876 | port\kayit\P10\ulasilabilirlik.log |
-| sabit-yanit | ✅ 0 | 139 | port\kayit\P10\sabit-yanit.log |
-| uc-kaydi | ✅ 0 | 8107 | port\kayit\P10\uc-kaydi.log |
-| muhur-kontrol | ✅ 0 | 17014 | port\kayit\P10\muhur-kontrol.log |
-| kulliyat-tara | ✅ 0 | 8097 | port\kayit\P10\kulliyat-tara.log |
-| mutasyon-kontrol | ✅ 0 | 136086 | port\kayit\P10\mutasyon-kontrol.log |
-| durum-kontrol | ✅ 0 | 365 | port\kayit\P10\durum-kontrol.log |
-| defter-kontrol | ✅ 0 | 117536 | port\kayit\P10\defter-kontrol.log |
-| strateji-kumesi | ✅ 0 | 217 | port\kayit\P10\strateji-kumesi.log |
-| defter-kontrol-final | ❌ 1 | 6014 | port\kayit\P10\defter-kontrol-final.log |
-| rapor-kontrol | ❌ 1 | 82 | port\kayit\P10\rapor-kontrol.log |
+| makine-sakin | ✅ 0 | 60139 | port\kayit\P10\makine-sakin.log |
+| kabul-haritasi | ✅ 0 | 485068 | port\kayit\P10\kabul-haritasi.log |
+| ulasilabilirlik | ✅ 0 | 2342 | port\kayit\P10\ulasilabilirlik.log |
+| sabit-yanit | ✅ 0 | 169 | port\kayit\P10\sabit-yanit.log |
+| uc-kaydi | ✅ 0 | 7619 | port\kayit\P10\uc-kaydi.log |
+| muhur-kontrol | ❌ 1 | 15801 | port\kayit\P10\muhur-kontrol.log |
+| kulliyat-tara | ✅ 0 | 8357 | port\kayit\P10\kulliyat-tara.log |
+| mutasyon-kontrol | ✅ 0 | 144230 | port\kayit\P10\mutasyon-kontrol.log |
+| durum-kontrol | ✅ 0 | 326 | port\kayit\P10\durum-kontrol.log |
+| defter-kontrol | ✅ 0 | 101711 | port\kayit\P10\defter-kontrol.log |
+| strateji-kumesi | ✅ 0 | 57 | port\kayit\P10\strateji-kumesi.log |
+| defter-kontrol-final | ❌ 1 | 5192 | port\kayit\P10\defter-kontrol-final.log |
+| rapor-kontrol | ✅ 0 | 137 | port\kayit\P10\rapor-kontrol.log |
 
 ## 2. Fazlar
 
