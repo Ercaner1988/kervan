@@ -17,9 +17,10 @@
     },
     {
       "id": "P10-A3",
-      "metin": "araclar/dalga-uret.ts defterden en az 3 dalga taslağı üretir; her taslak §2 başlıklarını ve en az bir Acceptance: içeren FR iskeleti taşır.",
+      "metin": "araclar/dalga-uret.ts defterden en az 3 dalga taslağı üretir; her taslak §2 başlıklarını ve en az bir Acceptance: içeren FR iskeleti taşır. Taslakların sayıları ve defter kimlikleri girdi dosyalarından türetilir, betikte sabit değildir.",
       "kanit": [
-        "test_p10_dalga_taslak_uretimi"
+        "test_p10_dalga_taslak_uretimi",
+        "test_p10_dalga_taslaklari_defterden_turetiliyor"
       ]
     },
     {

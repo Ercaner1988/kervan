@@ -120,6 +120,136 @@ fn test_p10_dalga_taslak_uretimi() {
     }
 }
 
+/// `port/defter/dosyalar.jsonl` içindeki kayıt kimliklerini okur.
+fn defter_kimlikleri() -> Vec<String> {
+    let yol = port_yolu().join("defter").join("dosyalar.jsonl");
+    let ham = std::fs::read_to_string(&yol).expect("dosyalar.jsonl okunamadı");
+    let mut kimlikler = Vec::new();
+    for satir in ham.lines() {
+        let satir = satir.trim();
+        if satir.is_empty() {
+            continue;
+        }
+        let deger: serde_json::Value = serde_json::from_str(satir)
+            .unwrap_or_else(|_| panic!("dosyalar.jsonl satırı JSON değil: {}", satir));
+        if let Some(id) = deger.get("id").and_then(|v| v.as_str()) {
+            kimlikler.push(id.to_string());
+        }
+    }
+    kimlikler
+}
+
+/// esleme.toml içinde `kaynak = "<kod>"` diyen bölüm sayısını verir.
+fn esleme_bolum_sayisi(kod: &str) -> usize {
+    let yol = PathBuf::from("../pano-ekran").join("esleme.toml");
+    let yol = if yol.exists() {
+        yol
+    } else {
+        PathBuf::from("crates/pano-ekran").join("esleme.toml")
+    };
+    let ham = std::fs::read_to_string(&yol).expect("esleme.toml okunamadı");
+    let hedef = format!("kaynak = \"{}\"", kod);
+    ham.lines().filter(|s| s.trim() == hedef).count()
+}
+
+/// FR-8.3 türetim sınaması: dalga taslakları sabit metin değil defter ve envanter
+/// girdilerinden üretiliyorsa, metindeki sayılar ve defter kimlikleri girdilerle
+/// birebir örtüşmek zorundadır.
+#[test]
+fn test_p10_dalga_taslaklari_defterden_turetiliyor() {
+    let kok = if PathBuf::from("port").exists() {
+        PathBuf::from(".")
+    } else {
+        PathBuf::from("../..")
+    };
+    let envanter: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(kok.join("port").join("envanter.json"))
+            .expect("envanter.json okunamadı"),
+    )
+    .expect("envanter.json JSON değil");
+
+    let kimlikler = defter_kimlikleri();
+    assert!(
+        !kimlikler.is_empty(),
+        "defterde en az bir kayıt olmalı; boş defterden türetim sınanamaz"
+    );
+
+    let dalgalar = port_yolu().join("dalgalar");
+    for dalga_no in 2..=4 {
+        let dosya_adi = format!("DALGA-{}.md", dalga_no);
+        let icerik = std::fs::read_to_string(dalgalar.join(&dosya_adi))
+            .unwrap_or_else(|_| panic!("{} okunamadı", dosya_adi));
+
+        // 1) Türetim izi bölümü girdi dosyalarını adıyla anmalı.
+        assert!(
+            icerik.contains("## 5. Türetim İzi"),
+            "{} türetim izi bölümü taşımalı",
+            dosya_adi
+        );
+        for girdi in [
+            "port/envanter.json",
+            "crates/pano-ekran/esleme.toml",
+            "port/defter/dosyalar.jsonl",
+            "port/defter/davranislar.jsonl",
+        ] {
+            assert!(
+                icerik.contains(girdi),
+                "{} türetim izinde '{}' anılmalı",
+                dosya_adi,
+                girdi
+            );
+        }
+
+        // 2) Defter kayıtlarından en az biri kimliğiyle metne geçmeli.
+        let anilan = kimlikler
+            .iter()
+            .filter(|k| icerik.contains(k.as_str()))
+            .count();
+        assert!(
+            anilan > 0,
+            "{} defter kimliklerinin hiçbirini anmıyor (sabit metin şüphesi)",
+            dosya_adi
+        );
+
+        // 3) Pano eşleme sayısı esleme.toml ile birebir aynı olmalı.
+        let kod = format!("D{}", dalga_no);
+        let beklenen = esleme_bolum_sayisi(&kod);
+        assert!(
+            beklenen > 0,
+            "esleme.toml içinde {} kodlu bölüm yok; türetim dayanaksız",
+            kod
+        );
+        assert!(
+            icerik.contains(&format!("{} bölüm {} ", beklenen, kod)),
+            "{} pano eşleme sayısı esleme.toml ile uyuşmuyor (beklenen {} bölüm {})",
+            dosya_adi,
+            beklenen,
+            kod
+        );
+    }
+
+    // 4) DALGA-2 kapsamı envanterdeki db_modul_sayisi/goc_dosyasi_sayisi ile bağlı olmalı.
+    let dalga2 =
+        std::fs::read_to_string(dalgalar.join("DALGA-2.md")).expect("DALGA-2.md okunamadı");
+    for alan in ["db_modul_sayisi", "goc_dosyasi_sayisi"] {
+        let deger = envanter
+            .get(alan)
+            .and_then(|v| v.as_u64())
+            .unwrap_or_else(|| panic!("envanterde '{}' sayısal alanı yok", alan));
+        assert!(
+            dalga2.contains(alan),
+            "DALGA-2.md envanter alanı '{}' anmalı",
+            alan
+        );
+        assert!(
+            dalga2.contains(&deger.to_string()),
+            "DALGA-2.md envanterdeki '{}' değerini ({}) taşımalı",
+            alan,
+            deger
+        );
+    }
+}
+
 /// FR-3.2: PR.md taslağının varlığını ve üç bakış açısını doğrular.
 #[test]
 fn test_p10_pr_taslak_ve_main_dokunulmamis() {

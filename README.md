@@ -68,6 +68,11 @@ curl http://127.0.0.1:20129/v1/chat/completions \
   -d '{"model": "gemini", "messages": [{"role": "user", "content": "Merhaba"}]}'
 ```
 
+Anthropic uyumlu uç: `POST /v1/messages` — gövde OpenAI biçimine çevrilir, yanıt
+Anthropic `messages` yanıtı olarak döner. Yalnız **metin** blokları çevrilir;
+`tools`/`tool_use`/`tool_result`, görsel ve `thinking` blokları geçmez. İstemcinin
+gönderdiği `model` adı hedef seçmez; hedef `model: "auto"` gibi yönlendirmeyle belirlenir.
+
 Çalıştırma kipleri:
 
 | Kip | Ne yapar |
@@ -159,7 +164,7 @@ REST adayı varsa tarayıcı adayları elenir.
 | | |
 |---|---|
 | Tarayıcı | Firefox tabanlı (Zen ya da Firefox), geckodriver ile; ya da `eklenti/` WebSocket köprüsü |
-| Uç | `POST /v1/chat/completions`, `GET /v1/models`, `GET /health` |
+| Uç | `POST /v1/chat/completions`, `POST /v1/messages` (Anthropic uyumlu), `GET /v1/models`, `GET /health` |
 | Havuz | `GET /accounts`, `POST /accounts/{i}/devam`, `POST /accounts/{i}/duraklat` |
 | Yönlendirme | `GET /yonlendirme`, `POST /yonlendirme` |
 | Eklenti | `GET /ws/eklenti` (token + Origin), `GET /eklenti/token`, `GET /eklenti/sekmeler` |
@@ -177,8 +182,8 @@ Tanımlı: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, 
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P3 (2026-11-12T21:06:53.511Z)
-- Tüm kapılar yeşil mi: evet (11/11)
+- Faz: P10 (2026-11-13T02:00:08.774Z)
+- Tüm kapılar yeşil mi: hayır (11/13)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
 <!-- DURUM:BITIS -->

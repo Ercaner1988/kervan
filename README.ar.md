@@ -68,6 +68,11 @@ curl http://127.0.0.1:20129/v1/chat/completions \
   -d '{"model": "gemini", "messages": [{"role": "user", "content": "مرحباً"}]}'
 ```
 
+نقطة نهاية متوافقة مع Anthropic: `POST /v1/messages` — يُترجم الطلب إلى صيغة
+OpenAI ويعود الرد بصيغة رد `messages` الخاصة بـ Anthropic. تُترجم كتل **النص**
+فقط؛ كتل `tools`/`tool_use`/`tool_result` والصور و`thinking` لا تمر عبرها. اسم
+`model` الذي يرسله العميل لا يختار الهدف؛ الهدف يأتي من التوجيه (`model: "auto"`).
+
 أوضاع التشغيل:
 
 | الوضع | ما يفعله |
@@ -155,9 +160,12 @@ curl http://127.0.0.1:20129/v1/chat/completions \
 | | |
 |---|---|
 | المتصفح | مبني على Firefox (Zen أو Firefox)، عبر geckodriver |
-| نقطة النهاية | `POST /v1/chat/completions`، `GET /v1/models`، `GET /health` |
-| المجموعة | `GET /accounts`، `POST /accounts/{i}/devam` |
+| نقطة النهاية | `POST /v1/chat/completions`، `POST /v1/messages` (متوافق مع Anthropic)، `GET /v1/models`، `GET /health` |
+| المجموعة | `GET /accounts`، `POST /accounts/{i}/devam`، `POST /accounts/{i}/duraklat` |
 | الربط | المضيف المحلي فقط (`127.0.0.1`) |
+
+سجل نقاط النهاية الكامل: `port/uclar.toml` (يشمل `/telemetri`، `/bakiye`،
+`/kimlikler`، `/kota` ونقاط نهاية رؤية الحسابات).
 
 ### المزودون
 
@@ -168,8 +176,8 @@ curl http://127.0.0.1:20129/v1/chat/completions \
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P3 (2026-11-12T21:06:53.511Z)
-- Tüm kapılar yeşil mi: evet (11/11)
+- Faz: P10 (2026-11-13T02:00:08.774Z)
+- Tüm kapılar yeşil mi: hayır (11/13)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
 <!-- DURUM:BITIS -->

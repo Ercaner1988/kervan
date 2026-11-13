@@ -1,0 +1,29 @@
+{
+  "aciklama": "Dalga kimliği sözleşmesi. Burada YALNIZ kimlik (id, başlık, tema, pano eşleme kodu, envanter alanları) durur; sayılar, kapsam ve kaynak izi araclar/dalga-uret.ts tarafından port/envanter.json, crates/pano-ekran/esleme.toml, port/defter/*.jsonl ve port/durum.json'dan türetilir.",
+  "dalgalar": [
+    {
+      "id": "DALGA-2",
+      "baslik": "Dalga 2: Veritabanı Kalıcılığı ve SQLite/Drizzle Modelleri",
+      "tema": "kalici-veri",
+      "esleme_kodu": "D2",
+      "envanter_alanlari": ["db_modul_sayisi", "goc_dosyasi_sayisi"],
+      "fr": { "id": "FR-2.1", "ad": "Şema Göç Motoru" }
+    },
+    {
+      "id": "DALGA-3",
+      "baslik": "Dalga 3: Pano ve İstatistik Arayüzü (egui Dashboard)",
+      "tema": "pano-grafik",
+      "esleme_kodu": "D3",
+      "envanter_alanlari": ["pano_sayfasi_sayisi", "toplam_sayfa_sayisi"],
+      "fr": { "id": "FR-3.1", "ad": "Canlı Metrik Grafiği" }
+    },
+    {
+      "id": "DALGA-4",
+      "baslik": "Dalga 4: Gelişmiş Sağlayıcı Eklentileri ve Model Kataloğu",
+      "tema": "saglayici-katalog",
+      "esleme_kodu": "D4",
+      "envanter_alanlari": ["route_sayisi"],
+      "fr": { "id": "FR-4.1", "ad": "Dinamik Model Keşif Ucu" }
+    }
+  ]
+}

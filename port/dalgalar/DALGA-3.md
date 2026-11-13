@@ -1,28 +1,39 @@
-# PRD: Dalga 3 — Pano ve İstatistik Arayüzü (egui Dashboard)
+# PRD: Dalga 3: Pano ve İstatistik Arayüzü (egui Dashboard)
 
 ## 1. Problem Statement & Scope
-122 Next.js pano sayfasındaki telemetri ve yönetim görünümleri Kervan'ın egui penceresine yerleştirilecektir.
+OmniRoute dbe703a anlık görüntüsünden: 122 pano_sayfasi_sayisi, 147 toplam_sayfa_sayisi; pano eşlemesinde 3 bölüm D3 (DALGA-3) olarak işaretli; defterde (tüm dalgalar ortak) açık pencere 8 kayıtta 2.092 satır.
+Bu taslak, defterdeki açık pencereler kapatılmadan başlamaz; kapsam ve sayılar her koşuda
+port/envanter.json, crates/pano-ekran/esleme.toml ve port/defter/*.jsonl dosyalarından yeniden türetilir.
 
 ## 2. Goals and Non-Goals
 ### 2.1 Goals
-- G1: Sağlayıcı sağlık durumu ve gecikme grafiklerinin görselleştirilmesi
-- G2: Aktif kombo ve strateji seçici panelleri
-- G3 (OpenCode esinli): 358 sağlayıcılık liste yerine `katla` destekli süzülen tek komut/arama kutusu ile sağlayıcı ekleme
-- G4 (usage_monitor esinli): Yerel CLI oturumlarından (Claude Code, Codex) API anahtarsız kota ve kalan süre senkronizasyonu
-- G5: Kompakt alt telemetri ve kota sıfırlanma sayacı şeridi (`render_canli_akis`)
+- G1: 122 pano_sayfasi_sayisi ve 147 toplam_sayfa_sayisi kaleminin Kervan karşılığına bağlanması
+- G2: 3 pano bölümünün D3 rozetinden gerçek kaynağa geçirilmesi
+- G3: Açık defter pencerelerinin (8 kayıt) bu dalga içinde kapatılması
 
 ### 2.2 Non-Goals
-- Web tarayıcı dashboard'u, Tauri veya WebView (yalnızca yerel egui + kilim-tema).
+- Kapsam dışı bırakılmış 7 defter kaydının bu dalgaya dahil edilmesi
+- İnsan kararı bekleyen 3 defter kaydının bu dalgada karara bağlanması
 
 ## 3. Users and Personas
-- **Ercan**: UI/UX denetimi
-- **Builder**: egui bileşen geliştiricisi
+- **Ercan**: Dalga kapsamının ve varsayımların onayı
+- **Builder**: Aktarımı yapan ajan
+- **Hakem**: Kapanan pencerelerin kanıtını denetleyen bağımsız değerlendirici
 
 ## 4. Functional Requirements
-### FR-3.1: Canlı Metrik Grafiği & Kota Sayacı
-Sağlayıcı gecikmeleri, ardışık hata oranları ve kalan kota sıfırlanma süreleri egui panelinde canlı çizilir.
-*Acceptance:* Simüle edilen 5xx hatalarında kesici açıldığında grafik kırmızıya döner; kota bittiğinde `usage_monitor` tarzı geri sayım sayacı çalışır.
+### FR-3.1: Canlı Metrik Grafiği
+OmniRoute dbe703a anlık görüntüsünden: 122 pano_sayfasi_sayisi, 147 toplam_sayfa_sayisi; pano eşlemesinde 3 bölüm D3 (DALGA-3) olarak işaretli; defterde (tüm dalgalar ortak) açık pencere 8 kayıtta 2.092 satır.
+*Acceptance:* Envanterdeki 122 pano_sayfasi_sayisi ve 147 toplam_sayfa_sayisi kalemi için karşılaştırma testi yazılır; test, düzeltme geri alındığında kırmızıya döner.
 
-### FR-3.2: Kompakt Sağlayıcı Seçici
-358 sağlayıcıyı listeleyen hantal ekran kaldırılır; klavye dostu, aranabilir açılır liste üzerinden hesap eklenir.
-*Acceptance:* Arama kutusuna yazıldıkça sağlayıcılar filtrelenir; seçim sonrası tarayıcı profili Enter'sız bağlanır.
+## 5. Türetim İzi
+Girdiler: port/dalgalar/dalga-tanimi.json (kimlik) · port/envanter.json (kaynak_sha dbe703a, tarih 2026-10-03) · crates/pano-ekran/esleme.toml (D3: 3 bölüm) · port/defter/dosyalar.jsonl (19 kayıt) · port/defter/davranislar.jsonl (7 kayıt) · port/durum.json (faz P3).
+
+Açık defter pencereleri:
+- DOS-1 · ref/omniroute-dbe703a/open-sse/translator/request/openai-to-claude.ts [1,300] → crates/ceviri/src/claude.rs (aktarildi)
+- DOS-6 · ref/omniroute-dbe703a/open-sse/translator/request/openai-to-claude.ts [301,600] → crates/ceviri/src/claude.rs (planlandi)
+- DOS-6-2 · ref/omniroute-dbe703a/open-sse/translator/request/openai-to-claude.ts [601,844] → crates/ceviri/src/claude.rs (planlandi)
+- DOS-2 · ref/omniroute-dbe703a/open-sse/translator/request/openai-to-gemini.ts [1,300] → crates/ceviri/src/gemini.rs (aktarildi)
+- DOS-7 · ref/omniroute-dbe703a/open-sse/translator/request/openai-to-gemini.ts [301,600] → crates/ceviri/src/gemini.rs (planlandi)
+- DOS-7-2 · ref/omniroute-dbe703a/open-sse/translator/request/openai-to-gemini.ts [601,900] → crates/ceviri/src/gemini.rs (planlandi)
+- DOS-7-3 · ref/omniroute-dbe703a/open-sse/translator/request/openai-to-gemini.ts [901,948] → crates/ceviri/src/gemini.rs (planlandi)
+- DOS-9 · ref/omniroute-dbe703a/open-sse/translator/request/claude-to-openai.ts [1,300] → crates/ceviri/src/claude.rs (aktarildi)

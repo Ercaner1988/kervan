@@ -68,6 +68,12 @@ curl http://127.0.0.1:20129/v1/chat/completions \
   -d '{"model": "gemini", "messages": [{"role": "user", "content": "Hello"}]}'
 ```
 
+Anthropic-compatible endpoint: `POST /v1/messages` — the body is translated into
+OpenAI form and the reply comes back as an Anthropic `messages` response. Only
+**text** blocks are translated; `tools`/`tool_use`/`tool_result`, image and
+`thinking` blocks do not pass through. The `model` name the client sends does not
+pick the target; the target comes from routing (`model: "auto"` etc.).
+
 Run modes:
 
 | Mode | What it does |
@@ -160,7 +166,7 @@ carry `tools`, browser candidates are dropped whenever a REST candidate exists.
 | | |
 |---|---|
 | Browser | Firefox-based (Zen or Firefox), via geckodriver; or the `eklenti/` WebSocket bridge |
-| Endpoint | `POST /v1/chat/completions`, `GET /v1/models`, `GET /health` |
+| Endpoint | `POST /v1/chat/completions`, `POST /v1/messages` (Anthropic-compatible), `GET /v1/models`, `GET /health` |
 | Pool | `GET /accounts`, `POST /accounts/{i}/devam`, `POST /accounts/{i}/duraklat` |
 | Routing | `GET /yonlendirme`, `POST /yonlendirme` |
 | Extension | `GET /ws/eklenti` (token + Origin), `GET /eklenti/token`, `GET /eklenti/sekmeler` |
@@ -178,8 +184,8 @@ Defined: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, `d
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P3 (2026-11-12T21:06:53.511Z)
-- Tüm kapılar yeşil mi: evet (11/11)
+- Faz: P10 (2026-11-13T02:00:08.774Z)
+- Tüm kapılar yeşil mi: hayır (11/13)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
 <!-- DURUM:BITIS -->

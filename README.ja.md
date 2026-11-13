@@ -68,6 +68,11 @@ curl http://127.0.0.1:20129/v1/chat/completions \
   -d '{"model": "gemini", "messages": [{"role": "user", "content": "こんにちは"}]}'
 ```
 
+Anthropic互換エンドポイント：`POST /v1/messages` — 本文はOpenAI形式に変換され、
+応答はAnthropicの`messages`応答として返る。変換されるのは**テキスト**ブロックのみ。
+`tools`/`tool_use`/`tool_result`、画像、`thinking`ブロックは通らない。クライアントが
+送る`model`名はターゲットを選ばない。ターゲットはルーティング（`model: "auto"`など）で決まる。
+
 実行モード：
 
 | モード | 動作 |
@@ -158,7 +163,7 @@ REST呼び出しは取り消せない（ブロッキングHTTPクライアント
 | | |
 |---|---|
 | ブラウザ | Firefoxベース（ZenまたはFirefox）、geckodriver経由；または`eklenti/`WebSocketブリッジ |
-| エンドポイント | `POST /v1/chat/completions`、`GET /v1/models`、`GET /health` |
+| エンドポイント | `POST /v1/chat/completions`、`POST /v1/messages`（Anthropic互換）、`GET /v1/models`、`GET /health` |
 | プール | `GET /accounts`、`POST /accounts/{i}/devam`、`POST /accounts/{i}/duraklat` |
 | ルーティング | `GET /yonlendirme`、`POST /yonlendirme` |
 | 拡張 | `GET /ws/eklenti`（トークン＋Origin）、`GET /eklenti/token`、`GET /eklenti/sekmeler` |
@@ -176,8 +181,8 @@ REST呼び出しは取り消せない（ブロッキングHTTPクライアント
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P3 (2026-11-12T21:06:53.511Z)
-- Tüm kapılar yeşil mi: evet (11/11)
+- Faz: P10 (2026-11-13T02:00:08.774Z)
+- Tüm kapılar yeşil mi: hayır (11/13)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
 <!-- DURUM:BITIS -->
