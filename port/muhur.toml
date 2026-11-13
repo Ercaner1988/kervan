@@ -1,14 +1,12 @@
 # port/muhur.toml - SHA-256 mühür listesi (PRD FR-2.4), muhur-uret.ts çıktısı.
 # Onay alanlarını yalnız Ercan doldurur: onay_bekliyor = false ve onay = "<ad, tarih>", commit,
-# ardından imzalı etiket: git -c gpg.format=ssh -c "user.signingkey=$env:USERPROFILE\.ssh\id_ed25519.pub"
+# ardından imzalı etiket: git -c gpg.format=ssh -c "user.signingkey=%USERPROFILE%\.ssh\id_ed25519.pub"
 #   tag -s -f muhur-onay -m "<ad, tarih>"
-# (Yüzde biçimi (%USERPROFILE%) PowerShell'de genişlemez; git onu harfi harfine alır ve imza düşer.
-#  Ölçüm ve düzeltme: 2026-11-07, muhur-kontrol.ts IMZA_KOMUTU ile aynı.)
 # (gpg.format ve user.signingkey şart: user.signingkey bir GPG kimliği olduğu için düz 'git tag -s'
 #  'Couldn't load public key ...' ile düşer. Genel anahtar depo dışında: ~/.config/kervan/muhur-imzacilar,
 #  allowed-signers biçimi. Ayrıca 'bash git ...' WSL'i açar; komut PowerShell'de doğrudan koşulur.)
-onay_bekliyor = false
-onay = "Ercan Er, 2026-11-07"
+onay_bekliyor = true
+onay = ""
 
 [ref]
 ozet = "11be456a1f799ad76a8a1438a51daecc5087f03d989ddc16b017027d3ca8c504"
@@ -112,7 +110,7 @@ sha256 = "8af64b52c8969a82168d88ca90cdeb3a49a3a88ff3b6aef0a95879d4c9e5a720"
 
 [[dosya]]
 yol = "araclar/kapilar/strateji-kumesi.ts"
-sha256 = "1796b9323459e333a331a67ab1907f6037917c02d17dfc6acde1d1e22d507e99"
+sha256 = "0eabe12e2540a879c7e62935f63a67c2e152cc5cdc696756c348eacb19969822"
 
 [[dosya]]
 yol = "araclar/kapilar/temiz-kopya.ts"

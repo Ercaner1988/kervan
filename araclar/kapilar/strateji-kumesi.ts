@@ -133,11 +133,13 @@ if (import.meta.main) {
     for (const h of sonuc.hatalar) {
       console.error(`  - ${h}`);
     }
+    console.log(`HUKUM: kirmizi ${sonuc.hatalar[0]}`);
     process.exit(1);
   }
 
   console.log(
     `✅ [strateji-kumesi] Kervan ve OmniRoute strateji kümeleri küme ve bayt eşittir (${sonuc.kamuyaAcikSayisi} kamuya açık, ${sonuc.dahiliSayisi} dahili).`
   );
+  console.log("HUKUM: yesil");
   process.exit(0);
 }
