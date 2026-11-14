@@ -65,8 +65,9 @@ function saglayiciAnahtari(provider) {
 
 function kervanaKaydet(provider, url, profile, tabId) {
   if (socket && socket.readyState === WebSocket.OPEN) {
-    const hesapKimligi = anahtar(provider, profile);
-    console.log(`[Kervan] '${hesapKimligi}' sekmesi Kervan'a bildiriliyor (Tab: ${tabId})...`);
+    // Sessiz: bu çağrı artık 10 sn'de bir yapılan TAZELEME turunda da koşuyor;
+    // her turda log basmak konsolu okunamaz hale getirir (seçim logu
+    // `acikSekmeleriTara` içinde, yalnız eşleme değişince yazılır).
     socket.send(JSON.stringify({
       action: "kayit",
       provider: provider,
@@ -159,11 +160,15 @@ async function acikSekmeleriTara() {
       }
     }
     for (const [k, sec] of adaylar) {
+      // TAZELEME: eşleme değişmese de kayıt YENİDEN gönderilir. Sunucu,
+      // kaydın `son_gorulme` damgasını tazeler ve bayat kaydı düşürür; kenar
+      // tetiklemeli kayıtla canlı bir sekme 90 sn sonra "ölü" sayılıyordu
+      // (2026-11-14 ölçümü). Sunucu logu yalnız YENİ kayıtta yazar.
       if (bagliSekmeler.get(k) !== sec.tabId) {
         console.log(`[Kervan] Açık sekme seçildi: ${k} (Tab: ${sec.tabId})`);
         bagliSekmeler.set(k, sec.tabId);
-        kervanaKaydet(sec.provider, sec.url, sec.cId, sec.tabId);
       }
+      kervanaKaydet(sec.provider, sec.url, sec.cId, sec.tabId);
     }
     // Budama: bu taramada ulaşılamayan kayıtlar ölü sekmedir. Silmezsek
     // 10 sn'lik tarama onları yeniden yazıp çıkmazı sürdürüyordu.
@@ -263,7 +268,8 @@ async function kervanaBaglan() {
     // gönderilmiyordu. Sunucu yeniden başlatıldığında yeni oturum boş kalıyor,
     // WebSocket ayakta olduğu hâlde hesap panelden kayboluyordu (ölçüldü
     // 2026-10-24: bağlantı Established, /eklenti/sekmeler `sayi: 0`). Artık her
-    // bağlantı kuruluşunda kayıt tazelenir.
+    // bağlantı kuruluşunda kayıt tazelenir. Ayrıca periyodik tarama artık her
+    // turda kayıt gönderir (sunucu tarafı tazelik damgası, 2026-11-14).
     bagliSekmeler.clear();
     acikSekmeleriTara();
   };
