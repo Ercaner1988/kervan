@@ -224,6 +224,18 @@ impl Session {
             .with_context(|| format!("sayfa acilamadi: {url}"))
     }
 
+    /// Gecerli pencerenin PNG goruntusu (WebDriver `GET /session/{id}/screenshot`).
+    ///
+    /// NEDEN: tarayici tarafli arizalari (katman istem kutusunu kapatiyor,
+    /// cerez duvari cikti, yanit balonu cizilmiyor) metinden tahmin etmek
+    /// yaniltiyordu; ekran goruntusu ayni soruyu olculebilir kiliyor.
+    pub async fn ekran(&self) -> Result<Vec<u8>> {
+        self.client
+            .screenshot()
+            .await
+            .context("ekran goruntusu alinamadi")
+    }
+
     pub async fn close(mut self) -> Result<()> {
         // Client ucuz bir tutamak; Drop uygulandigi icin alandan tasinamiyor, klonluyoruz.
         self.client.clone().close().await.ok();

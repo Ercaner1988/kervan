@@ -185,8 +185,8 @@ Defined: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, `d
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P10 (2026-11-14T10:23:44.690Z)
-- Tüm kapılar yeşil mi: hayır (11/13)
+- Faz: P10 (2026-11-14T15:24:35.040Z)
+- Tüm kapılar yeşil mi: hayır (10/13)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
 <!-- DURUM:BITIS -->
@@ -204,6 +204,16 @@ Defined: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, `d
 | `deepseek` | ❌ Cloudflare — most accounts |
 | `qwen` | ❌ Cloudflare — all accounts |
 | `z.ai` | ❌ Cloudflare — misleading empty responses |
+
+**Stable path for tool-calling clients (Claude Code, MCP):** a provider reached
+through an API key. The browser path *can* emit a tool call (measured
+2026-11-14: `/v1/messages` `stream:true` + `Read` → 13s, `tool_use
+id=call_fe9d5685`, `stop_reason: tool_use`), but the browser side is unstable:
+Cloudflare interstitials (`502 INSAN KAPISI`), the model listing tools instead
+of calling them, stale tab registrations. A live Claude Code turn completed
+against `kervan/deepseek` (2026-11-14: `notlar.txt` read verbatim, `exit=0`).
+When testing, record which provider you tried — "it didn't work" alone does not
+say which layer failed.
 
 ## ⚠️ Known Issues / Experimental Features
 

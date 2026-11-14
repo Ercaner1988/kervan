@@ -9,7 +9,7 @@
 //! gorun" gerilimi tek hesabi hizlandirarak degil, havuzu genisletip her hesabi hafif
 //! kullanarak cozulur — burasi o cozumun yeri.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -100,6 +100,15 @@ struct AcikOturum {
     /// pencereyi ALTINDAN kapatti. Supurucu "istek gelmedi"yi "kimse kullanmiyor"
     /// saniyordu; insanin elindeki pencere de kullanimdadir.
     insan_elinde: bool,
+    /// "bosta ama kapatilmiyor" satiri bu bosta turunda yazildi mi?
+    ///
+    /// NEDEN: supurucu dakikada bir tik atiyor ve engellenen her kimlik icin
+    /// ayni satiri yaziyordu. Olculdu: deepseek hesabi Cloudflare arkasinda
+    /// oldugu icin hic kapanmiyor, yani gunluk dakikada bir ayni satirla
+    /// doluyor ve gercek olaylari gorunmez kiliyordu. Yeni bir kiralamada
+    /// bayrak sifirlanir; boylece "hala kapali tutuyorum" bilgisi kaybolmaz,
+    /// yalnizca tekrarlanmaz.
+    kapatma_engellendi_bildirildi: bool,
 }
 
 /// Bir PROFIL = bir kimlik = bir tarayici. Ayni Google oturumu profildeki tum
@@ -355,6 +364,7 @@ impl Pool {
                 sekmeler: HashMap::new(),
                 son_kullanim: Instant::now(),
                 insan_elinde: false,
+                kapatma_engellendi_bildirildi: false,
             });
         }
         let o = g.as_mut().expect("oturum acik");
@@ -386,6 +396,21 @@ impl Pool {
         o.insan_elinde = true;
         o.son_kullanim = Instant::now();
         Ok(())
+    }
+
+    /// Kimligin acik tarayici penceresinin PNG goruntusu.
+    ///
+    /// Oturum kapaliysa AÇMAZ: tanı icin pencere acmak, teshis edilecek durumu
+    /// kendisi degistirir. Cagiran once `/kimlikler/{k}/goster` ile acar.
+    pub async fn ekran(&self, kimlik: usize) -> Result<Vec<u8>> {
+        let Some(k) = self.kimlikler.get(kimlik) else {
+            bail!("{kimlik} numarali kimlik yok");
+        };
+        let g = k.oturum.lock().await;
+        let Some(o) = g.as_ref() else {
+            bail!("{kimlik} numarali kimligin tarayicisi kapali; once /kimlikler/{kimlik}/goster");
+        };
+        o.session.ekran().await
     }
 
     /// Pencereyi ekran disina alir ve insanin elinden birakir.
@@ -428,17 +453,24 @@ impl Pool {
             {
                 continue;
             }
-            // Cloudflare arkasindaki bir sekme acikken kapatma. Her yeniden acilis
-            // o site icin TAZE bir oturum, yani yeni bir bot-risk degerlendirmesi;
-            // bellek icin dogru olan sey burada sinamayi davet ediyor.
-            if let Some(o) = g.as_ref()
-                && let Some(sag) = o.sekmeler.keys().find(|s| self.kapanmaz.contains(*s))
-            {
-                println!(
-                    "[{}] bosta ama kapatilmiyor: '{sag}' sekmesi acik ve o site \
-                     Cloudflare arkasinda (yeniden acilis sinama davet eder)",
-                    k.ad
-                );
+            // Bildirim bosta turu basina BIR KEZ: supurucu dakikada bir tik
+            // attigi icin kosulsuz println gunlugu ayni satirla dolduruyordu
+            // (olculdu: deepseek hesabi hic kapanmadigi icin dakikada bir).
+            let adlar: Vec<&str> = g
+                .as_ref()
+                .map(|o| o.sekmeler.keys().map(|s| s.as_str()).collect())
+                .unwrap_or_default();
+            let engel = kapatma_engeli(&adlar, &self.kapanmaz);
+            if let Some(sag) = engel {
+                let o = g.as_mut().expect("oturum acik");
+                if !o.kapatma_engellendi_bildirildi {
+                    o.kapatma_engellendi_bildirildi = true;
+                    println!(
+                        "[{}] bosta ama kapatilmiyor: '{sag}' sekmesi acik ve o site \
+                         Cloudflare arkasinda (yeniden acilis sinama davet eder)",
+                        k.ad
+                    );
+                }
                 continue;
             }
             if let Some(o) = g.take() {
@@ -745,11 +777,19 @@ impl Pool {
                 sekmeler: HashMap::new(),
                 son_kullanim: Instant::now(),
                 insan_elinde: false,
+                kapatma_engellendi_bildirildi: false,
             });
         }
         // Kiralama anini isaretle. Istek bitisini degil baslangicini yazmak yeterli:
         // surerken zaten kilit bizde, supurucu o kimligi eline alamaz.
-        guard.as_mut().expect("oturum acik").son_kullanim = Instant::now();
+        //
+        // Engel bildirimi de burada sifirlanir: bir istek geldigine gore oturum
+        // kullaniliyor, yani sonraki bosta turda engel yeniden duyurulmalidir.
+        {
+            let o = guard.as_mut().expect("oturum acik");
+            o.son_kullanim = Instant::now();
+            o.kapatma_engellendi_bildirildi = false;
+        }
 
         // Saglayicinin sekmesine gec; yoksa ac. Ilk saglayici zaten acik olan
         // pencereyi kullanir, sonrakiler yeni sekme alir.
@@ -927,6 +967,19 @@ pub fn insan_kapisi_gerekir(hata: &str) -> bool {
     .any(|k| h.contains(k))
 }
 
+/// Bosta kapatmayi engelleyen saglayiciyi secer: acik sekmeler icinden
+/// `kapanmaz` listesinde olan ILK saglayici (ad sirasi sekmelerin HashMap
+/// sirasidir, karar icin onemi yok).
+///
+/// Saf fonksiyon olarak ayrildi: tarayici acmadan sinanabilsin. Engelsiz
+/// durumda `None` doner ve cagiran oturumu kapatir.
+pub fn kapatma_engeli(adlar: &[&str], kapanmaz: &HashSet<String>) -> Option<String> {
+    adlar
+        .iter()
+        .find(|s| kapanmaz.contains(**s))
+        .map(|s| (*s).to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -937,6 +990,26 @@ mod tests {
             jitter_ms: 0,
             hourly_cap: cap,
         }
+    }
+
+    #[test]
+    fn engelsiz_sekme_kapatmayi_engellemez() {
+        let kapanmaz: HashSet<String> = HashSet::new();
+        assert_eq!(kapatma_engeli(&["gemini", "deepseek"], &kapanmaz), None);
+        assert_eq!(kapatma_engeli(&[], &kapanmaz), None);
+    }
+
+    /// ASIL KUSUR: Cloudflare arkasindaki sekme acikken oturum kapatilirsa her
+    /// yeniden acilis taze bir bot-risk degerlendirmesi olur — sinama davet edilir.
+    #[test]
+    fn bulut_korumali_sekme_kapatmayi_engeller() {
+        let kapanmaz: HashSet<String> = ["deepseek".to_string()].into_iter().collect();
+        assert_eq!(
+            kapatma_engeli(&["gemini", "deepseek"], &kapanmaz),
+            Some("deepseek".to_string()),
+            "kapanmaz listesindeki sekme engel olmali"
+        );
+        assert_eq!(kapatma_engeli(&["gemini"], &kapanmaz), None);
     }
 
     #[test]

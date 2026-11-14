@@ -169,6 +169,7 @@ REST adayı varsa tarayıcı adayları elenir.
 | Havuz | `GET /accounts`, `POST /accounts/{i}/devam`, `POST /accounts/{i}/duraklat` |
 | Yönlendirme | `GET /yonlendirme`, `POST /yonlendirme` |
 | Eklenti | `GET /ws/eklenti` (token + Origin), `GET /eklenti/token`, `GET /eklenti/sekmeler` |
+| Tanı | `GET /kimlikler/{k}/ekran` — açık pencerenin PNG görüntüsü (tarayıcı tarafı arızaları metinden değil görüntüden teşhis etmek için; oturum kapalıysa `409`) |
 | Bağlanma | yalnız `127.0.0.1` |
 
 Tam uç kayıt defteri: `port/uclar.toml` (`/telemetri`, `/bakiye`, `/kimlikler`,
@@ -183,8 +184,8 @@ Tanımlı: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, 
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P10 (2026-11-14T10:23:44.690Z)
-- Tüm kapılar yeşil mi: hayır (11/13)
+- Faz: P10 (2026-11-14T15:24:35.040Z)
+- Tüm kapılar yeşil mi: hayır (10/13)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
 <!-- DURUM:BITIS -->
@@ -202,6 +203,16 @@ Tanımlı: `gemini`, `kimi`, `copilot`, `copilot-m365`, `perplexity`, `claude`, 
 | `deepseek` | ✅ Bu hesapta çalıştı (2026-10-22; model ekseni yok, iki aç/kapa düğmesi var). Başka hesaplarda Cloudflare |
 | `qwen` | ❌ Cloudflare — tüm hesaplarda |
 | `z.ai` | ✅ Bu hesapta çalıştı (2026-10-22, GLM-5.3, ~14 sn). Başka hesaplarda Cloudflare görülebilir |
+
+**Araç çağıran istemci (Claude Code, MCP) için kararlı yol:** API anahtarıyla
+konuşan sağlayıcı. Tarayıcı yolu araç çağrısını *üretebiliyor* (2026-11-14
+ölçümü: `/v1/messages` `stream:true` + `Read` → 13 sn, `tool_use
+id=call_fe9d5685`, `stop_reason: tool_use`), ama tarayıcı tarafı dalgalı:
+Cloudflare katmanı (`502 INSAN KAPISI`), modelin aracı çağırmak yerine
+listelemeyi seçmesi, sekme kaydının bayatlaması. Canlı Claude Code turu
+`kervan/deepseek` ile tamamlandı (2026-11-14: `notlar.txt` içeriği aynen
+okundu, `exit=0`). Sınama yaparken hangi sağlayıcının denendiğini yazın —
+"çalışmadı" tek başına hangi katmanın arızalandığını söylemiyor.
 
 ##### Model menüsü (yalnız ölçülmüş olanlar)
 

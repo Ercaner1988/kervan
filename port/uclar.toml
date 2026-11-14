@@ -132,6 +132,12 @@ durum = "kapsam-disi"
 gerekce = "Kervan'a özgü tarayıcı havuzu ucu; OmniRoute'ta karşılığı yok, parite ölçülemez (profil adıyla pencereyi gizler)"
 
 [[uc]]
+yol = "/kimlikler/{k}/ekran"
+yontem = "GET"
+durum = "kapsam-disi"
+gerekce = "Kervan'a özgü tanı ucu; OmniRoute'ta karşılığı yok, parite ölçülemez (açık pencerenin PNG görüntüsü — tarayıcı tarafı arızaları metinden değil görüntüden teşhis etmek için)"
+
+[[uc]]
 yol = "/kota"
 yontem = "GET"
 durum = "kapsam-disi"

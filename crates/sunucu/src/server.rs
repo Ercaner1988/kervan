@@ -148,6 +148,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/kimlikler", get(kimlikler))
         .route("/kimlikler/{k}/goster", post(kimlik_goster))
         .route("/kimlikler/{k}/gizle", post(kimlik_gizle))
+        .route("/kimlikler/{k}/ekran", get(kimlik_ekran))
         // Kota ogrenicinin gordugu: gercek kullanim ve gozlemden cikan limit.
         .route("/kota", get(kota_ozeti))
         // Akıllı yönlendirici: GET durum ve adayları, POST stratejiyi değiştirir.
@@ -590,6 +591,22 @@ async fn kimlik_gizle(State(st): State<Arc<AppState>>, Path(k): Path<usize>) -> 
         Ok(acikti) => Json(serde_json::json!({ "ok": true, "hesap": kim.ad, "acikti": acikti }))
             .into_response(),
         Err(e) => hata(StatusCode::INTERNAL_SERVER_ERROR, &format!("{e:#}")),
+    }
+}
+
+/// Kimligin acik penceresinin PNG goruntusu: tanı icin.
+///
+/// NEDEN GORUNTU: tarayici tarafli arizalar (katman istem kutusunu kapatiyor,
+/// cerez duvari, yanit balonu cizilmiyor) metinden tahmin edilince yaniltti.
+/// Oturum kapaliysa 409 doner — tanı icin pencere ACMAK teshis edilen durumu
+/// degistirir, cagiran once `/kimlikler/{k}/goster` ile acar.
+async fn kimlik_ekran(State(st): State<Arc<AppState>>, Path(k): Path<usize>) -> Response {
+    if st.pool.kimlikler.get(k).is_none() {
+        return hata(StatusCode::NOT_FOUND, &format!("{k} numarali kimlik yok"));
+    }
+    match st.pool.ekran(k).await {
+        Ok(png) => (StatusCode::OK, [("content-type", "image/png")], png).into_response(),
+        Err(e) => hata(StatusCode::CONFLICT, &format!("{e:#}")),
     }
 }
 

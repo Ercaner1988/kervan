@@ -177,8 +177,8 @@ OpenAI ويعود الرد بصيغة رد `messages` الخاصة بـ Anthropi
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P10 (2026-11-14T10:23:44.690Z)
-- Tüm kapılar yeşil mi: hayır (11/13)
+- Faz: P10 (2026-11-14T15:24:35.040Z)
+- Tüm kapılar yeşil mi: hayır (10/13)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
 <!-- DURUM:BITIS -->
@@ -196,6 +196,15 @@ OpenAI ويعود الرد بصيغة رد `messages` الخاصة بـ Anthropi
 | `deepseek` | ❌ Cloudflare — معظم الحسابات |
 | `qwen` | ❌ Cloudflare — جميع الحسابات |
 | `z.ai` | ❌ Cloudflare — ردود فارغة مضللة |
+
+**المسار المستقر للعملاء الذين يستدعون الأدوات (Claude Code، MCP):** مزوّد
+يُبلَغ عبر مفتاح API. مسار المتصفح *قادر* على إنتاج استدعاء أداة (قياس
+2026-11-14: `/v1/messages` مع `stream:true` و`Read` ← 13 ثانية، `tool_use
+id=call_fe9d5685`، `stop_reason: tool_use`)، لكن جانب المتصفح متقلب: طبقات
+Cloudflare (`502 INSAN KAPISI`)، والنموذج يسرد الأدوات بدل استدعائها،
+وسجلات تبويب قديمة. دارت جولة Claude Code حيّة على `kervan/deepseek`
+(2026-11-14: قُرئ `notlar.txt` كما هو، `exit=0`). عند الاختبار سجّل أي مزوّد
+جرّبت — عبارة "لم يعمل" وحدها لا تقول أي طبقة فشلت.
 
 ## ⚠️ المشاكل المعروفة / الميزات التجريبية
 

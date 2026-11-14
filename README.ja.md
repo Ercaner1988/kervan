@@ -182,8 +182,8 @@ REST呼び出しは取り消せない（ブロッキングHTTPクライアント
 <!-- DURUM:BASLA -->
 > Bu blok araclar/kapilar/durum-uret.ts çıktısıdır; elle düzenlemeyin. Kaynak: port/durum.json
 
-- Faz: P10 (2026-11-14T10:23:44.690Z)
-- Tüm kapılar yeşil mi: hayır (11/13)
+- Faz: P10 (2026-11-14T15:24:35.040Z)
+- Tüm kapılar yeşil mi: hayır (10/13)
 - Fazlar: yok
 - Defter: planlandi 5, dogrulandi 1; route_ts 730
 <!-- DURUM:BITIS -->
@@ -201,6 +201,16 @@ REST呼び出しは取り消せない（ブロッキングHTTPクライアント
 | `deepseek` | ❌ Cloudflare — ほとんどのアカウント |
 | `qwen` | ❌ Cloudflare — すべてのアカウント |
 | `z.ai` | ❌ Cloudflare — 誤解を招く空の応答 |
+
+**ツール呼び出しクライアント（Claude Code、MCP）向けの安定経路：** API
+キーで接続するプロバイダー。ブラウザ経路もツール呼び出しを*生成できる*
+（2026-11-14 測定: `/v1/messages` `stream:true` + `Read` → 13秒、`tool_use
+id=call_fe9d5685`、`stop_reason: tool_use`）が、ブラウザ側は不安定 —
+Cloudflare の層（`502 INSAN KAPISI`）、モデルがツールを呼ばずに列挙する、
+タブ登録の陳腐化。`kervan/deepseek` で実際の Claude Code ターンが完了した
+（2026-11-14: `notlar.txt` をそのまま読み取り、`exit=0`）。試験するときは
+どのプロバイダーを試したかを記録すること — 「動かなかった」だけでは
+どの層が壊れたか分からない。
 
 ## ⚠️ 既知の問題 / 実験的機能
 
