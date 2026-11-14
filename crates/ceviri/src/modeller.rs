@@ -116,10 +116,16 @@ pub struct OpenAiSecenek {
     pub finish_reason: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct OpenAiMesajCikti {
     pub role: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
+    // `content` tek başına yetmez: araç çağıran yanıtta metin boş olabilir ve
+    // çağrılar `tool_calls` altında gelir. Alan yoksa ayrıştırma sırasında
+    // çağrılar sessizce düşerdi.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<OpenAiAracCagrisi>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -213,6 +219,23 @@ pub struct ClaudeIstek {
     pub system: Option<Vec<ClaudeSistemBloku>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
+    // Claude Code ve Claude Desktop araç tanımlarını burada gönderir. Alan
+    // okunmazsa tanımlar sessizce düşer ve model hiçbir araç çağıramaz
+    // (2026-11-14 ölçüldü: `--allowedTools Read` isteğinde dosya okunmadı).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tools: Option<Vec<ClaudeAracTanimi>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_choice: Option<serde_json::Value>,
+}
+
+/// Anthropic araç tanımı: `{"name","description","input_schema"}`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ClaudeAracTanimi {
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_schema: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -246,7 +269,7 @@ where
         Giris::Metin(metin) => Ok(vec![ClaudeIcerikBloku {
             r#type: "text".to_string(),
             text: metin,
-            cache_control: None,
+            ..Default::default()
         }]),
         Giris::Bloklar(bloklar) => {
             // Blok türü boş olamaz: çözülmüş ama anlamsız bir blok, aşağıda
@@ -261,7 +284,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct ClaudeIcerikBloku {
     pub r#type: String,
     // `default`: metinsiz bloklar (görsel, araç) çözümlemede değil, çeviride
@@ -271,6 +294,57 @@ pub struct ClaudeIcerikBloku {
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cache_control: Option<ClaudeCacheControl>,
+    // `tool_use` bloğunun kimliği ve adı; `tool_result` bloğu da aynı `id` ile
+    // sonucu geri gönderir. Alanlar metin bloklarında yazılmaz.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    // `tool_use.input` serbest biçimli JSON nesnesidir; OpenAI tarafında
+    // `arguments` dizesine çevrilir.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input: Option<serde_json::Value>,
+    // `tool_result.content` dize ya da blok dizisi olabilir; çözümleyici ikisini
+    // de tek metne indirger.
+    #[serde(
+        default,
+        rename = "content",
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "claude_serbest_metin"
+    )]
+    pub icerik: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_use_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_error: Option<bool>,
+}
+
+/// `tool_result.content` alanını dize, blok dizisi ya da yokluk olarak çözer.
+/// Anthropic üç biçimi de kabul eder; blok dizisi tek metne indirgenir.
+fn claude_serbest_metin<'de, D>(cozucu: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Giris {
+        Metin(String),
+        Bloklar(Vec<ClaudeIcerikBloku>),
+    }
+
+    let giris = Option::<Giris>::deserialize(cozucu)?;
+    Ok(match giris {
+        None => None,
+        Some(Giris::Metin(metin)) => Some(metin),
+        Some(Giris::Bloklar(bloklar)) => Some(
+            bloklar
+                .iter()
+                .filter(|b| b.r#type == "text")
+                .map(|b| b.text.as_str())
+                .collect::<Vec<_>>()
+                .join("\n"),
+        ),
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

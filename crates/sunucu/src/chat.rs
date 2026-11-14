@@ -431,7 +431,26 @@ pub(crate) async fn chat(
         let sonuc = if let Some(hedef) = st.rest_hedefleri.get(ad).cloned() {
             rest_denemesi(&st, &hedef, &raw_val, None, req.stream).await
         } else if st.eklenti_hub.sekme_var_mi(ad).await {
-            eklenti_denemesi(&st, ad, &gonderilecek_istem, &req, &secim).await
+            // TAŞIYICI AYRIMI (2026-11-14 ölçümü): `sekme_var_mi` yalnız
+            // "bu sağlayıcı için bir kayıt VAR" der; kaydın canlı olduğunu
+            // söylemez. Eklentinin sekme haritası boşken (Zen yeniden açıldı,
+            // sekme kapandı) sunucu kaydı kalır ve eklenti `null` döner.
+            // O durumda istek tek adayda 500'e kilitleniyordu; oysa aynı
+            // sağlayıcının HAVUZ hesabı (WebDriver) hâlâ kullanılabilir.
+            // Eklenti taşıyamazsa havuz yedeği denenir. 429 KOTA yanıtı
+            // taşıyıcı hatası DEĞİLDİR: istemciye aynen döner.
+            match eklenti_denemesi(&st, ad, &gonderilecek_istem, &req, &secim).await {
+                Err((yanit, true)) if yanit.status() != StatusCode::TOO_MANY_REQUESTS => {
+                    println!(
+                        "[{}] eklenti yolu taşıyamadı ({}), havuz yedeği denenecek",
+                        ad,
+                        yanit.status()
+                    );
+                    havuz_denemesi(&st, ad, &req, &istem, &yonerge, &gonderilecek_istem, &secim)
+                        .await
+                }
+                diger => diger,
+            }
         } else {
             havuz_denemesi(&st, ad, &req, &istem, &yonerge, &gonderilecek_istem, &secim).await
         };
@@ -835,27 +854,111 @@ fn arac_adlari(tools: &[serde_json::Value]) -> Vec<&str> {
         .collect()
 }
 
+/// Yönergeye gömülecek toplam metin bütçesi (karakter).
+///
+/// NEDEN VAR (2026-11-14, ölçüldü): yönerge araçların `parameters` JSON
+/// şemasını olduğu gibi gömüyordu. Claude Code 14 araç tanımlıyor ve şemaları
+/// tek başına 33.334 karakter tutuyordu; istem toplamı 58.486 karaktere çıkıp
+/// tarayıcı sekmesinin sınırına çarpıyordu (gönderim reddediliyor ya da 90+
+/// saniyede yarım yanıt geliyordu). Ad + parametre adları + kısa açıklama
+/// modelin çağrı kurabilmesi için yeterli; tam şema gerekmiyor.
+const ARAC_YONERGE_BUTCESI: usize = 3_000;
+
+/// Tek araç açıklamasının yönergeye girecek en fazla karakteri.
+const ARAC_ACIKLAMA_SINIRI: usize = 160;
+
 /// Araç tanımlarını tarayıcı modelinin anlayacağı düz yönergeye çevirir.
+///
+/// Şema yerine imza yazar: `- Read(file_path*, offset, limit): ...`. Yıldız
+/// zorunlu alanı gösterir. Açıklamanın tamamı değil ilk cümlesi girer;
+/// gerekçe `ARAC_YONERGE_BUTCESI`.
 pub fn arac_yonergesi(tools: &[serde_json::Value]) -> String {
-    if arac_adlari(tools).is_empty() {
+    let tanimlar: Vec<&serde_json::Value> = tools
+        .iter()
+        .filter(|t| t["function"]["name"].as_str().is_some())
+        .collect();
+    if tanimlar.is_empty() {
         return String::new();
     }
     let mut y = String::from(
         "\n\n[ARAÇLAR] Bir aracı çağırman gerekirse yanıtına YALNIZCA şu biçimde bir blok koy, \
          sonucu bir sonraki mesajda alacaksın:\n```json\n{\"name\": \"ARAÇ_ADI\", \"arguments\": {}}\n```\n\
-         Kullanılabilir araçlar:\n",
+         Kullanılabilir araçlar (yıldızlı alan zorunlu):\n",
     );
-    for t in tools {
+    for t in tanimlar {
         let f = &t["function"];
-        if let Some(ad) = f["name"].as_str() {
-            let aciklama = f["description"].as_str().unwrap_or("");
-            y.push_str(&format!(
-                "- {ad}: {aciklama} (parametreler: {})\n",
-                f["parameters"]
-            ));
+        let Some(ad) = f["name"].as_str() else {
+            continue;
+        };
+        let imza = arac_imzasi(f);
+        let aciklama = arac_ozeti(f["description"].as_str().unwrap_or(""));
+        y.push_str(&format!("- {ad}{imza}"));
+        if !aciklama.is_empty() {
+            y.push_str(&format!(": {aciklama}"));
         }
+        y.push('\n');
+    }
+    if y.chars().count() > ARAC_YONERGE_BUTCESI {
+        // Bütçe aşılırsa AÇIKLAMALAR düşer, araç adları ve imzalar kalır:
+        // çağrı kurabilmek için gereken bilgi imzadadır, açıklama değil.
+        let mut kisa = String::new();
+        for t in tools {
+            let f = &t["function"];
+            if let Some(ad) = f["name"].as_str() {
+                kisa.push_str(&format!("- {ad}{}\n", arac_imzasi(f)));
+            }
+        }
+        println!(
+            "yönerge      : {} karakter, bütçe {ARAC_YONERGE_BUTCESI} — açıklamalar düşürüldü",
+            y.chars().count()
+        );
+        return format!(
+            "\n\n[ARAÇLAR] Bir aracı çağırman gerekirse yanıtına YALNIZCA şu biçimde bir blok koy:\n\
+             ```json\n{{\"name\": \"ARAÇ_ADI\", \"arguments\": {{}}}}\n```\n\
+             Kullanılabilir araçlar (yıldızlı alan zorunlu):\n{kisa}"
+        );
     }
     y
+}
+
+/// `(zorunlu1*, zorunlu2*, istege_bagli)` biçiminde parametre imzası.
+fn arac_imzasi(f: &serde_json::Value) -> String {
+    let Some(ozellikler) = f["parameters"]["properties"].as_object() else {
+        return String::new();
+    };
+    if ozellikler.is_empty() {
+        return String::new();
+    }
+    let zorunlu: Vec<&str> = f["parameters"]["required"]
+        .as_array()
+        .map(|a| a.iter().filter_map(|v| v.as_str()).collect())
+        .unwrap_or_default();
+    let alanlar: Vec<String> = ozellikler
+        .keys()
+        .map(|ad| {
+            if zorunlu.contains(&ad.as_str()) {
+                format!("{ad}*")
+            } else {
+                ad.clone()
+            }
+        })
+        .collect();
+    format!("({})", alanlar.join(", "))
+}
+
+/// Açıklamanın ilk cümlesini, sınırı aşmadan döndürür.
+fn arac_ozeti(aciklama: &str) -> String {
+    let duz: String = aciklama.split_whitespace().collect::<Vec<_>>().join(" ");
+    let ilk = duz
+        .find(". ")
+        .map(|i| &duz[..=i])
+        .unwrap_or(duz.as_str())
+        .trim();
+    if ilk.chars().count() <= ARAC_ACIKLAMA_SINIRI {
+        return ilk.to_string();
+    }
+    let kesik: String = ilk.chars().take(ARAC_ACIKLAMA_SINIRI).collect();
+    format!("{}…", kesik.trim_end())
 }
 
 /// Yanıttaki ```json çağrılarından YALNIZ istemcinin tanımladığı araçları `tool_calls`
@@ -870,7 +973,7 @@ pub fn arac_cagrilarini_ayikla(
         return (metin, Vec::new());
     }
     let sonuc = AracCagrisiAyiklayici::ayikla(&metin);
-    let cagrilar: Vec<_> = sonuc
+    let mut cagrilar: Vec<_> = sonuc
         .cagrilar
         .into_iter()
         .filter_map(|c| match c {
@@ -885,11 +988,92 @@ pub fn arac_cagrilarini_ayikla(
             _ => None,
         })
         .collect();
+    let mut temiz = sonuc.temiz_metin;
+
+    // NEDEN VAR (2026-11-14): tarayıcı modeli yönergeyi çitle değil, çıplak JSON
+    // nesnesiyle uyguluyor (`{"name":"Read","arguments":{...}}`). Yalnız çitli
+    // biçimi arayan ayıklayıcı bunu kaçırınca Claude Code aracı hiç çalıştırmadı.
+    // Adlar istemcinin tanımladığı listeden geldiği için yanlış pozitif riski düşük.
+    if cagrilar.is_empty()
+        && let Some((govde, kalan)) = ciplak_cagri_ayikla(&temiz, &adlar)
+    {
+        cagrilar.push(govde);
+        temiz = kalan;
+    }
+
     if cagrilar.is_empty() {
         (metin, cagrilar)
     } else {
-        (sonuc.temiz_metin, cagrilar)
+        (temiz.trim().to_string(), cagrilar)
     }
+}
+
+/// Metnin içinde çitsiz bir `{"name": ..., "arguments": ...}` nesnesi arar.
+///
+/// Yalnız istemcinin tanımladığı adlara uyan nesne kabul edilir; ilk eşleşme
+/// metinden çıkarılır ve (tool_call, kalan_metin) döner.
+fn ciplak_cagri_ayikla(metin: &str, adlar: &[&str]) -> Option<(serde_json::Value, String)> {
+    let bas = metin.find('{')?;
+    let bayt = metin.as_bytes();
+    let mut derinlik = 0i32;
+    let mut icerde_dize = false;
+    let mut kacis = false;
+    let mut son: Option<usize> = None;
+    for (i, &b) in bayt.iter().enumerate().skip(bas) {
+        if icerde_dize {
+            if kacis {
+                kacis = false;
+            } else if b == b'\\' {
+                kacis = true;
+            } else if b == b'"' {
+                icerde_dize = false;
+            }
+            continue;
+        }
+        match b {
+            b'"' => icerde_dize = true,
+            b'{' => derinlik += 1,
+            b'}' => {
+                derinlik -= 1;
+                if derinlik == 0 {
+                    son = Some(i);
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    let son = son?;
+    let ham = &metin[bas..=son];
+    let deger: serde_json::Value = serde_json::from_str(ham).ok()?;
+    // `{"name": "...", "arguments": {...}}` ya da `{"type":"function","function":{...}}`
+    let (ad, arguman) = match (
+        deger.get("name").and_then(|v| v.as_str()),
+        deger.get("arguments"),
+    ) {
+        (Some(ad), Some(arg)) => (ad, arg.clone()),
+        _ => {
+            let f = deger.get("function")?;
+            let ad = f.get("name")?.as_str()?;
+            (ad, f.get("arguments")?.clone())
+        }
+    };
+    if !adlar.contains(&ad) {
+        return None;
+    }
+    let arguman = match arguman {
+        serde_json::Value::String(s) => s,
+        digeri => digeri.to_string(),
+    };
+    let kalan = format!("{}{}", &metin[..bas], &metin[son + 1..]);
+    Some((
+        serde_json::json!({
+            "id": format!("call_{:08x}", rand::random::<u32>()),
+            "type": "function",
+            "function": { "name": ad, "arguments": arguman },
+        }),
+        kalan,
+    ))
 }
 
 /// Kota mesajindan deftere yazilacak kisa kesit. Amac gercek ifadeyi ogrenmek,

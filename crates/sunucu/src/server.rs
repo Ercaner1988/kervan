@@ -974,6 +974,18 @@ mod tests {
         assert_eq!(icerik, "Bakayım.");
     }
 
+    /// Tarayıcı modeli yönergeyi çitle değil çıplak JSON ile uygular; bu da
+    /// `tool_calls` olmalı (2026-11-14 canlı ölçüm: Claude Code aracı çalıştırmadı).
+    #[test]
+    fn citsiz_json_cagrisi_da_tool_calls_olur() {
+        let metin = "JSON\n{\"name\": \"hava\", \"arguments\": {\"il\": \"Ankara\"}}".to_string();
+        let (icerik, cagrilar) = arac_cagrilarini_ayikla(&hava_araci(), metin);
+        assert_eq!(cagrilar.len(), 1);
+        assert_eq!(cagrilar[0]["function"]["name"], "hava");
+        assert_eq!(cagrilar[0]["function"]["arguments"], r#"{"il":"Ankara"}"#);
+        assert_eq!(icerik, "JSON");
+    }
+
     /// Tanımsız araç adı ya da araç tanımı yoksa metin hiç değişmez.
     #[test]
     fn tanimsiz_arac_metne_dokunmaz() {
@@ -985,7 +997,32 @@ mod tests {
         );
         assert_eq!(arac_cagrilarini_ayikla(&[], metin.clone()), (metin, vec![]));
         assert_eq!(arac_yonergesi(&[]), "");
-        assert!(arac_yonergesi(&hava_araci()).contains("- hava: Hava durumu"));
+        assert!(arac_yonergesi(&hava_araci()).contains("- hava(il): Hava durumu"));
+    }
+
+    /// Şema gömülmez: yönerge araç sayısından bağımsız olarak küçük kalmalı.
+    /// Claude Code 14 araç tanımlıyor ve tam şemalar 33.334 karakter tutuyordu
+    /// (2026-11-14 ölçümü); tarayıcı sekmesi bu boyutu kaldırmıyor.
+    #[test]
+    fn arac_yonergesi_sema_gommez() {
+        let araclar: Vec<serde_json::Value> = (0..14)
+            .map(|i| {
+                serde_json::json!({"type": "function", "function": {
+                    "name": format!("arac{i}"),
+                    "description": "Uzun bir aciklama. ".repeat(400),
+                    "parameters": {"type": "object", "required": ["a"],
+                        "properties": {"a": {"type": "string", "description": "x".repeat(500)},
+                                       "b": {"type": "integer"}}}}})
+            })
+            .collect();
+        let y = arac_yonergesi(&araclar);
+        assert!(
+            y.chars().count() < 4_000,
+            "yönerge çok büyük: {}",
+            y.chars().count()
+        );
+        assert!(y.contains("- arac0(a*, b)"), "imza yok: {y}");
+        assert!(!y.contains("\"properties\""), "şema gömülmüş");
     }
 
     /// Araç turunda modele son kullanıcı sorusu değil araç sonuçları gider.

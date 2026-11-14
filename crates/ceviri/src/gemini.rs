@@ -142,6 +142,7 @@ pub fn gemini_den_openai_yaniti(
         message: OpenAiMesajCikti {
             role: "assistant".to_string(),
             content: Some(metin_toplami),
+            tool_calls: None,
         },
         finish_reason,
     };

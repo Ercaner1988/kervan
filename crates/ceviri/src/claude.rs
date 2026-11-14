@@ -61,6 +61,7 @@ pub fn openai_den_claude_istegi(
                     r#type: "text".to_string(),
                     text: son_metin,
                     cache_control,
+                    ..Default::default()
                 }],
             });
         }
@@ -79,6 +80,10 @@ pub fn openai_den_claude_istegi(
         messages: claude_mesajlar,
         system,
         temperature: istek.temperature,
+        // Ters yön (OpenAI→Anthropic) araç tanımı taşımaz: çekirdeğin döndürdüğü
+        // yanıt kendi araç çağrılarını `tool_calls` olarak verir.
+        tools: None,
+        tool_choice: None,
     })
 }
 
@@ -117,15 +122,28 @@ pub fn claude_den_openai_istegi(
     }
 
     for m in &istek.messages {
-        let metin = claude_metni(m)?;
-        mesajlar.push(OpenAiMesaj {
-            role: m.role.clone(),
-            content: Some(serde_json::Value::String(metin)),
-            name: None,
-            tool_calls: None,
-            tool_call_id: None,
-        });
+        cevrilmis_mesajlar(m, &mut mesajlar)?;
     }
+
+    // Araç tanımları OpenAI biçimine taşınır. Sessizce düşerse model hiçbir
+    // araç çağıramaz ve istemci nedensiz yere "araç yok" görür.
+    let tools = istek.tools.as_ref().and_then(|t| {
+        let liste: Vec<serde_json::Value> = t
+            .iter()
+            .map(|arac| {
+                serde_json::json!({
+                    "type": "function",
+                    "function": {
+                        "name": arac.name,
+                        "description": arac.description.clone().unwrap_or_default(),
+                        "parameters": arac.input_schema.clone()
+                            .unwrap_or_else(|| serde_json::json!({"type": "object", "properties": {}})),
+                    }
+                })
+            })
+            .collect();
+        (!liste.is_empty()).then_some(liste)
+    });
 
     Ok(OpenAiIstek {
         model: hedef_model.to_string(),
@@ -134,18 +152,114 @@ pub fn claude_den_openai_istegi(
         top_p: None,
         max_tokens: Some(istek.max_tokens),
         stream: istek.stream,
-        tools: None,
+        tools,
     })
 }
 
-/// Bir Anthropic mesajının metin içeriğini tek dizeye indirir.
-fn claude_metni(m: &ClaudeMesaj) -> Result<String, CeviriHatasi> {
-    let mut parcalar = Vec::with_capacity(m.content.len());
+/// Metinden `<system-reminder>…</system-reminder>` bloklarını atar.
+///
+/// NEDEN VAR (2026-11-14): Claude Code istemcisi kullanıcı mesajının içine
+/// kimlik/hook metinlerini `<system-reminder>` sarmalıyla gömüyor; ölçülen
+/// gerçek istekte 13.492 karakterin tamamı bu sarmal, gerçek görev ise
+/// `notlar.txt` (10 karakter) idi. Sarmalın içi kullanıcının sorduğu şey
+/// değildir; modelin önüne kullanıcı sorusu olarak konunca araç çağırmayı
+/// bırakıp talimat metnini özetliyordu (varyant ölçümü: H=0, G=1 araç çağrısı).
+/// Blok dışındaki metne DOKUNULMAZ — gerçek soru genelde sarmaldan sonra gelir.
+fn system_hatirlaticilari_temizle(metin: &str) -> String {
+    const AC: &str = "<system-reminder";
+    const KAPA: &str = "</system-reminder>";
+    if !metin.contains(AC) {
+        return metin.to_string();
+    }
+    let mut kalan = String::with_capacity(metin.len());
+    let mut geri = metin;
+    while let Some(bas) = geri.find(AC) {
+        kalan.push_str(&geri[..bas]);
+        // Açılış etiketi öznitelik taşıyabilir: ilk '>' karakterine kadar at.
+        let Some(etiket_sonu) = geri[bas..].find('>') else {
+            // Kapanmamış açılış: geri kalanın tamamı sarmaldır.
+            geri = "";
+            break;
+        };
+        let govde_basi = bas + etiket_sonu + 1;
+        match geri[govde_basi..].find(KAPA) {
+            Some(kapa_bas) => geri = &geri[govde_basi + kapa_bas + KAPA.len()..],
+            None => {
+                geri = "";
+                break;
+            }
+        }
+    }
+    kalan.push_str(geri);
+    kalan
+}
+
+/// Bir Anthropic mesajını OpenAI mesaj(lar)ına çevirir.
+///
+/// Tek Anthropic mesajı birden çok OpenAI mesajı üretebilir: `tool_result`
+/// blokları ayrı `role:"tool"` mesajları olur. `text` ile `tool_use` aynı
+/// assistant mesajında kalır — OpenAI `content` + `tool_calls` alanlarını
+/// birlikte taşır.
+fn cevrilmis_mesajlar(m: &ClaudeMesaj, cikti: &mut Vec<OpenAiMesaj>) -> Result<(), CeviriHatasi> {
+    // `role:"system"` Anthropic mesaj dizisinde GEÇERSİZDİR (yalnız `user` ve
+    // `assistant` vardır); sistem metni ayrı `system` alanında gelir. Claude Code
+    // ise dizinin içine ortam açıklaması koyuyor (ölçüldü 2026-11-14: 56.271
+    // karakter; yüzlerce beceri tanımı). Bunu sıradan bir kullanıcı mesajı gibi
+    // taşımak istemi şişirip modeli araç çağırmaktan vazgeçiriyordu.
+    if m.role == "system" {
+        return Ok(());
+    }
+    let mut metin_parcalari: Vec<String> = Vec::new();
+    let mut araclar: Vec<OpenAiAracCagrisi> = Vec::new();
+    let mut sonuclar: Vec<OpenAiMesaj> = Vec::new();
     for blok in &m.content {
         match blok.r#type.as_str() {
-            "text" => parcalar.push(blok.text.as_str()),
-            // Anthropic boş metni reddeder ama istemciden gelebilir; "." ile
-            // doldurmak yerine olduğu gibi geçir: boş istem burada hata değildir.
+            "text" => {
+                let temiz = system_hatirlaticilari_temizle(&blok.text);
+                if !temiz.trim().is_empty() {
+                    metin_parcalari.push(temiz);
+                }
+            }
+            // Anthropic yanıtındaki araç çağrısı; sonraki turda `tool_use`
+            // bloğu olarak geri gönderilir.
+            "tool_use" => {
+                let ad = blok.name.clone().ok_or_else(|| {
+                    CeviriHatasi::GecersizIstek("tool_use bloğunda 'name' yok".to_string())
+                })?;
+                let id = blok.id.clone().ok_or_else(|| {
+                    CeviriHatasi::GecersizIstek("tool_use bloğunda 'id' yok".to_string())
+                })?;
+                araclar.push(OpenAiAracCagrisi {
+                    id,
+                    r#type: "function".to_string(),
+                    function: OpenAiFonksiyonCagrisi {
+                        name: ad,
+                        arguments: blok
+                            .input
+                            .as_ref()
+                            .map(|v| v.to_string())
+                            .unwrap_or_else(|| "{}".to_string()),
+                    },
+                });
+            }
+            // Araç sonucu istemciden gelir; OpenAI'de ayrı `role:"tool"`
+            // mesajıdır ve `tool_call_id` ile çağrıya bağlanır.
+            "tool_result" => {
+                let id = blok.tool_use_id.clone().ok_or_else(|| {
+                    CeviriHatasi::GecersizIstek(
+                        "tool_result bloğunda 'tool_use_id' yok".to_string(),
+                    )
+                })?;
+                sonuclar.push(OpenAiMesaj {
+                    role: "tool".to_string(),
+                    content: Some(serde_json::Value::String(
+                        blok.icerik.clone().unwrap_or_default(),
+                    )),
+                    name: None,
+                    tool_calls: None,
+                    tool_call_id: Some(id),
+                });
+            }
             other => {
                 return Err(CeviriHatasi::Desteklenmiyor(format!(
                     "içerik bloğu türü '{other}'"
@@ -153,7 +267,19 @@ fn claude_metni(m: &ClaudeMesaj) -> Result<String, CeviriHatasi> {
             }
         }
     }
-    Ok(parcalar.join("\n"))
+
+    if !metin_parcalari.is_empty() || !araclar.is_empty() {
+        let metin = metin_parcalari.join("\n");
+        cikti.push(OpenAiMesaj {
+            role: m.role.clone(),
+            content: Some(serde_json::Value::String(metin)),
+            name: None,
+            tool_calls: (!araclar.is_empty()).then_some(araclar),
+            tool_call_id: None,
+        });
+    }
+    cikti.extend(sonuclar);
+    Ok(())
 }
 
 /// OpenAI Chat Completion yanıtını Anthropic Messages yanıtına dönüştürür.
@@ -185,6 +311,38 @@ pub fn openai_den_claude_yaniti(
         output_tokens: u.completion_tokens,
     });
 
+    let mut icerik = Vec::with_capacity(2);
+    if !metin.is_empty() {
+        icerik.push(ClaudeIcerikBloku {
+            r#type: "text".to_string(),
+            text: metin,
+            ..Default::default()
+        });
+    }
+    // Araç çağrıları `tool_use` bloğuna çevrilir. Bu yapılmazsa Claude Code
+    // çağrıyı hiç görmez, yalnız boş bir metin alır ve aracı çalıştırmaz
+    // (2026-11-14 ölçüldü).
+    if let Some(cagrilar) = &secenek.message.tool_calls {
+        for c in cagrilar {
+            let girdi: serde_json::Value = serde_json::from_str(&c.function.arguments)
+                .unwrap_or_else(|_| serde_json::json!({}));
+            icerik.push(ClaudeIcerikBloku {
+                r#type: "tool_use".to_string(),
+                id: Some(c.id.clone()),
+                name: Some(c.function.name.clone()),
+                input: Some(girdi),
+                ..Default::default()
+            });
+        }
+    }
+    if icerik.is_empty() {
+        icerik.push(ClaudeIcerikBloku {
+            r#type: "text".to_string(),
+            text: String::new(),
+            ..Default::default()
+        });
+    }
+
     Ok(ClaudeYanit {
         id: yanit
             .id
@@ -193,11 +351,7 @@ pub fn openai_den_claude_yaniti(
             .to_string(),
         r#type: "message".to_string(),
         role: "assistant".to_string(),
-        content: vec![ClaudeIcerikBloku {
-            r#type: "text".to_string(),
-            text: metin,
-            cache_control: None,
-        }],
+        content: icerik,
         model: istenen_model.to_string(),
         stop_reason: Some(stop_reason),
         usage,
@@ -235,6 +389,7 @@ pub fn claude_dan_openai_yaniti(
         message: OpenAiMesajCikti {
             role: "assistant".to_string(),
             content: Some(metin_toplami),
+            tool_calls: None,
         },
         finish_reason: Some(finish_reason),
     };

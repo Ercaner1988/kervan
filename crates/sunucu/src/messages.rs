@@ -11,18 +11,20 @@
 //! yanıt yeniden Anthropic biçimine çevrilir. Böylece kota defteri, devre
 //! kesici, `auto` aday sıralaması ve hesap sabitleme tek yerde kalır.
 //!
-//! KAPSAM SINIRI (dürüstçe): akış (SSE) çevirisi HENÜZ YOK. İstemci
-//! `stream: true` istese de yanıt tek parça JSON olarak döner; Anthropic
-//! istemcileri bunu kabul eder ama ilk belirteci bekleme süresi uzar. Araç
-//! (`tools`) taşıyan istekler çeviricide açık hataya düşer — sessizce
-//! düşürülmez.
+//! KAPSAM SINIRI (dürüstçe): akış (SSE) çevirisi YOK DEĞİL, ama çekirdekten
+//! akışlı gelmiyor. İstemci `stream: true` isterse çekirdek akışsız koşturulur
+//! ve tamamlanmış yanıt Anthropic olay dizisine (message_start →
+//! content_block_* → message_delta → message_stop) dökülür. Bu, protokolü
+//! karşılar; kazanç ilk belirteci erken göndermek değil, yalnızca biçim
+//! uyumudur. Araç (`tools`) taşıyan istekler çevrilir; desteklenmeyen içerik
+//! bloğu açık hataya düşer — sessizce düşürülmez.
 
 use std::sync::Arc;
 
 use axum::Json;
 use axum::body::to_bytes;
 use axum::extract::State;
-use axum::http::StatusCode;
+use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use kervan_ceviri::{ClaudeIstek, claude_den_openai_istegi, openai_den_claude_yaniti};
 
@@ -102,7 +104,8 @@ pub(crate) async fn messages(
         }
     };
 
-    // 3. Çekirdeğe ver. `stream` bilerek false: akış çevirisi henüz yok.
+    // 3. Çekirdeğe ver. `stream` bilerek false: çekirdek akışı bu katmandan
+    //    geçmiyor; tamamlanmış yanıt aşağıda Anthropic olay dizisine dökülür.
     let mut govde = govde;
     if govde.get("stream").is_some() {
         govde["stream"] = serde_json::Value::Bool(false);
@@ -137,7 +140,108 @@ pub(crate) async fn messages(
     };
 
     match openai_den_claude_yaniti(&openai_yanit, &istek.model) {
-        Ok(yanit) => Json(yanit).into_response(),
+        Ok(yanit) => {
+            if istek.stream {
+                akisli_yanit(&yanit)
+            } else {
+                Json(yanit).into_response()
+            }
+        }
         Err(e) => hata(StatusCode::BAD_GATEWAY, &format!("yanit cevrilemedi: {e}")),
     }
+}
+
+/// Anthropic olay dizisini tek seferde üretir (`text/event-stream`).
+///
+/// NEDEN VAR (2026-11-14): Claude Code `stream: true` gönderiyor. Akışsız JSON
+/// dönerse istemci gövdeyi olay olarak okuyamıyor ve turu düşürüyor. Çekirdek
+/// akışı bu katmandan geçmediği için olaylar tamamlanmış yanıttan kurulur:
+/// protokol karşılanır, ilk belirteç erken gitmez.
+fn akisli_yanit(yanit: &kervan_ceviri::ClaudeYanit) -> Response {
+    let mut govde = String::with_capacity(512 + yanit.content.len() * 256);
+
+    let baslangic = serde_json::json!({
+        "type": "message_start",
+        "message": {
+            "id": yanit.id,
+            "type": "message",
+            "role": "assistant",
+            "content": [],
+            "model": yanit.model,
+            "stop_reason": null,
+            "stop_sequence": null,
+            "usage": {"input_tokens": 0, "output_tokens": 0},
+        },
+    });
+    olay(&mut govde, "message_start", &baslangic);
+
+    for (i, blok) in yanit.content.iter().enumerate() {
+        match blok.r#type.as_str() {
+            "tool_use" => {
+                let acilis = serde_json::json!({
+                    "type": "content_block_start",
+                    "index": i,
+                    "content_block": {
+                        "type": "tool_use",
+                        "id": blok.id,
+                        "name": blok.name,
+                        "input": {},
+                    },
+                });
+                olay(&mut govde, "content_block_start", &acilis);
+                let arguman = blok
+                    .input
+                    .clone()
+                    .unwrap_or(serde_json::json!({}))
+                    .to_string();
+                let delta = serde_json::json!({
+                    "type": "content_block_delta",
+                    "index": i,
+                    "delta": {"type": "input_json_delta", "partial_json": arguman},
+                });
+                olay(&mut govde, "content_block_delta", &delta);
+            }
+            _ => {
+                let acilis = serde_json::json!({
+                    "type": "content_block_start",
+                    "index": i,
+                    "content_block": {"type": "text", "text": ""},
+                });
+                olay(&mut govde, "content_block_start", &acilis);
+                if !blok.text.is_empty() {
+                    let delta = serde_json::json!({
+                        "type": "content_block_delta",
+                        "index": i,
+                        "delta": {"type": "text_delta", "text": blok.text},
+                    });
+                    olay(&mut govde, "content_block_delta", &delta);
+                }
+            }
+        }
+        let kapanis = serde_json::json!({"type": "content_block_stop", "index": i});
+        olay(&mut govde, "content_block_stop", &kapanis);
+    }
+
+    let bitis = serde_json::json!({
+        "type": "message_delta",
+        "delta": {
+            "stop_reason": yanit.stop_reason.clone().unwrap_or_else(|| "end_turn".into()),
+            "stop_sequence": null,
+        },
+        "usage": {"output_tokens": 0},
+    });
+    olay(&mut govde, "message_delta", &bitis);
+    olay(
+        &mut govde,
+        "message_stop",
+        &serde_json::json!({"type": "message_stop"}),
+    );
+
+    ([(header::CONTENT_TYPE, "text/event-stream")], govde).into_response()
+}
+
+/// Tek bir SSE olayı yazar: `event: <ad>\ndata: <json>\n\n`.
+fn olay(govde: &mut String, ad: &str, veri: &serde_json::Value) {
+    use std::fmt::Write as _;
+    let _ = write!(govde, "event: {ad}\ndata: {veri}\n\n");
 }

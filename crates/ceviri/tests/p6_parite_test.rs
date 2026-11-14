@@ -142,6 +142,7 @@ fn p6_yanit_donusumleri_testi() {
             r#type: "text".to_string(),
             text: "Claude parite yanıtı".to_string(),
             cache_control: None,
+            ..Default::default()
         }],
         model: "claude-3-7-sonnet".to_string(),
         stop_reason: Some("end_turn".to_string()),
