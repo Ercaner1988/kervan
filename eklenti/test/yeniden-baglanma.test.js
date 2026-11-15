@@ -185,6 +185,74 @@ test("her bağlantı kuruluşunda sekme kaydı yeniden gönderilir", async () =>
   expect(gonderiler.some((g) => g.action === "kayit" && g.profile === "hesap1@gmail.com")).toBe(true);
 });
 
+// B5 (denetim, 2026-11-15): `onopen`'daki `bagliSekmeler.clear()` KANITI.
+//
+// NEDEN: eski test (yukarıdaki) `clear()` satırı silinse de geçiyordu; çünkü
+// `onopen` her hâlükârda `acikSekmeleriTara()` çağırıyor ve o tur `kayit`ı
+// koşulsuz gönderiyor. `clear()`ın gerçekten gerekli olduğu tek durum: bağlantı
+// yeniden kurulduğunda eski oturumdan kalan eşleme ÖLÜ bir sekmeyi gösteriyorsa.
+// `clear()` olmadan budama döngüsü o bayat kaydı görür ve sunucuya `ayril`
+// gönderir; `clear()` ile `bagliSekmeler` boş olduğu için budanacak bir şey
+// yoktur. (Sunucu tarafında A2 kimlik kapısı bu `ayril`ı zaten düşürmez, ama
+// gereksiz trafik ve yanlış log üretmemek için istemcide de susmalı.)
+test("yeniden bağlanmada bayat eşleme temizlenir, ölü sekme için ayril gönderilmez", async () => {
+  const { zamanlayiciyiKos, acilanSoketler, gonderiler, sandbox } = kur({ sekmeVar: true });
+  await bosalt();
+
+  const ilk = acilanSoketler[0];
+  ilk.ac();
+  await bosalt();
+  expect(gonderiler.some((g) => g.action === "kayit")).toBe(true);
+
+  // Soket düşerken içerik betiği de ölmüş olsun (sekme askıda kaldı).
+  sandbox.browser.tabs.sendMessage = async () => {
+    throw new Error("Receiving end does not exist");
+  };
+  ilk.close();
+  expect(await zamanlayiciyiKos()).toBe(true);
+  gonderiler.length = 0;
+  const ikinci = acilanSoketler[1];
+  ikinci.ac();
+  await bosalt();
+
+  expect(gonderiler.some((g) => g.action === "kayit")).toBe(false);
+  expect(
+    gonderiler.some((g) => g.action === "ayril"),
+    `bayat eşleme budanmamalı: ${JSON.stringify(gonderiler)}`
+  ).toBe(false);
+});
+
+// B2 (denetim, 2026-11-15): GECİKMİŞ KAPANIŞ KİMLİK KAPISI.
+//
+// NEDEN: eski soketin `onclose`'u gecikmeyle çalıştığında o sırada ayakta olan
+// YENİ soketi `null`'lıyor ve fazladan bağlantı açıyordu (ölçüldü: 3 soket,
+// ikisi CONNECTING). Kapı olmadığında ilk `eski.close()` çağrısı ikinci kez
+// çalıştırılınca `socket = null` + yeni yeniden bağlanma planı ortaya çıkar.
+test("gecikmiş eski kapanışı yeni soketi öldürmez ve fazladan bağlantı açmaz", async () => {
+  const { zamanlayiciyiKos, acilanSoketler, sayaclar } = kur();
+  await bosalt();
+
+  const eski = acilanSoketler[0];
+  eski.ac();
+  await bosalt();
+
+  // 1) Gerçek kapanış: yeniden bağlanma planlanır.
+  eski.close();
+  expect(sayaclar().zamanlayici).toBe(1);
+  expect(await zamanlayiciyiKos()).toBe(true);
+  const yeni = acilanSoketler[1];
+  yeni.ac();
+  await bosalt();
+
+  // 2) GECİKMİŞ kapanış: aynı eski soketin `onclose`'u bir kez daha koşar.
+  eski.close();
+  await bosalt();
+
+  expect(sayaclar().zamanlayici, "fazladan yeniden bağlanma planlanmamalı").toBe(0);
+  expect(acilanSoketler.length, "üçüncü soket açılmamalı").toBe(2);
+  expect(await zamanlayiciyiKos()).toBe(false);
+});
+
 // B3 (denetim, 2026-11-15): TAZELEME TURU.
 //
 // NEDEN: kayıt eskiden yalnız eşleme DEĞİŞİNCE gönderiliyordu; eşleme sabit

@@ -1087,3 +1087,100 @@ async fn yeniden_baglanan_hesap_sayaci_sifirdan_baslar() {
         "yeni bağlanan hesap 1'den başlamalı, 10'dan değil: {kullanim:?}"
     );
 }
+
+/// Aynı sağlayıcının BAŞKA profili canlıyken ayrılan profilin sayacı silinir.
+///
+/// NEDEN: sayaç silme kararı anahtar (`provider:profile`) düzeyinde
+/// verilmeliydi; koruma testi sağlayıcı düzeyinde kalırsa `gemini:b` canlı
+/// olduğu sürece `gemini:a` sayacı silinmez, kayıt da haritadan çıktığı için
+/// `bayatlari_buda` bir daha onu üretemez — kalıcı sızıntı (denetim, 2026-11-15).
+#[tokio::test]
+async fn ayrilan_profilin_sayaci_kardes_profil_canliyken_de_silinir() {
+    let hub = EklentiHub::new();
+    let (tx_a, _rx_a) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+    let (tx_b, _rx_b) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+    hub.sekme_kaydet("gemini".into(), "a".into(), tx_a.clone())
+        .await;
+    hub.sekme_kaydet("gemini".into(), "b".into(), tx_b).await;
+    {
+        let mut kullanim = hub.kullanim.lock().await;
+        kullanim.insert("gemini:a".into(), 7);
+        kullanim.insert("gemini:b".into(), 3);
+    }
+
+    hub.sekme_ayril_eger("gemini", "a", &tx_a).await;
+
+    assert!(hub.sekme_var_mi("gemini").await, "'b' hâlâ canlı olmalı");
+    let kullanim = hub.kullanim.lock().await;
+    assert!(
+        !kullanim.contains_key("gemini:a"),
+        "ayrılan profilin sayacı silinmeli: {kullanim:?}"
+    );
+    assert_eq!(
+        kullanim.get("gemini:b").copied(),
+        Some(3),
+        "kardeş profilin sayacı korunmalı"
+    );
+}
+
+/// Başka bir soketten gelen `ayril`, bu soketin kaydını düşürmez.
+///
+/// NEDEN: aynı hesabın iki sekmesi açıkken `tabs.onRemoved` bir sekme için
+/// `ayril` gönderir; kimlik kapısı olmadan canlı hesap sunucudan düşüyordu
+/// (denetim, 2026-11-15). Aynı göndericiden gelen `ayril` ise düşürmeli.
+#[tokio::test]
+async fn baska_soketten_gelen_ayril_canli_kaydi_dusurmez() {
+    let hub = EklentiHub::new();
+    let (tx_canli, _rx_canli) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+    let (tx_yabanci, _rx_yabanci) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+    hub.sekme_kaydet("gemini".into(), "a".into(), tx_canli.clone())
+        .await;
+
+    hub.mesaji_isle_gonderici(
+        GelenMesaj::Ayril {
+            provider: "gemini".into(),
+            profile: Some("a".into()),
+        },
+        &tx_yabanci,
+    )
+    .await;
+    assert!(
+        hub.sekme_var_mi("gemini").await,
+        "yabancı soketin ayrılması canlı kaydı düşürmemeli"
+    );
+
+    hub.mesaji_isle_gonderici(
+        GelenMesaj::Ayril {
+            provider: "gemini".into(),
+            profile: Some("a".into()),
+        },
+        &tx_canli,
+    )
+    .await;
+    assert!(
+        !hub.sekme_var_mi("gemini").await,
+        "kaydı tutan soketin ayrılması düşürmeli"
+    );
+}
+
+/// Kimliksiz `mesaji_isle` yolundan gelen `ayril` hiçbir kaydı düşürmez.
+///
+/// NEDEN: kimi düşüreceğimiz bilinmiyorsa silmek yerine yok saymak
+/// güvenli taraftır; sessiz silme canlı hesabı kaybettirir.
+#[tokio::test]
+async fn kimliksiz_ayril_kaydi_dusurmez() {
+    let hub = EklentiHub::new();
+    let (tx, _rx) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+    hub.sekme_kaydet("gemini".into(), "a".into(), tx).await;
+
+    hub.mesaji_isle(GelenMesaj::Ayril {
+        provider: "gemini".into(),
+        profile: Some("a".into()),
+    })
+    .await;
+
+    assert!(
+        hub.sekme_var_mi("gemini").await,
+        "kimliksiz ayrılma kaydı düşürmemeli"
+    );
+}

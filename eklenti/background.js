@@ -76,6 +76,11 @@ function kervanaKaydet(provider, url, profile, tabId) {
       url: url || ""
     }));
   }
+  // SOKET KAPALIYSA KAYIT KAYBOLUR — kuyruk YOK, yeniden gönderim YOK.
+  // Bu bilinçli: `onopen` zaten `bagliSekmeler.clear()` + `acikSekmeleriTara()`
+  // ile tüm açık sekmeleri yeniden kaydeder, 10 sn'lik tur da aynı işi
+  // yapar. Yani kayıp en fazla bir tur (≤10 sn) sürer. Buraya kuyruk eklemek
+  // `clear()` sonrası eski eşlemeyi geri getirip budama kapısını bozar.
 }
 
 /** URL'den sağlayıcı adı. Eşleme tek yerde dursun diye ayrıldı. */
@@ -249,15 +254,17 @@ async function kervanaBaglan() {
   }
 
   console.log("[Kervan Extension] Kervan yerel ağ geçidine bağlanılıyor:", WS_URL);
+  let yeniSoket;
   try {
-    socket = new WebSocket(`${WS_URL}?token=${encodeURIComponent(t)}`);
+    yeniSoket = new WebSocket(`${WS_URL}?token=${encodeURIComponent(t)}`);
   } catch (err) {
     console.error("[Kervan Extension] WebSocket başlatma hatası:", err);
     yenidenDene();
     return;
   }
+  socket = yeniSoket;
 
-  socket.onopen = () => {
+  yeniSoket.onopen = () => {
     console.log("[Kervan Extension] Kervan ağ geçidine bağlandı!");
     if (yenidenBaglanmaZamanlayicisi) {
       clearTimeout(yenidenBaglanmaZamanlayicisi);
@@ -274,7 +281,10 @@ async function kervanaBaglan() {
     acikSekmeleriTara();
   };
 
-  socket.onmessage = async (event) => {
+  yeniSoket.onmessage = async (event) => {
+    // Kimlik kapısı: eski soketin gecikmiş mesajı yeni oturumun akışına
+    // karışmasın.
+    if (yeniSoket !== socket) return;
     try {
       const msg = JSON.parse(event.data);
       console.log("[Kervan Extension] Kervan'dan emir geldi:", msg);
@@ -291,7 +301,7 @@ async function kervanaBaglan() {
             dosyalar: msg.dosyalar || []
           });
           if (yanit === null) {
-            socket.send(JSON.stringify({
+            yeniSoket.send(JSON.stringify({
               action: "hata",
               id: msg.id,
               mesaj: `'${msg.provider}' için açık bir sekme bulunamadı.`
@@ -299,7 +309,7 @@ async function kervanaBaglan() {
           }
         } catch (e) {
           console.warn("[Kervan] Sekmeye mesaj gönderilemedi...", e);
-          socket.send(JSON.stringify({
+          yeniSoket.send(JSON.stringify({
             action: "hata",
             id: msg.id,
             mesaj: `Sekmeye ulaşılamadı. Sayfayı bir kez yenileyin (F5): ${e.message}`
@@ -319,7 +329,7 @@ async function kervanaBaglan() {
             indeks: msg.indeks
           });
           if (yanit === null) {
-            socket.send(JSON.stringify({
+            yeniSoket.send(JSON.stringify({
               action: "hata",
               id: msg.id,
               mesaj: `'${msg.provider}' için açık bir sekme bulunamadı.`
@@ -327,16 +337,16 @@ async function kervanaBaglan() {
             return;
           }
           if (yanit && yanit.ok) {
-            socket.send(JSON.stringify({ action: "ogeler", id: msg.id, ogeler: yanit.ogeler }));
+            yeniSoket.send(JSON.stringify({ action: "ogeler", id: msg.id, ogeler: yanit.ogeler }));
           } else {
-            socket.send(JSON.stringify({
+            yeniSoket.send(JSON.stringify({
               action: "hata",
               id: msg.id,
               mesaj: (yanit && yanit.mesaj) || "seçim turu yanıtsız kaldı"
             }));
           }
         } catch (e) {
-          socket.send(JSON.stringify({
+          yeniSoket.send(JSON.stringify({
             action: "hata",
             id: msg.id,
             mesaj: `seçim turu sekmeye ulaştırılamadı: ${e.message}`
@@ -354,7 +364,15 @@ async function kervanaBaglan() {
     }
   };
 
-  socket.onclose = () => {
+  yeniSoket.onclose = () => {
+    // KİMLİK KAPISI: geç kalan bir kapanış bildirimi, o sırada ayakta olan
+    // YENİ soketi `null`'layıp fazladan bağlantı açıyordu (ölçüldü
+    // 2026-11-15: 3 soket, ikisi CONNECTING). Yalnız hâlâ güncel olan
+    // soketin kapanışı yeniden denemeyi tetikler.
+    if (yeniSoket !== socket) {
+      console.log("[Kervan Extension] Eski soketin kapanışı yok sayıldı");
+      return;
+    }
     console.log("[Kervan Extension] Bağlantı kapandı, 3 sn sonra yeniden denenecek...");
     socket = null;
     // Token dosyası silinmiş/yenilenmiş olabilir: sonraki denemede yeniden al.
@@ -362,8 +380,9 @@ async function kervanaBaglan() {
     yenidenDene();
   };
 
-  socket.onerror = (err) => {
+  yeniSoket.onerror = (err) => {
     console.warn("[Kervan Extension] WebSocket hatası:", err);
+    if (yeniSoket !== socket) return;
     if (socket) {
       socket.close();
     }

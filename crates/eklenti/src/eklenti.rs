@@ -31,7 +31,14 @@ pub const GIDEN_KUYRUK_KAPASITESI: usize = 64;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum GelenMesaj {
-    /// Eklenti sekmesi açıldığında veya yenilendiğinde kayıt olur.
+    /// Eklenti, tarayıcıdaki bir sağlayıcı sekmesini Kervan'a tanıtır.
+    ///
+    /// Kayıt iki yoldan gelir ve ikisi de aynı kapıdan geçer:
+    /// (a) sekme açıldığında/yenilendiğinde içerik betiği `TAB_REGISTER` yollar,
+    /// (b) `background.js` her 10 sn'lik tarama turunda açık her sekmeyi yeniden
+    /// kaydeder (tazelik damgası). (b) olmadan, tarayıcı arka planı askıya
+    /// aldığında sunucu ölü bir kaydı canlı sanıyordu; tazelik süzgeci
+    /// `SEKME_TAZELIK_ESIGI` ile bu yüzden eklendi.
     Kayit {
         provider: String,
         profile: Option<String>,
@@ -516,6 +523,13 @@ impl EklentiHub {
     ///
     /// NEDEN AYRI: `kullanim` kilidi `sekmeler` kilidinden SONRA alınmalı
     /// (kilit sırası); `bayatlari_buda` ise haritayı ödünç alırken çalışır.
+    ///
+    /// KİLİT SIRASI (tam zincir, 2026-11-15 denetimiyle doğrulandı):
+    /// `hesap_kilidi` → `bekleyen_istekler` → `biriken_metinler`, ve ayrıca
+    /// `sekmeler` → `kullanim`. Bu iki zincir birbirine karışmaz; ters yönde
+    /// kilit alan bir yol YOKTUR, bu yüzden deadlock yok. Yeni kod eklerken
+    /// bu sırayı bozmayın: kilitliyken başka bir kilidi almadan önce iki
+    /// kilidin bu listede hangi sırada olduğunu kontrol edin.
     async fn kullanim_temizle(&self, dusen: &[String]) {
         if dusen.is_empty() {
             return;
@@ -526,21 +540,16 @@ impl EklentiHub {
         }
     }
 
-    /// Sekme kapandığında kaydı siler. `profile` yoksa sağlayıcının tüm
-    /// profilleri değil, yalnız "varsayilan" profili düşer.
-    pub async fn sekme_ayril(&self, provider: &str, profile: Option<&str>) {
-        let profile = profile.unwrap_or("varsayilan");
-        let anahtar = hesap_anahtari(provider, profile);
-        let mut map = self.sekmeler.lock().await;
-        if map.remove(&anahtar).is_some() {
-            println!("eklenti      : '{anahtar}' sekmesi ayrıldı");
-        }
-        drop(map);
-        self.kullanim.lock().await.remove(&anahtar);
-    }
-
-    /// Yalnız belirli bir göndericiye ait kaydı düşürür. Eski bir soket
-    /// kapanırken araya giren yeni bağlantının kaydını silmemek için.
+    /// Kaydı düşürür — ancak YALNIZ kayıt hâlâ `gonderici`ye aitse.
+    ///
+    /// Eski bir soket kapanırken araya giren yeni bağlantının kaydını
+    /// silmemek için kimlik kapısı şart. Bu yüzden göndericisiz bir
+    /// "sekme ayrıldı" yolu YOKTUR: kimliksiz silme, aynı hesabın ikinci
+    /// sekmesi kapanırken canlı kaydı düşürürdü.
+    ///
+    /// `kullanim` sayacı ANAHTAR düzeyinde silinir ve silme kararı
+    /// `sekmeler` haritasındaki gerçek silmeye bağlanır — sağlayıcının
+    /// başka profili canlı olsa bile bu anahtarın sayacı sızmaz.
     pub async fn sekme_ayril_eger(
         &self,
         provider: &str,
@@ -548,16 +557,21 @@ impl EklentiHub {
         gonderici: &mpsc::Sender<GidenMesaj>,
     ) {
         let anahtar = hesap_anahtari(provider, profile);
-        let mut map = self.sekmeler.lock().await;
-        if map
-            .get(&anahtar)
-            .is_some_and(|s| s.gonderici.same_channel(gonderici))
-        {
-            map.remove(&anahtar);
-            println!("eklenti      : '{anahtar}' sekmesi ayrıldı");
-        }
-        drop(map);
-        if !self.sekme_var_mi(provider).await {
+        // KİLİT SIRASI: `sekmeler` → `kullanim`. `kullanim` yalnız harita
+        // kilidi bırakıldıktan sonra alınır (`kullanim_temizle` ile aynı
+        // sıra); ters yön hiçbir yerde yok.
+        let silindi = {
+            let mut map = self.sekmeler.lock().await;
+            let eslesiyor = map
+                .get(&anahtar)
+                .is_some_and(|s| s.gonderici.same_channel(gonderici));
+            if eslesiyor {
+                map.remove(&anahtar);
+                println!("eklenti      : '{anahtar}' sekmesi ayrıldı");
+            }
+            eslesiyor
+        };
+        if silindi {
             self.kullanim.lock().await.remove(&anahtar);
         }
     }
@@ -583,6 +597,11 @@ impl EklentiHub {
     /// `istenen` verilirse O profil kullanılır (panelden hesap seçimi). Profil
     /// bağlı değilse sessizce başka hesaba düşmek YASAK: kullanıcı A hesabını
     /// seçtiğini sanırken istek B'ye giderdi. Açık hata döner.
+    ///
+    /// KİLİT SIRASI: `sekmeler` → `kullanim`. Adaylar sahiplenilmiş
+    /// `Vec<(anahtar, gonderici, profile)>` olarak toplanır ve harita kilidi
+    /// seçim sırasında TUTULMAZ; `kullanim` ancak harita kilidi bırakıldıktan
+    /// sonra (`kullanim_temizle` içinde) alınır.
     async fn hesap_sec(
         &self,
         provider: &str,
@@ -1103,7 +1122,34 @@ impl EklentiHub {
     }
 
     /// Eklentiden gelen bir mesajı işler.
+    ///
+    /// GÖNDERİCİ KİMLİĞİ YOK. Soket yolundan gelen mesajlar için
+    /// [`Self::mesaji_isle_gonderici`] kullanılmalı; bu biçim yalnız
+    /// kimlik gerektirmeyen yollar (testler, iç çağrılar) içindir.
+    /// `Ayril` bu yoldan gelirse YOK SAYILIR: kimliksiz silme, aynı
+    /// hesabın ikinci sekmesi kapanırken canlı kaydı düşürürdü.
     pub async fn mesaji_isle(&self, mesaj: GelenMesaj) {
+        self.mesaji_isle_ic(mesaj, None).await;
+    }
+
+    /// Soket yolundan gelen mesajı, gönderenin kimliğiyle birlikte işler.
+    ///
+    /// `Ayril` yalnız kayıt gerçekten bu göndericiye aitse düşürülür
+    /// (`sekme_ayril_eger`): aynı hesabın ikinci sekmesi kapandığında
+    /// canlı kaydı silmemek için.
+    pub async fn mesaji_isle_gonderici(
+        &self,
+        mesaj: GelenMesaj,
+        gonderici: &mpsc::Sender<GidenMesaj>,
+    ) {
+        self.mesaji_isle_ic(mesaj, Some(gonderici)).await;
+    }
+
+    async fn mesaji_isle_ic(
+        &self,
+        mesaj: GelenMesaj,
+        gonderici: Option<&mpsc::Sender<GidenMesaj>>,
+    ) {
         match mesaj {
             GelenMesaj::Kayit {
                 provider,
@@ -1173,13 +1219,19 @@ impl EklentiHub {
                 durumlar.insert(provider, text);
             }
             GelenMesaj::Ayril { provider, profile } => {
-                let anahtar = hesap_anahtari(&provider, profile.as_deref().unwrap_or("varsayilan"));
-                let mut map = self.sekmeler.lock().await;
-                if map.remove(&anahtar).is_some() {
-                    println!("eklenti      : '{anahtar}' sekmesi ayrıldı");
+                let profile = profile.unwrap_or_else(|| "varsayilan".into());
+                match gonderici {
+                    // Kimlik kapısı: yalnız bu soketin kaydettiği anahtar düşer.
+                    Some(gonderici) => {
+                        self.sekme_ayril_eger(&provider, &profile, gonderici).await;
+                    }
+                    // Kimliksiz yol: kimi düşüreceğimiz bilinmiyor, silme yok.
+                    None => {
+                        println!(
+                            "eklenti      : '{provider}:{profile}' ayrılma isteği kimliksiz geldi, düşürülmedi"
+                        );
+                    }
                 }
-                drop(map);
-                self.kullanim.lock().await.remove(&anahtar);
             }
             GelenMesaj::Pong => {}
         }

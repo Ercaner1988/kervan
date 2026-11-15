@@ -135,7 +135,7 @@ async fn handle_eklenti_socket(socket: WebSocket, hub: crate::eklenti::EklentiHu
                 hub.sekme_kaydet(provider.clone(), prof, tx_giden.clone())
                     .await;
             }
-            hub.mesaji_isle(gelen).await;
+            hub.mesaji_isle_gonderici(gelen, &tx_giden).await;
         }
     }
 
