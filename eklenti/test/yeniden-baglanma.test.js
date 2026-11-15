@@ -24,7 +24,7 @@ const bosalt = async () => {
   for (let i = 0; i < 25; i++) await Promise.resolve();
 };
 
-function kur({ hataSayisi = 0, sekmeVar = false } = {}) {
+function kur({ hataSayisi = 0, sekmeVar = false, sekmeler: ozelSekmeler = null } = {}) {
   const zamanlayicilar = [];
   const acilanSoketler = [];
   const gonderiler = [];
@@ -38,19 +38,24 @@ function kur({ hataSayisi = 0, sekmeVar = false } = {}) {
   let fetchSayaci = 0;
   let kalanHata = hataSayisi;
 
-  const sekmeler = sekmeVar
-    ? [
-        {
-          id: 7,
-          url: "https://gemini.google.com/app",
-          cookieStoreId: "firefox-default",
-          active: true,
-          lastAccessed: 1,
-          discarded: false,
-          status: "complete"
-        }
-      ]
-    : [];
+  // B4 (2026-11-15): çok sekme senaryoları için fikstür dışarıdan verilebilir.
+  // Dizi REFERANSLA tutulur: test turlar arasında `active`/`lastAccessed`
+  // değiştirip puanın yeniden hesaplandığını ama seçimin kaymadığını ölçer.
+  const sekmeler = ozelSekmeler
+    ? ozelSekmeler
+    : sekmeVar
+      ? [
+          {
+            id: 7,
+            url: "https://gemini.google.com/app",
+            cookieStoreId: "firefox-default",
+            active: true,
+            lastAccessed: 1,
+            discarded: false,
+            status: "complete"
+          }
+        ]
+      : [];
 
   const sandbox = {
     console: {
@@ -448,4 +453,118 @@ test("sekme yüklemesinin bitişi taramayı tetikler", async () => {
   expect(await zamanlayiciyiKos()).toBe(true);
   await bosalt();
   expect(gonderiler.filter((g) => g.action === "kayit").length).toBe(1);
+});
+
+// B4 (denetim, 2026-11-15): YAPIŞKAN SEÇİM.
+//
+// NEDEN: seçim her turda puana göre yeniden yapılıyordu ve puan
+// `(aktif ? 1e12 : 0) + lastAccessed`. Aynı sağlayıcı+profilin İKİ sekmesi
+// açıkken kullanıcı sekmeler arasında gezindiğinde `lastAccessed` değişiyor,
+// eşleme A↔B gidip geliyordu. İstek bir turda A'ya, sonraki turda B'ye
+// düşüyor; yanıt kimliği (`id`) eşleşse de istem BAŞKA bir sohbet penceresine
+// yazılıyor ve bağlam kayboluyordu. Beklenen: seçilen sekme yaşadığı sürece
+// eşleme DEĞİŞMEZ, puan kayması onu deviremez.
+
+/** İki Gemini sekmesi: 7 ve 9 (aynı profil → aynı anahtar). */
+function ikiSekme() {
+  return [
+    {
+      id: 7,
+      url: "https://gemini.google.com/app",
+      cookieStoreId: "firefox-default",
+      active: true,
+      lastAccessed: 100,
+      discarded: false,
+      status: "complete"
+    },
+    {
+      id: 9,
+      url: "https://gemini.google.com/app/ikinci",
+      cookieStoreId: "firefox-default",
+      active: false,
+      lastAccessed: 50,
+      discarded: false,
+      status: "complete"
+    }
+  ];
+}
+
+test("puan kayması yapışkan seçimi devirmez", async () => {
+  const sekmeler = ikiSekme();
+  const { acilanSoketler, gonderiler, tara } = kur({ sekmeler });
+  await bosalt();
+  acilanSoketler[0].ac();
+  await bosalt();
+
+  // İlk seçim: 7 etkin (puan 1e12 + 100).
+  let kayitlar = gonderiler.filter((g) => g.action === "kayit");
+  expect(kayitlar.length).toBe(1);
+  expect(kayitlar[0].tab_id).toBe(7);
+
+  // Kullanıcı öbür sekmeye geçti: puan artık 9'da. Seçim KAYMAMALI.
+  sekmeler[0].active = false;
+  sekmeler[1].active = true;
+  sekmeler[1].lastAccessed = 999;
+
+  gonderiler.length = 0;
+  await tara();
+  await bosalt();
+  kayitlar = gonderiler.filter((g) => g.action === "kayit");
+  expect(kayitlar.length, "tazeleme tek kayıt göndermeli").toBe(1);
+  expect(kayitlar[0].tab_id, "seçim yapışkan kalmalı").toBe(7);
+
+  // İkinci tur da aynı: kararlılık tek turla sınırlı değil.
+  gonderiler.length = 0;
+  await tara();
+  await bosalt();
+  expect(gonderiler.filter((g) => g.action === "kayit")[0].tab_id).toBe(7);
+});
+
+test("seçili sekme kapanınca öbür sekmeye geçilir ve ayril gönderilmez", async () => {
+  const sekmeler = ikiSekme();
+  const { acilanSoketler, gonderiler, tara } = kur({ sekmeler });
+  await bosalt();
+  acilanSoketler[0].ac();
+  await bosalt();
+  expect(gonderiler.filter((g) => g.action === "kayit")[0].tab_id).toBe(7);
+
+  // Seçili sekme kapandı: sorgu artık onu döndürmüyor.
+  sekmeler.shift(); // 7 gitti, kalan 9
+  sekmeler[0].active = true;
+
+  gonderiler.length = 0;
+  await tara();
+  await bosalt();
+
+  const kayitlar = gonderiler.filter((g) => g.action === "kayit");
+  expect(kayitlar.length, "kalan sekme yeniden seçilmeli").toBe(1);
+  expect(kayitlar[0].tab_id).toBe(9);
+  // Hesap hâlâ ayakta: aynı anahtar için `ayril` GİTMEMELİ.
+  expect(gonderiler.some((g) => g.action === "ayril")).toBe(false);
+});
+
+test("puanlar eşitse küçük tabId kazanır", async () => {
+  // İki sekme de pasif ve aynı `lastAccessed`: puan eşit. Seçim tarayıcının
+  // `tabs.query` sırasına bırakılırsa kararsız olur; küçük tabId sabitler.
+  // Bu test YAPIŞKANLIĞI değil BERABERLİK kuralını ölçer: her koşu SIFIRDAN
+  // başlar (boş `bagliSekmeler`), yani ilk seçim doğrudan puan/beraberlik
+  // kuralıyla yapılır.
+  const esitPuan = (ters) => {
+    const sekmeler = ikiSekme();
+    for (const s of sekmeler) {
+      s.active = false;
+      s.lastAccessed = 50;
+    }
+    return ters ? sekmeler.reverse() : sekmeler;
+  };
+
+  for (const ters of [false, true]) {
+    const { acilanSoketler, gonderiler } = kur({ sekmeler: esitPuan(ters) });
+    await bosalt();
+    acilanSoketler[0].ac();
+    await bosalt();
+    const kayitlar = gonderiler.filter((g) => g.action === "kayit");
+    expect(kayitlar.length, "ilk tarama tek kayıt göndermeli").toBe(1);
+    expect(kayitlar[0].tab_id, `ters=${ters}: küçük tabId seçilmeli`).toBe(7);
+  }
 });

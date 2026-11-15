@@ -204,10 +204,21 @@ function kervandanDusur(k) {
 // veriyor, tanı ise "yanıt yok" diyordu. Artık sıralama sabit: ETKİN sekme,
 // yoksa en son erişilen sekme kazanır. Böylece hangi sekmenin kullanılacağı
 // tarayıcı sırasına değil, kullanıcının gerçekte baktığı sekmeye bağlıdır.
+//
+// YAPIŞKAN SEÇİM (B4, 2026-11-15 denetimi): puan her turda yeniden hesaplanıyor
+// ve `lastAccessed` kullanıcı sekmeler arasında gezdikçe değişiyordu. İki sekme
+// aynı sağlayıcı+profili taşıyorsa eşleme turlar arasında gidip geliyor
+// ("flapping"), istek bir turda A sekmesine, sonraki turda B sekmesine
+// düşüyordu — yanıt kimliği (`id`) eşleşse de istem BAŞKA bir sohbet
+// penceresine yazılıyor, bağlam kayboluyordu. Çözüm: eşleme YAPIŞKAN. Bir
+// anahtar için seçilmiş sekme hâlâ erişilebilirse o kalır; puan yalnız
+// (a) ilk seçimde ve (b) seçili sekme kapandığında devreye girer. Puan eşitse
+// küçük `tabId` kazanır — seçim böylece tarayıcı sırasından da bağımsızdır.
 async function acikSekmeleriTara() {
   try {
     const tabs = await api.tabs.query({});
     const ulasilan = new Set();
+    // k -> { enIyi, sekmeler: Map(tabId -> aday) }
     const adaylar = new Map();
     for (const tab of tabs) {
       if (!tab.url) continue;
@@ -220,13 +231,33 @@ async function acikSekmeleriTara() {
       ulasilan.add(tab.id);
       const cId = await window.kervanProfilKimligi(tab.cookieStoreId);
       const k = anahtar(provider, cId);
-      const puan = (tab.active ? 1e12 : 0) + (tab.lastAccessed || 0);
-      const onceki = adaylar.get(k);
-      if (!onceki || puan > onceki.puan) {
-        adaylar.set(k, { tabId: tab.id, url: tab.url, provider, cId, puan });
+      const aday = {
+        tabId: tab.id,
+        url: tab.url,
+        provider,
+        cId,
+        puan: (tab.active ? 1e12 : 0) + (tab.lastAccessed || 0)
+      };
+      const depo = adaylar.get(k);
+      if (!depo) {
+        adaylar.set(k, { enIyi: aday, sekmeler: new Map([[tab.id, aday]]) });
+        continue;
+      }
+      depo.sekmeler.set(tab.id, aday);
+      if (
+        aday.puan > depo.enIyi.puan ||
+        (aday.puan === depo.enIyi.puan && aday.tabId < depo.enIyi.tabId)
+      ) {
+        depo.enIyi = aday;
       }
     }
-    for (const [k, sec] of adaylar) {
+    for (const [k, depo] of adaylar) {
+      // Yapışkanlık: mevcut eşleme bu turda hâlâ erişilebilirse korunur.
+      const mevcut = bagliSekmeler.get(k);
+      const sec =
+        mevcut !== undefined && depo.sekmeler.has(mevcut)
+          ? depo.sekmeler.get(mevcut)
+          : depo.enIyi;
       // TAZELEME: eşleme değişmese de kayıt YENİDEN gönderilir. Sunucu,
       // kaydın `son_gorulme` damgasını tazeler ve bayat kaydı düşürür; kenar
       // tetiklemeli kayıtla canlı bir sekme 90 sn sonra "ölü" sayılıyordu
