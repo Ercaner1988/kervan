@@ -1,0 +1,454 @@
+{
+  "_aciklama": "Bu dosya ÖLÇÜM DEĞİLDİR. Buradaki her yüzde, ağırlık ve hedef bir DEĞERLENDİRMEdir. olc-topla.ts bunları ölçümlerle birleştirir ama ikisini ayrı bloklarda tutar.",
+  "_surum": "2026-11-11",
+  "alanlar": [
+    {
+      "id": "rest-kopru",
+      "ad": "Çekirdek REST köprüsü (/v1)",
+      "agirlik": 10,
+      "yuzde": 85,
+      "alt": 80,
+      "ust": 90,
+      "durum": "calisiyor",
+      "gerekce": "Canlı ölçüm var: POST /v1/chat/completions HTTP 200, 237 token, 2561 ms, cost 0. /v1/models ve /kervan/secenekler testli. Eksik: 429/cooldown davranışı sınanmadı; 26 ucun yalnız 3'ünde parite ölçülü.",
+      "kanit": [
+        "port/uclar.toml: 3 gerçek uç",
+        "port/kayit/P5",
+        "canlı ölçüm 2026-11-07"
+      ]
+    },
+    {
+      "id": "tarayici",
+      "ad": "Tarayıcı sürücüsü + oturum havuzu",
+      "agirlik": 12,
+      "yuzde": 60,
+      "alt": 52,
+      "ust": 68,
+      "durum": "kismi",
+      "gerekce": "2.301 satır tarayıcı + 3.671 satır havuz + 732 satır süreç var. 2026-11-11'de uçtan uca KANITLANDI: Firefox/Zen + geckodriver oturumu açıldı, giriş durumu okundu (GIRISLI), CLI'de gerçek tur 25,4 sn'de yanıt döndü, sunucu yolunda POST /v1/chat/completions 200 verdi (kervan/copilot 18,3 sn) ve 'auto' yönlendirmesi tarayıcı hesabına düşüp yanıtladı. Yüzde 45'ten 60'a çıktı; 100 değil çünkü kanıt TEK hesap (copilot) + tek auto adayı üzerinde: çok hesaplı paralel havuz, insan kapısı (captcha/2FA), ek dosya/akış ve uzun koşu dayanıklılığı sınanmadı.",
+      "kanit": [
+        "crates/tarayici 2301 satır",
+        "crates/havuz 3671 satır",
+        "crates/surec 732 satır",
+        "CLI: --saglayici copilot --headless -> 'GIRISLI — istem kutusu bulundu'",
+        "CLI: --sor -> 25.4 sn, yanit 'OK', exit 0",
+        "Sunucu: POST /v1/chat/completions model kervan/copilot -> HTTP 200, 18.3 sn",
+        "Sunucu: model auto -> '[deepseek@ercan.er@medeniyet.edu.tr] istek' -> HTTP 200, 21 sn"
+      ]
+    },
+    {
+      "id": "saglayici",
+      "ad": "Sağlayıcı kapsamı + kota öğrenici",
+      "agirlik": 9,
+      "yuzde": 25,
+      "alt": 20,
+      "ust": 30,
+      "durum": "kismi",
+      "gerekce": "Kota öğrenici gerçek (kota.jsonl 133 olay, tavan/doluluk/headroom hesabı testli). Ama yerleşik sağlayıcı 4: gemini, copilot, copilot-m365, kimi. OmniRoute'un 358'i hedef; REST yolu sınırsız sağlayıcı verse de yerleşik tarayıcı sağlayıcısı henüz 4.",
+      "kanit": [
+        "crates/saglayici/src/saglayicilar.rs: 4 p( tanımı",
+        "crates/havuz/src/kota_duyarli.rs"
+      ]
+    },
+    {
+      "id": "yonlendirme",
+      "ad": "Yönlendirme + devre kesici",
+      "agirlik": 9,
+      "yuzde": 72,
+      "alt": 65,
+      "ust": 78,
+      "durum": "calisiyor",
+      "gerekce": "21 strateji (20 kamuya açık + quota-share dahili), 3 katmanlı direnç kütüphanesi, model kilidi. Çalışma anında POST /yonlendirme ile değiştirilebiliyor. Eksik: defter-görüntü-hedef sırası zinciri deterministik Rust testiyle kanıtlanmadı; canlı HTTP denemeleri üç turda temiz ayrım vermedi.",
+      "kanit": [
+        "crates/havuz/src/router.rs:15-39 21 varyant",
+        "crates/direnc 586 satır"
+      ]
+    },
+    {
+      "id": "ceviri",
+      "ad": "Biçim çevirisi (OpenAI/Claude/Gemini)",
+      "agirlik": 6,
+      "yuzde": 75,
+      "alt": 70,
+      "ust": 80,
+      "durum": "calisiyor",
+      "gerekce": "İki yönlü çeviri, P6 altın parite kapısı geçti, desteklenmeyen alan testi var. Eksik: yalnız üç biçim; Kiro/CodeWhisperer gibi imzalama biçimleri yok.",
+      "kanit": [
+        "port/kayit/P6 altin-parite.log",
+        "crates/ceviri 1096 satır"
+      ]
+    },
+    {
+      "id": "sse-tool",
+      "ad": "SSE + araç çağrısı",
+      "agirlik": 5,
+      "yuzde": 60,
+      "alt": 50,
+      "ust": 70,
+      "durum": "kismi",
+      "gerekce": "P8 fazı geçti: gerçek SSE akışı ve tool-call geçişi testli. Ama canlı sağlayıcıda sınanmadı; bugün ayakta olan bir kervan yok.",
+      "kanit": [
+        "crates/sunucu/tests/p8_sse_ve_tool_test.rs",
+        "p8_akis_altin_test.rs"
+      ]
+    },
+    {
+      "id": "hesap-kimlik",
+      "ad": "Çoklu hesap / kimlik yönetimi",
+      "agirlik": 6,
+      "yuzde": 75,
+      "alt": 68,
+      "ust": 82,
+      "durum": "calisiyor",
+      "gerekce": "Canlı dosyada 8 accounts kaydı, /accounts (göster/gizle/duraklat/devam), /kimlikler, /hesap/ac + /hesap/dogrula, eklenti kimlik testi. Eksik: hesap tavanı yuva adlarıyla eşleşmiyor — hesap başına tavan 12 kayıt gerektiriyor.",
+      "kanit": [
+        "crates/sunucu/src/server.rs:129-158",
+        "p10_eklenti_kimlik_test.rs"
+      ]
+    },
+    {
+      "id": "eklenti",
+      "ad": "Tarayıcı eklentisi köprüsü",
+      "agirlik": 5,
+      "yuzde": 55,
+      "alt": 45,
+      "ust": 65,
+      "durum": "kismi",
+      "gerekce": "Protokol + hub + paylaşılan token, 82 KB tek dosyada. /ws/eklenti, /eklenti/token, /eklenti/sekmeler var. Eksik: gerçek tarayıcıda davranış sınanmadı; eklenti-openchamber tarafı neredeyse boş iskelet.",
+      "kanit": [
+        "crates/eklenti/src/eklenti.rs 82242 B"
+      ]
+    },
+    {
+      "id": "mcp",
+      "ad": "MCP sunucusu",
+      "agirlik": 4,
+      "yuzde": 30,
+      "alt": 25,
+      "ust": 40,
+      "durum": "iskelet",
+      "gerekce": "Üç modül yazılmış (mcp_server 15 KB, task_router 13 KB, compressor 8 KB) ama çalışan bir MCP sunucusu yok, hiçbir istemciye bağlı değil.",
+      "kanit": [
+        "crates/mcp/src/"
+      ]
+    },
+    {
+      "id": "gui",
+      "ad": "Masaüstü GUI (egui)",
+      "agirlik": 8,
+      "yuzde": 40,
+      "alt": 30,
+      "ust": 50,
+      "durum": "kismi",
+      "gerekce": "Kural gereği yalnız Rust+egui. Yaklaşık 3.600 satır (gui 1.083 + pano-ekran 1.402 + akis-gui 1.146) ve 6 ekran tasarımı var. Eksik: bugün koşmuyor, görsel doğruluk ölçülmedi, arkadaki sunucu ayakta olmadan ekranlar boş.",
+      "kanit": [
+        "crates/gui",
+        "crates/pano-ekran/src/ 6 ekran",
+        "docs/pano/BILESENLER.md"
+      ]
+    },
+    {
+      "id": "pano",
+      "ad": "Kervan'ın kendi panosu",
+      "agirlik": 4,
+      "yuzde": 45,
+      "alt": 40,
+      "ust": 50,
+      "durum": "kismi",
+      "gerekce": "pano-veri (HTTP okuyucu) + pano-ekran (5+1 ekran), BILESENLER.md'de palet ve yerleşim tanımlı, SVG mockup'lar var. Eksik: gerçek veriyle çalışan pano yok — bu belge o boşluğun ilk dolduruluşu.",
+      "kanit": [
+        "crates/pano-ekran 1402 satır",
+        "docs/pano/BILESENLER.md",
+        "docs/pano/ekran1_acik.svg"
+      ]
+    },
+    {
+      "id": "arka-uc",
+      "ad": "7 arka uç (combos, chaos, analitik, günlük, radar, bağlam, a2a)",
+      "agirlik": 9,
+      "yuzde": 3,
+      "alt": 0,
+      "ust": 10,
+      "durum": "yok",
+      "gerekce": "ARKA-UC-ISTEKLERI.md'de 7 uç tarif edilmiş, hepsi DALGA-2/3/4 olarak işaretli, hiçbiri yazılmamış. Yalnız istek belgesi var.",
+      "kanit": [
+        "ARKA-UC-ISTEKLERI.md 4460 B",
+        "port/dalgalar/ 3 taslak"
+      ]
+    },
+    {
+      "id": "kapi",
+      "ad": "Kalite kapıları / mühür / mutasyon",
+      "agirlik": 10,
+      "yuzde": 88,
+      "alt": 85,
+      "ust": 92,
+      "durum": "calisiyor",
+      "gerekce": "Projenin en güçlü tarafı ve tek gerçek ölçüm kaynağı: 18 kapı betiği + 11 kapı testi, 59 mühürlü dosya, 12 mutant, 272 Rust testi, port/durum.json 11/11 yeşil. Eksik: defter 5 planlandı / 1 doğrulandı; hepsi.ts koşu başında durum.json üretmiyor (bayat durum riski).",
+      "kanit": [
+        "port/durum.json 11/11",
+        "port/muhur.toml 59",
+        "port/mutantlar.toml 12"
+      ]
+    },
+    {
+      "id": "gozlem",
+      "ad": "Gözlemlenebilirlik (telemetri, maliyet, analitik)",
+      "agirlik": 4,
+      "yuzde": 35,
+      "alt": 30,
+      "ust": 40,
+      "durum": "kismi",
+      "gerekce": "/telemetri ve /bakiye var, kota.jsonl olay defteri tutuluyor. Eksik: maliyet analitiği arka ucu yok, /kota havuz yuvaları için tavan basmıyor, /yonlendirme hesap doluluğu göstermiyor.",
+      "kanit": [
+        "crates/sunucu/src/server.rs:117-120",
+        "kota.jsonl 133 olay"
+      ]
+    },
+    {
+      "id": "belge",
+      "ad": "Belge + paketleme",
+      "agirlik": 4,
+      "yuzde": 47,
+      "alt": 42,
+      "ust": 52,
+      "durum": "kismi",
+      "gerekce": "4 dilde README (tr/en/ar/ja), LICENSE, örnek yapılandırma, 3 bench. Eksik: PR.md bayat (20 kapı/7 mutant/sunucu 1240 satır/main'e commit yok — dördü de yanlış), port/envanter.json Kervan'ın değil OmniRoute'un sayıları, kervan_gui.log 793 KB repoda.",
+      "kanit": [
+        "PR.md",
+        "port/envanter.json",
+        "kervan_gui.log 793356 B"
+      ]
+    },
+    {
+      "id": "ekosistem",
+      "ad": "Ekosistem bağı",
+      "agirlik": 5,
+      "yuzde": 25,
+      "alt": 15,
+      "ust": 35,
+      "durum": "iskelet",
+      "gerekce": "İki gerçek bağ var: katla (Türkçe katlama) ve kilim-tema (ortak palet), ikisi de Ercaner1988 depolarından rev sabitli. Geri kalanı ya tasarım ya yok: el-fihrist kaydı, nazar araması, openchamber oturum köprüsü, altın-kapı sandık sınırı.",
+      "kanit": [
+        "Cargo.toml: katla 450d13f, kilim-tema d7f8602"
+      ]
+    }
+  ],
+  "paydalar": [
+    {
+      "id": "omni",
+      "ad": "OmniRoute tam portu",
+      "aciklama": "Referansın bütünü: 730 route, 358 sağlayıcı, 7 arka uç. Kervan bunun ne kadarını taşıyor?",
+      "haric": [],
+      "yeniden": {}
+    },
+    {
+      "id": "v1",
+      "ad": "Kervan v1 manifestosu",
+      "aciklama": "Kervan'ın kendi hedefi: tarayıcı sürülü ağ geçidi + REST köprüsü + çok hesaplı kota + masaüstü pano. OmniRoute'un 358 sağlayıcısı ve 7 arka ucu bu paydada YOK.",
+      "haric": [
+        "arka-uc"
+      ],
+      "yeniden": {
+        "saglayici": {
+          "yuzde": 70,
+          "alt": 62,
+          "ust": 78,
+          "gerekce": "v1 sağlayıcı hedefi 'REST ile sınırsız + 4 yerleşik tarayıcı sağlayıcısı' ise, kota öğrenici ve REST yolu tamam olduğu için bu alan 25 değil yaklaşık 70 okunur."
+        }
+      }
+    }
+  ],
+  "amaclar": [
+    {
+      "id": "A1",
+      "ad": "Tek arayüzden, tarayıcı üzerinden her modele erişim",
+      "hedef": "Bir OpenAI uyumlu uç; arkasında tarayıcı oturumları, insan kapısı (captcha/2FA) çıktığında bekleme",
+      "bugun": 55,
+      "not": "Uç ve havuz var; 2026-11-11'de tarayıcı yolu uçtan uca KANITLANDI (Zen + geckodriver, giriş durumu okundu, CLI turu 25,4 sn, sunucu yolu HTTP 200, 'auto' tarayıcı hesabına düştü). 55'te kalıyor çünkü kanıt TEK hesap (copilot) ve tek sağlayıcı üzerinde: çok hesaplı paralel havuz, insan kapısı (captcha/2FA), akış ve uzun koşu sınanmadı."
+    },
+    {
+      "id": "A2",
+      "ad": "Var olan API'leri tek biçime indirmek",
+      "hedef": "OpenAI/Claude/Gemini üçlüsü iki yönlü, kayıpsız, altın testli",
+      "bugun": 75,
+      "not": "P6 altın parite geçti; kayıpsızlık iddiası üç biçimle sınırlı."
+    },
+    {
+      "id": "A3",
+      "ad": "Kotayı görmek ve hesapları akıllı dağıtmak",
+      "hedef": "Hesap başına 5 saat/gün/hafta doluluk; tavan bilinmiyorsa kısıt uydurma; strateji seçilebilir",
+      "bugun": 62,
+      "not": "21 strateji + headroom + günlük pencere; defter→doluluk→sıra zinciri deterministik testle kanıtlandı (crates/sunucu/src/server.rs:1197 tavan_dolulugu_headroom_siralamasini_degistirir). Canlı çok-hesaplı dağıtım sınanmadı."
+    },
+    {
+      "id": "A4",
+      "ad": "Masaüstünde tek pano",
+      "hedef": "Oturum, rota, izleme, bağlam, ayarlar ekranları; hesap durumu tek bakışta",
+      "bugun": 42,
+      "not": "6 ekran tasarım + yaklaşık 3.600 satır; koşmuyor, görsel doğrulama yok."
+    },
+    {
+      "id": "A5",
+      "ad": "Ekosistemin düğümü olmak",
+      "hedef": "el-fihrist'e kayıt, nazar'la arama, openchamber'a oturum, altın-kapı sandık sınırına uyum",
+      "bugun": 25,
+      "not": "Yalnız katla ve kilim-tema bağlı; diğerleri tasarım."
+    }
+  ],
+  "ekosistem": {
+    "dugumler": [
+      {
+        "id": "kervan",
+        "ad": "Kervan",
+        "rol": "Ağ geçidi — bu pano",
+        "merkez": true
+      },
+      {
+        "id": "katla",
+        "ad": "katla",
+        "rol": "Türkçe katlama (ortak dil katmanı)"
+      },
+      {
+        "id": "kilim",
+        "ad": "kilim-tema",
+        "rol": "Ortak palet + bileşen dili"
+      },
+      {
+        "id": "altin",
+        "ad": "altın-kapı",
+        "rol": "Sandık (crate) sınırı ve doğrulama"
+      },
+      {
+        "id": "fihrist",
+        "ad": "el-Fihrist",
+        "rol": "Kanonik kayıt / ikinci beyin"
+      },
+      {
+        "id": "nazar",
+        "ad": "nazar",
+        "rol": "Yerel dosya + kavram arama"
+      },
+      {
+        "id": "openchamber",
+        "ad": "OpenChamber",
+        "rol": "Oturum ve ajan köprüsü"
+      },
+      {
+        "id": "omniroute",
+        "ad": "OmniRoute",
+        "rol": "Referans uygulama (JS) — port kaynağı"
+      },
+      {
+        "id": "wbc",
+        "ad": "wbc-rs",
+        "rol": "Pano deseninin kaynağı (ilerleme-pano)"
+      },
+      {
+        "id": "headstart",
+        "ad": "headstart",
+        "rol": "Ekosistemin en büyük Rust gövdesi"
+      },
+      {
+        "id": "bge",
+        "ad": "bge-embed-rs",
+        "rol": "Gömme/vektör — arama tarafı"
+      },
+      {
+        "id": "kesf",
+        "ad": "keşfüzzünun",
+        "rol": "Zotero/atıf hattı (tez)"
+      }
+    ],
+    "baglar": [
+      {
+        "kaynak": "kervan",
+        "hedef": "katla",
+        "durum": "bagli",
+        "kanit": "Cargo.toml rev 450d13f",
+        "not": "Türkçe metin katlama"
+      },
+      {
+        "kaynak": "kervan",
+        "hedef": "kilim",
+        "durum": "bagli",
+        "kanit": "Cargo.toml rev d7f8602",
+        "not": "GUI ve pano paleti"
+      },
+      {
+        "kaynak": "kervan",
+        "hedef": "omniroute",
+        "durum": "bagli",
+        "kanit": "PR.md — release/v3.8.52 dbe703a",
+        "not": "Port kaynağı; kod bağı değil, davranış bağı"
+      },
+      {
+        "kaynak": "kervan",
+        "hedef": "wbc",
+        "durum": "bagli",
+        "kanit": "ilerleme-pano deseni",
+        "not": "Pano mimarisi ödünç alındı, kod alınmadı"
+      },
+      {
+        "kaynak": "kervan",
+        "hedef": "altin",
+        "durum": "bagli",
+        "kanit": "crates/* lib.rs sandık sınırı notları",
+        "not": "Kural olarak uygulanıyor, araç olarak değil"
+      },
+      {
+        "kaynak": "kervan",
+        "hedef": "fihrist",
+        "durum": "yok",
+        "kanit": "—",
+        "not": "Kervan olayları el-Fihrist'e yazılmıyor"
+      },
+      {
+        "kaynak": "kervan",
+        "hedef": "nazar",
+        "durum": "yok",
+        "kanit": "—",
+        "not": "Kod araması elle yapılıyor"
+      },
+      {
+        "kaynak": "kervan",
+        "hedef": "openchamber",
+        "durum": "iskelet",
+        "kanit": "eklenti-openchamber/ neredeyse boş",
+        "not": "Panel iskeleti var, köprü yok"
+      },
+      {
+        "kaynak": "kervan",
+        "hedef": "bge",
+        "durum": "yok",
+        "kanit": "—",
+        "not": "Bağlam sıkıştırmada vektör kullanılmıyor (mcp/compressor var, gömme yok)"
+      },
+      {
+        "kaynak": "kervan",
+        "hedef": "headstart",
+        "durum": "yok",
+        "kanit": "—",
+        "not": "Ortak Rust altyapısı paylaşılmıyor"
+      },
+      {
+        "kaynak": "kervan",
+        "hedef": "kesf",
+        "durum": "yok",
+        "kanit": "—",
+        "not": "Tez hattıyla bugün temas yok; gelecekte yerel model denemesi olabilir"
+      }
+    ]
+  },
+  "olcmediklerim": [
+    "Çok hesaplı PARALEL tarayıcı havuzu (bugün tek hesap — copilot — uçtan uca sınandı; 8 hesabın aynı anda dönmesi denenmedi)",
+    "Tarayıcı yolunda insan kapısı (captcha / 2FA) ve `--giris` ile elle giriş akışı",
+    "Tarayıcı yolunda ek dosya yükleme, akış (stream) ve uzun koşu dayanıklılığı",
+    "358 sağlayıcının gerçekten çalışabilirliği — yalnız 4'ü kodda, kalanı hedef",
+    "7 arka ucun efor büyüklüğü — belge var, tahmin bile yok",
+    "GUI'nin görsel doğruluğu (ekranlar koşmadı)",
+    "Eklentinin gerçek tarayıcıdaki davranışı",
+    "REST yukarı akışın her sağlayıcıda kayıpsızlığı (yalnız OpenRouter ve Kilo canlı denendi)",
+    "429 / cooldown tepkisi (hiç sınanmadı)"
+  ]
+}

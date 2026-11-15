@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kervan — durum panosu</title>
+<link rel="stylesheet" href="/pano.css">
+</head>
+<body>
+
+<header class="tepe">
+  <div class="tepe-sol">
+    <h1>Kervan</h1>
+    <p class="alt">Tarayıcı sürülü AI ağ geçidi — durum panosu</p>
+  </div>
+  <div class="tepe-sag">
+    <span id="uretim" class="rozet soluk">yükleniyor…</span>
+    <button id="tema" class="dugme" title="Açık / koyu">◐</button>
+  </div>
+</header>
+
+<div class="uyari-kusak" id="uyari-kusak">
+  <strong>Bu panodaki yüzdeler ölçüm değil, değerlendirmedir.</strong>
+  Ağırlıklar ve hedef düzeyler birer varsayımdır; ölçülen sayılar ayrı kutuda durur.
+</div>
+
+<main>
+
+  <!-- 1. İKİ PAYDA -->
+  <section class="bolum">
+    <h2>1 · Neredeyiz — iki payda</h2>
+    <p class="aciklama">
+      Tek bir yüzde iddiası yanıltıcı olur: "neyin yüzdesi" sorusunun iki makul cevabı var.
+      İkisi yan yana gösteriliyor.
+    </p>
+    <div class="payda-izgara" id="paydalar"></div>
+  </section>
+
+  <!-- 2. ÖLÇÜM vs DEĞERLENDİRME -->
+  <section class="bolum">
+    <h2>2 · Ölçülen ile değerlendirilen</h2>
+    <p class="aciklama">
+      Soldaki her sayı diskten veya git'ten yeniden üretilebilir. Sağdaki her sayı bir yargıdır.
+    </p>
+    <div class="iki-sutun">
+      <div class="kart">
+        <h3>Ölçüm <span class="etiket yesil">tekrar üretilebilir</span></h3>
+        <dl class="olcum-listesi" id="olcum"></dl>
+      </div>
+      <div class="kart">
+        <h3>Değerlendirme <span class="etiket hardal">varsayım</span></h3>
+        <dl class="olcum-listesi">
+          <dt>Alan sayısı</dt><dd id="d-alan">—</dd>
+          <dt>Ağırlık toplamı</dt><dd id="d-agirlik">—</dd>
+          <dt>Her alanın yüzdesi</dt><dd>elle verilmiş aralık</dd>
+          <dt>Alan ağırlıkları</dt><dd>elle verilmiş</dd>
+          <dt>Hedef düzeyler</dt><dd>elle verilmiş</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. ALANLAR -->
+  <section class="bolum">
+    <h2>3 · Alan alan durum</h2>
+    <p class="aciklama">
+      Her satır: ne kadar tamam, hangi kanıtla, neden o yüzde. Çubuk uzunluğu yüzde, açık uçlu
+      bant ise verilen alt–üst aralığı gösterir.
+    </p>
+    <div class="alan-filtre" id="filtre">
+      <button class="cip etkin" data-durum="hepsi">hepsi</button>
+      <button class="cip" data-durum="calisiyor">çalışıyor</button>
+      <button class="cip" data-durum="kismi">kısmi</button>
+      <button class="cip" data-durum="iskelet">iskelet</button>
+      <button class="cip" data-durum="yok">yok</button>
+    </div>
+    <div class="alanlar" id="alanlar"></div>
+  </section>
+
+  <!-- 4. AMAÇLAR -->
+  <section class="bolum">
+    <h2>4 · Amaçlara ne kadar ulaşıldı</h2>
+    <p class="aciklama">
+      Amaç, alanların toplamından farklı bir şey söyler: "bunu yapmak istiyorduk, bugün neredeyiz".
+    </p>
+    <div class="amaclar" id="amaclar"></div>
+  </section>
+
+  <!-- 5. EKOSİSTEM -->
+  <section class="bolum">
+    <h2>5 · Ekosistemdeki yer</h2>
+    <p class="aciklama">
+      Kesik çizgi: bugün bağ yok. Dolu çizgi: gerçek bağ var (Cargo rev, ortak palet, ödünç alınan desen).
+      Soluk kutu: iskelet var, köprü yok.
+    </p>
+    <div class="ekosistem" id="ekosistem"></div>
+    <div class="kart" id="baglar-kart">
+      <h3>Bağlar</h3>
+      <table class="tablo" id="baglar"></table>
+    </div>
+  </section>
+
+  <!-- 6. ÖLÇMEDİKLERİM -->
+  <section class="bolum">
+    <h2>6 · Ölçmediklerim</h2>
+    <p class="aciklama">
+      Bu liste panonun en dürüst kısmı: burada yazan her şey için "bilmiyorum" demek,
+      aşağıda bir yüzde uydurmaktan doğrudur.
+    </p>
+    <ul class="olcmedik" id="olcmedik"></ul>
+  </section>
+
+  <!-- 7. BELGE GERÇEKLİĞİ -->
+  <section class="bolum">
+    <h2>7 · Belge gerçekliği</h2>
+    <div class="kart" id="belge"></div>
+  </section>
+
+</main>
+
+<footer class="dip">
+  Kaynak: <code id="kaynak">—</code> · pano verisi <code>bun araclar/pano/olc-topla.ts</code> ile üretilir.
+</footer>
+
+<script src="/pano.js"></script>
+</body>
+</html>
