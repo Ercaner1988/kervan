@@ -81,8 +81,16 @@ function kervanaKaydet(provider, url, profile, tabId) {
   // SOKET KAPALIYSA KAYIT KAYBOLUR — kuyruk YOK, yeniden gönderim YOK.
   // Bu bilinçli: `onopen` zaten `bagliSekmeler.clear()` + `acikSekmeleriTara()`
   // ile tüm açık sekmeleri yeniden kaydeder, 10 sn'lik tur da aynı işi
-  // yapar. Yani kayıp en fazla bir tur (≤10 sn) sürer. Buraya kuyruk eklemek
-  // `clear()` sonrası eski eşlemeyi geri getirip budama kapısını bozar.
+  // yapar. Yani kayıp en fazla bir tur sürer.
+  //
+  // ÜST SINIR 30 SN (B1 sonrası düzeltme, 2026-11-15 denetimi madde 5):
+  // `background.scripts` bir OLAY SAYFASI olarak koşuyor ve Firefox onu 30 sn
+  // boşta kalınca yok edebilir (`extensions.background.idle.timeout`, 30000 ms;
+  // açık WebSocket bu sayacı sıfırlamaz — bug 1748533). Sayfa uykuya daldığı
+  // pencerede `setInterval` turu koşmaz; kayıt alarm (30 sn) ya da bir sekme
+  // olayı gelene kadar bekler. Eski "≤10 sn" notu yalancıydı.
+  // Buraya kuyruk eklemek `clear()` sonrası eski eşlemeyi geri getirip budama
+  // kapısını bozar.
 }
 
 /** URL'den sağlayıcı adı. Eşleme tek yerde dursun diye ayrıldı. */
@@ -123,15 +131,30 @@ function saglayiciBul(url) {
  * NEDEN "bir kez": aynı sayfa yüklemesinde her 10 sn'de bir enjeksiyon
  * denemek (ör. betiğin sayfada çalışmasını engelleyen bir CSP) konsolu
  * doldurur ve taramayı yavaşlatır. `enjeksiyonDenemeleri` tabId→url tutar;
- * sekme yenilenince url değişir ve yeni bir deneme hakkı doğar.
+ * sekme yenilendiğinde (`tabs.onUpdated`, `status === "complete"`) defter
+ * TEMİZLENİR, böylece aynı adrese F5 sonrası yeni bir deneme hakkı doğar —
+ * yalnız url değişimine güvenmek, "sayfayı yenileyin" tavsiyesini işe yaramaz
+ * bırakıyordu (2026-11-15 denetimi, madde 2).
+ *
+ * ÜÇ DURUM (2026-11-15 denetimi, madde 1): eskiden dönüş tek boolean'dı ve
+ * "sekme bizim değil / henüz yüklenmedi" ile "sekme canlı ama betik
+ * kurtarılamadı" aynı kefeye düşüyordu. İkincisi budama kapısını tetikleyip
+ * AÇIK ve OTURUMU CANLI bir hesabı `kervandanDusur` ile düşürüyordu; üstelik
+ * deneme hakkı harcanmış kaldığı için düşme her turda yineleniyordu.
  */
-async function sekmeHazirMi(tab, provider) {
-  if (await pingAt(tab.id)) return true;
-  if (!provider || tab.status !== "complete") return false;
-  if (enjeksiyonDenemeleri.get(tab.id) === tab.url) return false;
+const SEKME_HAZIR = "hazir";
+const SEKME_KURTARILAMADI = "kurtarilamadi";
+const SEKME_UYGUN_DEGIL = "uygun_degil";
+
+async function sekmeDurumu(tab, provider) {
+  if (await pingAt(tab.id)) return SEKME_HAZIR;
+  // Bu sekme bizim sağlayıcımız değil ya da sayfa henüz yüklenmedi: düşürülür.
+  if (!provider || tab.status !== "complete") return SEKME_UYGUN_DEGIL;
+  // Bu yükleme için enjeksiyon hakkı zaten harcandı ve işe yaramadı.
+  if (enjeksiyonDenemeleri.get(tab.id) === tab.url) return SEKME_KURTARILAMADI;
   enjeksiyonDenemeleri.set(tab.id, tab.url);
-  if (!(await icerikBetigiEnjekte(tab.id, provider))) return false;
-  return await pingAt(tab.id);
+  if (!(await icerikBetigiEnjekte(tab.id, provider))) return SEKME_KURTARILAMADI;
+  return (await pingAt(tab.id)) ? SEKME_HAZIR : SEKME_KURTARILAMADI;
 }
 
 /** Ping atar; içerik betiği yoksa `false` (istisna yutulur). */
@@ -214,7 +237,19 @@ function kervandanDusur(k) {
 // anahtar için seçilmiş sekme hâlâ erişilebilirse o kalır; puan yalnız
 // (a) ilk seçimde ve (b) seçili sekme kapandığında devreye girer. Puan eşitse
 // küçük `tabId` kazanır — seçim böylece tarayıcı sırasından da bağımsızdır.
+// `acikSekmeleriTara` BEŞ yerden çağrılıyor: `setInterval` (10 sn), alarm (30 sn),
+// `tabs.onUpdated` (1 sn gecikmeli), soket `onopen` ve `sekmeyeGonder` içindeki
+// `bul()`. Kilit yokken iki koşu iç içe girebiliyordu; `sekmeDurumu` içindeki
+// `get() → await → set()` aralığı iki koşuda da geçerse aynı sekmeye iki kez
+// `executeScript` gidiyordu (2026-11-15 denetimi, madde 3). Dinleyici kapısı
+// ikinci dinleyiciyi engellediği için zarar sınırlıydı, ama "bir kez enjekte"
+// iddiası yarışta tutmuyordu. Tek bayrak yeter: ikinci çağrı sessizce döner,
+// çünkü az önce koşan tarama zaten güncel durumu yazdı.
+let taramaSuruyor = false;
+
 async function acikSekmeleriTara() {
+  if (taramaSuruyor) return;
+  taramaSuruyor = true;
   try {
     const tabs = await api.tabs.query({});
     const ulasilan = new Set();
@@ -226,8 +261,13 @@ async function acikSekmeleriTara() {
       if (tab.discarded) continue;
       const provider = saglayiciBul(tab.url);
       if (!provider) continue;
-      if (!(await sekmeHazirMi(tab, provider))) continue;
-
+      const durum = await sekmeDurumu(tab, provider);
+      // Uygun olmayan sekme ne bağlanır ne de canlı sayılır; budama düşürür.
+      if (durum === SEKME_UYGUN_DEGIL) continue;
+      // KURTARILAMADI de canlıdır: sekme açık, oturum ayakta, yalnız betik
+      // çalışmıyor. Kaydı tazeleyip eşlemeyi koruyoruz ki hesap sessizce
+      // düşmesin; istek gelirse kullanıcı "sayfayı yenileyin" hatasını görür —
+      // doğru ve eyleme dönük sonuç budur.
       ulasilan.add(tab.id);
       const cId = await window.kervanProfilKimligi(tab.cookieStoreId);
       const k = anahtar(provider, cId);
@@ -275,6 +315,8 @@ async function acikSekmeleriTara() {
     }
   } catch (e) {
     console.warn("[Kervan] Sekmeleri tarama hatası:", e);
+  } finally {
+    taramaSuruyor = false;
   }
 }
 
@@ -531,28 +573,29 @@ api.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Sekme kapandığında ilgili hesabı Kervan'dan da düşür
+// Sekme kapandığında yerel eşlemeyi bırakır ve taramayı tetikler.
+//
+// NEDEN `ayril` GÖNDERİLMİYOR (2026-11-15 denetimi, madde 4): sunucu artık
+// `Ayril` isteğini gönderenin kimliğiyle eşleştiriyor (`sekme_ayril_eger`,
+// `same_channel` kapısı); sekmesi kapanan bir WebSocket'ten gelen istek zaten
+// düşürülmüyor — çünkü o soket kapandığında bağlantı düşüyor ve sunucu kaydı
+// kendi temizliyor. Gönderim yalnız log gürültüsü ve gereksiz mesaj üretiyordu.
+// Kalan iş yerel: eşlemeyi bırak, aynı sağlayıcı+profilin BAŞKA canlı sekmesi
+// varsa tarama bir sonraki turda değil HEMEN seçsin.
 api.tabs.onRemoved.addListener((tabId) => {
   // Enjeksiyon defteri de temizlenir: tabId'ler yeniden kullanılabilir,
   // silinmezse yeni bir sekme eski url kaydı yüzünden enjeksiyon hakkını
   // harcanmış bulur.
   enjeksiyonDenemeleri.delete(tabId);
+  let birakildi = false;
   for (const [k, id] of bagliSekmeler.entries()) {
     if (id === tabId) {
       bagliSekmeler.delete(k);
-      const ayrac = k.indexOf(":");
-      const provider = k.slice(0, ayrac);
-      const profile = k.slice(ayrac + 1);
       console.log(`[Kervan Extension] Sekme kapandı: ${k}`);
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({
-          action: "ayril",
-          provider: provider,
-          profile: profile
-        }));
-      }
+      birakildi = true;
     }
   }
+  if (birakildi) taramayiTetikle();
 });
 
 /**
@@ -595,6 +638,15 @@ if (api.alarms && api.alarms.create) {
 
 if (api.tabs.onUpdated) {
   api.tabs.onUpdated.addListener((tabId, degisim) => {
+    // DEFTER TEMİZLİĞİ (2026-11-15 denetimi, madde 2): `enjeksiyonDenemeleri`
+    // tabId→url tutuyor ve varsayım "yenilenince url değişir" idi. Bu yalnız
+    // BAŞKA adrese gezinmede geçerli; aynı adrese F5'te `changeInfo.url`
+    // gelmez, url aynı kalır, hak harcanmış kalır ve yeniden enjeksiyon bir
+    // daha denenmez — "sayfayı yenileyin" tavsiyesi işe yaramaz hâle gelir.
+    // `status === "complete"` görüldüğü an bu yükleme bitti demektir; defteri
+    // silip yeni yükleme için taze bir deneme hakkı bırakıyoruz. CSP gibi
+    // kalıcı engelde bedel, yükleme başına bir denemedir (10 sn'de bir değil).
+    if (degisim.status === "complete") enjeksiyonDenemeleri.delete(tabId);
     if (degisim.status === "complete" || degisim.url) taramayiTetikle();
   });
 }

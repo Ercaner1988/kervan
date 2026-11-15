@@ -34,6 +34,7 @@ function kur({ hataSayisi = 0, sekmeVar = false, sekmeler: ozelSekmeler = null }
   let alarmDinleyici = null;
   let guncellemeDinleyici = null;
   let pingBasarisiz = 0; // kaç ping "içerik betiği yok" ile düşsün
+  let enjeksiyonBasarisiz = false; // CSP/gezinme ortası: executeScript reddeder
   let sonrakiId = 1;
   let fetchSayaci = 0;
   let kalanHata = hataSayisi;
@@ -130,6 +131,10 @@ function kur({ hataSayisi = 0, sekmeVar = false, sekmeler: ozelSekmeler = null }
       scripting: {
         executeScript: async ({ target, files }) => {
           enjeksiyonlar.push({ tabId: target && target.tabId, files });
+          // 2026-11-15 denetimi: CSP engeli ya da gezinme ortası — gerçek
+          // tarayıcı burada reddeder. Başarısız enjeksiyon CANLI hesabı
+          // düşürmemeli (madde 1).
+          if (enjeksiyonBasarisiz) throw new Error("Cannot access contents of the page");
           return [{ result: null }];
         }
       },
@@ -164,6 +169,7 @@ function kur({ hataSayisi = 0, sekmeVar = false, sekmeler: ozelSekmeler = null }
     alarmDinleyici: () => alarmDinleyici,
     guncellemeDinleyici: () => guncellemeDinleyici,
     pingDusur: (adet = 1) => { pingBasarisiz = adet; },
+    enjeksiyonDusur: () => { enjeksiyonBasarisiz = true; },
     // B3 (2026-11-15): periyodik tarama testte `setInterval` ile değil,
     // doğrudan çağrılarak koşulur (fonksiyon sandbox bağlamında global).
     tara: () => baglam.acikSekmeleriTara(),
@@ -232,7 +238,20 @@ test("her bağlantı kuruluşunda sekme kaydı yeniden gönderilir", async () =>
 // yoktur. (Sunucu tarafında A2 kimlik kapısı bu `ayril`ı zaten düşürmez, ama
 // gereksiz trafik ve yanlış log üretmemek için istemcide de susmalı.)
 test("yeniden bağlanmada bayat eşleme temizlenir, ölü sekme için ayril gönderilmez", async () => {
-  const { zamanlayiciyiKos, acilanSoketler, gonderiler, sandbox } = kur({ sekmeVar: true });
+  // Sekme gerçekten GİTMİŞ olmalı (tarayıcı çöktü, `onRemoved` ateşlenmedi):
+  // yalnız içerik betiğinin ölmesi artık "canlı" sayılıyor (madde 1).
+  const sekmeler = [
+    {
+      id: 7,
+      url: "https://gemini.google.com/app",
+      cookieStoreId: "firefox-default",
+      active: true,
+      lastAccessed: 1,
+      discarded: false,
+      status: "complete"
+    }
+  ];
+  const { zamanlayiciyiKos, acilanSoketler, gonderiler } = kur({ sekmeler });
   await bosalt();
 
   const ilk = acilanSoketler[0];
@@ -240,10 +259,8 @@ test("yeniden bağlanmada bayat eşleme temizlenir, ölü sekme için ayril gön
   await bosalt();
   expect(gonderiler.some((g) => g.action === "kayit")).toBe(true);
 
-  // Soket düşerken içerik betiği de ölmüş olsun (sekme askıda kaldı).
-  sandbox.browser.tabs.sendMessage = async () => {
-    throw new Error("Receiving end does not exist");
-  };
+  // Soket düşerken sekme de kapanmış olsun.
+  sekmeler.length = 0;
   ilk.close();
   expect(await zamanlayiciyiKos()).toBe(true);
   gonderiler.length = 0;
@@ -320,16 +337,25 @@ test("tarama turu eşleme değişmese de sekme kaydını tazeler", async () => {
 
 // Tazeleme turu ölü sekmeyi DÜŞÜRÜR: budama kapısı da aynı turda ölçülür.
 test("tarama turu ulaşılamayan sekmeyi düşürür", async () => {
-  const { acilanSoketler, gonderiler, tara, sandbox } = kur({ sekmeVar: true });
+  const sekmeler = [
+    {
+      id: 7,
+      url: "https://gemini.google.com/app",
+      cookieStoreId: "firefox-default",
+      active: true,
+      lastAccessed: 1,
+      discarded: false,
+      status: "complete"
+    }
+  ];
+  const { acilanSoketler, gonderiler, tara } = kur({ sekmeler });
   await bosalt();
   acilanSoketler[0].ac();
   await bosalt();
   expect(gonderiler.some((g) => g.action === "kayit")).toBe(true);
 
-  // İçerik betiği artık yanıt vermiyor (sekme kapandı / betik öldü).
-  sandbox.browser.tabs.sendMessage = async () => {
-    throw new Error("Receiving end does not exist");
-  };
+  // Sekme kapandı (ve `onRemoved` ateşlenmedi): tarama artık onu hiç görmez.
+  sekmeler.length = 0;
   gonderiler.length = 0;
   await tara();
   await bosalt();
@@ -394,10 +420,69 @@ test("aynı sayfa yüklemesinde ikinci kez enjeksiyon denenmez", async () => {
   await bosalt();
 
   expect(enjeksiyonlar.length, "ikinci enjeksiyon denenmemeli").toBe(1);
-  // Bu turda kurtarılamadığı için budama kapısı devreye girer.
+  // DENETİM DÜZELTMESİ (madde 1): eskiden burada `ayril` BEKLENİYORDU. O
+  // iddia hatayı sözleşme yapıyordu: sekme açık, oturum ayakta, yalnız betik
+  // çalışmıyor — hesabı düşürmek yanlıştı. Sekme canlı sayılır, kayıt tazelenir.
   expect(
-    gonderiler.some((g) => g.action === "ayril" && g.provider === "gemini")
-  ).toBe(true);
+    gonderiler.some((g) => g.action === "ayril"),
+    "kurtarılamayan ama AÇIK sekme düşürülmemeli"
+  ).toBe(false);
+  expect(gonderiler.filter((g) => g.action === "kayit").length).toBe(1);
+});
+
+// madde 1: enjeksiyon REDDEDİLİRSE (CSP, gezinme ortası) hesap sessizce
+// düşmemeli. Kronik hata buydu: `executeScript` fırlatınca `ulasilan` boş
+// kalıyor, budama `kervandanDusur` çağırıyor ve deneme hakkı harcanmış
+// olduğu için düşme her turda yineleniyordu.
+test("enjeksiyon reddedilirse açık sekme düşürülmez", async () => {
+  const { acilanSoketler, gonderiler, tara, enjeksiyonlar, pingDusur, enjeksiyonDusur } =
+    kur({ sekmeVar: true });
+  await bosalt();
+  acilanSoketler[0].ac();
+  await bosalt();
+
+  enjeksiyonDusur();
+  pingDusur(2); // tur boyunca hiçbir ping geçmez
+  gonderiler.length = 0;
+  await tara();
+  await bosalt();
+
+  expect(enjeksiyonlar.length).toBe(1);
+  expect(gonderiler.some((g) => g.action === "ayril")).toBe(false);
+  expect(gonderiler.filter((g) => g.action === "kayit").length).toBe(1);
+
+  // Ve düşme KALICI değil: ikinci turda da ayril yok, tekrar deneme de yok.
+  pingDusur(2);
+  gonderiler.length = 0;
+  await tara();
+  await bosalt();
+  expect(enjeksiyonlar.length).toBe(1);
+  expect(gonderiler.some((g) => g.action === "ayril")).toBe(false);
+});
+
+// madde 2: aynı adrese F5. `changeInfo.url` gelmez, url aynı kalır; defter
+// `status === "complete"` görüldüğünde silinmeli ki yeni bir hak doğsun.
+test("sayfa yenilenince enjeksiyon hakkı yenilenir", async () => {
+  const { acilanSoketler, gonderiler, tara, enjeksiyonlar, pingDusur, guncellemeDinleyici } =
+    kur({ sekmeVar: true });
+  await bosalt();
+  acilanSoketler[0].ac();
+  await bosalt();
+
+  pingDusur(1);
+  await tara();
+  await bosalt();
+  expect(enjeksiyonlar.length).toBe(1);
+
+  // Aynı adrese yenileme: yalnız `status` gelir, `url` gelmez.
+  pingDusur(1);
+  guncellemeDinleyici()(7, { status: "complete" });
+  gonderiler.length = 0;
+  await tara();
+  await bosalt();
+
+  expect(enjeksiyonlar.length, "yenilemeden sonra yeni deneme hakkı").toBe(2);
+  expect(gonderiler.some((g) => g.action === "ayril")).toBe(false);
 });
 
 // B1 (denetim, 2026-11-15): ALARM + onUpdated UYANDIRICILARI.

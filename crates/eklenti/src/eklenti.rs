@@ -397,6 +397,13 @@ pub struct EklentiHub {
     /// Her istek için biriken tam metin (tekil yanıtlar için): id -> String
     biriken_metinler: Arc<Mutex<HashMap<String, String>>>,
     /// Sağlayıcıların anlık durumları (örneğin insan kapısı uyarısı): provider -> String
+    ///
+    /// TODO(A5): bu harita ŞU AN YALNIZ YAZILIYOR, HİÇ OKUNMUYOR. `Durum`
+    /// mesajı gelince güncelleniyor (`:1161`, `:1218`) ama `YanitKanali::Akan`
+    /// hiçbir yerde kurulmadığı için akış yolu yok; dolayısıyla "insan kapısı
+    /// uyarısı kullanıcıya ulaşıyor" iddiası bugün için geçersiz. Erteleme
+    /// bilinçli (2026-11-15 denetimi, A5) — ama kodda iz bırakmadığı için
+    /// okuyan çalışıyor sanıyordu. Akış kanalı kurulduğunda bu notu sil.
     durumlar: Arc<Mutex<HashMap<String, String>>>,
     /// Eklenti bağlantısında istenen paylaşılan token.
     token: Arc<String>,

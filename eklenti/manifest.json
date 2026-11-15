@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Kervan AI Köprüsü",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Kervan yerel ağ geçidi için bot-tespiti içermeyen doğrudan WebExtension köprüsü",
   "browser_specific_settings": {
     "gecko": {
@@ -34,7 +34,6 @@
     "*://copilot.microsoft.com/*",
     "*://m365.cloud.microsoft/*",
     "*://*.perplexity.ai/*",
-    "*://*.cerebras.ai/*",
     "*://chat.mistral.ai/*"
   ],
   "background": {
