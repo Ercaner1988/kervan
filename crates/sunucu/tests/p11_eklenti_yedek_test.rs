@@ -1,10 +1,10 @@
 //! Eklenti yolu taşıyamadığında havuz yedeğine düşülmesi.
 //!
-//! NEDEN: `EklentiHub::sekme_var_mi` yalnız "bu sağlayıcı için bir KAYIT var"
-//! der, kaydın canlı olduğunu söylemez. Zen yeniden açıldığında sunucudaki
-//! kayıt kalıyor, eklentinin sekme haritası boş oluyor ve eklenti `null`
-//! dönüyordu. O durumda istek tek adayda 500 "Eklenti hatası" ile kilitleniyor,
-//! oysa aynı sağlayıcının havuz hesabı kullanılabilirdi (2026-11-14 ölçümü).
+//! NEDEN: eklenti kaydı taze olsa bile (2026-11-15'ten itibaren 90 sn'lik yaş
+//! süzgeci ölü kaydı düşürür) tarayıcı tam o anda kapanabilir, sekme askıya
+//! alınabilir ya da sayfa yeniden yükleniyor olabilir; eklenti `null` döner.
+//! O durumda istek tek adayda 500 "Eklenti hatası" ile kilitleniyor, oysa aynı
+//! sağlayıcının havuz hesabı kullanılabilirdi (2026-11-14 ölçümü).
 //!
 //! Burada sınanan sözleşme iki maddelidir:
 //!   1. Eklenti taşıyamazsa istek havuz yoluna düşer (500 değil, havuzun

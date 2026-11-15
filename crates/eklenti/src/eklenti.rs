@@ -141,11 +141,12 @@ pub enum YanitKanali {
 /// Bağlı bir eklenti oturumu. Birden çok hesap (profil) aynı sağlayıcıda
 /// olabildiği için kimlik `provider:profile` anahtarıdır.
 ///
-/// `son_gorulme` — kaydın son TAZELENDİĞİ an. Eklenti, sekme haritası
-/// değişmedikçe `kayit` mesajını yeniden göndermez (kenar-tetiklemeli); bu
-/// yüzden sunucudaki kayıt, tarayıcı öldüğünde ya da WebSocket sessizce
-/// düştüğünde olduğu gibi kalıyordu. Yaş süzgeci olmadan `sekme_var_mi`
-/// "canlı" diyor, istek ölü sekmeye gidiyordu (2026-11-14 ölçümü).
+/// `son_gorulme` — kaydın son TAZELENDİĞİ an. Eklenti her 10 sn'lik tarama
+/// turunda `kayit` mesajını yeniden gönderir (2026-11-15'ten itibaren; önceden
+/// kenar-tetiklemeliydi ve yalnız eşleme değişince gönderiyordu). Yani bu alan
+/// bir canlılık sinyalidir: tazelenmediği sürece kayıt yaşlanır ve düşer.
+/// Yaş süzgeci olmadan `sekme_var_mi` ölü sekmeye "canlı" diyor ve istek ölü
+/// sekmeye gidiyordu (2026-11-14 ölçümü; tazelik 2026-11-15'te eklendi).
 pub struct BagliSekme {
     pub provider: String,
     pub profile: String,
@@ -156,11 +157,12 @@ pub struct BagliSekme {
 
 /// Bir eklenti kaydının "canlı" sayılma süresi.
 ///
-/// Eklenti 10 sn'de bir tarama yapıyor ve yalnız DEĞİŞEN eşlemeyi bildiriyor;
-/// dolayısıyla sunucu taraflı yaş süzgeci bu aralıktan belirgin biçimde uzun
-/// olmalı, yoksa çalışan bir sekme bayat sayılır. 90 sn = 9 tarama turu:
-/// kısa bir uyku/duraklama kaydı düşürmez, kapanmış tarayıcı ise en geç
-/// 90 sn içinde düşer.
+/// Eklenti 10 sn'de bir tarama yapıyor ve (2026-11-15'ten itibaren) her turda
+/// `kayit` gönderiyor; yine de sunucu taraflı yaş süzgeci bu aralıktan belirgin
+/// biçimde uzun olmalı, yoksa kısa bir gecikme (tarayıcı arka plan sayfasını
+/// kısması, tek bir turun kaçması) çalışan bir sekmeyi bayat sayar.
+/// 90 sn = 9 tarama turu: kısa bir uyku/duraklama kaydı düşürmez, kapanmış
+/// tarayıcı ise en geç 90 sn içinde düşer.
 pub const SEKME_TAZELIK_ESIGI: Duration = Duration::from_secs(90);
 
 /// Seçim turlarının gideceği hesap.
@@ -487,11 +489,16 @@ impl EklentiHub {
     }
 
     /// Bayat kayıtları (son tazelenmesi `SEKME_TAZELIK_ESIGI`'nı aşanları)
-    /// haritadan düşürür ve düşenlerin sayısını döner.
+    /// haritadan düşürür ve düşen anahtarları döner.
     ///
     /// Okuma yollarının HEPSİ bunu çağırır: eklenti sessizce düştüğünde sunucu
     /// `ayril` mesajını hiç alamaz, tek çare yaş süzgecidir.
-    fn bayatlari_buda(map: &mut HashMap<String, BagliSekme>) -> usize {
+    ///
+    /// Dönüş değeri BOŞA DEĞİL: düşen anahtarların `kullanim` sayacı da
+    /// silinmeli, yoksa yeniden bağlanan hesap eski sayaçla başlar ve yük
+    /// dengelemesi yanlış hesabı seçer (denetim, 2026-11-15). Çağıran, bunu
+    /// `sekmeler` kilidini BIRAKTIKTAN sonra `kullanim_temizle` ile yapar.
+    fn bayatlari_buda(map: &mut HashMap<String, BagliSekme>) -> Vec<String> {
         let esik = SEKME_TAZELIK_ESIGI;
         let bayat: Vec<String> = map
             .iter()
@@ -502,7 +509,21 @@ impl EklentiHub {
             map.remove(anahtar);
             println!("eklenti      : '{anahtar}' kaydı bayatladı (tazelenmedi), düşürüldü");
         }
-        bayat.len()
+        bayat
+    }
+
+    /// Bayatlamış kayıtların kullanım sayaçlarını siler.
+    ///
+    /// NEDEN AYRI: `kullanim` kilidi `sekmeler` kilidinden SONRA alınmalı
+    /// (kilit sırası); `bayatlari_buda` ise haritayı ödünç alırken çalışır.
+    async fn kullanim_temizle(&self, dusen: &[String]) {
+        if dusen.is_empty() {
+            return;
+        }
+        let mut kullanim = self.kullanim.lock().await;
+        for anahtar in dusen {
+            kullanim.remove(anahtar);
+        }
     }
 
     /// Sekme kapandığında kaydı siler. `profile` yoksa sağlayıcının tüm
@@ -548,9 +569,13 @@ impl EklentiHub {
     /// istek göndermesin.
     pub async fn sekme_var_mi(&self, provider: &str) -> bool {
         let onek = format!("{provider}:");
-        let mut map = self.sekmeler.lock().await;
-        Self::bayatlari_buda(&mut map);
-        map.keys().any(|k| k.starts_with(&onek))
+        let (canli, dusen) = {
+            let mut map = self.sekmeler.lock().await;
+            let dusen = Self::bayatlari_buda(&mut map);
+            (map.keys().any(|k| k.starts_with(&onek)), dusen)
+        };
+        self.kullanim_temizle(&dusen).await;
+        canli
     }
 
     /// Sağlayıcı için en az kullanılan profili seçer ve sayacını artırır.
@@ -564,10 +589,19 @@ impl EklentiHub {
         istenen: Option<&str>,
     ) -> Result<(mpsc::Sender<GidenMesaj>, String)> {
         let onek = format!("{provider}:");
-        let mut map = self.sekmeler.lock().await;
-        Self::bayatlari_buda(&mut map);
-        let mut adaylar: Vec<(&String, &BagliSekme)> =
-            map.iter().filter(|(k, _)| k.starts_with(&onek)).collect();
+        // KİLİT SIRASI: `sekmeler` bırakılmadan `kullanim` alınmaz. Adaylar
+        // sahiplenilerek toplanır ki harita kilidi seçim sırasında tutulmasın.
+        let (adaylar, dusen) = {
+            let mut map = self.sekmeler.lock().await;
+            let dusen = Self::bayatlari_buda(&mut map);
+            let adaylar: Vec<(String, mpsc::Sender<GidenMesaj>, String)> = map
+                .iter()
+                .filter(|(k, _)| k.starts_with(&onek))
+                .map(|(k, s)| (k.clone(), s.gonderici.clone(), s.profile.clone()))
+                .collect();
+            (adaylar, dusen)
+        };
+        self.kullanim_temizle(&dusen).await;
         if adaylar.is_empty() {
             bail!(
                 "'{provider}' için bağlı bir eklenti sekmesi bulunamadı. Tarayıcıda ilgili sayfa açık mı?"
@@ -575,10 +609,11 @@ impl EklentiHub {
         }
         if let Some(istenen) = istenen.filter(|p| !p.trim().is_empty()) {
             let aranan = hesap_anahtari(provider, istenen.trim());
-            let Some(secilen) = adaylar.iter().find(|(k, _)| **k == aranan) else {
+            let Some((_, gonderici, profile)) = adaylar.iter().find(|(k, _, _)| **k == aranan)
+            else {
                 let mut mevcut: Vec<String> = adaylar
                     .iter()
-                    .map(|(k, _)| k.trim_start_matches(&onek).to_string())
+                    .map(|(k, _, _)| k.trim_start_matches(&onek).to_string())
                     .collect();
                 mevcut.sort();
                 bail!(
@@ -586,18 +621,17 @@ impl EklentiHub {
                     mevcut.join(", ")
                 );
             };
-            let (gonderici, profile) = (secilen.1.gonderici.clone(), secilen.1.profile.clone());
             let mut kullanim = self.kullanim.lock().await;
             *kullanim.entry(aranan).or_insert(0) += 1;
-            return Ok((gonderici, profile));
+            return Ok((gonderici.clone(), profile.clone()));
         }
         // Eşitlikte anahtar sırası kararlı olsun: deterministik seçim.
-        adaylar.sort_by(|a, b| a.0.cmp(b.0));
+        let mut adaylar = adaylar;
+        adaylar.sort_by(|a, b| a.0.cmp(&b.0));
         let mut kullanim = self.kullanim.lock().await;
         let Some((anahtar, gonderici, profile)) = adaylar
             .into_iter()
-            .min_by_key(|(k, _)| kullanim.get(*k).copied().unwrap_or(0))
-            .map(|(k, s)| (k.clone(), s.gonderici.clone(), s.profile.clone()))
+            .min_by_key(|(k, _, _)| kullanim.get(k).copied().unwrap_or(0))
         else {
             // Yukaridaki bos kontrolu bunu zaten eliyor; yine de `expect`
             // yerine acik hata: secim mantigi degisirse sessiz panik olmasin.
@@ -624,14 +658,16 @@ impl EklentiHub {
         zaman_asimi: std::time::Duration,
     ) -> Result<Vec<OgeDurum>> {
         let anahtar = hesap_anahtari(provider, profil);
-        let gonderici = {
+        let (gonderici, dusen) = {
             let mut map = self.sekmeler.lock().await;
-            Self::bayatlari_buda(&mut map);
-            match map.get(&anahtar) {
+            let dusen = Self::bayatlari_buda(&mut map);
+            let gonderici = match map.get(&anahtar) {
                 Some(s) => s.gonderici.clone(),
                 None => bail!("'{anahtar}' bağlı değil"),
-            }
+            };
+            (gonderici, dusen)
         };
+        self.kullanim_temizle(&dusen).await;
         let kilit = self.hesap_kilidi(&anahtar).await;
         let _bolge = kilit.lock().await;
         let hedef = Hedef {
@@ -656,14 +692,16 @@ impl EklentiHub {
         zaman_asimi: std::time::Duration,
     ) -> Result<Vec<OgeDurum>> {
         let anahtar = hesap_anahtari(provider, profil);
-        let gonderici = {
+        let (gonderici, dusen) = {
             let mut map = self.sekmeler.lock().await;
-            Self::bayatlari_buda(&mut map);
-            match map.get(&anahtar) {
+            let dusen = Self::bayatlari_buda(&mut map);
+            let gonderici = match map.get(&anahtar) {
                 Some(s) => s.gonderici.clone(),
                 None => bail!("'{anahtar}' bağlı değil"),
-            }
+            };
+            (gonderici, dusen)
         };
+        self.kullanim_temizle(&dusen).await;
         let kilit = self.hesap_kilidi(&anahtar).await;
         let _bolge = kilit.lock().await;
         let hedef = Hedef {
@@ -1151,20 +1189,28 @@ impl EklentiHub {
     /// Yönlendirme adayları sağlayıcı düzeyindedir; profiller `bagli_hesaplar`
     /// ile ayrıca görünür.
     pub async fn bagli_sekmeler(&self) -> Vec<String> {
-        let mut map = self.sekmeler.lock().await;
-        Self::bayatlari_buda(&mut map);
-        let mut adlar: Vec<String> = map.values().map(|s| s.provider.clone()).collect();
-        adlar.sort();
-        adlar.dedup();
+        let (adlar, dusen) = {
+            let mut map = self.sekmeler.lock().await;
+            let dusen = Self::bayatlari_buda(&mut map);
+            let mut adlar: Vec<String> = map.values().map(|s| s.provider.clone()).collect();
+            adlar.sort();
+            adlar.dedup();
+            (adlar, dusen)
+        };
+        self.kullanim_temizle(&dusen).await;
         adlar
     }
 
     /// Bağlı hesapların `provider:profile` anahtarlarını döner.
     pub async fn bagli_hesaplar(&self) -> Vec<String> {
-        let mut map = self.sekmeler.lock().await;
-        Self::bayatlari_buda(&mut map);
-        let mut anahtarlar: Vec<String> = map.keys().cloned().collect();
-        anahtarlar.sort();
+        let (anahtarlar, dusen) = {
+            let mut map = self.sekmeler.lock().await;
+            let dusen = Self::bayatlari_buda(&mut map);
+            let mut anahtarlar: Vec<String> = map.keys().cloned().collect();
+            anahtarlar.sort();
+            (anahtarlar, dusen)
+        };
+        self.kullanim_temizle(&dusen).await;
         anahtarlar
     }
 }

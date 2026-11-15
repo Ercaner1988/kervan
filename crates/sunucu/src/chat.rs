@@ -431,14 +431,16 @@ pub(crate) async fn chat(
         let sonuc = if let Some(hedef) = st.rest_hedefleri.get(ad).cloned() {
             rest_denemesi(&st, &hedef, &raw_val, None, req.stream).await
         } else if st.eklenti_hub.sekme_var_mi(ad).await {
-            // TAŞIYICI AYRIMI (2026-11-14 ölçümü): `sekme_var_mi` yalnız
-            // "bu sağlayıcı için bir kayıt VAR" der; kaydın canlı olduğunu
-            // söylemez. Eklentinin sekme haritası boşken (Zen yeniden açıldı,
-            // sekme kapandı) sunucu kaydı kalır ve eklenti `null` döner.
-            // O durumda istek tek adayda 500'e kilitleniyordu; oysa aynı
-            // sağlayıcının HAVUZ hesabı (WebDriver) hâlâ kullanılabilir.
-            // Eklenti taşıyamazsa havuz yedeği denenir. 429 KOTA yanıtı
-            // taşıyıcı hatası DEĞİLDİR: istemciye aynen döner.
+            // TAŞIYICI AYRIMI (2026-11-14 ölçümü; tazelik süzgeci 2026-11-15):
+            // `sekme_var_mi` 90 sn'lik yaş süzgeci uyguluyor
+            // (`SEKME_TAZELIK_ESIGI`), yani ÖLÜ kaydı canlı saymaz — eklenti
+            // sessizce düşerse kayıt en geç 90 sn içinde budanır.
+            // Kalan yarış: kayıt taze olsa bile tarayıcı tam bu anda kapanabilir
+            // ya da sekme askıya alınabilir; o tur eklenti `null` döner ve istek
+            // tek adayda 500'e kilitlenirdi. Aynı sağlayıcının HAVUZ hesabı
+            // (WebDriver) hâlâ kullanılabilir olduğu için eklenti taşıyamazsa
+            // havuz yedeği denenir. 429 KOTA yanıtı taşıyıcı hatası DEĞİLDİR:
+            // istemciye aynen döner.
             match eklenti_denemesi(&st, ad, &gonderilecek_istem, &req, &secim).await {
                 Err((yanit, true)) if yanit.status() != StatusCode::TOO_MANY_REQUESTS => {
                     println!(

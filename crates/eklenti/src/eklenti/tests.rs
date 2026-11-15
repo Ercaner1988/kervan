@@ -1016,3 +1016,74 @@ async fn tazeleme_kaydi_canli_tutar() {
         "tazelenen kayıt canlı olmalı"
     );
 }
+
+/// Bayat kayıt düşerken `kullanim` sayacı da silinir.
+///
+/// NEDEN: sayaç `sekmeler`ten AYRI bir haritada; yalnız `sekmeler` budanırsa
+/// ölü profilin sayacı bellekte kalır ve aynı profil yeniden bağlandığında
+/// yük dengelemesi eski değerle başlar (denetim, 2026-11-15).
+#[tokio::test]
+async fn bayat_kayit_kullanim_sayacini_da_temizler() {
+    let hub = EklentiHub::new();
+    let (tx_a, _rx_a) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+    let (tx_b, _rx_b) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+    hub.sekme_kaydet("gemini".into(), "a".into(), tx_a).await;
+    hub.sekme_kaydet("gemini".into(), "b".into(), tx_b).await;
+    // İki hesabın da sayacı dolu olsun.
+    {
+        let mut kullanim = hub.kullanim.lock().await;
+        kullanim.insert("gemini:a".into(), 7);
+        kullanim.insert("gemini:b".into(), 3);
+    }
+    // Yalnız "a" bayatlasın.
+    {
+        let mut map = hub.sekmeler.lock().await;
+        let kayit = map.get_mut("gemini:a").expect("kayıt var");
+        kayit.son_gorulme = Instant::now() - SEKME_TAZELIK_ESIGI - Duration::from_secs(1);
+    }
+
+    // Herhangi bir okuma yolu budamayı tetikler.
+    assert!(hub.sekme_var_mi("gemini").await, "'b' hâlâ canlı");
+
+    let kullanim = hub.kullanim.lock().await;
+    assert!(
+        !kullanim.contains_key("gemini:a"),
+        "bayat kaydın sayacı silinmeli: {kullanim:?}"
+    );
+    assert_eq!(
+        kullanim.get("gemini:b").copied(),
+        Some(3),
+        "canlı kaydın sayacı korunmalı"
+    );
+}
+
+/// Bayatlayıp düşen hesap yeniden bağlanınca sayaç sıfırdan başlar.
+///
+/// NEDEN: eski sayaç devralınırsa `hesap_sec` en-az-kullanılan seçiminde
+/// yeni bağlanan hesabı haksız biçimde geri plana atar.
+#[tokio::test]
+async fn yeniden_baglanan_hesap_sayaci_sifirdan_baslar() {
+    let hub = EklentiHub::new();
+    let (tx_a, _rx_a) = mpsc::channel(GIDEN_KUYRUK_KAPASITESI);
+    hub.sekme_kaydet("gemini".into(), "a".into(), tx_a.clone())
+        .await;
+    {
+        let mut kullanim = hub.kullanim.lock().await;
+        kullanim.insert("gemini:a".into(), 9);
+    }
+    {
+        let mut map = hub.sekmeler.lock().await;
+        let kayit = map.get_mut("gemini:a").expect("kayıt var");
+        kayit.son_gorulme = Instant::now() - SEKME_TAZELIK_ESIGI - Duration::from_secs(1);
+    }
+    assert!(!hub.sekme_var_mi("gemini").await, "bayat kayıt düşmeli");
+
+    hub.sekme_kaydet("gemini".into(), "a".into(), tx_a).await;
+    let _ = hub.hesap_sec("gemini", Some("a")).await.expect("seçim");
+    let kullanim = hub.kullanim.lock().await;
+    assert_eq!(
+        kullanim.get("gemini:a").copied(),
+        Some(1),
+        "yeni bağlanan hesap 1'den başlamalı, 10'dan değil: {kullanim:?}"
+    );
+}

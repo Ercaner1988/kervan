@@ -127,6 +127,10 @@ function kur({ hataSayisi = 0, sekmeVar = false } = {}) {
     acilanSoketler,
     gonderiler,
     gunluk,
+    sandbox,
+    // B3 (2026-11-15): periyodik tarama testte `setInterval` ile değil,
+    // doğrudan çağrılarak koşulur (fonksiyon sandbox bağlamında global).
+    tara: () => baglam.acikSekmeleriTara(),
     sayaclar: () => ({ fetch: fetchSayaci, zamanlayici: zamanlayicilar.length })
   };
 }
@@ -179,4 +183,55 @@ test("her bağlantı kuruluşunda sekme kaydı yeniden gönderilir", async () =>
   await bosalt();
 
   expect(gonderiler.some((g) => g.action === "kayit" && g.profile === "hesap1@gmail.com")).toBe(true);
+});
+
+// B3 (denetim, 2026-11-15): TAZELEME TURU.
+//
+// NEDEN: kayıt eskiden yalnız eşleme DEĞİŞİNCE gönderiliyordu; eşleme sabit
+// kaldığı sürece sunucu damgayı tazelemiyor ve canlı bir sekme 90 sn sonra
+// "ölü" sayılıyordu (SEKME_TAZELIK_ESIGI). Artık her 10 sn'lik tarama turu
+// eşleme aynı olsa da `kayit` gönderir. Bu test o kapıyı ölçer.
+test("tarama turu eşleme değişmese de sekme kaydını tazeler", async () => {
+  const { acilanSoketler, gonderiler, tara, gunluk } = kur({ sekmeVar: true });
+  await bosalt();
+  acilanSoketler[0].ac();
+  await bosalt();
+  // İlk tarama bağlantı kuruluşunda yapıldı: eşleme artık dolu.
+  expect(gonderiler.some((g) => g.action === "kayit")).toBe(true);
+
+  // TAZELEME TURU: aynı sekme, aynı eşleme. Log YAZILMAMALI (gürültü
+  // sözleşmesi) ama `kayit` GİTMELİ.
+  gonderiler.length = 0;
+  const oncekiGunluk = gunluk.length;
+  await tara();
+  await bosalt();
+
+  const kayitlar = gonderiler.filter((g) => g.action === "kayit");
+  expect(kayitlar.length).toBe(1);
+  expect(kayitlar[0].provider).toBe("gemini");
+  expect(kayitlar[0].profile).toBe("hesap1@gmail.com");
+  expect(kayitlar[0].tab_id).toBe(7);
+  expect(gunluk.length).toBe(oncekiGunluk);
+});
+
+// Tazeleme turu ölü sekmeyi DÜŞÜRÜR: budama kapısı da aynı turda ölçülür.
+test("tarama turu ulaşılamayan sekmeyi düşürür", async () => {
+  const { acilanSoketler, gonderiler, tara, sandbox } = kur({ sekmeVar: true });
+  await bosalt();
+  acilanSoketler[0].ac();
+  await bosalt();
+  expect(gonderiler.some((g) => g.action === "kayit")).toBe(true);
+
+  // İçerik betiği artık yanıt vermiyor (sekme kapandı / betik öldü).
+  sandbox.browser.tabs.sendMessage = async () => {
+    throw new Error("Receiving end does not exist");
+  };
+  gonderiler.length = 0;
+  await tara();
+  await bosalt();
+
+  expect(gonderiler.filter((g) => g.action === "kayit").length).toBe(0);
+  expect(
+    gonderiler.some((g) => g.action === "ayril" && g.provider === "gemini")
+  ).toBe(true);
 });
