@@ -19,7 +19,7 @@ function base64ToFile(base64Str, fileName, mimeType) {
   return new File([blob], fileName, { type: mimeType });
 }
 
-api.runtime.onMessage.addListener((message, sender, sendResponse) => {
+window.kervanDinleyiciKur("mistral", (message, sender, sendResponse) => {
   if (message.type === "KERVAN_PROMPT") {
     mistralSoruSor(message.id, message.istem, message.dosyalar || []);
     sendResponse({ ok: true });

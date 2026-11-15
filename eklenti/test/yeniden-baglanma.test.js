@@ -29,6 +29,11 @@ function kur({ hataSayisi = 0, sekmeVar = false } = {}) {
   const acilanSoketler = [];
   const gonderiler = [];
   const gunluk = [];
+  const enjeksiyonlar = [];
+  const alarmlar = [];
+  let alarmDinleyici = null;
+  let guncellemeDinleyici = null;
+  let pingBasarisiz = 0; // kaç ping "içerik betiği yok" ile düşsün
   let sonrakiId = 1;
   let fetchSayaci = 0;
   let kalanHata = hataSayisi;
@@ -41,7 +46,8 @@ function kur({ hataSayisi = 0, sekmeVar = false } = {}) {
           cookieStoreId: "firefox-default",
           active: true,
           lastAccessed: 1,
-          discarded: false
+          discarded: false,
+          status: "complete"
         }
       ]
     : [];
@@ -103,8 +109,28 @@ function kur({ hataSayisi = 0, sekmeVar = false } = {}) {
       storage: { local: { get: async () => ({}), set: async () => {} } },
       tabs: {
         query: async () => sekmeler,
-        sendMessage: async () => ({ ok: true }),
-        onRemoved: { addListener: () => {} }
+        // B3 (2026-11-15): içerik betiği ölmüşse `sendMessage` "alıcı yok"
+        // hatasıyla düşer. `pingBasarisiz` bu senaryoyu kurar: ilk N ping
+        // hata verir, enjeksiyon sonrası ping geçer.
+        sendMessage: async (tabId, mesaj) => {
+          if (mesaj && mesaj.type === "KERVAN_PING" && pingBasarisiz > 0) {
+            pingBasarisiz--;
+            throw new Error("Could not establish connection. Receiving end does not exist.");
+          }
+          return { ok: true };
+        },
+        onRemoved: { addListener: () => {} },
+        onUpdated: { addListener: (fn) => { guncellemeDinleyici = fn; } }
+      },
+      scripting: {
+        executeScript: async ({ target, files }) => {
+          enjeksiyonlar.push({ tabId: target && target.tabId, files });
+          return [{ result: null }];
+        }
+      },
+      alarms: {
+        create: (ad, ayar) => { alarmlar.push({ ad, ayar }); },
+        onAlarm: { addListener: (fn) => { alarmDinleyici = fn; } }
       }
     }
   };
@@ -128,6 +154,11 @@ function kur({ hataSayisi = 0, sekmeVar = false } = {}) {
     gonderiler,
     gunluk,
     sandbox,
+    enjeksiyonlar,
+    alarmlar,
+    alarmDinleyici: () => alarmDinleyici,
+    guncellemeDinleyici: () => guncellemeDinleyici,
+    pingDusur: (adet = 1) => { pingBasarisiz = adet; },
     // B3 (2026-11-15): periyodik tarama testte `setInterval` ile değil,
     // doğrudan çağrılarak koşulur (fonksiyon sandbox bağlamında global).
     tara: () => baglam.acikSekmeleriTara(),
@@ -302,4 +333,119 @@ test("tarama turu ulaşılamayan sekmeyi düşürür", async () => {
   expect(
     gonderiler.some((g) => g.action === "ayril" && g.provider === "gemini")
   ).toBe(true);
+});
+
+// B3 (denetim, 2026-11-15): PING HATASINDA YENİDEN ENJEKSİYON.
+//
+// NEDEN: içerik betiği sayfada ölmüş ama sekme yenilenmemişse (askıya alınmış
+// süreç, betik çökmesi) hesap her turda düşürülüyor ve kullanıcı sekmeyi elle
+// yenilemedikçe geri gelmiyordu. Artık `status === "complete"` ise
+// `scripting.executeScript` ile betikler BİR KEZ yeniden enjekte edilir ve
+// ping tekrarlanır.
+test("içerik betiği ölmüşse bir kez yeniden enjekte edilir ve sekme kurtarılır", async () => {
+  const { acilanSoketler, gonderiler, tara, enjeksiyonlar, pingDusur } = kur({ sekmeVar: true });
+  await bosalt();
+  acilanSoketler[0].ac();
+  await bosalt();
+  expect(gonderiler.some((g) => g.action === "kayit")).toBe(true);
+
+  // Sekme hâlâ açık ama içerik betiği yanıt vermiyor: ilk ping düşer,
+  // enjeksiyondan sonraki ping geçer.
+  pingDusur(1);
+  gonderiler.length = 0;
+  await tara();
+  await bosalt();
+
+  // Dosya sırası manifest ile aynı olmalı: önce ortak yardımcılar.
+  expect(enjeksiyonlar.length).toBe(1);
+  expect(enjeksiyonlar[0].tabId).toBe(7);
+  expect(enjeksiyonlar[0].files).toEqual([
+    "content_common.js",
+    "content_gemini.js"
+  ]);
+
+  // Kurtarıldı: kayıt gitti, ayril GİTMEDİ.
+  expect(gonderiler.filter((g) => g.action === "kayit").length).toBe(1);
+  expect(gonderiler.some((g) => g.action === "ayril")).toBe(false);
+});
+
+// Enjeksiyon sayfa yüklemesi başına BİR kez: CSP blokajında her turda denemek
+// konsolu doldurur ve taramayı yavaşlatır. Sekme yenilenince url değişir.
+test("aynı sayfa yüklemesinde ikinci kez enjeksiyon denenmez", async () => {
+  const { acilanSoketler, gonderiler, tara, enjeksiyonlar, pingDusur } = kur({ sekmeVar: true });
+  await bosalt();
+  acilanSoketler[0].ac();
+  await bosalt();
+
+  pingDusur(1);
+  await tara();
+  await bosalt();
+  expect(enjeksiyonlar.length).toBe(1);
+
+  // Betik yine öldü: ping düşüyor, ama bu url için hak kullanıldı.
+  pingDusur(1);
+  gonderiler.length = 0;
+  await tara();
+  await bosalt();
+
+  expect(enjeksiyonlar.length, "ikinci enjeksiyon denenmemeli").toBe(1);
+  // Bu turda kurtarılamadığı için budama kapısı devreye girer.
+  expect(
+    gonderiler.some((g) => g.action === "ayril" && g.provider === "gemini")
+  ).toBe(true);
+});
+
+// B1 (denetim, 2026-11-15): ALARM + onUpdated UYANDIRICILARI.
+//
+// NEDEN: Firefox olay sayfası 30 sn boşta kalınca yok edilir ve açık WebSocket
+// bu sayacı sıfırlamaz (bug 1748533, WONTFIX). Önceden tek dayanak `setInterval`
+// idi; 30 sn kaçırılırsa döngü kalıcı kırılıyordu. Bu test, alarmın kurulduğunu
+// ve alarmın gerçekten taramayı koşturduğunu ölçer.
+test("periyodik alarm kurulur ve alarm taramayı koşturur", async () => {
+  const { gonderiler, alarmlar, alarmDinleyici, acilanSoketler } = kur({ sekmeVar: true });
+  await bosalt();
+  acilanSoketler[0].ac();
+  await bosalt();
+
+  expect(alarmlar.length).toBe(1);
+  expect(alarmlar[0].ad).toBe("kervan-sekme-tarama");
+  expect(alarmlar[0].ayar.periodInMinutes).toBe(0.5);
+
+  const dinleyici = alarmDinleyici();
+  expect(typeof dinleyici).toBe("function");
+
+  gonderiler.length = 0;
+  dinleyici({ name: "baska-alarm" }); // ad eşleşmiyor: tarama YOK
+  await bosalt();
+  expect(gonderiler.length).toBe(0);
+
+  dinleyici({ name: "kervan-sekme-tarama" });
+  await bosalt();
+  expect(gonderiler.filter((g) => g.action === "kayit").length).toBe(1);
+});
+
+// onUpdated: sekme yüklemesi tamamlanınca tarama 1 sn gecikmeyle tetiklenir.
+test("sekme yüklemesinin bitişi taramayı tetikler", async () => {
+  const { gonderiler, guncellemeDinleyici, acilanSoketler, zamanlayiciyiKos } = kur({
+    sekmeVar: true
+  });
+  await bosalt();
+  acilanSoketler[0].ac();
+  await bosalt();
+
+  const dinleyici = guncellemeDinleyici();
+  expect(typeof dinleyici).toBe("function");
+
+  gonderiler.length = 0;
+  dinleyici(7, { status: "loading" }); // henüz tamamlanmadı: tetiklemez
+  await bosalt();
+  expect(gonderiler.length).toBe(0);
+
+  dinleyici(7, { status: "complete" });
+  await bosalt();
+  expect(gonderiler.length, "gecikmeli tarama henüz koşmamalı").toBe(0);
+
+  expect(await zamanlayiciyiKos()).toBe(true);
+  await bosalt();
+  expect(gonderiler.filter((g) => g.action === "kayit").length).toBe(1);
 });

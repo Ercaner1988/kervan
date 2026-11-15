@@ -1,5 +1,24 @@
 // Kervan WebExtension Ortak Content Script Yardımcıları
 
+// Yeniden enjeksiyon kapısı (B3).
+//
+// NEDEN: `background.js`, ping başarısız olduğunda içerik betiklerini
+// `scripting.executeScript` ile yeniden enjekte eder. Aynı sayfada betik
+// ikinci kez çalıştığında `runtime.onMessage.addListener` TEKRAR kurulursa
+// her mesaj iki kez işlenir: aynı istem iki kez gönderilir, aynı yanıt iki
+// kez akıtılır. Bu kapı, dinleyicinin sayfa ömründe BİR kez kurulmasını
+// sağlar; ad sağlayıcıya özeldir ("common" ortak dinleyici içindir).
+window.__kervanDinleyiciler = window.__kervanDinleyiciler || Object.create(null);
+window.kervanDinleyiciKur = function (ad, dinleyici) {
+  if (window.__kervanDinleyiciler[ad]) {
+    console.log(`[Kervan] '${ad}' dinleyicisi zaten kurulu, yeniden enjeksiyon yok sayıldı`);
+    return false;
+  }
+  window.__kervanDinleyiciler[ad] = true;
+  (typeof browser !== "undefined" ? browser : chrome).runtime.onMessage.addListener(dinleyici);
+  return true;
+};
+
 // React / Vue kontrollü input ve textarea alanlarına insan gibi metin yazma
 window.kervanMetinYaz = function (element, metin) {
   element.focus();
@@ -303,8 +322,7 @@ window.kervanSecimTuru = async function (mesaj) {
   return liste;
 };
 
-(typeof browser !== "undefined" ? browser : chrome).runtime.onMessage.addListener(
-  (message, sender, sendResponse) => {
+window.kervanDinleyiciKur("common", (message, sender, sendResponse) => {
     // Hazır mı denetimi: arka plan, URL'ye değil bu yanıta bakarak sekme
     // kaydeder. Yanıt gelmiyorsa içerik betiği yok demektir.
     if (message.type === "KERVAN_PING") {

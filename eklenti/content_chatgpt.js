@@ -8,7 +8,7 @@ api.runtime.sendMessage({
   provider: "chatgpt"
 }).catch(() => {});
 
-api.runtime.onMessage.addListener((message, sender, sendResponse) => {
+window.kervanDinleyiciKur("chatgpt", (message, sender, sendResponse) => {
   if (message.type === "KERVAN_PROMPT") {
     chatgptSoruSor(message.id, message.istem);
     sendResponse({ ok: true });

@@ -8,7 +8,7 @@ api.runtime.sendMessage({
   provider: "deepseek"
 }).catch(() => {});
 
-api.runtime.onMessage.addListener((message, sender, sendResponse) => {
+window.kervanDinleyiciKur("deepseek", (message, sender, sendResponse) => {
   if (message.type === "KERVAN_PROMPT") {
     deepseekSoruSor(message.id, message.istem);
     sendResponse({ ok: true });

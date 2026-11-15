@@ -8,7 +8,7 @@ api.runtime.sendMessage({
   provider: "z.ai"
 }).catch(() => {});
 
-api.runtime.onMessage.addListener((message, sender, sendResponse) => {
+window.kervanDinleyiciKur("z.ai", (message, sender, sendResponse) => {
   if (message.type === "KERVAN_PROMPT") {
     zaiSoruSor(message.id, message.istem);
     sendResponse({ ok: true });

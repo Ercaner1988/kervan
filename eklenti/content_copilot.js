@@ -8,7 +8,7 @@ api.runtime.sendMessage({
   provider: "copilot"
 }).catch(() => {});
 
-api.runtime.onMessage.addListener((message, sender, sendResponse) => {
+window.kervanDinleyiciKur("copilot", (message, sender, sendResponse) => {
   if (message.type === "KERVAN_PROMPT") {
     copilotSoruSor(message.id, message.istem, message.dosyalar || []);
     sendResponse({ ok: true });

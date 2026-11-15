@@ -295,7 +295,7 @@ async function bekleyeniIsle() {
   yanitGozle(bekleyen.id);
 }
 
-api.runtime.onMessage.addListener((message, sender, sendResponse) => {
+window.kervanDinleyiciKur("perplexity", (message, sender, sendResponse) => {
   if (message && message.type === "KERVAN_PROMPT") {
     perplexitySoruSor(message.id, message.istem);
     sendResponse({ ok: true });

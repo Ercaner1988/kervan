@@ -16,7 +16,7 @@ setInterval(() => {
   }
 }, 5000);
 
-api.runtime.onMessage.addListener((message, sender, sendResponse) => {
+window.kervanDinleyiciKur("kimi", (message, sender, sendResponse) => {
   if (message.type === "KERVAN_PROMPT") {
     kimiSoruSor(message.id, message.istem);
     sendResponse({ ok: true });

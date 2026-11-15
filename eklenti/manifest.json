@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Kervan AI Köprüsü",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Kervan yerel ağ geçidi için bot-tespiti içermeyen doğrudan WebExtension köprüsü",
   "browser_specific_settings": {
     "gecko": {
@@ -14,7 +14,9 @@
   },
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "alarms",
+    "scripting"
   ],
   "host_permissions": [
     "http://127.0.0.1:20129/*",

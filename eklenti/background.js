@@ -10,7 +10,9 @@ const TOKEN_URL = "http://127.0.0.1:20129/eklenti/token";
 
 let socket = null;
 let bagliSekmeler = new Map(); // "provider:profile" -> tabId
+let enjeksiyonDenemeleri = new Map(); // tabId -> url (son enjeksiyon denemesi)
 let yenidenBaglanmaZamanlayicisi = null;
+let guncellemeZamanlayicisi = null;
 let token = null; // yalnız bellekte; kalıcı kopya storage.local'da
 let tokenYenile = false;
 
@@ -111,8 +113,29 @@ function saglayiciBul(url) {
  * boşaltılmış (discarded) sekmede hiç çalışmamış olur ve ilk mesaj "Receiving
  * end does not exist" ile düşer. Bu yüzden haritaya yazmadan önce ping atılır
  * (2026-10-24 incelemesi: URL tabanlı kayıt kaydı ölü sekme üzerinde tutuyordu).
+ *
+ * B3 (2026-11-15 denetimi): ping başarısız olduğunda YENİDEN ENJEKSİYON.
+ * Önceden içerik betiği ölmüş ama sekme yenilenmemişse hesap her turda
+ * düşürülüyor ve kullanıcı sekmeyi elle yenilemedikçe geri gelmiyordu. Artık
+ * sayfa yüklenmişse (`status === "complete"`) `scripting.executeScript` ile
+ * içerik betikleri BİR KEZ yeniden enjekte edilir, sonra ping tekrarlanır.
+ *
+ * NEDEN "bir kez": aynı sayfa yüklemesinde her 10 sn'de bir enjeksiyon
+ * denemek (ör. betiğin sayfada çalışmasını engelleyen bir CSP) konsolu
+ * doldurur ve taramayı yavaşlatır. `enjeksiyonDenemeleri` tabId→url tutar;
+ * sekme yenilenince url değişir ve yeni bir deneme hakkı doğar.
  */
-async function sekmeHazirMi(tabId) {
+async function sekmeHazirMi(tab, provider) {
+  if (await pingAt(tab.id)) return true;
+  if (!provider || tab.status !== "complete") return false;
+  if (enjeksiyonDenemeleri.get(tab.id) === tab.url) return false;
+  enjeksiyonDenemeleri.set(tab.id, tab.url);
+  if (!(await icerikBetigiEnjekte(tab.id, provider))) return false;
+  return await pingAt(tab.id);
+}
+
+/** Ping atar; içerik betiği yoksa `false` (istisna yutulur). */
+async function pingAt(tabId) {
   try {
     const y = await api.tabs.sendMessage(tabId, { type: "KERVAN_PING" });
     return !!(y && y.ok);
@@ -120,6 +143,45 @@ async function sekmeHazirMi(tabId) {
     return false;
   }
 }
+
+/**
+ * Sağlayıcının içerik betiklerini sekmeye yeniden enjekte eder.
+ *
+ * Dosya listesi `manifest.json`'daki `content_scripts` sırasıyla AYNI olmalı:
+ * önce `content_common.js` (ortak yardımcılar), sonra sağlayıcı betiği.
+ * Sıra bozulursa sağlayıcı betiği `window.kervanMetinYaz` gibi yardımcıları
+ * bulamaz. Çift dinleyici riski içerik betiklerinin kendi kapılarıyla
+ * kapatılmıştır (bkz. `content_*.js` başındaki `__kervanDinleyici` kapısı).
+ */
+const ICERIK_BETIKLERI = {
+  qwen: ["content_common.js", "content_qwen.js"],
+  kimi: ["content_common.js", "content_kimi.js"],
+  gemini: ["content_common.js", "content_gemini.js"],
+  deepseek: ["content_common.js", "content_deepseek.js"],
+  chatgpt: ["content_common.js", "content_chatgpt.js"],
+  copilot: ["content_common.js", "content_copilot.js"],
+  "z.ai": ["content_common.js", "content_zai.js"],
+  perplexity: ["content_common.js", "content_perplexity.js"],
+  mistral: ["content_common.js", "content_mistral.js"]
+};
+
+async function icerikBetigiEnjekte(tabId, provider) {
+  const dosyalar = ICERIK_BETIKLERI[provider];
+  if (!dosyalar) return false;
+  if (!api.scripting || !api.scripting.executeScript) {
+    console.warn("[Kervan] scripting izni yok: yeniden enjeksiyon atlandı");
+    return false;
+  }
+  try {
+    await api.scripting.executeScript({ target: { tabId }, files: dosyalar });
+    console.log(`[Kervan] İçerik betiği yeniden enjekte edildi: ${provider} (Tab: ${tabId})`);
+    return true;
+  } catch (e) {
+    console.warn(`[Kervan] ${provider} içerik betiği enjekte edilemedi:`, e);
+    return false;
+  }
+}
+
 
 /** Bir hesabı hem yerel haritadan hem Kervan'dan düşürür. */
 function kervandanDusur(k) {
@@ -153,7 +215,7 @@ async function acikSekmeleriTara() {
       if (tab.discarded) continue;
       const provider = saglayiciBul(tab.url);
       if (!provider) continue;
-      if (!(await sekmeHazirMi(tab.id))) continue;
+      if (!(await sekmeHazirMi(tab, provider))) continue;
 
       ulasilan.add(tab.id);
       const cId = await window.kervanProfilKimligi(tab.cookieStoreId);
@@ -440,6 +502,10 @@ api.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Sekme kapandığında ilgili hesabı Kervan'dan da düşür
 api.tabs.onRemoved.addListener((tabId) => {
+  // Enjeksiyon defteri de temizlenir: tabId'ler yeniden kullanılabilir,
+  // silinmezse yeni bir sekme eski url kaydı yüzünden enjeksiyon hakkını
+  // harcanmış bulur.
+  enjeksiyonDenemeleri.delete(tabId);
   for (const [k, id] of bagliSekmeler.entries()) {
     if (id === tabId) {
       bagliSekmeler.delete(k);
@@ -458,8 +524,52 @@ api.tabs.onRemoved.addListener((tabId) => {
   }
 });
 
+/**
+ * Taramayı kısa bir gecikmeyle tetikler (olay uyandırıcısı).
+ *
+ * NEDEN GECİKME: `tabs.onUpdated` bir yüklemede birkaç kez ateşler; her
+ * ateşlemede tam tarama yapmak (her sekme için `tabs.sendMessage` ping'i)
+ * boşa iş olur. 1 sn'lik pencere aynı yüklemenin olaylarını tek taramaya
+ * indirger.
+ */
+function taramayiTetikle() {
+  if (guncellemeZamanlayicisi) return;
+  guncellemeZamanlayicisi = setTimeout(() => {
+    guncellemeZamanlayicisi = null;
+    acikSekmeleriTara();
+  }, 1000);
+}
+
+// B1 (2026-11-15 denetimi): tazelik döngüsünün İKİNCİ dayanağı.
+//
+// NEDEN GEREKLİ: `manifest.json`da `background.scripts` kullanıldığı için
+// Firefox bunu kalıcı OLMAYAN bir olay sayfası (event page) olarak çalıştırır
+// ve `extensions.background.idle.timeout` (varsayılan 30000 ms) dolduğunda
+// sayfayı yok eder. Açık bir WebSocket bu sayacı SIFIRLAMAZ (Mozilla bug
+// 1748533, WONTFIX). Önceden sayfayı ayakta tutan tek şey `setInterval`
+// turundaki `tabs.query` çağrısıydı: bir kez 30 sn kaçırılırsa zamanlayıcı
+// sayfayla birlikte ölüyor ve döngü KALICI olarak kırılıyordu (toparlanma
+// yalnız `runtime.onMessage` ya da `tabs.onRemoved` ile).
+//
+// `alarms` izniyle periyodik bir alarm, sayfa uyusa bile tarayıcı tarafından
+// çalıştırılır ve sayfayı uyandırır; ayrıca `tabs.onUpdated` her sekme
+// yüklemesinde ek bir uyandırıcıdır. `setInterval` üçüncü dayanak olarak
+// KALIR (alarm en erken 30 sn'de bir çalışabilir; sık tarama için gerekli).
+if (api.alarms && api.alarms.create) {
+  api.alarms.create("kervan-sekme-tarama", { periodInMinutes: 0.5 });
+  api.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === "kervan-sekme-tarama") acikSekmeleriTara();
+  });
+}
+
+if (api.tabs.onUpdated) {
+  api.tabs.onUpdated.addListener((tabId, degisim) => {
+    if (degisim.status === "complete" || degisim.url) taramayiTetikle();
+  });
+}
+
 // Başlangıçta bağlan
 kervanaBaglan();
 
-// Periyodik olarak sekmeleri kontrol et (her 10 sn)
+// Periyodik olarak sekmeleri kontrol et (her 10 sn) — bkz. yukarıdaki B1 notu.
 setInterval(acikSekmeleriTara, 10000);
