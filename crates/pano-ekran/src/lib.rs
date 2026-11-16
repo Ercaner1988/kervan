@@ -57,11 +57,31 @@ impl Default for PanoEkraniDurumu {
     }
 }
 
+/// Anahtarı tanımsız REST hedeflerinin ortam değişkeni adları.
+///
+/// NEDEN AYRI İŞLEV: üst şeritteki uyarının kaç anahtarı saydığı sınanabilsin.
+/// Uyarı, `Ozet`'in gerçek ölçümüne (`KimlikDurumu.tanimli`) dayanır; sabit bir
+/// sayı yazılmaz — "3 anahtar eksik" gibi ölçülmemiş bir iddia yanlış beyan olurdu.
+pub fn eksik_anahtarlar(ozet: &Ozet) -> Vec<&str> {
+    ozet.kimlikler
+        .iter()
+        .filter(|k| !k.tanimli)
+        .map(|k| k.ad.as_str())
+        .collect()
+}
+
+/// Üst şerit.
+///
+/// m02388: anahtar ekleme yolu yalnız 6. sekmenin ("⚙ Ayar") içindeydi; Canlı
+/// ekranda duran kullanıcı ne anahtarın tanımsız olduğunu görüyor ne de ekleme
+/// yolunu bulabiliyordu ("seçenek/tuş yok"). Üst şerit her sekmede göründüğü
+/// için uyarı buraya kondu; düğme Ayarlar'ı açar ve formun hedefini eksik
+/// anahtara önceden ayarlar — kullanıcı ikinci bir seçim yapmak zorunda kalmaz.
 pub fn render_ust_serit(
     ui: &mut Ui,
     ozet: &Ozet,
     tema_tercihi: &mut TemaTercihi,
-    _durum: &mut PanoEkraniDurumu,
+    durum: &mut PanoEkraniDurumu,
 ) {
     ui.horizontal(|ui| {
         ui.label(RichText::new("Kervan").strong().size(15.0));
@@ -85,6 +105,38 @@ pub fn render_ust_serit(
             ui.label(RichText::new(&ozet.aktif_strateji).strong().size(11.0));
         }
 
+        // m02388: eksik anahtar uyarısı HER sekmede görünür ve yanında doğrudan
+        // ekleme yolunu açar. Ad listesi gerçek ölçümden gelir; hiçbir şey
+        // tanımsız değilse uyarı çizilmez (yanlış alarm yok).
+        let eksik = eksik_anahtarlar(ozet);
+        if !eksik.is_empty() {
+            ui.add_space(12.0);
+            let uyari = Color32::from_rgb(192, 79, 66);
+            let adlar = eksik.join(", ");
+            ui.label(
+                RichText::new(format!("⚠ API anahtarı tanımsız: {adlar}"))
+                    .color(uyari)
+                    .size(11.5),
+            )
+            .on_hover_text(
+                "Bu hedefler çağrıldığında istek 401/404 ile düşer. \
+                 Anahtar yalnız bu oturumun belleğinde tutulur, diske yazılmaz.",
+            );
+            if ui
+                .add(egui::Button::new(
+                    RichText::new("Anahtar ekle →").size(11.5),
+                ))
+                .on_hover_text("Ayarlar sekmesini açar ve hedefi bu anahtara ayarlar.")
+                .clicked()
+            {
+                durum.aktif_sekme = PanoSekmesi::Ayarlar;
+                // Hedefi önceden seç: kullanıcı listeden ikinci kez aramasın.
+                // `anahtar_formu` seçili hedef listede yoksa ilkine düşer
+                // (ekran5_ayarlar::hedef_sec), yani bayat değer zararsızdır.
+                durum.ayar_formu.secili_env = eksik[0].to_string();
+            }
+        }
+
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             kilim_tema::tema_secici(ui, tema_tercihi);
             // G7: düğmeler önceden `let _ = ui.button(...).clicked();` idi —
@@ -106,7 +158,9 @@ pub fn render_sol_nav(ui: &mut Ui, durum: &mut PanoEkraniDurumu) {
             (PanoSekmesi::Rota, "🧭 Rota"),
             (PanoSekmesi::Izleme, "📊 İzleme"),
             (PanoSekmesi::Baglam, "🧠 Bağlam"),
-            (PanoSekmesi::Ayarlar, "⚙ Ayar"),
+            // m02388: etiket yalnız "⚙ Ayar" idi; REST anahtarının orada
+            // olduğunu sezdirmiyordu. Sekme adı iki işi de söyler.
+            (PanoSekmesi::Ayarlar, "⚙ Ayar / Anahtar"),
         ];
 
         let genislik = ui.available_width();
@@ -199,4 +253,61 @@ pub fn render_ana_ekran(
         }
     }
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use kervan_pano_veri::{KimlikDurumu, Ozet};
+
+    fn ozet(kimlikler: Vec<(&str, bool, bool)>) -> Ozet {
+        Ozet {
+            kimlikler: kimlikler
+                .into_iter()
+                .map(|(ad, tanimli, oturumda)| KimlikDurumu {
+                    ad: ad.to_string(),
+                    tanimli,
+                    oturumda,
+                })
+                .collect(),
+            ..Ozet::default()
+        }
+    }
+
+    /// m02388'in çekirdeği: tanımsız anahtar üst şeritte ADIYLA anılmalı.
+    #[test]
+    fn tanimsiz_anahtar_ust_seritte_gorunur() {
+        let o = ozet(vec![
+            ("OPENROUTER_API_KEY", false, false),
+            ("GEMINI_API_KEY", true, false),
+        ]);
+        assert_eq!(eksik_anahtarlar(&o), vec!["OPENROUTER_API_KEY"]);
+    }
+
+    /// Yanlış alarm: tümü tanımlıysa uyarı çizilmemeli.
+    #[test]
+    fn hepsi_tanimliysa_uyari_yok() {
+        let o = ozet(vec![("OPENROUTER_API_KEY", true, false)]);
+        assert!(eksik_anahtarlar(&o).is_empty());
+    }
+
+    /// Oturumda girilmiş anahtar "tanımlı" sayılır (kasa çözüyor) → uyarı düşer.
+    /// `tanimli` alanı `anahtar_coz`un ölçümüdür, `oturumda` yalnız kaynağı
+    /// gösterir; ikisi ayrı kavram ve testte ayrı tutuluyor.
+    #[test]
+    fn oturumda_girilen_anahtar_uyariyi_dusurur() {
+        let o = ozet(vec![("OPENROUTER_API_KEY", true, true)]);
+        assert!(eksik_anahtarlar(&o).is_empty());
+    }
+
+    /// Tanımsızların TAMAMI listelenir; ilkini seçmek diğerlerini gizlemez.
+    #[test]
+    fn birden_fazla_eksik_hepsi_sayilir() {
+        let o = ozet(vec![
+            ("A_KEY", false, false),
+            ("B_KEY", false, false),
+            ("C_KEY", true, false),
+        ]);
+        assert_eq!(eksik_anahtarlar(&o), vec!["A_KEY", "B_KEY"]);
+    }
 }
