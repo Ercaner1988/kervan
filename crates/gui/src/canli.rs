@@ -14,13 +14,21 @@
 use crate::server::AppState;
 use kervan_pano_veri::{
     CanliAnahtar, CanliDurum, CanliHesap, CanliModel, CanliSaglayici, GonderimDurumu, HesapDurumu,
-    HesapOzeti, Ozet, PanoOkuyucu, TelemetriOzeti,
+    HesapOzeti, KimlikDurumu, Ozet, PanoOkuyucu, SaglikOzeti, TelemetriOzeti,
 };
 use std::collections::BTreeMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 const YOKLAMA_ARALIGI: Duration = Duration::from_millis(1500);
+
+/// Süreç içi çalışma süresi başlangıcı. `/health` yalnız `"ok"` döndüğü için
+/// uptime sunucudan okunamaz; GUI kendi başlangıcını ölçer (G3).
+static BASLANGIC: OnceLock<Instant> = OnceLock::new();
+
+fn baslangic() -> Instant {
+    *BASLANGIC.get_or_init(Instant::now)
+}
 
 /// Panelden gönderilecek tek sınama isteği.
 #[derive(Debug, Clone)]
@@ -209,10 +217,8 @@ async fn yokla(state: &AppState, port: u16) -> (CanliDurum, Ozet) {
 
     // 2. Havuz yuvaları (tarayıcı sürücülü hesaplar). Bunlar eklenti hesabı
     //    değildir: panelde görünür ama istek sabitlemek için seçilemez.
-    let mut toplam_istek: u64 = 0;
     for slot in &state.pool.slots {
         let s = slot.state.lock().await;
-        toplam_istek += u64::from(s.total);
         hesaplar.push(CanliHesap {
             anahtar: String::new(),
             profil: slot.hesap_adi.clone(),
@@ -287,17 +293,51 @@ async fn yokla(state: &AppState, port: u16) -> (CanliDurum, Ozet) {
         }
     }
     let bagli_sayisi = hesaplar.iter().filter(|h| h.bagli).count();
+
+    // 5. Gerçek metrikler: router'ın `record_success`/`record_failure`
+    //    defterinden. Daha önce `..Default::default()` ile boş kalıyor,
+    //    ekranlar "0 istek / %100 başarı / 0 ms" uyduruyordu (G3/G4/G8).
+    let (metrik_toplam, metrik_basarili, metrik_gecikme) = state.router.metrik_ozeti().await;
+
+    // 6. Aktif strateji + 21 strateji adı (20 kamu + 1 dahili).
+    let aktif_strateji = state.router.strategy.read().await.as_str().to_string();
+    let stratejiler: Vec<String> = kervan_sunucu::router::RoutingStrategy::KAMUYA_ACIK
+        .iter()
+        .chain(kervan_sunucu::router::RoutingStrategy::DAHILI.iter())
+        .map(|s| (*s).to_string())
+        .collect();
+
+    // 7. REST hedeflerinin anahtarları: GERÇEK ortam değişkeni kontrolü.
+    //    `pool.kimlikler` tarayıcı PROFİL adlarıdır, REST anahtarı değil (G5).
+    let mut kimlikler: Vec<KimlikDurumu> = state
+        .rest_hedefleri
+        .values()
+        .map(|h| KimlikDurumu {
+            ad: h.anahtar_env.clone(),
+            tanimli: !h.anahtar_env.is_empty() && std::env::var(&h.anahtar_env).is_ok(),
+        })
+        .collect();
+    kimlikler.sort_by(|a, b| a.ad.cmp(&b.ad));
+
     let ozet = Ozet {
         sunucu_acik: true,
         baglanti_adresi: format!("127.0.0.1:{port}"),
+        aktif_strateji,
+        stratejiler,
         hesaplar: ozet_hesaplar,
         modeller,
         telemetri: TelemetriOzeti {
-            toplam_istek,
+            toplam_istek: metrik_toplam,
+            basarili_istek: metrik_basarili,
+            ortalama_gecikme_ms: metrik_gecikme,
             aktif_yuvalar: bagli_sayisi,
+        },
+        kimlikler,
+        saglik: SaglikOzeti {
+            surum: env!("CARGO_PKG_VERSION").to_string(),
+            calisma_suresi_sn: baslangic().elapsed().as_secs(),
             ..Default::default()
         },
-        kimlikler: state.pool.kimlikler.iter().map(|k| k.ad.clone()).collect(),
         ..Default::default()
     };
 

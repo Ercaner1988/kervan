@@ -1,4 +1,4 @@
-﻿//! # ekran1_oturum
+//! # ekran1_oturum
 //! Ekran 1: Oturumlar ve Sağlayıcılar
 //! Standart: KERVAN-ARAYUZ-ISTEMI.md & KERVAN-PANO-ANTIGRAVITY-ISTEMI.md
 //!
@@ -63,6 +63,7 @@ pub fn render(
     } else {
         // Dar ekran modu: Dikey kaydırılabilir tek sütun
         egui::ScrollArea::vertical()
+            .id_salt("oturum_dar")
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 bicim::golgeli_hane(ui).show(ui, |ui| {
@@ -89,14 +90,15 @@ fn render_hesap_listesi(ui: &mut Ui, ozet: &Ozet, secili_hesap_indeks: &mut usiz
     ui.horizontal(|ui| {
         ui.heading("Oturumlar & Hesaplar");
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.button("+ Hesap Ekle").clicked() {
-                // Hesap ekleme diyaloğu
-            }
+            // G7: düğme önceden tıklanabiliyor ama hiçbir şey yapmıyordu.
+            ui.add_enabled(false, egui::Button::new("+ Hesap Ekle"))
+                .on_disabled_hover_text("Hesap ekleme diyaloğu henüz yok (DALGA-4).");
         });
     });
     ui.separator();
 
     egui::ScrollArea::vertical()
+        .id_salt("oturum_liste")
         .auto_shrink([false, false])
         .show(ui, |ui| {
             for (i, h) in ozet.hesaplar.iter().enumerate() {
@@ -145,8 +147,15 @@ fn render_hesap_listesi(ui: &mut Ui, ozet: &Ozet, secili_hesap_indeks: &mut usiz
                             ui.with_layout(
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| {
-                                    let _ = ui.small_button("👁 Aç").clicked();
-                                    let _ = ui.small_button("↻ Yenile").clicked();
+                                    // G7: iki düğme ölüydü (tıklanıyor, iş yapmıyordu).
+                                    ui.add_enabled(false, egui::Button::new("👁 Aç").small())
+                                        .on_disabled_hover_text(
+                                            "Sekmeye odaklanma henüz bağlı değil.",
+                                        );
+                                    ui.add_enabled(false, egui::Button::new("↻ Yenile").small())
+                                        .on_disabled_hover_text(
+                                            "Tek hesap tazeleme henüz bağlı değil.",
+                                        );
                                 },
                             );
                         });
@@ -166,6 +175,7 @@ fn render_hesap_ayrintisi(
     ornek_yetenek: &Option<YetenekKarti>,
 ) {
     egui::ScrollArea::vertical()
+        .id_salt("oturum_detay")
         .auto_shrink([false, false])
         .show(ui, |ui| {
             if let Some(secili) = ozet.hesaplar.get(*secili_hesap_indeks) {
@@ -241,7 +251,19 @@ fn render_hesap_ayrintisi(
                                 ui.with_layout(
                                     egui::Layout::right_to_left(egui::Align::Center),
                                     |ui| {
-                                        if ui.button(format!("[{}]", tani.oneri.eylem)).clicked() {}
+                                        if ui
+                                            .add_enabled(
+                                                false,
+                                                egui::Button::new(format!(
+                                                    "[{}]",
+                                                    tani.oneri.eylem
+                                                )),
+                                            )
+                                            .on_disabled_hover_text(
+                                                "Tanı eylemleri henüz panele bağlı değil.",
+                                            )
+                                            .clicked()
+                                        {}
                                     },
                                 );
                             });

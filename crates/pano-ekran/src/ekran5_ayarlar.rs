@@ -57,12 +57,20 @@ pub fn render(ui: &mut Ui, ozet: &Ozet, tema_tercihi: &mut TemaTercihi) {
                     } else {
                         for k in &ozet.kimlikler {
                             ui.horizontal(|ui| {
-                                ui.label(RichText::new(k).strong());
-                                ui.label(
-                                    RichText::new("● Ortam Değişkeninde Tanımlı")
-                                        .size(11.0)
-                                        .color(Color32::from_rgb(46, 125, 79)),
-                                );
+                                ui.label(RichText::new(&k.ad).strong());
+                                if k.tanimli {
+                                    ui.label(
+                                        RichText::new("● Ortam Değişkeninde Tanımlı")
+                                            .size(11.0)
+                                            .color(Color32::from_rgb(46, 125, 79)),
+                                    );
+                                } else {
+                                    ui.label(
+                                        RichText::new("○ Tanımsız — anahtar yok")
+                                            .size(11.0)
+                                            .color(Color32::from_rgb(192, 79, 66)),
+                                    );
+                                }
                             });
                         }
                     }

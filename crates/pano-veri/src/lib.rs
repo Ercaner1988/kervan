@@ -39,7 +39,9 @@ pub struct AkisIstegi {
 pub struct TelemetriOzeti {
     pub toplam_istek: u64,
     pub basarili_istek: u64,
-    pub ortalama_gecikme_ms: u64,
+    /// Hiç başarılı istek yoksa `None` — "0 ms" ölçülmemiş bir değeri ölçüm
+    /// gibi gösterirdi (G4).
+    pub ortalama_gecikme_ms: Option<u64>,
     pub aktif_yuvalar: usize,
 }
 
@@ -57,6 +59,17 @@ pub struct SekmeOzeti {
     pub url: String,
     pub ping_ms: u64,
     pub aktif: bool,
+}
+
+/// REST sağlayıcısı için anahtarın GERÇEKTEN ortam değişkeninde tanımlı olup
+/// olmadığı. Ad tarayıcı profil adı değil, `[rest.*]` hedefinin `anahtar_env`
+/// değeridir; durum `std::env::var` ile ölçülür (G5).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KimlikDurumu {
+    /// Ortam değişkeninin adı (ör. `GEMINI_API_KEY`).
+    pub ad: String,
+    /// `anahtar_env` ortamda tanımlı mı.
+    pub tanimli: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -89,7 +102,7 @@ pub struct Ozet {
     pub canli_akis: Vec<AkisIstegi>,
     pub son_hatalar: Vec<HataKaydi>,
     pub sekmeler: Vec<SekmeOzeti>,
-    pub kimlikler: Vec<String>,
+    pub kimlikler: Vec<KimlikDurumu>,
     pub saglik: SaglikOzeti,
 }
 

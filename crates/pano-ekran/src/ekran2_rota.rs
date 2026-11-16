@@ -1,10 +1,18 @@
 //! # ekran2_rota
 //! Ekran 2: Yönlendirme (Routing, Stratejiler, Dayanıklılık ve Oyun Alanı)
+//!
+//! Oyun alanı GERÇEK isteği Canlı ekranla aynı kanaldan gönderir: düğme
+//! `true` döndürür, çağıran `CanliDepo::gonder` çağırır ve sonucu
+//! `GonderimDurumu` üzerinden geri verir. Burada üretilen hiçbir metin
+//! ölçüm taklidi değildir (G1).
 
 use eframe::egui::{self, Color32, RichText, Ui};
-use kervan_pano_veri::Ozet;
+use kervan_pano_veri::{GonderimDurumu, Ozet};
 
-pub fn render(ui: &mut Ui, ozet: &Ozet, test_istemi: &mut String, test_yaniti: &mut String) {
+use crate::ekran6_canli::{CanliSecim, model_kimligi};
+
+pub fn render(ui: &mut Ui, ozet: &Ozet, secim: &mut CanliSecim, gonderim: &GonderimDurumu) -> bool {
+    let mut gonder = false;
     ui.vertical(|ui| {
         ui.heading("Yönlendirme & Strateji Masası");
         ui.separator();
@@ -15,7 +23,10 @@ pub fn render(ui: &mut Ui, ozet: &Ozet, test_istemi: &mut String, test_yaniti: &
                 ui.set_width(450.0);
 
                 egui::Frame::group(ui.style()).show(ui, |ui| {
-                    ui.label(RichText::new("Yönlendirme Stratejileri (21)").strong());
+                    ui.label(
+                        RichText::new(format!("Yönlendirme Stratejileri ({})", ozet.stratejiler.len()))
+                            .strong(),
+                    );
                     ui.label(
                         RichText::new("OmniRoute ROUTING_STRATEGY_VALUES ile küme eşittir (20 kamu + 1 dahili):")
                             .size(11.0)
@@ -53,9 +64,15 @@ pub fn render(ui: &mut Ui, ozet: &Ozet, test_istemi: &mut String, test_yaniti: &
                 egui::Frame::group(ui.style()).show(ui, |ui| {
                     ui.label(RichText::new("Dayanıklılık (kervan-direnc)").strong());
                     ui.separator();
-                    ui.label("Devre Kesici Durumu: KAPALI (Sağlıklı)");
-                    ui.label("429 Soğuma Takibi: 0 aktif soğuma");
-                    ui.label(RichText::new("Hata Arındırma: API anahtarı sızıntı kalkanı devrede").size(11.0));
+                    // G6: bu üç satır önceden sabit literaldi ("KAPALI (Sağlıklı)"),
+                    // yani ölçülmemiş bir durumu doğrulanmış gibi gösteriyordu.
+                    // Router'ın devre kesici durumu henüz panele taşınmadı;
+                    // ölçülmeyen şeyi "sağlıklı" diye yazmak yerine açıkça yaz.
+                    ui.label(
+                        RichText::new("Devre kesici, 429 soğuma ve arındırma göstergeleri bu sürümde panele bağlı değil.")
+                            .size(11.0)
+                            .color(Color32::GRAY),
+                    );
 
                     ui.add_space(4.0);
                     ui.label(
@@ -68,7 +85,7 @@ pub fn render(ui: &mut Ui, ozet: &Ozet, test_istemi: &mut String, test_yaniti: &
 
             ui.add_space(12.0);
 
-            // SAĞ: OYUN ALANI (PLAYGROUND / ÇEVİRİCİ TESTİ)
+            // SAĞ: OYUN ALANI (PLAYGROUND) — gerçek istek kanalı
             ui.vertical(|ui| {
                 egui::Frame::group(ui.style()).show(ui, |ui| {
                     ui.label(RichText::new("Çevirici & Oyun Alanı (/v1/chat/completions Testi)").strong());
@@ -81,22 +98,70 @@ pub fn render(ui: &mut Ui, ozet: &Ozet, test_istemi: &mut String, test_yaniti: &
 
                     ui.horizontal(|ui| {
                         ui.label("Model:");
-                        ui.label(RichText::new("kervan/gemini-2.5-pro").strong());
+                        let etiket = if secim.saglayici.is_empty() {
+                            "sunucu seçer".to_string()
+                        } else {
+                            model_kimligi(secim)
+                        };
+                        ui.label(RichText::new(etiket).strong());
                     });
+                    ui.horizontal(|ui| {
+                        ui.label("Hesap:");
+                        let etiket = secim
+                            .hesap
+                            .clone()
+                            .filter(|h| !h.is_empty())
+                            .unwrap_or_else(|| "en az kullanılan (otomatik)".to_string());
+                        ui.label(RichText::new(etiket).size(12.0));
+                    });
+                    ui.label(
+                        RichText::new("Hesap ve model seçimi Canlı ekrandan yapılır.")
+                            .size(10.5)
+                            .color(Color32::GRAY),
+                    );
 
                     ui.add_space(4.0);
                     ui.label("İstem:");
-                    ui.text_edit_multiline(test_istemi);
+                    ui.add_enabled_ui(!gonderim.calisiyor, |ui| {
+                        ui.text_edit_multiline(&mut secim.istem);
+                    });
 
                     ui.add_space(4.0);
-                    if ui.button("▶ Gönder ve Test Et").clicked() {
-                        *test_yaniti = "Kervan yanıtı: İstek başarıyla iletildi (200 OK, latency: 1120ms).".to_string();
+                    let hazir = !gonderim.calisiyor && !secim.istem.trim().is_empty();
+                    if ui
+                        .add_enabled(hazir, egui::Button::new("▶ Gönder ve Test Et"))
+                        .clicked()
+                    {
+                        gonder = true;
+                    }
+                    if gonderim.calisiyor {
+                        ui.add(egui::Spinner::new().size(14.0));
                     }
 
-                    if !test_yaniti.is_empty() {
+                    if let Some(hata) = &gonderim.hata {
+                        ui.add_space(6.0);
+                        ui.label(
+                            RichText::new(format!("Hata: {hata}"))
+                                .size(12.0)
+                                .color(Color32::from_rgb(192, 79, 66)),
+                        );
+                    } else if !gonderim.yanit.is_empty() {
                         ui.add_space(6.0);
                         ui.label(RichText::new("Yanıt:").strong());
-                        ui.label(RichText::new(&*test_yaniti).size(12.0));
+                        ui.label(
+                            RichText::new(format!(
+                                "{} · {} · {} ms",
+                                gonderim.model, gonderim.hesap, gonderim.sure_ms
+                            ))
+                            .size(10.5)
+                            .color(Color32::GRAY),
+                        );
+                        egui::ScrollArea::vertical()
+                            .id_salt("rota_yanit")
+                            .max_height(220.0)
+                            .show(ui, |ui| {
+                                ui.label(RichText::new(&gonderim.yanit).size(12.0));
+                            });
                     }
                 });
 
@@ -111,4 +176,5 @@ pub fn render(ui: &mut Ui, ozet: &Ozet, test_istemi: &mut String, test_yaniti: &
             });
         });
     });
+    gonder
 }

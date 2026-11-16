@@ -28,18 +28,30 @@ pub fn render(ui: &mut Ui, ozet: &Ozet) {
             egui::Frame::group(ui.style()).show(ui, |ui| {
                 ui.set_width(180.0);
                 ui.label(RichText::new("Başarı Oranı").size(11.0).color(Color32::GRAY));
-                let oran = if ozet.telemetri.toplam_istek > 0 {
-                    (ozet.telemetri.basarili_istek as f64 / ozet.telemetri.toplam_istek as f64) * 100.0
+                if ozet.telemetri.toplam_istek > 0 {
+                    let oran = (ozet.telemetri.basarili_istek as f64
+                        / ozet.telemetri.toplam_istek as f64)
+                        * 100.0;
+                    ui.label(
+                        RichText::new(format!("%{:.1}", oran))
+                            .size(24.0)
+                            .strong()
+                            .color(Color32::from_rgb(46, 125, 79)),
+                    );
+                    ui.label(
+                        RichText::new(format!("{} başarılı", ozet.telemetri.basarili_istek)).size(10.0),
+                    );
                 } else {
-                    100.0
-                };
-                ui.label(
-                    RichText::new(format!("%{:.1}", oran))
-                        .size(24.0)
-                        .strong()
-                        .color(Color32::from_rgb(46, 125, 79)),
-                );
-                ui.label(RichText::new(format!("{} başarılı", ozet.telemetri.basarili_istek)).size(10.0));
+                    // Henüz istek yok: "%100" yazmak ölçülmemiş bir başarıyı
+                    // iddia etmek olurdu (G4).
+                    ui.label(
+                        RichText::new("—")
+                            .size(24.0)
+                            .strong()
+                            .color(Color32::GRAY),
+                    );
+                    ui.label(RichText::new("henüz istek yok").size(10.0).color(Color32::GRAY));
+                }
             });
 
             ui.add_space(8.0);
@@ -47,13 +59,34 @@ pub fn render(ui: &mut Ui, ozet: &Ozet) {
             egui::Frame::group(ui.style()).show(ui, |ui| {
                 ui.set_width(180.0);
                 ui.label(RichText::new("Ortalama Gecikme").size(11.0).color(Color32::GRAY));
-                ui.label(
-                    RichText::new(format!("{} ms", ozet.telemetri.ortalama_gecikme_ms))
-                        .size(24.0)
-                        .strong()
-                        .color(Color32::from_rgb(217, 164, 65)),
-                );
-                ui.label(RichText::new("Uçtan uca süre").size(10.0).color(Color32::GRAY));
+                // Başarılı istek yoksa ortalama gecikme ölçülmemiştir; "0 ms"
+                // yazmak ölçüm uydurmak olurdu (G4).
+                match ozet.telemetri.ortalama_gecikme_ms {
+                    Some(ms) => {
+                        ui.label(
+                            RichText::new(format!("{ms} ms"))
+                                .size(24.0)
+                                .strong()
+                                .color(Color32::from_rgb(217, 164, 65)),
+                        );
+                        ui.label(
+                            RichText::new("Uçtan uca süre").size(10.0).color(Color32::GRAY),
+                        );
+                    }
+                    None => {
+                        ui.label(
+                            RichText::new("—")
+                                .size(24.0)
+                                .strong()
+                                .color(Color32::GRAY),
+                        );
+                        ui.label(
+                            RichText::new("henüz ölçülmedi")
+                                .size(10.0)
+                                .color(Color32::GRAY),
+                        );
+                    }
+                }
             });
         });
 

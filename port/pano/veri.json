@@ -1,5 +1,5 @@
 {
-  "uretim": "2026-11-11T17:05:06.409Z",
+  "uretim": "2026-11-15T19:31:16.672Z",
   "kaynak": {
     "varsayim": "araclar\\pano\\varsayim.json",
     "varsayim_surum": "2026-11-11"
@@ -7,13 +7,13 @@
   "uyari": "Bu dosya ÖLÇÜM DEĞİLDİR. Buradaki her yüzde, ağırlık ve hedef bir DEĞERLENDİRMEdir. olc-topla.ts bunları ölçümlerle birleştirir ama ikisini ayrı bloklarda tutar.",
   "olcum": {
     "rust": {
-      "dosya": 86,
-      "satir": 30152,
+      "dosya": 94,
+      "satir": 32836,
       "crate": 19
     },
     "test": {
-      "birim": 272,
-      "entegrasyon_dosyasi": 16
+      "birim": 294,
+      "entegrasyon_dosyasi": 22
     },
     "kapilar": {
       "betik": 18,
@@ -41,22 +41,22 @@
     },
     "durum": {
       "var": true,
-      "uretim_zamani": "2026-11-07T22:25:50.528Z",
-      "faz": "P3",
-      "kapi_sayisi": 11,
-      "yesil": 11,
+      "uretim_zamani": "2026-11-14T15:24:35.040Z",
+      "faz": "P10",
+      "kapi_sayisi": 13,
+      "yesil": 10,
       "sayimlar": {
         "route_ts": 730,
         "defter_planlandi": 5,
         "defter_dogrulandi": 1
       },
-      "tum_kapilar_yesil_mi": true
+      "tum_kapilar_yesil_mi": false
     },
     "uclar": {
       "var": true,
-      "toplam": 26,
-      "gercek": 3,
-      "kapsam_disi": 23
+      "toplam": 28,
+      "gercek": 4,
+      "kapsam_disi": 24
     },
     "muhur": {
       "var": true,
@@ -68,7 +68,7 @@
     },
     "sunucu": {
       "var": true,
-      "route": 24
+      "route": 26
     },
     "saglayici": {
       "var": true,
@@ -107,11 +107,11 @@
       ]
     },
     "git": {
-      "commit": 127,
+      "commit": 145,
       "ilk": "2026-08-15|82510ae|Kervan: tarayıcı sürülü AI ağ geçidi, ilk dikey dilim",
-      "son": "2026-11-10 16:01:45 +0300|6fe46e63f759bc3bfd589213cd6c711d0c307497|onar(saglayici): copilot kaydini tasinmis adrese cek, iki gerileme kilidi ekle",
+      "son": "2026-11-15 20:39:05 +0300|49fc9405005207081265fff09a54ff9fad77ca29|Add a local project status dashboard",
       "dal": "main",
-      "kirli": 2
+      "kirli": 3
     },
     "canli_yapilandirma": {
       "var": true,
@@ -142,13 +142,13 @@
       "ikili": [
         {
           "yol": "target/debug/kervan.exe",
-          "bayt": 18047488,
-          "tarih": "2026-11-06"
+          "bayt": 18609664,
+          "tarih": "2026-11-15"
         },
         {
           "yol": "target/release/kervan.exe",
-          "bayt": 11761152,
-          "tarih": "2026-10-27"
+          "bayt": 12929536,
+          "tarih": "2026-11-14"
         }
       ]
     },

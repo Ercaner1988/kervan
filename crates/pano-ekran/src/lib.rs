@@ -33,8 +33,6 @@ pub enum PanoSekmesi {
 pub struct PanoEkraniDurumu {
     pub aktif_sekme: PanoSekmesi,
     pub secili_hesap_indeks: usize,
-    pub test_istemi: String,
-    pub test_yaniti: String,
     pub ornek_tani: Option<TaniKarti>,
     pub ornek_yetenek: Option<YetenekKarti>,
     /// Canlı ekranın hesap + model + araç seçimi.
@@ -46,8 +44,6 @@ impl Default for PanoEkraniDurumu {
         Self {
             aktif_sekme: PanoSekmesi::Canli,
             secili_hesap_indeks: 0,
-            test_istemi: String::new(),
-            test_yaniti: String::new(),
             // Örnek tanı/yetenek kartları KALDIRILDI: içlerinde gerçek olmayan
             // hesap adı ve ölçülmemiş yetenekler vardı. Tanı kartı ancak gerçek
             // bir taramadan sonra doldurulur.
@@ -87,9 +83,12 @@ pub fn render_ust_serit(
         }
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let _ = ui.button("⚙").clicked();
             kilim_tema::tema_secici(ui, tema_tercihi);
-            let _ = ui.button("🔍 Tanı al").clicked();
+            // G7: düğmeler önceden `let _ = ui.button(...).clicked();` idi —
+            // tıklanabiliyor ama hiçbir şey yapmıyordu. Bağlanana kadar kapalı
+            // ve nedeni yazılı.
+            ui.add_enabled(false, egui::Button::new("🔍 Tanı al"))
+                .on_disabled_hover_text("Tanı taraması henüz panele bağlı değil (DALGA-2).");
         });
     });
 }
@@ -147,10 +146,16 @@ pub fn render_alt_serit(ui: &mut Ui, ozet: &Ozet) {
         }
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            // G8: burada önceden sabit "Boşta CPU: %0.0" yazıyordu — hiç
+            // ölçülmemiş bir sayıyı ölçüm gibi göstermek yanlış beyandı.
+            // Yerine gerçek telemetri sayacı kondu.
             ui.label(
-                RichText::new("Boşta CPU: %0.0")
-                    .size(11.0)
-                    .color(Color32::GRAY),
+                RichText::new(format!(
+                    "oturum isteği: {} · başarılı: {}",
+                    ozet.telemetri.toplam_istek, ozet.telemetri.basarili_istek
+                ))
+                .size(11.0)
+                .color(Color32::GRAY),
             );
         });
     });
@@ -178,7 +183,7 @@ pub fn render_ana_ekran(
             );
         }
         PanoSekmesi::Rota => {
-            ekran2_rota::render(ui, ozet, &mut durum.test_istemi, &mut durum.test_yaniti);
+            return ekran2_rota::render(ui, ozet, &mut durum.canli_secim, gonderim);
         }
         PanoSekmesi::Izleme => {
             ekran3_izleme::render(ui, ozet);

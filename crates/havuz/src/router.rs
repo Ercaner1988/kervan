@@ -899,6 +899,41 @@ impl SmartRouter {
             durum.lkgp = None;
         }
     }
+
+    /// Panonun (GUI) gösterdiği toplu metrik özeti:
+    /// `(toplam istek, başarılı istek, ortalama gecikme ms)`.
+    ///
+    /// Kaynak uydurma değil, `record_success`/`record_failure` defteridir:
+    /// `metrics` istek/başarı sayılarını, `StratejiDurumu::model` ise
+    /// `kaydet` ile yazılan gerçek gecikmeleri tutar. Ortalama, gecikmesi
+    /// ölçülmüş istek yoksa `None` döner; çağıran "%100" gibi bir değer
+    /// basmak yerine "ölçüm yok" göstermelidir.
+    ///
+    /// Kilit sırası: `metrics` → `durum` (yazma yollarıyla aynı yön).
+    pub async fn metrik_ozeti(&self) -> (u64, u64, Option<u64>) {
+        let metrics = self.metrics.read().await;
+        let toplam: u64 = metrics.values().map(|m| m.total_requests).sum();
+        let basarili: u64 = metrics.values().map(|m| m.successful_requests).sum();
+
+        // Ortalama gecikme YALNIZ başarılı isteklerden hesaplanır. Hatalarda
+        // `durum.kaydet` gecikmeyi 0.0 yazıyor (çağıran gerçek süreyi
+        // vermiyor); onları paydaya katmak ortalamayı olduğundan düşük
+        // gösterirdi. Hiç başarılı istek yoksa `None` döner — panel "0 ms"
+        // gibi ölçülmemiş bir değer basmasın.
+        let durum = self.durum.read().await;
+        let (olculen, gecikme) = durum.model.values().fold((0u64, 0.0f64), |(i, g), m| {
+            (i + m.basari, g + m.toplam_gecikme_ms)
+        });
+        drop(durum);
+        drop(metrics);
+
+        let ortalama = if olculen > 0 {
+            Some((gecikme / olculen as f64).round() as u64)
+        } else {
+            None
+        };
+        (toplam, basarili, ortalama)
+    }
 }
 
 /// Sıralamanın "şimdi"si: epoch milisaniye. Sistem saati 1970 öncesine
@@ -1393,5 +1428,45 @@ mod tests {
         let sirali = router.hedef_sirasi(&hedefler).await;
         let adlar: Vec<&str> = sirali.iter().map(|h| h.execution_key.as_str()).collect();
         assert_eq!(adlar, vec!["kimi/a"]);
+    }
+
+    /// `metrik_ozeti` GUI'nin tek gerçek telemetri kaynağı: toplam/başarılı
+    /// istek `record_*` defterinden, ortalama gecikme ise yalnız ÖLÇÜLMÜŞ
+    /// isteklerden türetilmeli. Hiç istek yokken gecikme `None` dönmeli ki
+    /// panel "%100" ya da "0 ms" gibi uydurma bir değer basmasın (G3/G4).
+    #[tokio::test]
+    async fn metrik_ozeti_bos_defterde_none_doner() {
+        let router = SmartRouter::new(RoutingStrategy::Lkgp);
+        assert_eq!(router.metrik_ozeti().await, (0, 0, None));
+    }
+
+    /// Başarılı ve başarısız istekler ayrı sayılır; ortalama gecikme ölçülen
+    /// isteklerin aritmetik ortalamasıdır (başarısızda gecikme 0 kaydedilir,
+    /// böylece oran şişmez).
+    #[tokio::test]
+    async fn metrik_ozeti_basari_ve_gecikmeyi_defterden_okur() {
+        let router = SmartRouter::new(RoutingStrategy::Lkgp);
+        router.record_success("gemini", 200).await;
+        router.record_success("gemini", 400).await;
+        router.record_failure("kimi").await;
+
+        let (toplam, basarili, ortalama) = router.metrik_ozeti().await;
+        assert_eq!(toplam, 3, "üç istek deftere yazılmalı");
+        assert_eq!(basarili, 2, "yalnız iki istek başarılı");
+        assert_eq!(ortalama, Some(300), "gecikme (200+400)/2 = 300 ms");
+    }
+
+    /// Sağlayıcı düzeyi sayaç, hesap düzeyindeki başarıları da kapsar:
+    /// GUI toplamı sağlayıcı bazında okuduğu için hesap çağrıları görünmez
+    /// kalmamalı.
+    #[tokio::test]
+    async fn metrik_ozeti_hesap_duzeyi_istekleri_de_sayar() {
+        let router = SmartRouter::new(RoutingStrategy::Lkgp);
+        router.record_success_hesap("gemini", Some("a"), 100).await;
+        router.record_failure_hesap("gemini", Some("b")).await;
+
+        let (toplam, basarili, ortalama) = router.metrik_ozeti().await;
+        assert_eq!((toplam, basarili), (2, 1));
+        assert_eq!(ortalama, Some(100));
     }
 }

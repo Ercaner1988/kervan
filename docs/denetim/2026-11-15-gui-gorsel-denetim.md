@@ -16,14 +16,17 @@ görsel doğruluk ölçülmedi" iddiasını sınamak için GUI başlatıldı, al
 
 | # | Bulgu | Ağırlık | Durum |
 |---|-------|---------|-------|
-| G1 | Rota ekranındaki "Gönder ve Test Et" **sahte yanıt** yazıyor | **YÜKSEK** | Açık |
-| G2 | Oturum ekranında egui `ScrollArea` kimlik çakışması — kırmızı uyarı metni ekranda | **ORTA** | Açık |
-| G3 | "Çalışma Süresi: 0 sn" hiç güncellenmiyor (alan varsayılanda donuk) | ORTA | Açık |
-| G4 | İzleme "Başarı Oranı %100.0" — istek 0 iken bile 100 gösteriyor | ORTA | Açık |
-| G5 | Ayarlar "Ortam Değişkeninde Tanımlı" — `kimlikler` = hesap adları, anahtar değil | **YÜKSEK** (yanlış iddia) | Açık |
-| G6 | Üst şeritteki "⚙" ve "🔍 Tanı al" düğmeleri ölü (`let _ =`) | DÜŞÜK | Açık |
-| G7 | "+ Hesap Ekle", "👁 Aç", "↻ Yenile", tanı eylem düğmesi ölü | DÜŞÜK | Açık |
-| G8 | Rota ekranı başlığı "Yönlendirme Stratejileri (21)" listelemiyor — yalnız sayı | DÜŞÜK | Açık |
+| G1 | Rota ekranındaki "Gönder ve Test Et" **sahte yanıt** yazıyor | **YÜKSEK** | Kapandı |
+| G2 | Oturum ekranında egui `ScrollArea` kimlik çakışması — kırmızı uyarı metni ekranda | **ORTA** | Kapandı |
+| G3 | "Çalışma Süresi: 0 sn" hiç güncellenmiyor (alan varsayılanda donuk) | ORTA | Kapandı |
+| G4 | İzleme "Başarı Oranı %100.0" — istek 0 iken bile 100 gösteriyor | ORTA | Kapandı |
+| G5 | Ayarlar "Ortam Değişkeninde Tanımlı" — `kimlikler` = hesap adları, anahtar değil | **YÜKSEK** (yanlış iddia) | Kapandı |
+| G6 | Üst şeritteki "⚙" ve "🔍 Tanı al" düğmeleri ölü (`let _ =`) | DÜŞÜK | Kapandı |
+| G7 | "+ Hesap Ekle", "👁 Aç", "↻ Yenile", tanı eylem düğmesi ölü | DÜŞÜK | Kapandı |
+| G8 | Rota ekranı başlığı "Yönlendirme Stratejileri (21)" listelemiyor — yalnız sayı | DÜŞÜK | Kapandı |
+
+> **Kapanış notu:** Sekiz bulgu da 2026-11-16'da düzeltildi ve **koşan pencere üzerinde görsel
+> olarak doğrulandı** — ayrıntı ve kanıt için §"Kapanış (2026-11-16)".
 
 Doğru bulunanlar: 6 sekme gezinmesi, Canlı ekranın hesap/model/araç üç sütunu ve gerçek POST
 gönderimi (`crates/gui/src/canli.rs:107-137` — `ureq::post` ile `/v1/chat/completions`, 180 sn
@@ -141,3 +144,36 @@ Sonra: **"ağırlık 8, %65 — derleniyor ve açılıyor (ölçüldü 2026-11-1
 Gerekçe: "koşmuyor" iddiası artık yanlış — pencere açıldı, GPGPU çizdi, canlı POST gönderiyor.
 Eksilen şey koşma değil, **beyan doğruluğu**: G1 uydurma ölçüm basıyor, G5 anahtar varlığını yanlış
 bildiriyor. Bu ikisi kapanmadan %65'in üstüne çıkmamalı; ikisi kapandığında %85 savunulabilir.
+
+---
+
+## Kapanış (2026-11-16)
+
+Sekiz bulgunun tamamı düzeltildi; düzeltmeler **koşan pencere üzerinde tek tek tıklanıp `ffmpeg
+-f gdigrab` ile yakalanarak** doğrulandı (aynı yöntem, yeni ikili). Kapılar: `cargo build
+--features gui` yeşil, `cargo test --workspace` 0 failed, `cargo fmt --check` 0, `cargo clippy` 0
+uyarı, `kapi.exe . --guvenilen-kod` yeşil 8 / kırmızı 0.
+
+| # | Ne yapıldı | Dosya | Görsel kanıt |
+|---|-----------|-------|--------------|
+| G1 | Sabit `"200 OK, latency: 1120ms"` metni silindi; Rota ekranı Canlı ekranla **aynı** `gonder` kanalına bağlandı — `render(ui, ozet, &mut CanliSecim, &GonderimDurumu) -> bool` | `crates/pano-ekran/src/ekran2_rota.rs` (yeniden yazıldı, 180 satır), `crates/pano-ekran/src/lib.rs` | `g3-rota.png`: "Model: sunucu seçer / Hesap: en az kullanılan (otomatik)", düğme **pasif**; sahte metin yok |
+| G2 | Üç `ScrollArea`'ya `id_salt("oturum_dar"/"oturum_liste"/"oturum_detay")` | `crates/pano-ekran/src/ekran1_oturum.rs` | `g2-oturum.png`: kırmızı `First use of ScrollArea ID 38FB` yok |
+| G3 | `SaglikOzeti` gerçek değerlerle dolduruluyor: `env!("CARGO_PKG_VERSION")`, süreç içi `OnceLock<Instant>` uptime, backend | `crates/gui/src/canli.rs` | `g6-ayar.png`: "Kervan Sürümü: v0.1.0 / Render Arka Ucu: wgpu (Vulkan) / Çalışma Süresi: 72 sn" |
+| G4 | `ortalama_gecikme_ms: u64` → `Option<u64>`; başarı yoksa `None`; ekranda `"—" + "henüz ölçülmedi"`. Payda `successful_requests` (hatalar 0.0 gecikmeyle yazıldığı için ortalamayı bozardı) | `crates/havuz/src/router.rs` (`pub async fn metrik_ozeti`), `crates/pano-veri/src/lib.rs`, `crates/pano-ekran/src/ekran3_izleme.rs`, `crates/gui/src/canli.rs` | `g4-izleme.png`: "Başarı Oranı — henüz istek yok", "Ortalama Gecikme — henüz ölçülmedi" |
+| G5 | `kimlikler` kaynağı `pool.kimlikler` (profil adları) → `state.rest_hedefleri` + `std::env::var(&h.anahtar_env).is_ok()`; tip `Vec<String>` → `Vec<KimlikDurumu { ad, tanimli }>` | `crates/pano-veri/src/lib.rs`, `crates/gui/src/canli.rs`, `crates/pano-ekran/src/ekran5_ayarlar.rs` | `g6-ayar.png`: `OPENROUTER_API_KEY  ○ Tanımsız — anahtar yok` (kırmızı) |
+| G6 | Ölü `⚙` düğmesi silindi; "🔍 Tanı al" `add_enabled(false)` + `on_disabled_hover_text("Tanı taraması henüz panele bağlı değil (DALGA-2).")` | `crates/pano-ekran/src/lib.rs` | `g1-canli.png`: "Tanı al" soluk, hover nedeni bağlı |
+| G7 | Ölü düğmeler `add_enabled(false)` + gerekçe metni | `crates/pano-ekran/src/ekran1_oturum.rs` | `g2-oturum.png`: "+ Hesap Ekle" soluk |
+| G8 | `ui.horizontal_wrapped` + `set_width` yetmedi (çerçeve kenar boşluğu sayılmıyor, 38 px taşıyordu) → `ui.columns(2, ...)`; sütunlar alanı tam böler | `crates/pano-ekran/src/ekran4_baglam.rs:46-64` | `t-baglam.png`: iki kutu yan yana, metin sütun içinde sarıyor, kesme yok |
+
+### Kapanışta ortaya çıkan yeni boşluk
+
+**G5 düzeltmesi doğru çalıştığı için yeni bir eksik görünür oldu:** ekran artık
+`OPENROUTER_API_KEY ○ Tanımsız — anahtar yok` diyor ama **kullanıcının anahtarı girebileceği bir yol
+yok**. Önceki hâlde her satır yeşil "Tanımlı" dediği için bu eksik gizliydi. Bu bir gerileme değil,
+dürüst beyanın ortaya çıkardığı gerçek boşluktur; ayrı iş kalemi olarak kayda geçti.
+
+### Pano §3 — nihai hüküm
+
+**"ağırlık 8, %85"** savunulabilir hâle geldi: altı ekranın altısı da koşan pencerede çiziliyor,
+hiçbiri sabit/uydurma ölçüm basmıyor, veri yokken "yok" diyor. %100 değil, çünkü Rota ve Bağlam
+ekranlarındaki DALGA-2/DALGA-4 rozetleri hâlâ "henüz yok" diyor — bunlar doğru beyan, eksik özellik.

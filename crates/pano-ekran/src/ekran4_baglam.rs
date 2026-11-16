@@ -38,9 +38,13 @@ pub fn render(ui: &mut Ui, ozet: &Ozet) {
         ui.add_space(16.0);
 
         // DALGA-2 VE DALGA-4 ROZETLERİ
-        ui.horizontal(|ui| {
-            egui::Frame::group(ui.style()).show(ui, |ui| {
-                ui.set_width(380.0);
+        // G8: iki kutu 380 px sabit genişlikteydi; toplam 760 px + boşluk dar
+        // pencerede taşıp metni kesiyordu. Ölçülen düzeltme (2×671+16 = 1358 >
+        // 1324 mevcut) hâlâ 38 px taşıyordu: `set_width` çerçevenin kendi kenar
+        // boşluğunu hesaba katmıyor. `ui.columns` alanı tam olarak ikiye böler,
+        // metin sütun genişliğinde sarar — taşma imkânsız.
+        ui.columns(2, |kolonlar| {
+            egui::Frame::group(kolonlar[0].style()).show(&mut kolonlar[0], |ui| {
                 ui.label(RichText::new("Bağlam Sıkıştırma (Compression)").strong());
                 ui.separator();
                 ui.label(
@@ -49,10 +53,7 @@ pub fn render(ui: &mut Ui, ozet: &Ozet) {
                 );
             });
 
-            ui.add_space(8.0);
-
-            egui::Frame::group(ui.style()).show(ui, |ui| {
-                ui.set_width(380.0);
+            egui::Frame::group(kolonlar[1].style()).show(&mut kolonlar[1], |ui| {
                 ui.label(RichText::new("Önbellek & Konuşma Belleği").strong());
                 ui.separator();
                 ui.label(
