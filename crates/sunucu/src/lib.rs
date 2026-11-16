@@ -10,6 +10,10 @@ pub use kervan_saglayici::{kota, saglayicilar};
 pub use kervan_tarayici::{browser, config, kurulum};
 
 pub use kervan_eklenti::eklenti;
+/// REST yukarı akış sandığı `yukari` adıyla yeniden dışa aktarılır: arayüzün
+/// oturum kasasına (`oturum_anahtari_ekle` / `anahtar_coz`) erişebilmesi için.
+/// `kervan-gui` bu sandığa doğrudan bağımlı değil; tek kapı burasıdır.
+pub use kervan_yukari as yukari;
 mod chat;
 mod eklenti_uc;
 mod hesap;

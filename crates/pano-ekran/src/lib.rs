@@ -37,6 +37,8 @@ pub struct PanoEkraniDurumu {
     pub ornek_yetenek: Option<YetenekKarti>,
     /// Canlı ekranın hesap + model + araç seçimi.
     pub canli_secim: CanliSecim,
+    /// Ayarlar ekranının REST anahtarı formu (m02007).
+    pub ayar_formu: ekran5_ayarlar::AnahtarFormu,
 }
 
 impl Default for PanoEkraniDurumu {
@@ -50,6 +52,7 @@ impl Default for PanoEkraniDurumu {
             ornek_tani: None,
             ornek_yetenek: None,
             canli_secim: CanliSecim::default(),
+            ayar_formu: ekran5_ayarlar::AnahtarFormu::default(),
         }
     }
 }
@@ -192,7 +195,7 @@ pub fn render_ana_ekran(
             ekran4_baglam::render(ui, ozet);
         }
         PanoSekmesi::Ayarlar => {
-            ekran5_ayarlar::render(ui, ozet, tema_tercihi);
+            ekran5_ayarlar::render(ui, ozet, tema_tercihi, &mut durum.ayar_formu);
         }
     }
     false

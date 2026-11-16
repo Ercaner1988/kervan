@@ -33,3 +33,6 @@ node_modules/
 # Gecici olcum ve döküm dosyalari
 /olc-*
 /olcum-defter.json
+
+# Pano sunucusunun calisma zamani pid dosyasi
+/port/pano/.sunucu.pid

@@ -250,6 +250,31 @@ impl eframe::App for KervanApp {
             self.canli.gonder(istek);
         }
 
+        // Ayarlar ekranında biriken anahtar eylemi BURADA uygulanır: oturum
+        // kasasını yalnız bu katman görür. Ekran gizli değeri kendi elinde
+        // tutmaz, yalnız kullanıcının yazdığını bir sonraki karede bırakır.
+        if let Some(eylem) = self.pano_durumu.ayar_formu.bekleyen.take() {
+            use kervan_pano_ekran::ekran5_ayarlar::AnahtarEylemi;
+            self.pano_durumu.ayar_formu.mesaj = Some(match eylem {
+                AnahtarEylemi::Ekle { ad, deger } => {
+                    if kervan_sunucu::yukari::oturum_anahtari_ekle(&ad, &deger) {
+                        (format!("{ad} bu oturum için eklendi."), true)
+                    } else {
+                        // Kasa boş ad/değer kabul etmez; sessiz yutmak
+                        // kullanıcıya "eklendi" sanısı verirdi.
+                        (format!("{ad} eklenemedi: anahtar boş olamaz."), false)
+                    }
+                }
+                AnahtarEylemi::Sil { ad } => {
+                    if kervan_sunucu::yukari::oturum_anahtari_sil(&ad) {
+                        (format!("{ad} oturum kasasından kaldırıldı."), true)
+                    } else {
+                        (format!("{ad} için oturumda girilmiş anahtar yoktu."), false)
+                    }
+                }
+            });
+        }
+
         // Windows DWM / egui olay döngüsünü canlı tutmak için hafif arka plan yenilemesi (500 ms)
         ui.ctx()
             .request_repaint_after(std::time::Duration::from_millis(500));

@@ -68,8 +68,14 @@ pub struct SekmeOzeti {
 pub struct KimlikDurumu {
     /// Ortam değişkeninin adı (ör. `GEMINI_API_KEY`).
     pub ad: String,
-    /// `anahtar_env` ortamda tanımlı mı.
+    /// `anahtar_env` çözülebiliyor mu (oturum kasası ya da süreç ortamı).
     pub tanimli: bool,
+    /// Anahtar bu oturumda panelden mi girildi?
+    ///
+    /// Panelde girilen anahtar yalnız bellekte durur ve Kervan kapanınca
+    /// kaybolur. Kullanıcı bunu bilmezse ertesi gün "anahtar kayboldu"
+    /// sanır; ayrım ekranda görünmeli.
+    pub oturumda: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

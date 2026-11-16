@@ -156,13 +156,89 @@ pub mod akis;
 
 /// Yukarı akış anahtarını çözen işlev: ortam değişkeni adı → anahtar değeri.
 ///
-/// Varsayılan çözücü süreç ortamını okur; anahtar hiçbir zaman yapılandırma
-/// dosyasına yazılmaz. Dikiş, testin anahtarı süreç ortamına yazmadan
-/// (Rust 2024'te bu `unsafe`'tir) aynı yolu sınamasına izin verir.
+/// Varsayılan çözücü önce bu oturumun kasasını, sonra süreç ortamını okur;
+/// anahtar hiçbir zaman yapılandırma dosyasına ya da diske yazılmaz. Dikiş,
+/// testin anahtarı süreç ortamına yazmadan (Rust 2024'te bu `unsafe`'tir) aynı
+/// yolu sınamasına izin verir.
 pub type AnahtarCozucu = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
 
-fn ortamdan_anahtar(ad: &str) -> Option<String> {
+/// Panelden girilen anahtarların yalnız bellekte durduğu kasa.
+///
+/// NEDEN DİSK DEĞİL: `kervan.toml` bir yapılandırma dosyasıdır ve yedeklenir,
+/// sürüm denetimine girebilir, paylaşılabilir. Gizli anahtarı oraya yazmak
+/// onu sıradan bir ayar gibi dağıtırdı. Bu yüzden anahtar süreç ömrüyle
+/// sınırlıdır: Kervan kapanınca kasa boşalır, kullanıcı yeniden girer.
+///
+/// NEDEN `std::env::set_var` DEĞİL: Rust 2024'te `unsafe`'tir ve bu süreç
+/// çok iş parçacıklıdır (sunucu, pano yoklaması, arayüz). Ortamı yazmak veri
+/// yarışı doğururdu; kasa ise kendi kilidiyle korunur.
+static OTURUM_KASASI: std::sync::OnceLock<
+    std::sync::RwLock<std::collections::HashMap<String, String>>,
+> = std::sync::OnceLock::new();
+
+fn oturum_kasasi() -> &'static std::sync::RwLock<std::collections::HashMap<String, String>> {
+    OTURUM_KASASI.get_or_init(|| std::sync::RwLock::new(std::collections::HashMap::new()))
+}
+
+/// Kilit zehirlenmişse içeriği kurtarır: anahtar çözümü, başka bir iş
+/// parçacığının çökmesi yüzünden tümden durmamalı. Kasa yalnız anahtar/değer
+/// çifti tuttuğu için yarım kalmış bir yazma tutarsızlık üretmez.
+fn kasa_oku() -> std::sync::RwLockReadGuard<'static, std::collections::HashMap<String, String>> {
+    oturum_kasasi().read().unwrap_or_else(|e| e.into_inner())
+}
+
+fn kasa_yaz() -> std::sync::RwLockWriteGuard<'static, std::collections::HashMap<String, String>> {
+    oturum_kasasi().write().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Anahtarı bu oturumun kasasına koyar. `false` dönerse hiçbir şey yazılmadı.
+///
+/// Ad ve değer boşluklardan arındırılır: yapıştırma artığı bir boşluk,
+/// "tanımlı ama geçersiz" bir anahtar üretirdi. Farklı bir ad/değerle aynı
+/// anahtar yeniden girilirse eskisi ezilir — panelde son girilen doğrudur.
+pub fn oturum_anahtari_ekle(ad: &str, deger: &str) -> bool {
+    let ad = ad.trim();
+    let deger = deger.trim();
+    if ad.is_empty() || deger.is_empty() {
+        return false;
+    }
+    kasa_yaz().insert(ad.to_string(), deger.to_string());
+    true
+}
+
+/// Bu oturumda girilmiş anahtarı siler. `true` dönerse kasa değişti.
+///
+/// Gerekli: panelden girilen yanlış bir anahtar, süreç kapanana kadar ortam
+/// değişkenini gölgeler. Kaldırma yolu olmadan kullanıcı Kervan'ı yeniden
+/// başlatmaya zorlanırdı.
+pub fn oturum_anahtari_sil(ad: &str) -> bool {
+    kasa_yaz().remove(ad.trim()).is_some()
+}
+
+/// Anahtar bu oturumda panelden mi girilmiş (ortamdan değil)?
+pub fn oturum_anahtari_var(ad: &str) -> bool {
+    kasa_oku().contains_key(ad.trim())
+}
+
+/// Anahtarı çözer: önce bu oturumun kasası, sonra süreç ortamı.
+///
+/// Sıra bilinçli: panelde girilen değer, o oturum için en güncel bilgidir ve
+/// ortam değişkeni eskiyse kullanıcının gözü önünde düzeltebildiği değer
+/// kazanmalı. Tek çözüm noktası burasıdır; `Yukari` ve panel aynı sırayı
+/// ayrı ayrı yazmaz.
+pub fn anahtar_coz(ad: &str) -> Option<String> {
+    let ad = ad.trim();
+    if ad.is_empty() {
+        return None;
+    }
+    if let Some(deger) = kasa_oku().get(ad) {
+        return Some(deger.clone());
+    }
     std::env::var(ad).ok()
+}
+
+fn ortamdan_anahtar(ad: &str) -> Option<String> {
+    anahtar_coz(ad)
 }
 
 #[derive(Clone)]
@@ -559,5 +635,70 @@ impl Yukari {
         })
         .await
         .map_err(|e| YukariHatasi::AgHatasi(format!("spawn_blocking hatası: {}", e)))?
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Her test kendi adını kullanır: kasa süreç genelinde tek bir
+    // `static`'tir ve testler paralel koşar. Ortak ad kullanmak testleri
+    // birbirine bağımlı kılardı.
+
+    #[test]
+    fn oturum_kasasi_ortami_golgelemeli() {
+        // Varsayılan çözücünün sırası: önce kasa, sonra ortam. Panelden
+        // girilen değer kullanıcının gözü önünde düzelttiği güncel bilgidir.
+        let ad = "KERVAN_TEST_KASA_GOLGELEME";
+        // Ortamda böyle bir değişken yoksa da test anlamlı: kasaya yazılan
+        // değer çözülmeli.
+        assert!(oturum_anahtari_ekle(ad, "kasadan"));
+        assert_eq!(anahtar_coz(ad).as_deref(), Some("kasadan"));
+        assert!(oturum_anahtari_var(ad));
+        assert!(oturum_anahtari_sil(ad));
+        assert!(!oturum_anahtari_var(ad));
+        // Kasa silindikten sonra ortamda da yok → çözüm yok.
+        assert_eq!(anahtar_coz(ad), None);
+    }
+
+    #[test]
+    fn bos_anahtar_kasaya_girmez() {
+        // Boşluk artığı bir "tanımlı ama geçersiz" anahtar üretmemeli.
+        let ad = "KERVAN_TEST_KASA_BOS";
+        assert!(!oturum_anahtari_ekle(ad, "   "));
+        assert!(!oturum_anahtari_ekle("   ", "deger"));
+        assert!(!oturum_anahtari_var(ad));
+        assert!(!oturum_anahtari_sil(ad));
+    }
+
+    #[test]
+    fn yapistirilan_bosluklar_kirpilir() {
+        let ad = "KERVAN_TEST_KASA_KIRP";
+        assert!(oturum_anahtari_ekle(
+            "  KERVAN_TEST_KASA_KIRP  ",
+            "  deger  "
+        ));
+        assert_eq!(anahtar_coz(ad).as_deref(), Some("deger"));
+        // Aynı ad yeniden girilirse eskisi ezilir: son girilen doğrudur.
+        assert!(oturum_anahtari_ekle(ad, "yeni"));
+        assert_eq!(anahtar_coz(ad).as_deref(), Some("yeni"));
+        assert!(oturum_anahtari_sil(ad));
+    }
+
+    #[test]
+    fn anahtar_yoksa_cozum_none() {
+        // Hiçbir yerde tanımsız bir ad `None` döner; `Yukari` bunu
+        // `AnahtarYok` hatasına çevirir.
+        assert_eq!(anahtar_coz("KERVAN_TEST_HIC_YOK_12345"), None);
+        assert_eq!(anahtar_coz(""), None);
+    }
+
+    #[test]
+    fn ortam_degiskeni_yedek_kaynaktir() {
+        // Süreç ortamında gerçekten var olan bir değişken (PATH) kasadan
+        // bağımsız olarak çözülmeli — kasa ortamı GÖLGELEMİYORSA bu yol
+        // kırılırdı ve mevcut kurulumlar sessizce anahtarsız kalırdı.
+        assert!(anahtar_coz("PATH").is_some());
     }
 }

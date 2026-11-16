@@ -307,14 +307,20 @@ async fn yokla(state: &AppState, port: u16) -> (CanliDurum, Ozet) {
         .map(|s| (*s).to_string())
         .collect();
 
-    // 7. REST hedeflerinin anahtarları: GERÇEK ortam değişkeni kontrolü.
+    // 7. REST hedeflerinin anahtarları: GERÇEK çözüm kontrolü.
     //    `pool.kimlikler` tarayıcı PROFİL adlarıdır, REST anahtarı değil (G5).
+    //    Çözüm tek noktadan yapılır (`kervan_yukari::anahtar_coz`): önce bu
+    //    oturumun kasası, sonra süreç ortamı. Burada `std::env::var` çağırmak
+    //    panelden girilen anahtarı görmezdi — kullanıcı anahtarı girer, ekran
+    //    hâlâ "tanımsız" derdi.
     let mut kimlikler: Vec<KimlikDurumu> = state
         .rest_hedefleri
         .values()
         .map(|h| KimlikDurumu {
             ad: h.anahtar_env.clone(),
-            tanimli: !h.anahtar_env.is_empty() && std::env::var(&h.anahtar_env).is_ok(),
+            tanimli: !h.anahtar_env.trim().is_empty()
+                && kervan_sunucu::yukari::anahtar_coz(&h.anahtar_env).is_some(),
+            oturumda: kervan_sunucu::yukari::oturum_anahtari_var(&h.anahtar_env),
         })
         .collect();
     kimlikler.sort_by(|a, b| a.ad.cmp(&b.ad));
