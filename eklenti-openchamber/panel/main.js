@@ -238,6 +238,110 @@
     }
   };
 
+  // CLI hesap kasası: `durum.kasa = {cesitler: [{cesit,kayitlar,aktif,hata}], kok}`.
+  // Kayıtlar sır taşımaz (kimlik/eposta/plan); token'lar sunucuda kalır.
+  let kasaImza = "";
+  const kasaCesidi = () => $("#kasaCesit").value || "claude";
+
+  const kasaNotu = (metin, sinif = "alt") => {
+    const not = $("#kasaNot");
+    not.textContent = metin;
+    not.className = sinif;
+  };
+
+  const kasaListesi = (durum) => {
+    const cesitler = Array.isArray(durum?.kasa?.cesitler) ? durum.kasa.cesitler : [];
+    return cesitler.find((c) => c.cesit === kasaCesidi()) ?? null;
+  };
+
+  const kasaSatiri = (kayit, aktifMi) => {
+    const satir = eleman("div", "satir");
+    const sol = eleman("div");
+    sol.append(eleman("div", "ad", kayit.eposta ?? kayit.ad ?? kayit.kimlik));
+    const alt = [
+      kayit.plan ? `plan: ${kayit.plan}` : null,
+      kayit.ucretsiz ? "ücretsiz" : null,
+      aktifMi ? "dosyalarda aktif" : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    sol.append(eleman("div", "alt", alt || kayit.kimlik));
+    satir.append(sol);
+
+    const sag = eleman("span", "sag");
+    if (aktifMi) sag.append(eleman("span", "rozet acik", "aktif"));
+    const gec = eleman("button", aktifMi ? null : "birincil", aktifMi ? "Yeniden yaz" : "Bu hesaba geç");
+    gec.addEventListener("click", () => kasaGecis(kayit, aktifMi));
+    const sil = eleman("button", "tehlike", "Sil");
+    sil.addEventListener("click", () => kasaSil(kayit));
+    sag.append(gec, sil);
+    satir.append(sag);
+    return satir;
+  };
+
+  const cizKasa = (durum) => {
+    const kap = $("#kasaListe");
+    const kayit = kasaListesi(durum);
+    $("#kasaKok").textContent = durum?.kasa?.kok ? `kasa: ${durum.kasa.kok}` : "";
+    // 5 sn'lik tazeleme düğmelere dokunmasın: imza değişmedikçe DOM yeniden kurulmaz.
+    const imza = JSON.stringify([kasaCesidi(), kayit?.kayitlar ?? [], kayit?.aktif?.kimlik ?? null, kayit?.hata ?? null]);
+    if (imza === kasaImza) return;
+    kasaImza = imza;
+    kap.textContent = "";
+
+    if (!kayit) {
+      kap.append(eleman("div", "bos", "Kasa okunamadı."));
+      return;
+    }
+    if (kayit.hata) {
+      kap.append(eleman("div", "bos", `Kasa hatası: ${kayit.hata}`));
+      return;
+    }
+    const kayitlar = Array.isArray(kayit.kayitlar) ? kayit.kayitlar : [];
+    if (kayitlar.length === 0) {
+      kap.append(
+        eleman(
+          "div",
+          "bos",
+          "Kasada hesap yok. Önce CLI'da giriş yapıp \"Aktif hesabı kasaya al\"a bas.",
+        ),
+      );
+      return;
+    }
+    const aktifKimlik = kayit.aktif?.kimlik ?? null;
+    for (const k of kayitlar) kap.append(kasaSatiri(k, k.kimlik === aktifKimlik));
+  };
+
+  const kasaGecis = (kayit, aktifMi) => calistir(async () => {
+    if (aktifMi) {
+      // Aynı hesabı yeniden yazmak token'ı kasaya tazeler; yine de kullanıcıya söyle.
+      kasaNotu(`${kayit.eposta ?? kayit.kimlik} zaten aktif; kasa tazeleniyor…`);
+    } else {
+      kasaNotu(`${kayit.eposta ?? kayit.kimlik} hesabına geçiliyor…`);
+    }
+    // Geçiş dosyaların sakinleşmesini bekleyip yazdıktan sonra geri okur.
+    const sonuc = await servis("POST", `/kasa/${kasaCesidi()}/gecis`, { kimlik: kayit.kimlik }, 30_000);
+    kasaNotu(sonuc?.mesaj ?? "Geçiş tamamlandı.", sonuc?.degisti === false ? "alt" : "alt");
+    kasaImza = "";
+    await yenile();
+  });
+
+  const kasaSil = (kayit) => calistir(async () => {
+    const sonuc = await servis("POST", `/kasa/${kasaCesidi()}/sil`, { kimlik: kayit.kimlik }, 30_000);
+    if (!sonuc?.ok) throw new Error("Kayıt silinemedi.");
+    kasaNotu("Kayıt silindi.");
+    kasaImza = "";
+    await yenile();
+  });
+
+  const kasaTopla = () => calistir(async () => {
+    kasaNotu("CLI dosyaları okunuyor…");
+    const sonuc = await servis("POST", `/kasa/${kasaCesidi()}/topla`, undefined, 30_000);
+    kasaNotu(sonuc?.mesaj ?? "Kasa tazelendi.");
+    kasaImza = "";
+    await yenile();
+  });
+
   const cizWebHesaplar = (durum) => {
     const kap = $("#webHesaplar");
     kap.textContent = "";
@@ -558,6 +662,7 @@
     cizStrateji(durum);
     cizHesaplar(durum);
     cizHesapEkle(durum);
+    cizKasa(durum);
     cizWebHesaplar(durum);
     cizKota(durum);
     // Secenekler ayri bir uctan gelir; hata olsa bile panelin geri kalani cizili kalir.
@@ -648,6 +753,12 @@
   $("#hesapAc").addEventListener("click", hesapAc);
   $("#hesapDogrula").addEventListener("click", hesapDogrula);
   $("#hesapYenidenBaslat").addEventListener("click", hesabiDevreyeAl);
+  $("#kasaTopla").addEventListener("click", kasaTopla);
+  // CLI değişince liste imzası sıfırlanır; aksi hâlde imza aynı kalıp DOM bayat kalır.
+  $("#kasaCesit").addEventListener("change", () => {
+    kasaImza = "";
+    if (sonDurum) cizKasa(sonDurum);
+  });
 
   // Host köprüsünü başlat: hello → host 'ready' ve ilk 'workspace' push'u yollar.
   window.parent.postMessage({ channel: KANAL, v: SURUM, type: "hello" }, "*");

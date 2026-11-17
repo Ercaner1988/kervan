@@ -231,13 +231,14 @@ const durum = async () => {
   if (!acik) {
     return { kervan: false, mesaj: "Kervan kapalı." };
   }
-  const [accounts, yonlendirme, eklenti, telemetri, kota, bakiye] = await Promise.all([
+  const [accounts, yonlendirme, eklenti, telemetri, kota, bakiye, kasa] = await Promise.all([
     kervan("/accounts"),
     kervan("/yonlendirme"),
     kervan("/eklenti/sekmeler"),
     kervan("/telemetri"),
     kervan("/kota"),
     kervan("/bakiye"),
+    kervan("/kasa"),
   ]);
   return {
     kervan: true,
@@ -249,6 +250,8 @@ const durum = async () => {
     telemetri: telemetri?.veri ?? null,
     kota: kota?.veri ?? null,
     bakiye: bakiye?.veri ?? null,
+    // CLI hesap kasasi (Claude/Codex/Gemini). Ayri uc: panel tek turda cizsin.
+    kasa: kasa?.veri ?? null,
   };
 };
 
@@ -303,6 +306,36 @@ const sunucu = http.createServer(async (req, res) => {
       }
       const eylem = url.pathname.endsWith("duraklat") ? "duraklat" : "devam";
       const sonuc = await kervan(`/accounts/${index}/${eylem}`, { method: "POST" });
+      if (!sonuc) {
+        json(res, 503, { hata: "Kervan kapalı." });
+        return;
+      }
+      json(res, sonuc.durum, sonuc.veri);
+    } catch (hata) {
+      json(res, 400, { hata: hata.message });
+    }
+    return;
+  }
+
+  // Hesap kasası: CLI kimlik dosyaları (Claude/Codex/Gemini) arasında geçiş.
+  // SIR SINIRI: kasa yanıtı token taşımaz (yalnız eposta/plan/kimlik özeti);
+  // bu yüzden burada bir filtre gerekmiyor — Kervan zaten ozet döndürüyor.
+  if (req.method === "GET" && url.pathname === "/kasa") {
+    const sonuc = await kervan("/kasa");
+    if (!sonuc) {
+      json(res, 503, { hata: "Kervan kapalı." });
+      return;
+    }
+    json(res, sonuc.durum, sonuc.veri);
+    return;
+  }
+
+  if (req.method === "POST" && /^\/kasa\/[^/]+\/(topla|gecis|sil)$/.test(url.pathname)) {
+    try {
+      const govde = await okuGovde(req);
+      // Geçiş dosyaların sakinleşmesini bekleyip yazdıktan sonra geri okur;
+      // 2,5 sn'lik genel zaman aşımı yetmez.
+      const sonuc = await kervanUzun(url.pathname, { method: "POST", body: govde, ms: 30_000 });
       if (!sonuc) {
         json(res, 503, { hata: "Kervan kapalı." });
         return;

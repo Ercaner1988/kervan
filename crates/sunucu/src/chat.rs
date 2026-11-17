@@ -277,10 +277,19 @@ pub(crate) async fn chat(
             if profil.is_empty() {
                 return hata(StatusCode::BAD_REQUEST, "kervan.hesap icinde profil bos");
             }
-            if !st.eklenti_hub.sekme_var_mi(saglayici_adi).await {
+            // Sabitlenecek hesap iki taşıyıcıdan birinde olabilir: eklenti sekmesi
+            // (tarayıcı eklentisi) ya da WebDriver havuzu (kervan.toml + Zen profili).
+            // İkisinde de yoksa istek açık hatayla döner — sessiz hesap değişimi yok.
+            if !havuzda_var(&st, saglayici_adi, profil)
+                && !st.eklenti_hub.sekme_var_mi(saglayici_adi).await
+            {
                 return hata(
                     StatusCode::BAD_REQUEST,
-                    &format!("'{saglayici_adi}' icin bagli eklenti hesabi yok; hesap sabitlenemez"),
+                    &format!(
+                        "'{saglayici_adi}' icin '{profil}' hesabi ne eklentiye bagli ne havuzda tanimli; \
+                         hesap sabitlenemez. Havuz hesaplari: {}",
+                        havuz_hesaplari(&st, saglayici_adi).join(", ")
+                    ),
                 );
             }
             Some(profil.to_string())
@@ -303,26 +312,34 @@ pub(crate) async fn chat(
     // yasak: istek, hangi sağlayıcıda hangi hesapların bağlı olduğunu söyleyen
     // açık 400 ile döner. (2026-10-25: bu denetim yoktu, `kervan/gemini@olmayan`
     // eklentiye gidip 500 üretiyordu — kullanıcı sebebi göremiyordu.)
+    //
+    // 2026-11-17: kapsam genişledi. Hesap havuzda (kervan.toml `[[accounts]]`,
+    // Zen profili) tanımlıysa da geçerlidir; aksi hâlde panelden seçilen havuz
+    // hesabı, hiç eklenti bağlı değilken 400'e düşüyordu.
     if let Some(profil) = hedef_profil.as_deref() {
         let saglayici_adi = adaylar
             .first()
             .map(|h| h.provider.as_str())
             .unwrap_or_default();
-        let bagli = st.eklenti_hub.bagli_hesaplar().await;
-        let aranan = format!("{saglayici_adi}:{profil}");
-        if !bagli.iter().any(|k| k == &aranan) {
-            return hata(
-                StatusCode::BAD_REQUEST,
-                &format!(
-                    "'{profil}' hesabi '{saglayici_adi}' icin bagli degil. Bagli hesaplar: {}",
-                    bagli
-                        .iter()
-                        .filter(|k| k.starts_with(&format!("{saglayici_adi}:")))
-                        .cloned()
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
-            );
+        if !havuzda_var(&st, saglayici_adi, profil) {
+            let bagli = st.eklenti_hub.bagli_hesaplar().await;
+            let aranan = format!("{saglayici_adi}:{profil}");
+            if !bagli.iter().any(|k| k == &aranan) {
+                return hata(
+                    StatusCode::BAD_REQUEST,
+                    &format!(
+                        "'{profil}' hesabi '{saglayici_adi}' icin bagli degil. \
+                         Bagli hesaplar: {} | Havuz hesaplari: {}",
+                        bagli
+                            .iter()
+                            .filter(|k| k.starts_with(&format!("{saglayici_adi}:")))
+                            .cloned()
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                        havuz_hesaplari(&st, saglayici_adi).join(", ")
+                    ),
+                );
+            }
         }
     }
 
@@ -410,10 +427,23 @@ pub(crate) async fn chat(
         menu: secim_menusu,
         tercih: None,
     };
+    // Sabitlenen hesap havuzda mı? Havuzda ise eklenti sekmesi hiç denenmez:
+    // hesap yalnız WebDriver taşıyıcısında yaşar, eklentiye sormak anlamsızdır
+    // (ve eklenti `null` dönüp isteği 500'e kilitlerdi). Sağlayıcı bazında
+    // sorulur: `auto` dışında aday listesi tek sağlayıcıdır, ama kural yine de
+    // sağlayıcıya bağlanır ki ikinci bir aday eklendiğinde yanlış atlama olmasın.
+    let sabit_profil = secim_temel.hesap.clone();
     for hedef in denenecek.iter().copied() {
         let ad = hedef.provider.as_str();
+        // Tercih sırası: insanın sabitlediği hesap (havuzda yumuşak tercih olarak
+        // uygulanır — hazır değilse en-az-kullanılana düşülür), yoksa yönlendiricinin
+        // seçtiği bağlantı. Sabitlenen hesap yönlendiricinin seçimini EZER: insan
+        // seçimi tahminle değiştirilmez.
         let secim = SecimIstegi {
-            tercih: hedef.connection_id.clone(),
+            tercih: secim_temel
+                .hesap
+                .clone()
+                .or_else(|| hedef.connection_id.clone()),
             ..secim_temel.clone()
         };
         if otomatik {
@@ -430,7 +460,11 @@ pub(crate) async fn chat(
 
         let sonuc = if let Some(hedef) = st.rest_hedefleri.get(ad).cloned() {
             rest_denemesi(&st, &hedef, &raw_val, None, req.stream).await
-        } else if st.eklenti_hub.sekme_var_mi(ad).await {
+        } else if !sabit_profil
+            .as_deref()
+            .is_some_and(|p| havuzda_var(&st, ad, p))
+            && st.eklenti_hub.sekme_var_mi(ad).await
+        {
             // TAŞIYICI AYRIMI (2026-11-14 ölçümü; tazelik süzgeci 2026-11-15):
             // `sekme_var_mi` 90 sn'lik yaş süzgeci uyguluyor
             // (`SEKME_TAZELIK_ESIGI`), yani ÖLÜ kaydı canlı saymaz — eklenti
@@ -566,6 +600,31 @@ async fn eklenti_denemesi(
             ))
         }
     }
+}
+
+/// Havuzda (kervan.toml `[[accounts]]` → Zen profili) bu sağlayıcı için
+/// tanımlı hesapların adları. Eklenti hesabı olmayan kurulumlarda tek gerçek
+/// hesap kaynağı budur; hata mesajları ve panel bu listeyi gösterir.
+fn havuz_hesaplari(st: &AppState, saglayici: &str) -> Vec<String> {
+    st.pool
+        .slots
+        .iter()
+        .filter(|s| s.provider.ad == saglayici)
+        .map(|s| s.hesap_adi.clone())
+        .collect()
+}
+
+/// Hesap adı bu sağlayıcı için havuzda TANIMLI mı?
+///
+/// NEDEN GEREKLİ (2026-11-17): hesap sabitleme kapıları yalnız eklenti
+/// hesaplarını (`bagli_hesaplar`) tanıyordu; havuz hesapları — ücretsiz Zen
+/// profilleri dahil — panelden seçilemiyordu. Kasa özelliği hesap değiştirmeyi
+/// dosya düzeyinde yapıyor, seçimi ise buradan geçiyor.
+fn havuzda_var(st: &AppState, saglayici: &str, hesap: &str) -> bool {
+    st.pool
+        .slots
+        .iter()
+        .any(|s| s.provider.ad == saglayici && s.hesap_adi == hesap)
 }
 
 /// Tek bir denemede site arayuzune uygulanacak secimler (model + ac/kapa).

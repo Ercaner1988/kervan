@@ -159,6 +159,14 @@ pub fn router(state: Arc<AppState>) -> Router {
         // kurulur, bu yuzden yeni hesap `/kapat` + yeniden baslatma ile yururluge girer.
         .route("/hesap/ac", post(hesap_ac))
         .route("/hesap/dogrula", post(hesap_dogrula))
+        // Hesap kasasi: CLI kimlik dosyalarini (Claude/Codex/Gemini) saklayip
+        // aralarinda gecis. Uzantinin yaptigi isin aynisi, ama kimlik cikarimi
+        // kademeli — ucretsiz (kurum UUID'si olmayan) hesaplar da listelenir.
+        .route("/kasa", get(crate::kasa_uc::kasa_tumu))
+        .route("/kasa/{cesit}", get(crate::kasa_uc::kasa_tek))
+        .route("/kasa/{cesit}/topla", post(crate::kasa_uc::kasa_topla))
+        .route("/kasa/{cesit}/gecis", post(crate::kasa_uc::kasa_gecis))
+        .route("/kasa/{cesit}/sil", post(crate::kasa_uc::kasa_sil))
         // Kendini kapat: yapilandirma degistikten sonra havuzu tazelemenin yolu.
         .route("/kapat", post(kapat))
         .with_state(state)

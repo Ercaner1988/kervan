@@ -2356,6 +2356,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "kervan-kasa"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "kervan-mcp"
 version = "0.1.0"
 dependencies = [
@@ -2427,6 +2438,7 @@ dependencies = [
  "kervan-eklenti",
  "kervan-havuz",
  "kervan-istem",
+ "kervan-kasa",
  "kervan-mcp",
  "kervan-saglayici",
  "kervan-secim",

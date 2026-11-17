@@ -1,0 +1,15 @@
+[package]
+name = "kervan-kasa"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Hesap kasası: CLI kimlik dosyalarını (Claude, Codex, Gemini) saklayıp aralarında geçiş"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+log.workspace = true
+
+[dev-dependencies]
+tempfile = "3.17"

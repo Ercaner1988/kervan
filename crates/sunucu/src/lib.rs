@@ -17,6 +17,7 @@ pub use kervan_yukari as yukari;
 mod chat;
 mod eklenti_uc;
 mod hesap;
+mod kasa_uc;
 mod messages;
 mod olc;
 mod olcum;

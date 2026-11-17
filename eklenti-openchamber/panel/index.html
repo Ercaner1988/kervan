@@ -136,6 +136,23 @@
         </div>
       </div>
 
+      <h2>CLI hesap kasası</h2>
+      <div class="kutu">
+        <div class="satir">
+          <select id="kasaCesit" aria-label="CLI">
+            <option value="claude">Claude Code</option>
+            <option value="codex">OpenAI Codex</option>
+            <option value="gemini">Gemini</option>
+          </select>
+          <button id="kasaTopla" title="Şu an giriş yapılmış hesabı kasaya alır">Aktif hesabı kasaya al</button>
+          <span id="kasaNot" class="alt">Hesaplar CLI dosyalarından okunur; token'lar panelde görünmez.</span>
+        </div>
+        <div id="kasaListe"></div>
+        <div class="satir">
+          <span id="kasaKok" class="alt"></span>
+        </div>
+      </div>
+
       <h2>Web sekmeleri</h2>
       <div class="kutu" id="webHesaplar"></div>
 
